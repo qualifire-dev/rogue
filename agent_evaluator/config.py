@@ -6,6 +6,7 @@ class Config:
         TOKEN = os.getenv("HUGGINGFACE_TOKEN")
 
     class EvaluatorAgent:
+        EVALUATED_AGENT_URL = os.getenv("EVALUATED_AGENT_URL")
         MODEL = os.getenv("EVALUATOR_AGENT_MODEL", "gpt-4o")
 
     class Tools:

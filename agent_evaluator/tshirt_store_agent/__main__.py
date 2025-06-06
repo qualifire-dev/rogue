@@ -18,6 +18,7 @@ from google.adk.sessions import InMemorySessionService
 
 from .tshirt_store_agent import create_tshirt_store_agent
 from .tshirt_store_agent_executor import TShirtStoreAgentExecutor
+from ..common.configure_logger import configure_logger
 
 load_dotenv()
 
@@ -28,6 +29,7 @@ logging.basicConfig()
 @click.option("--host", "host", default="localhost")
 @click.option("--port", "port", default=10001)
 def main(host: str, port: int):
+    configure_logger()
     skill = AgentSkill(
         id="sell_tshirt",
         name="Sell T-Shirt",

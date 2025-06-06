@@ -95,29 +95,45 @@ async def send_message(
         return "Unable to get response from agent"
 
 
-async def main() -> None:
-    """Main function to run the tests."""
-    print(f"Connecting to agent at {AGENT_URL}...")
-    try:
-        async with httpx.AsyncClient(timeout=30) as httpx_client:
-            client = await A2AClient.get_client_from_agent_card_url(
-                httpx_client, AGENT_URL
-            )
-            print("Connection successful.")
+async def chat_loop(client: A2AClient):
+    context_id = uuid4().hex
+    while True:
+        try:
+            print("Enter a prompt for the evaluated agent:\n> ", end="")
+            prompt = input()
 
-            context_id = uuid4().hex
+            if prompt == "exit":
+                break
 
             print(
                 await send_message(
                     client,
                     build_message(
-                        text="Please evaluate the agent hosted at http://localhost:10001",
+                        text=prompt,
                         context_id=context_id,
                     ),
                     quiet=False,
                 ),
             )
+        except KeyboardInterrupt:
+            break
+        except Exception as e:
+            traceback.print_exc()
+            print(f"An error occurred: {e}")
+            print("Ensure the agent server is running.")
 
+
+async def main() -> None:
+    """Main function to run the tests."""
+    print(f"Connecting to agent at {AGENT_URL}...")
+    try:
+        async with httpx.AsyncClient(timeout=600) as httpx_client:
+            client = await A2AClient.get_client_from_agent_card_url(
+                httpx_client, AGENT_URL
+            )
+            print("Connection successful.")
+
+            await chat_loop(client)
     except Exception as e:
         traceback.print_exc()
         print(f"An error occurred: {e}")

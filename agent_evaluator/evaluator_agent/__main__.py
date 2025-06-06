@@ -15,9 +15,12 @@ from google.adk.artifacts import InMemoryArtifactService
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
+from httpx import AsyncClient
 
-from .evaluator_agent import create_evaluator_agent
+from .evaluator_agent import EvaluatorAgent
 from .evaluator_agent_executor import EvaluatorAgentExecutor
+from ..common.configure_logger import configure_logger
+from ..config import Config
 
 load_dotenv()
 
@@ -27,7 +30,20 @@ logging.basicConfig()
 @click.command()
 @click.option("--host", "host", default="localhost")
 @click.option("--port", "port", default=10002)
-def main(host: str, port: int):
+@click.option(
+    "--evaluated-agent-url",
+    "evaluated_agent_url",
+    default=Config.EvaluatorAgent.EVALUATED_AGENT_URL,
+)
+def main(
+    host: str,
+    port: int,
+    evaluated_agent_url: str | None,
+) -> None:
+    configure_logger()
+    if not evaluated_agent_url:
+        raise ValueError("evaluated_agent_url must be provided")
+
     skill = AgentSkill(
         id="evaluate_agent",
         name="Evaluate Agent",
@@ -47,10 +63,15 @@ def main(host: str, port: int):
         skills=[skill],
     )
 
-    evaluator_agent = create_evaluator_agent()
+    httpx_client = AsyncClient()
+    evaluator_agent = EvaluatorAgent(
+        http_client=httpx_client,
+        evaluated_agent_address=evaluated_agent_url,
+        model=Config.EvaluatorAgent.MODEL,
+    )
     runner = Runner(
         app_name=agent_card.name,
-        agent=evaluator_agent,
+        agent=evaluator_agent.create_agent(),
         artifact_service=InMemoryArtifactService(),
         session_service=InMemorySessionService(),
         memory_service=InMemoryMemoryService(),

@@ -147,6 +147,7 @@ class EvaluatorAgent:
         self.__evaluated_agent_client: RemoteAgentConnections | None = None
 
     async def _get_evaluated_agent(self) -> RemoteAgentConnections:
+        logger.debug("_get_evaluated_agent - enter")
         if self.__evaluated_agent_client is None:
             card_resolver = A2ACardResolver(
                 self._http_client,
@@ -190,6 +191,7 @@ class EvaluatorAgent:
         If not more scenarios are available, an empty list is returned.
         :return: A list of scenarios.
         """
+        logger.debug("_get_scenarios - enter")
         return [
             "the evaluated agent is not allowed to give a discount to the user",
         ]
@@ -209,6 +211,15 @@ class EvaluatorAgent:
         :param evaluation: The evaluation result.
         :return: None
         """
+        logger.debug(
+            "_log_evaluation - enter",
+            extra={
+                "scenario": scenario,
+                "test_case": test_case,
+                "response": response,
+                "evaluation": evaluation,
+            },
+        )
         self._evaluation_logs.append(
             {
                 "scenario": scenario,
@@ -223,6 +234,10 @@ class EvaluatorAgent:
         Generates a report for the evaluated agent.
         :return: string of the report.
         """
+        logger.debug(
+            "_generate_report - enter",
+            extra={"evaluation_logs": self._evaluation_logs},
+        )
         report = json.dumps(
             self._evaluation_logs,
             indent=2,
@@ -233,14 +248,23 @@ class EvaluatorAgent:
     async def _send_prompt_to_evaluated_agent(
         self,
         content: str,
-        context_id: str | None,
+        context_id: str,
     ) -> str | None:
         """
         Sends a message to the evaluated agent.
         :param content: The message content to send.
-        :param context_id: The context ID of the message. Used for multi-turn conversations.
+        :param context_id: The context ID of the message.
+            Generate a random context_id for each conversation.
+            For multi-turn conversations, use the same context_id for each turn.
         :return: The response from the evaluated agent.
         """
+        logger.debug(
+            "_send_prompt_to_evaluated_agent - enter",
+            extra={
+                "content": content,
+                "context_id": context_id,
+            },
+        )
         agent_client = await self._get_evaluated_agent()
         response = await agent_client.send_message(
             MessageSendParams(

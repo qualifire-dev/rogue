@@ -59,7 +59,7 @@ class TShirtStoreAgentExecutor(AgentExecutor):
 
             if event.is_final_response():
                 parts = convert_genai_parts_to_a2a(event.content.parts)
-                logger.debug("Yielding final response: %s", parts)
+                logger.debug("Yielding final response", extra={"parts": parts})
                 task_updater.add_artifact(parts)
                 task_updater.complete()
                 break

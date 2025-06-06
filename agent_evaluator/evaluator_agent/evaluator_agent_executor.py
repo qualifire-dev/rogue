@@ -31,10 +31,14 @@ class EvaluatorAgentExecutor(AgentExecutor):
         self._running_sessions = {}  # type: ignore
 
     def _run_agent(
-        self, session_id, new_message: types.Content
+        self,
+        session_id,
+        new_message: types.Content,
     ) -> AsyncGenerator[Event, None]:
         return self.runner.run_async(
-            session_id=session_id, user_id="self", new_message=new_message
+            session_id=session_id,
+            user_id="self",
+            new_message=new_message,
         )
 
     async def _process_request(
@@ -57,7 +61,7 @@ class EvaluatorAgentExecutor(AgentExecutor):
 
             if event.is_final_response():
                 parts = convert_genai_parts_to_a2a(event.content.parts)
-                logger.debug("Yielding final response: %s", parts)
+                logger.debug("Yielding final response", extra={"parts": parts})
                 task_updater.add_artifact(parts)
                 task_updater.complete()
                 break
