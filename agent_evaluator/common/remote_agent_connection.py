@@ -12,6 +12,34 @@ from a2a.types import (
     SendMessageRequest,
     SendStreamingMessageRequest,
     JSONRPCErrorResponse,
+    JSONRPCError,
+    JSONParseError,
+    InvalidRequestError,
+    MethodNotFoundError,
+    InvalidParamsError,
+    InternalError,
+    TaskNotFoundError,
+    TaskNotCancelableError,
+    PushNotificationNotSupportedError,
+    UnsupportedOperationError,
+    ContentTypeNotSupportedError,
+    InvalidAgentResponseError,
+)
+from loguru import logger
+
+JSON_RPC_ERROR_TYPES = (
+    JSONRPCError
+    | JSONParseError
+    | InvalidRequestError
+    | MethodNotFoundError
+    | InvalidParamsError
+    | InternalError
+    | TaskNotFoundError
+    | TaskNotCancelableError
+    | PushNotificationNotSupportedError
+    | UnsupportedOperationError
+    | ContentTypeNotSupportedError
+    | InvalidAgentResponseError
 )
 
 TaskCallbackArg = Task | TaskStatusUpdateEvent | TaskArtifactUpdateEvent
@@ -33,16 +61,28 @@ class RemoteAgentConnections:
         self,
         request: MessageSendParams,
         task_callback: TaskUpdateCallback | None,
-    ) -> Task | Message | None:
-        if self.card.capabilities.streaming:
+        stream: bool | None = None,
+    ) -> Task | Message | JSON_RPC_ERROR_TYPES | None:
+        if stream is None:  # defaults to stream if other agent supports it
+            stream = self.card.capabilities.streaming
+
+        if stream:
             task = None
-            async for response in self.agent_client.send_message_streaming(
+            async for stream_response in self.agent_client.send_message_streaming(
                 SendStreamingMessageRequest(params=request)
             ):
-                if not response.root.result:
-                    return response.root.error
+                logger.debug(
+                    "received stream response from remote agent",
+                    extra={
+                        "response": stream_response,
+                    },
+                )
+
+                if isinstance(stream_response.root, JSONRPCErrorResponse):
+                    return stream_response.root.error
+
                 # In the case a message is returned, that is the end of the interaction.
-                event = response.root.result
+                event = stream_response.root.result
                 if isinstance(event, Message):
                     return event
 
@@ -56,6 +96,14 @@ class RemoteAgentConnections:
             response = await self.agent_client.send_message(
                 SendMessageRequest(params=request)
             )
+
+            logger.debug(
+                "received non-stream response from remote agent",
+                extra={
+                    "response": response,
+                },
+            )
+
             if isinstance(response.root, JSONRPCErrorResponse):
                 return response.root.error
             if isinstance(response.root.result, Message):
