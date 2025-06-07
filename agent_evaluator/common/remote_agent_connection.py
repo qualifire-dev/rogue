@@ -27,6 +27,8 @@ from a2a.types import (
 )
 from loguru import logger
 
+from .generic_task_callback import GenericTaskUpdateCallback
+
 JSON_RPC_ERROR_TYPES = (
     JSONRPCError
     | JSONParseError
@@ -52,7 +54,6 @@ class RemoteAgentConnections:
     def __init__(self, client: httpx.AsyncClient, agent_card: AgentCard):
         self.agent_client = A2AClient(client, agent_card)
         self.card = agent_card
-        self.pending_tasks = set()
 
     def get_agent(self) -> AgentCard:
         return self.card
@@ -60,11 +61,14 @@ class RemoteAgentConnections:
     async def send_message(
         self,
         request: MessageSendParams,
-        task_callback: TaskUpdateCallback | None,
+        task_callback: TaskUpdateCallback | None = None,
         stream: bool | None = None,
     ) -> Task | Message | JSON_RPC_ERROR_TYPES | None:
-        if stream is None:  # defaults to stream if other agent supports it
+        if stream is None:  # defaults to stream if the other agent supports it
             stream = self.card.capabilities.streaming
+
+        if task_callback is None:
+            task_callback = GenericTaskUpdateCallback().task_callback
 
         if stream:
             task = None

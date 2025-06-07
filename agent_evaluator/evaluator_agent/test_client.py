@@ -105,6 +105,11 @@ async def chat_loop(client: A2AClient):
             if prompt == "exit":
                 break
 
+            if prompt == "%cid":
+                print("Refreshing context_id")
+                context_id = uuid4().hex
+                continue
+
             print(
                 await send_message(
                     client,
