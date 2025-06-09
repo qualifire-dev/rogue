@@ -1,4 +1,5 @@
 import base64
+from logging import getLogger
 from typing import AsyncGenerator
 
 from a2a.server.agent_execution import AgentExecutor, RequestContext
@@ -18,7 +19,8 @@ from a2a.utils.errors import ServerError
 from google.adk import Runner
 from google.adk.events import Event
 from google.genai import types
-from loguru import logger
+
+logger = getLogger(__name__)
 
 
 class TShirtStoreAgentExecutor(AgentExecutor):
@@ -36,7 +38,9 @@ class TShirtStoreAgentExecutor(AgentExecutor):
         new_message: types.Content,
     ) -> AsyncGenerator[Event, None]:
         return self.runner.run_async(
-            session_id=session_id, user_id="self", new_message=new_message
+            session_id=session_id,
+            user_id="self",
+            new_message=new_message,
         )
 
     async def _process_request(
@@ -59,7 +63,7 @@ class TShirtStoreAgentExecutor(AgentExecutor):
 
             if event.is_final_response():
                 parts = convert_genai_parts_to_a2a(event.content.parts)
-                logger.debug("Yielding final response", extra={"parts": parts})
+                logger.debug(f"Yielding final response. parts: {parts}")
                 task_updater.add_artifact(parts)
                 task_updater.complete()
                 break

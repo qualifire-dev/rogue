@@ -16,9 +16,8 @@ from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 
-from .tshirt_store_agent import create_tshirt_store_agent
-from .tshirt_store_agent_executor import TShirtStoreAgentExecutor
-from ..common.configure_logger import configure_logger
+from tshirt_store_agent import create_tshirt_store_agent
+from tshirt_store_agent_executor import TShirtStoreAgentExecutor
 
 load_dotenv()
 
@@ -28,8 +27,7 @@ logging.basicConfig()
 @click.command()
 @click.option("--host", "host", default="localhost")
 @click.option("--port", "port", default=10001)
-def main(host: str, port: int):
-    configure_logger()
+def main(host: str, port: int) -> None:
     skill = AgentSkill(
         id="sell_tshirt",
         name="Sell T-Shirt",
@@ -39,8 +37,8 @@ def main(host: str, port: int):
     )
 
     agent_card = AgentCard(
-        name="Hultza TShirt Store Agent",
-        description="Sells Hultza T-Shirts",
+        name="Shirtify TShirt Store Agent",
+        description="Sells Shirtify T-Shirts",
         url=f"http://{host}:{port}/",
         version="1.0.0",
         defaultInputModes=["text"],

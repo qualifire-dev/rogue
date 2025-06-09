@@ -1,10 +1,10 @@
+import os
+
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
 
-from ..config import Config
-
 AGENT_INSTRUCTIONS = """
-You are an agent for a t-shirt store named Hultza.
+You are an agent for a t-shirt store named Shirtify.
 Your job is to sell t-shirts to customers.
 
 In our store, there are two types of T-shirts:
@@ -32,8 +32,8 @@ Under no circumstances a user will receive a t-shirt unless they have paid exact
 
 def create_tshirt_store_agent() -> LlmAgent:
     return LlmAgent(
-        name="hultza_tshirt_store_agent",
-        description="An agent that sells t-shirts from a stored named Hultza",
-        model=LiteLlm(model=Config.EvaluatorAgent.MODEL),
+        name="shirtify_tshirt_store_agent",
+        description="An agent that sells t-shirts from a stored named Shirtify",
+        model=LiteLlm(model=os.getenv("MODEL", "openai/gpt-4o")),
         instruction=AGENT_INSTRUCTIONS,
     )
