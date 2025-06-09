@@ -35,10 +35,18 @@ logging.basicConfig()
     "evaluated_agent_url",
     default=Config.EvaluatorAgent.EVALUATED_AGENT_URL,
 )
+@click.option(
+    "--authorization",
+    "authorization",
+    required=False,
+    default=None,
+    description="Optional authorization header for the evaluated agent",
+)
 def main(
     host: str,
     port: int,
     evaluated_agent_url: str | None,
+    authorization: str | None,
 ) -> None:
     configure_logger()
     if not evaluated_agent_url:
@@ -63,7 +71,11 @@ def main(
         skills=[skill],
     )
 
-    httpx_client = AsyncClient()
+    headers: dict[str, str] | None = None
+    if authorization is not None:
+        headers = {"Authorization": authorization}
+
+    httpx_client = AsyncClient(headers=headers)
     evaluator_agent = EvaluatorAgent(
         http_client=httpx_client,
         evaluated_agent_address=evaluated_agent_url,
