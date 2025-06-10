@@ -24,7 +24,7 @@ def get_config_from_ui() -> UserConfig:
     return UserConfig(
         evaluated_agent_url="http://localhost:10001",
         authorization_header=None,
-        agent_model="openai/gpt-4o",
+        model="openai/gpt-4o",
     )
 
 
@@ -43,7 +43,7 @@ async def get_evaluated_agent_card(config: UserConfig) -> AgentCard:
         return await card_resolver.get_agent_card()
 
 
-def create_scenario_generation_agent(card: AgentCard) -> BaseAgent:
+def create_scenario_generation_agent(card: AgentCard, model: str) -> BaseAgent:
     # TODO: yuval
     pass
 
@@ -109,7 +109,7 @@ async def main():
     config = get_config_from_ui()
 
     card = await get_evaluated_agent_card(config)
-    scenario_generation_agent = create_scenario_generation_agent(card)
+    scenario_generation_agent = create_scenario_generation_agent(card, config.model)
     evaluator_agent = create_evaluator_agent(card)
     report_generation_agent = create_report_generation_agent()
 
