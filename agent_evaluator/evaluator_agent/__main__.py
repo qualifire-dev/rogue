@@ -40,7 +40,6 @@ logging.basicConfig()
     "authorization",
     required=False,
     default=None,
-    description="Optional authorization header for the evaluated agent",
 )
 def main(
     host: str,

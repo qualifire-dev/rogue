@@ -1,0 +1,48 @@
+import gradio as gr
+
+theme = gr.themes.Soft(
+    primary_hue=gr.themes.Color(
+        c50="#ECE9FB",
+        c100="#ECE9FB",
+        c200="#ECE9FB",
+        c300="#6B63BF",
+        c400="#494199",
+        c500="#A5183A",
+        c600="#332E68",
+        c700="#272350",
+        c800="#201E44",
+        c900="#1C1A3D",
+        c950="#100F24",
+    ),
+    secondary_hue=gr.themes.Color(
+        c50="#ECE9FB",
+        c100="#ECE9FB",
+        c200="#ECE9FB",
+        c300="#6B63BF",
+        c400="#494199",
+        c500="#494199",
+        c600="#332E68",
+        c700="#272350",
+        c800="#201E44",
+        c900="#1C1A3D",
+        c950="#100F24",
+    ),
+    neutral_hue=gr.themes.Color(
+        c50="#ECE9FB",
+        c100="#ECE9FB",
+        c200="#ECE9FB",
+        c300="#6B63BF",
+        c400="#494199",
+        c500="#494199",
+        c600="#332E68",
+        c700="#272350",
+        c800="#201E44",
+        c900="#1C1A3D",
+        c950="#100F24",
+    ),
+    font=[
+        gr.themes.GoogleFont("Mulish"),
+        "Arial",
+        "sans-serif",
+    ],
+)
