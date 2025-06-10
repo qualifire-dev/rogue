@@ -18,7 +18,7 @@ from google.adk.sessions import InMemorySessionService
 from httpx import AsyncClient
 
 from .evaluator_agent import EvaluatorAgent
-from .evaluator_agent_executor import EvaluatorAgentExecutor
+from ..common.generic_agent_executor import GenericAgentExecutor
 from ..common.configure_logger import configure_logger
 from ..config import Config
 
@@ -29,7 +29,7 @@ logging.basicConfig()
 
 @click.command()
 @click.option("--host", "host", default="localhost")
-@click.option("--port", "port", default=10002)
+@click.option("--port", "port", default=10003)
 @click.option(
     "--evaluated-agent-url",
     "evaluated_agent_url",
@@ -87,7 +87,7 @@ def main(
         session_service=InMemorySessionService(),
         memory_service=InMemoryMemoryService(),
     )
-    agent_executor = EvaluatorAgentExecutor(runner, agent_card)
+    agent_executor = GenericAgentExecutor(runner, agent_card)
 
     request_handler = DefaultRequestHandler(
         agent_executor=agent_executor,

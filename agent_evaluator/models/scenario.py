@@ -37,3 +37,6 @@ class Scenario(BaseModel):
             )
             self.dataset = None
         return self
+
+class Scenarios(BaseModel):
+    scenarios: list[Scenario]
