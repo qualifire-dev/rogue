@@ -1,16 +1,23 @@
+from typing import Optional
+
 from litellm import completion
-from loguru import logger
+from pydantic import SecretStr
 
 
 class LLMService:
-    def get_interview_question(self, model: str, messages: list) -> str:
+    @staticmethod
+    def get_interview_question(
+        model: str,
+        messages: list,
+        llm_provider_api_key: Optional[SecretStr] = None,
+    ) -> str:
         # Count user messages to decide if we should add the summary prompt.
         num_user_messages = sum(1 for msg in messages if msg["role"] == "user")
 
         if num_user_messages >= 5:
             messages.append(
                 {
-                    "role": "system",
+                    "role": "user",
                     "content": (
                         "You have asked 5 questions. Now, provide a "
                         "concise summary of the agent's business "
@@ -19,13 +26,28 @@ class LLMService:
                 }
             )
 
+        api_key = (
+            None
+            if llm_provider_api_key is None
+            else llm_provider_api_key.get_secret_value()
+        )
+
         try:
-            response = completion(model=model, messages=messages)
+            response = completion(
+                model=model,
+                messages=messages,
+                api_key=api_key,
+            )
             return response.choices[0].message.content
         except Exception as e:
             return f"An error occurred: {e}"
 
-    def generate_scenarios(self, model: str, context: str) -> str:
+    @staticmethod
+    def generate_scenarios(
+        model: str,
+        context: str,
+        llm_provider_api_key: Optional[SecretStr] = None,
+    ) -> str:
         system_prompt = (
             "You are a test scenario designer. Based on the provided business "
             "context, generate 5 to 10 diverse test scenarios. The output "
@@ -38,11 +60,18 @@ class LLMService:
             {"role": "user", "content": context},
         ]
 
+        api_key = (
+            None
+            if llm_provider_api_key is None
+            else llm_provider_api_key.get_secret_value()
+        )
+
         try:
             response = completion(
                 model=model,
                 messages=messages,
                 response_format={"type": "json_object"},
+                api_key=api_key,
             )
             return response.choices[0].message.content
         except Exception as e:

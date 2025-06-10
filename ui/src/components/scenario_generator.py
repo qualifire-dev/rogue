@@ -1,10 +1,8 @@
-import gradio as gr
 import json
-from ..services.llm_service import LLMService
-from ..models.scenario import TestScenario
 
-# Commented out as validation is optional
-# from ..models.scenario import TestScenario
+import gradio as gr
+
+from ..services.llm_service import LLMService
 
 
 def create_scenario_generator_screen(shared_state: gr.State, tabs_component: gr.Tabs):
@@ -30,7 +28,13 @@ def create_scenario_generator_screen(shared_state: gr.State, tabs_component: gr.
             return state, None, gr.update()
 
         judge_llm = state.get("config", {}).get("judge_llm", "openai/o3-mini")
-        scenarios_json_str = llm_service.generate_scenarios(judge_llm, context)
+        judge_llm_api_key = state.get("config", {}).get("judge_llm_api_key")
+
+        scenarios_json_str = llm_service.generate_scenarios(
+            judge_llm,
+            context,
+            llm_provider_api_key=judge_llm_api_key,
+        )
 
         try:
             scenarios_data = json.loads(scenarios_json_str)

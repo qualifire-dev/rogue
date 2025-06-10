@@ -1,4 +1,7 @@
+from typing import List
+
 import gradio as gr
+
 from ..services.llm_service import LLMService
 
 
@@ -37,15 +40,19 @@ def create_interviewer_screen(shared_state: gr.State, tabs_component: gr.Tabs):
                     messages.append({"role": "assistant", "content": assistant_msg})
 
             judge_llm = state.get("config", {}).get("judge_llm", "openai/o3-mini")
+            judge_llm_api_key = state.get("config", {}).get("judge_llm_api_key")
+
             bot_message = llm_service.get_interview_question(
-                model=judge_llm, messages=messages
+                model=judge_llm,
+                messages=messages,
+                llm_provider_api_key=judge_llm_api_key,
             )
 
             # Add bot response to the last entry in history
             history[-1][1] = bot_message
             return "", history
 
-        def finalize_context(state, history):
+        def finalize_context(state, history: List[List[str]]):
             if history and history[-1][1] is not None:
                 context = history[-1][1]
                 state["business_context"] = context
