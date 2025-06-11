@@ -17,7 +17,6 @@ from httpx import AsyncClient
 from loguru import logger
 
 from ..common.remote_agent_connection import RemoteAgentConnections
-from ..config import Config
 
 AGENT_INSTRUCTIONS = """
 # Agent Evaluation Assistant
@@ -147,11 +146,11 @@ class EvaluatorAgent:
         self,
         http_client: AsyncClient,
         evaluated_agent_address: str,
-        model: str | None = None,
+        model: str,
     ) -> None:
         self._http_client = http_client
         self._evaluated_agent_address = evaluated_agent_address
-        self._model = model or Config.EvaluatorAgent.MODEL
+        self._model = model
         self._evaluation_logs: list[dict[str, Any]] = []
         self.__evaluated_agent_client: RemoteAgentConnections | None = None
         self._test_case_context_ids: dict[str, str] = {}

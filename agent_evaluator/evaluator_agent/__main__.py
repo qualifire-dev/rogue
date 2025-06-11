@@ -20,7 +20,6 @@ from httpx import AsyncClient
 from .evaluator_agent import EvaluatorAgent
 from .evaluator_agent_executor import EvaluatorAgentExecutor
 from ..common.configure_logger import configure_logger
-from ..config import Config
 
 load_dotenv()
 
@@ -33,7 +32,7 @@ logging.basicConfig()
 @click.option(
     "--evaluated-agent-url",
     "evaluated_agent_url",
-    default=Config.EvaluatorAgent.EVALUATED_AGENT_URL,
+    default="http://localhost:10001",
 )
 @click.option(
     "--authorization",
@@ -78,7 +77,7 @@ def main(
     evaluator_agent = EvaluatorAgent(
         http_client=httpx_client,
         evaluated_agent_address=evaluated_agent_url,
-        model=Config.EvaluatorAgent.MODEL,
+        model="gpt-4o",
     )
     runner = Runner(
         app_name=agent_card.name,
