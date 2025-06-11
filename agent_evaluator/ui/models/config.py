@@ -26,7 +26,7 @@ class AgentConfig(BaseModel):
     @field_validator("auth_credentials", mode="after")
     @classmethod
     def check_auth_credentials(
-        cld,
+        cls,
         value: Optional[SecretStr],
         info: ValidationInfo,
     ) -> Optional[SecretStr]:

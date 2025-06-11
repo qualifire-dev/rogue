@@ -1,5 +1,3 @@
-import json
-
 import gradio as gr
 
 from ..services.llm_service import LLMService
@@ -15,8 +13,12 @@ def create_scenario_generator_screen(shared_state: gr.State, tabs_component: gr.
             lines=5,
             interactive=False,
         )
-        generate_button = gr.Button("Generate Scenarios")
+        # When the tab is selected, update the context display
+        # This requires a new way to trigger this, let's use a button for now.
+        refresh_button = gr.Button("Refresh Context", variant="secondary")
+
         scenarios_output = gr.JSON(label="Generated Scenarios")
+        generate_button = gr.Button("Generate Scenarios")
 
     def update_context_display(state):
         return state.get("business_context", "")
@@ -30,28 +32,27 @@ def create_scenario_generator_screen(shared_state: gr.State, tabs_component: gr.
         judge_llm = state.get("config", {}).get("judge_llm", "openai/o3-mini")
         judge_llm_api_key = state.get("config", {}).get("judge_llm_api_key")
 
-        scenarios_json_str = llm_service.generate_scenarios(
-            judge_llm,
-            context,
-            llm_provider_api_key=judge_llm_api_key,
-        )
-
         try:
-            scenarios_data = json.loads(scenarios_json_str)
-            state["scenarios"] = scenarios_data
+            scenarios = llm_service.generate_scenarios(
+                judge_llm,
+                context,
+                llm_provider_api_key=judge_llm_api_key,
+            )
+            state["scenarios"] = scenarios
             gr.Info("Scenarios generated successfully!")
-            return state, scenarios_data, gr.Tabs(selected="run")
-        except json.JSONDecodeError:
-            gr.Error("Failed to parse scenarios from LLM response.")
             return (
                 state,
-                {"error": "Invalid JSON received from LLM."},
+                scenarios.model_dump_json(indent=2, exclude_none=True),
+                gr.Tabs(selected="run"),
+            )
+        except Exception:
+            gr.Error("Failed to generate scenarios from LLM response.")
+            return (
+                state,
+                {"error": "Failed to generate scenarios."},
                 gr.update(),
             )
 
-    # When the tab is selected, update the context display
-    # This requires a new way to trigger this, let's use a button for now.
-    refresh_button = gr.Button("Refresh Context", variant="secondary")
     refresh_button.click(
         fn=update_context_display,
         inputs=[shared_state],

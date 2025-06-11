@@ -15,7 +15,7 @@ def create_interviewer_screen(shared_state: gr.State, tabs_component: gr.Tabs):
             "business use case."
         )
 
-        chatbot = gr.Chatbot(height=400, label="Interviewer")
+        chatbot = gr.Chatbot(height=400, label="Interviewer", type="tuples")
         user_input = gr.Textbox(
             show_label=False,
             placeholder="Enter your response here...",
@@ -64,7 +64,8 @@ def create_interviewer_screen(shared_state: gr.State, tabs_component: gr.Tabs):
         chatbot.value = [
             [
                 None,
-                "Welcome! I'll ask a few questions to understand your agent. What is the primary business domain your agent operates in?",
+                "Welcome! I'll ask a few questions to understand your agent. "
+                "What is the primary business domain your agent operates in?",
             ]
         ]
 
