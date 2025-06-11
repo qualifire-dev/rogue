@@ -1,5 +1,3 @@
-from uuid import uuid4
-
 import httpx
 from a2a.client import A2ACardResolver
 from a2a.types import AgentCard
@@ -9,6 +7,7 @@ from google.adk.sessions import InMemorySessionService, Session
 from google.genai import types
 from loguru import logger
 
+from .common.agent_sessions import create_session
 from .models.user_config import UserConfig
 from .orchestrator_agent.orchestrator_agent import OrchestratorAgentFactory
 
@@ -63,13 +62,6 @@ def create_orchestrator_agent(
         evaluator_agent=evaluator_agent,
         report_generation_agent=report_generation_agent,
     ).create_agent()
-
-
-def create_session() -> Session:
-    return Session(
-        id=uuid4().hex,
-        user_id=uuid4().hex,
-    )
 
 
 def run_sequential_agent(
