@@ -1,5 +1,5 @@
 import json
-from typing import Any
+from typing import Any, Optional
 from uuid import uuid4
 
 from a2a.client import A2ACardResolver
@@ -96,16 +96,20 @@ each conversation individually before making a decision.
 """  # noqa: E501
 
 
-class EvaluatorAgentFactory:
+class EvaluatorAgent:
     def __init__(
         self,
         http_client: AsyncClient,
         evaluated_agent_address: str,
         model: str,
+        scenarios: Scenarios,
+        llm_auth: Optional[str] = None,
     ) -> None:
         self._http_client = http_client
         self._evaluated_agent_address = evaluated_agent_address
         self._model = model
+        self._llm_auth = llm_auth
+        self._scenarios = scenarios
         self._evaluation_logs: list[dict[str, Any]] = []
         self.__evaluated_agent_client: RemoteAgentConnections | None = None
         self._context_id_to_chat_history: dict[str, ChatHistory] = {}
@@ -125,16 +129,16 @@ class EvaluatorAgentFactory:
 
         return self.__evaluated_agent_client
 
-    def create_agent(self, scenarios: Scenarios) -> LlmAgent:
+    def get_underlying_agent(self) -> LlmAgent:
         instructions = AGENT_INSTRUCTIONS.replace(
             "{$SCENARIOS}",
-            scenarios.model_dump_json(),
+            self._scenarios.model_dump_json(),
         )
 
         return LlmAgent(
             name="qualifire_agent_evaluator",
             description="An agent that evaluates test scenarios on other agents",
-            model=get_llm_from_model(self._model),
+            model=get_llm_from_model(self._model, self._llm_auth),
             instruction=instructions,
             tools=[
                 FunctionTool(func=self._get_conversation_context_id),

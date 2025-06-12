@@ -1,20 +1,20 @@
+import asyncio
+
 from a2a.types import (
     AgentCapabilities,
     AgentCard,
     AgentSkill,
 )
-from google.adk.artifacts import InMemoryArtifactService
-from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService, Session
 from google.genai import types
 from httpx import AsyncClient
 from loguru import logger
 
-from .evaluator_agent import EvaluatorAgentFactory
+from .evaluator_agent import EvaluatorAgent
 from ..common.agent_sessions import create_session
+from ..models.config import AuthType
 from ..models.scenario import Scenarios
-from ..ui.models.config import AuthType
 
 
 def _get_agent_card(host: str, port: int):
@@ -57,10 +57,8 @@ def _get_headers(
 def _run_agent(
     agent_runner: Runner,
     input_text: str,
-    session: Session | None = None,
+    session: Session,
 ) -> str:
-    session = session or create_session()
-
     # Create content from user input
     content = types.Content(
         role="user",
@@ -77,7 +75,8 @@ def _run_agent(
     ):
         event_text = ""
         for part in event.content.parts:
-            event_text += part.text
+            if part.text:
+                event_text += part.text
 
         agent_output += event_text
 
@@ -92,30 +91,65 @@ def _run_agent(
     return agent_output
 
 
-async def run_evaluator_agent(
-    host: str,
-    port: int,
+async def arun_evaluator_agent(
+    # host: str,
+    # port: int,
     evaluated_agent_url: str,
     auth_type: AuthType,
     auth_credentials: str | None,
     judge_llm: str,
+    judge_llm_api_key: str | None,
     scenarios: Scenarios,
 ) -> str:
-    agent_card = _get_agent_card(host, port)
+    # agent_card = _get_agent_card(host, port)
     headers = _get_headers(auth_credentials, auth_type)
 
     async with AsyncClient(headers=headers) as httpx_client:
-        evaluator_agent = EvaluatorAgentFactory(
+        evaluator_agent = EvaluatorAgent(
             http_client=httpx_client,
             evaluated_agent_address=evaluated_agent_url,
             model=judge_llm,
             scenarios=scenarios,
+            llm_auth=judge_llm_api_key,
         )
+
+        session_service = InMemorySessionService()
+
+        app_name = "Evaluator_Agent"
+
         runner = Runner(
-            app_name=agent_card.name,
-            agent=evaluator_agent.create_agent(),
-            artifact_service=InMemoryArtifactService(),
-            session_service=InMemorySessionService(),
-            memory_service=InMemoryMemoryService(),
+            app_name=app_name,  # agent_card.name,
+            agent=evaluator_agent.get_underlying_agent(),
+            session_service=session_service,
         )
-        return _run_agent(runner, input_text="start")
+
+        session = await create_session(
+            app_name=app_name,
+            session_service=session_service,
+        )
+
+        logger.info(f"evaluator_agent started")
+
+        return _run_agent(runner, input_text="start", session=session)
+
+
+def run_evaluator_agent(
+    # host: str,
+    # port: int,
+    evaluated_agent_url: str,
+    auth_type: AuthType,
+    auth_credentials: str | None,
+    judge_llm: str,
+    judge_llm_api_key: str | None,
+    scenarios: Scenarios,
+) -> str:
+    return asyncio.run(
+        arun_evaluator_agent(
+            evaluated_agent_url=evaluated_agent_url,
+            auth_type=auth_type,
+            auth_credentials=auth_credentials,
+            judge_llm=judge_llm,
+            judge_llm_api_key=judge_llm_api_key,
+            scenarios=scenarios,
+        )
+    )
