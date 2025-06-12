@@ -1,4 +1,7 @@
+from typing import List
+
 import gradio as gr
+
 from ..services.llm_service import LLMService
 
 
@@ -12,7 +15,7 @@ def create_interviewer_screen(shared_state: gr.State, tabs_component: gr.Tabs):
             "business use case."
         )
 
-        chatbot = gr.Chatbot(height=400, label="Interviewer")
+        chatbot = gr.Chatbot(height=400, label="Interviewer", type="tuples")
         user_input = gr.Textbox(
             show_label=False,
             placeholder="Enter your response here...",
@@ -37,49 +40,32 @@ def create_interviewer_screen(shared_state: gr.State, tabs_component: gr.Tabs):
                     messages.append({"role": "assistant", "content": assistant_msg})
 
             judge_llm = state.get("config", {}).get("judge_llm", "openai/o3-mini")
+            judge_llm_api_key = state.get("config", {}).get("judge_llm_api_key")
+
             bot_message = llm_service.get_interview_question(
-                model=judge_llm, messages=messages
+                model=judge_llm,
+                messages=messages,
+                llm_provider_api_key=judge_llm_api_key,
             )
 
             # Add bot response to the last entry in history
             history[-1][1] = bot_message
             return "", history
 
-        def finalize_context(state, history):
-            if not history:
-                gr.Warning("Cannot finalize an empty conversation.")
-                return state, gr.update()
-
-            # Build the message history for the summarization call
-            messages = []
-            for user_msg, assistant_msg in history:
-                if user_msg:
-                    messages.append({"role": "user", "content": user_msg})
-                if assistant_msg:
-                    # Don't include the initial welcome message in the summary context
-                    if "Welcome!" in assistant_msg:
-                        continue
-                    messages.append({"role": "assistant", "content": assistant_msg})
-
-            if not messages:
-                gr.Warning("No valid conversation history to summarize.")
-                return state, gr.update()
-
-            judge_llm = state.get("config", {}).get("judge_llm", "openai/o3-mini")
-
-            # Use the new summarization service
-            summary = llm_service.summarize_business_context(
-                model=judge_llm, messages=messages
-            )
-
-            state["business_context"] = summary
-            gr.Info("Business context finalized!")
-            return state, gr.Tabs(selected="scenarios")
+        def finalize_context(state, history: List[List[str]]):
+            if history and history[-1][1] is not None:
+                context = history[-1][1]
+                state["business_context"] = context
+                gr.Info("Business context finalized!")
+                return state, gr.Tabs(selected="scenarios")
+            gr.Warning("Could not determine business context from conversation.")
+            return state, gr.update()
 
         chatbot.value = [
             [
                 None,
-                "Welcome! I'll ask a few questions to understand your agent. What is the primary business domain your agent operates in?",
+                "Welcome! I'll ask a few questions to understand your agent. "
+                "What is the primary business domain your agent operates in?",
             ]
         ]
 
