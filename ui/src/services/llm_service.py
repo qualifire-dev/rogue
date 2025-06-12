@@ -25,6 +25,23 @@ class LLMService:
         except Exception as e:
             return f"An error occurred: {e}"
 
+    def summarize_business_context(self, model: str, messages: list) -> str:
+        system_prompt = (
+            "You are a business analyst. Your task is to provide a concise "
+            "summary of the agent's business context based on the provided "
+            "conversation history. The summary should be a single, "
+            "well-structured paragraph."
+        )
+        # Add the summarization instruction to the existing messages
+        messages_with_prompt = messages + [{"role": "system", "content": system_prompt}]
+
+        try:
+            logger.info(f"Summarizing business context with model: {model}")
+            response = completion(model=model, messages=messages_with_prompt)
+            return response.choices[0].message.content
+        except Exception as e:
+            return f"An error occurred during summarization: {e}"
+
     def generate_scenarios(self, model: str, context: str) -> str:
         system_prompt = (
             "You are a test scenario designer. Based on the provided business "

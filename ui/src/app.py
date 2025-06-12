@@ -19,14 +19,21 @@ with gr.Blocks(theme=theme, title="Qualifire Agent Evaluator") as app:
         with gr.TabItem("2. Interview", id="interview"):
             create_interviewer_screen(shared_state, tabs)
 
-        with gr.TabItem("3. Scenarios", id="scenarios"):
-            create_scenario_generator_screen(shared_state, tabs)
+        with gr.TabItem("3. Scenarios", id="scenarios") as scenarios_tab:
+            b_context, _, _ = create_scenario_generator_screen(shared_state, tabs)
 
         with gr.TabItem("4. Run & Evaluate", id="run"):
             create_scenario_runner_screen(shared_state, tabs)
 
         with gr.TabItem("5. Report", id="report"):
             create_report_generator_screen(shared_state)
+
+    def update_context_display(state):
+        return gr.update(value=state.get("business_context", ""))
+
+    scenarios_tab.select(
+        fn=update_context_display, inputs=[shared_state], outputs=[b_context]
+    )
 
     footer_html = """
     <div style="text-align: center; margin-top: 20px; font-size: 14px;
