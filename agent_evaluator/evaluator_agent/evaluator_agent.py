@@ -168,6 +168,12 @@ class EvaluatorAgent:
             extra={
                 "scenario": scenario,
                 "context_id": context_id,
+                "conversation_length": len(
+                    self._context_id_to_chat_history.get(
+                        context_id,
+                        ChatHistory(),
+                    ).messages
+                ),
                 "evaluation_passed": evaluation_passed,
                 "reason": reason,
             },
@@ -288,4 +294,5 @@ class EvaluatorAgent:
         Generates a unique context_id for the conversation.
         :return: The context ID for the conversation.
         """
+        logger.debug("_get_conversation_context_id - enter")
         return uuid4().hex
