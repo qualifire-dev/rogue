@@ -11,31 +11,26 @@ def create_scenario_generator_screen(shared_state: gr.State, tabs_component: gr.
         business_context_display = gr.Textbox(
             label="Finalized Business Context",
             lines=5,
-            interactive=False,
+            interactive=True,
         )
-        # When the tab is selected, update the context display
-        # This requires a new way to trigger this, let's use a button for now.
-        refresh_button = gr.Button("Refresh Context", variant="secondary")
-
         scenarios_output = gr.JSON(label="Generated Scenarios")
         generate_button = gr.Button("Generate Scenarios")
 
-    def update_context_display(state):
-        return state.get("business_context", "")
-
-    def generate_and_display_scenarios(state):
-        context = state.get("business_context")
-        if not context:
+    def generate_and_display_scenarios(state, current_context):
+        if not current_context:
             gr.Warning("Business context is empty. Please finalize it first.")
             return state, None, gr.update()
 
-        judge_llm = state.get("config", {}).get("judge_llm", "openai/o3-mini")
+        # Update the shared state with the potentially edited context
+        state["business_context"] = current_context
+
+        judge_llm = state.get("config", {}).get("judge_llm")
         judge_llm_api_key = state.get("config", {}).get("judge_llm_api_key")
 
         try:
             scenarios = llm_service.generate_scenarios(
                 judge_llm,
-                context,
+                current_context,
                 llm_provider_api_key=judge_llm_api_key,
             )
             state["scenarios"] = scenarios
@@ -53,15 +48,9 @@ def create_scenario_generator_screen(shared_state: gr.State, tabs_component: gr.
                 gr.update(),
             )
 
-    refresh_button.click(
-        fn=update_context_display,
-        inputs=[shared_state],
-        outputs=[business_context_display],
-    )
-
     generate_button.click(
         fn=generate_and_display_scenarios,
-        inputs=[shared_state],
+        inputs=[shared_state, business_context_display],
         outputs=[shared_state, scenarios_output, tabs_component],
     )
 
