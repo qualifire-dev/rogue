@@ -3,6 +3,7 @@ from loguru import logger
 from pydantic import ValidationError
 import json
 from pathlib import Path
+import os
 
 from ...models.config import AgentConfig, AuthType
 
@@ -26,6 +27,16 @@ def load_config_from_file(workdir: Path) -> dict:
 
 
 def create_config_screen(shared_state: gr.State, tabs_component: gr.Tabs):
+    # --- Pre-load keys from environment variables ---
+    judge_llm_key_env = (
+        os.environ.get("OPENAI_API_KEY")
+        or os.environ.get("ANTHROPIC_API_KEY")
+        or os.environ.get("COHERE_API_KEY")
+        or os.environ.get("REPLICATE_API_KEY")
+        or os.environ.get("AZURE_API_KEY")
+    )
+    hf_key_env = os.environ.get("HUGGING_FACE_API_KEY") or os.environ.get("HF_TOKEN")
+
     with gr.Column():
         gr.Markdown("## Agent Configuration")
         agent_url = gr.Textbox(
@@ -61,12 +72,16 @@ def create_config_screen(shared_state: gr.State, tabs_component: gr.Tabs):
 
         gr.Markdown("## Evaluator Configuration")
         judge_llm = gr.Textbox(label="Judge LLM", value="openai/gpt-4.1-nano")
-        judge_llm_api_key = gr.Textbox(label="Judge LLM API Key", type="password")
+        judge_llm_api_key = gr.Textbox(
+            label="Judge LLM API Key", type="password", value=judge_llm_key_env
+        )
         judge_llm_api_key_error = gr.Markdown(
             visible=False, elem_classes=["error-label"]
         )
 
-        huggingface_api_key = gr.Textbox(label="HuggingFace API Key", type="password")
+        huggingface_api_key = gr.Textbox(
+            label="HuggingFace API Key", type="password", value=hf_key_env
+        )
         huggingface_api_key_error = gr.Markdown(
             visible=False, elem_classes=["error-label"]
         )
