@@ -8,16 +8,14 @@ from .components.report_generator import create_report_generator_screen
 from .components.scenario_generator import create_scenario_generator_screen
 from .components.scenario_runner import create_scenario_runner_screen
 from .config.theme import theme
+from ..models.config import AuthType
 
 
 def get_app(workdir: Path):
-    # Load config from file if it exists
-    loaded_config = load_config_from_file(workdir)
     with gr.Blocks(theme=theme, title="Qualifire Agent Evaluator") as app:
-        # A single state object to hold all shared data across tabs
         shared_state = gr.State(
             {
-                "config": loaded_config if loaded_config else {},
+                "config": {},
                 "business_context": "",
                 "scenarios": [],
                 "results": [],
@@ -27,7 +25,15 @@ def get_app(workdir: Path):
 
         with gr.Tabs() as tabs:
             with gr.TabItem("1. Config", id="config"):
-                create_config_screen(shared_state, tabs)
+                (
+                    agent_url,
+                    interview_mode,
+                    auth_type,
+                    auth_credentials,
+                    judge_llm,
+                    judge_llm_api_key,
+                    huggingface_api_key,
+                ) = create_config_screen(shared_state, tabs)
 
             with gr.TabItem("2. Interview", id="interview"):
                 create_interviewer_screen(shared_state, tabs)
@@ -52,6 +58,45 @@ def get_app(workdir: Path):
             fn=update_context_display,
             inputs=[shared_state],
             outputs=[business_context_display],
+        )
+
+        def load_and_update_ui():
+            config = load_config_from_file(workdir)
+            state = {
+                "config": config,
+                "business_context": "",
+                "scenarios": [],
+                "results": [],
+                "workdir": workdir,
+            }
+            auth_type_val = config.get("auth_type", AuthType.NO_AUTH.value)
+            return {
+                shared_state: state,
+                agent_url: gr.update(value=config.get("agent_url")),
+                interview_mode: gr.update(value=config.get("interview_mode")),
+                auth_type: gr.update(value=auth_type_val),
+                auth_credentials: gr.update(
+                    value=config.get("auth_credentials"),
+                    visible=auth_type_val != AuthType.NO_AUTH.value,
+                ),
+                judge_llm: gr.update(value=config.get("judge_llm")),
+                judge_llm_api_key: gr.update(value=config.get("judge_llm_api_key")),
+                huggingface_api_key: gr.update(value=config.get("huggingface_api_key")),
+            }
+
+        app.load(
+            fn=load_and_update_ui,
+            inputs=None,
+            outputs=[
+                shared_state,
+                agent_url,
+                interview_mode,
+                auth_type,
+                auth_credentials,
+                judge_llm,
+                judge_llm_api_key,
+                huggingface_api_key,
+            ],
         )
 
         footer_html = """

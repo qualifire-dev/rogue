@@ -281,9 +281,7 @@ def create_config_screen(
         ],
     )
 
-    # Note: The returned list of components for the screen itself
-    # doesn't change Gradio's layout
-    return [
+    return (
         agent_url,
         interview_mode,
         auth_type,
@@ -291,5 +289,4 @@ def create_config_screen(
         judge_llm,
         judge_llm_api_key,
         huggingface_api_key,
-        save_button,
-    ]
+    )
