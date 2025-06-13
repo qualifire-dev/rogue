@@ -32,10 +32,12 @@ def load_config_from_file(workdir: Path) -> dict:
 
     # If the file exists, try to load it
     with open(config_path, "r") as f:
+        logger.info(f"Loading config from {config_path}")
         try:
             res = json.load(f)
             res["judge_llm_api_key"] = judge_llm_key_env
             res["huggingface_api_key"] = hf_key_env
+            logger.info(f"Loaded config: {res}")
             return res
         except json.JSONDecodeError:
             # If the file is empty or malformed, return an empty config
@@ -152,6 +154,26 @@ def create_config_screen(
             "huggingface_api_key": huggingface_api_key_error,
         }
 
+    def update_state(state, key, value):
+        logger.info(f"Updating state: {key} = {value}")
+        state["config"][key] = value
+        return state
+
+    for component, key in [
+        (agent_url, "agent_url"),
+        (interview_mode, "interview_mode"),
+        (auth_type, "auth_type"),
+        (auth_credentials, "auth_credentials"),
+        (judge_llm, "judge_llm"),
+        (judge_llm_api_key, "judge_llm_api_key"),
+        (huggingface_api_key, "huggingface_api_key"),
+    ]:
+        component.change(
+            fn=update_state,
+            inputs=[shared_state, gr.State(key), component],
+            outputs=[shared_state],
+        )
+
     def toggle_auth_credentials(auth_t):
         is_visible = auth_t != AuthType.NO_AUTH.value
         return gr.update(visible=is_visible)
@@ -185,51 +207,13 @@ def create_config_screen(
 
         try:
             config = AgentConfig(
-                agent_url=state.get(
-                    "config",
-                    {},
-                ).get(
-                    "agent_url",
-                    url,
-                ),
-                auth_type=state.get(
-                    "config",
-                    {},
-                ).get(
-                    "auth_type",
-                    auth_t,
-                ),
-                auth_credentials=state.get(
-                    "config",
-                    {},
-                ).get(
-                    "auth_credentials",
-                    creds,
-                ),
-                judge_llm=state.get(
-                    "config",
-                    {},
-                ).get(
-                    "judge_llm",
-                    llm,
-                ),
-                judge_llm_api_key=state.get(
-                    "config",
-                    {},
-                ).get(
-                    "judge_llm_api_key",
-                    llm_key,
-                ),
-                huggingface_api_key=state.get(
-                    "config",
-                    {},
-                ).get(
-                    "huggingface_api_key",
-                    hf_key,
-                ),
+                agent_url=url,
+                auth_type=auth_t,
+                auth_credentials=creds,
+                judge_llm=llm,
+                judge_llm_api_key=llm_key,
+                huggingface_api_key=hf_key,
             )
-
-            logger.info(f"Config: {config}, state={state}")
 
             config_dict = config.model_dump(mode="json")
             config_dict["interview_mode"] = interview_mode_val
@@ -248,38 +232,34 @@ def create_config_screen(
 
             gr.Info("Configuration saved!")
             next_tab = "interview" if interview_mode_val else "scenarios"
-            outputs = [state, gr.Tabs(selected=next_tab)] + list(label_updates.values())
-            return outputs
-
+            return {
+                **label_updates,
+                tabs_component: gr.update(selected=next_tab),
+                shared_state: state,
+            }
         except ValidationError as e:
+            error_updates = {
+                label: gr.update(value="", visible=False)
+                for label in error_labels.values()
+            }
+            error_updates[general_error_label] = gr.update(value="", visible=False)
+
             for error in e.errors():
-                loc = error.get("loc", ())
-                # Check if it's a field-specific error we can handle
-                if loc and loc[0] in error_labels:
-                    field_name = loc[0]
-                    msg = f"<p style='color:#D32F2F;'>{error['msg']}</p>"
-                    label_updates[error_labels[field_name]] = gr.update(
-                        value=msg, visible=True
+                loc = error["loc"][0]
+                msg = error["msg"]
+                if loc in error_labels:
+                    error_updates[error_labels[loc]] = gr.update(
+                        value=f"**Error:** {msg}", visible=True
                     )
                 else:
-                    # Otherwise, treat it as a general error
-                    msg = f"<p style='color:#D32F2F;'>{error['msg']}</p>"
-                    label_updates[general_error_label] = gr.update(
-                        value=msg, visible=True
+                    logger.error(f"Unhandled validation error: {error}")
+                    error_updates[general_error_label] = gr.update(
+                        value=f"**An unexpected error occurred:** {msg}",
+                        visible=True,
                     )
 
-            outputs = [state, gr.update()] + list(label_updates.values())
-            return outputs
-
-        except Exception as e:
-            error_html = (
-                f"<p style='color:#D32F2F;'>An unexpected error occurred: {e}</p>"
-            )
-            label_updates[general_error_label] = gr.update(
-                value=error_html, visible=True
-            )
-            outputs = [state, gr.update()] + list(label_updates.values())
-            return outputs
+            # Important: return the state even on failure to not lose user input
+            return {**error_updates, shared_state: state}
 
     save_button.click(
         fn=save_config,
@@ -293,11 +273,12 @@ def create_config_screen(
             judge_llm_api_key,
             huggingface_api_key,
         ],
-        outputs=(
-            [shared_state, tabs_component]
-            + list(error_labels.values())
-            + [general_error_label]
-        ),
+        outputs=[
+            shared_state,
+            tabs_component,
+            general_error_label,
+            *error_labels.values(),
+        ],
     )
 
     # Note: The returned list of components for the screen itself

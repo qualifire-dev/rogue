@@ -1,8 +1,7 @@
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, HttpUrl, field_validator
-from pydantic_core.core_schema import ValidationInfo
+from pydantic import BaseModel, HttpUrl, model_validator
 
 
 class AuthType(Enum):
@@ -17,21 +16,19 @@ class AgentConfig(BaseModel):
     auth_type: AuthType
     auth_credentials: Optional[str] = None
     judge_llm: str = "openai/gpt-4o"
+    interview_mode: bool = True
 
     # This can be none when env is properly configured and/or in vertexai for example
     judge_llm_api_key: Optional[str] = None
     huggingface_api_key: Optional[str] = None
 
-    # noinspection PyNestedDecorators
-    @field_validator("auth_credentials", mode="after")
-    @classmethod
-    def check_auth_credentials(
-        cls,
-        value: Optional[str],
-        info: ValidationInfo,
-    ) -> Optional[str]:
-        if info.data["auth_type"] != AuthType.NO_AUTH and not value:
+    @model_validator(mode="after")
+    def check_auth_credentials(self) -> "AgentConfig":
+        auth_type = self.auth_type
+        auth_credentials = self.auth_credentials
+
+        if auth_type and auth_type != AuthType.NO_AUTH and not auth_credentials:
             raise ValueError(
                 "Authentication Credentials cannot be empty for the selected auth type."
             )
-        return value
+        return self
