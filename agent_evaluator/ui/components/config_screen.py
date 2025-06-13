@@ -1,5 +1,4 @@
 import gradio as gr
-from loguru import logger
 from pydantic import ValidationError
 import json
 from pathlib import Path
@@ -10,23 +9,7 @@ from ...models.config import AgentConfig, AuthType
 
 def load_config_from_file(workdir: Path) -> dict:
     config_path = Path(workdir) / "user_config.json"
-    logger.info(f"Config file not found at {config_path}, creating empty config")
-    if not config_path.exists():
-        # Create an empty config file if it doesn't exist, then return empty config
-        with open(config_path, "w") as f:
-            json.dump({}, f)
-        return {}
 
-    # If the file exists, try to load it
-    with open(config_path, "r") as f:
-        try:
-            return json.load(f)
-        except json.JSONDecodeError:
-            # If the file is empty or malformed, return an empty config
-            return {}
-
-
-def create_config_screen(shared_state: gr.State, tabs_component: gr.Tabs):
     # --- Pre-load keys from environment variables ---
     judge_llm_key_env = (
         os.environ.get("OPENAI_API_KEY")
@@ -37,12 +20,44 @@ def create_config_screen(shared_state: gr.State, tabs_component: gr.Tabs):
     )
     hf_key_env = os.environ.get("HUGGING_FACE_API_KEY") or os.environ.get("HF_TOKEN")
 
+    if not config_path.exists():
+        # Create an empty config file if it doesn't exist, then return empty config
+        with open(config_path, "w") as f:
+            json.dump({}, f)
+        return {
+            "judge_llm_api_key": judge_llm_key_env,
+            "huggingface_api_key": hf_key_env,
+        }
+
+    # If the file exists, try to load it
+    with open(config_path, "r") as f:
+        try:
+            res = json.load(f)
+            res["judge_llm_api_key"] = judge_llm_key_env
+            res["huggingface_api_key"] = hf_key_env
+            return res
+        except json.JSONDecodeError:
+            # If the file is empty or malformed, return an empty config
+            return {}
+
+
+def create_config_screen(
+    shared_state: gr.State,
+    tabs_component: gr.Tabs,
+):
+
     with gr.Column():
         gr.Markdown("## Agent Configuration")
         agent_url = gr.Textbox(
             label="Agent URL",
             placeholder="http://localhost:8000/agent",
-            value="http://localhost:10001",
+            value=shared_state.value.get(
+                "config",
+                {},
+            ).get(
+                "agent_url",
+                "http://localhost:10001",
+            ),
         )
         agent_url_error = gr.Markdown(visible=False, elem_classes=["error-label"])
 
@@ -50,7 +65,13 @@ def create_config_screen(shared_state: gr.State, tabs_component: gr.Tabs):
         gr.Markdown("**Interview Mode**")
         interview_mode = gr.Checkbox(
             label="Enable AI-powered business context interview",
-            value=True,
+            value=shared_state.value.get(
+                "config",
+                {},
+            ).get(
+                "interview_mode",
+                True,
+            ),
         )
         gr.Markdown(
             "When enabled, you'll be guided through an AI-powered interview to extract your agent's business context. Turn off to skip this step."
@@ -59,28 +80,54 @@ def create_config_screen(shared_state: gr.State, tabs_component: gr.Tabs):
         auth_type = gr.Dropdown(
             label="Authentication Type",
             choices=[e.value for e in AuthType],
-            value=AuthType.NO_AUTH.value,
+            value=shared_state.value.get(
+                "config",
+                {},
+            ).get(
+                "auth_type",
+                AuthType.NO_AUTH.value,
+            ),
         )
         auth_credentials = gr.Textbox(
             label="Authentication Credentials",
             type="password",
-            visible=(AuthType.NO_AUTH.value != AuthType.NO_AUTH.value),
+            visible=(
+                shared_state.value.get(
+                    "config",
+                    {},
+                ).get("auth_type", AuthType.NO_AUTH.value)
+                != AuthType.NO_AUTH.value
+            ),
         )
         auth_credentials_error = gr.Markdown(
             visible=False, elem_classes=["error-label"]
         )
 
         gr.Markdown("## Evaluator Configuration")
-        judge_llm = gr.Textbox(label="Judge LLM", value="openai/gpt-4.1-nano")
+        judge_llm = gr.Textbox(label="Judge LLM", value="openai/gpt-4.1")
         judge_llm_api_key = gr.Textbox(
-            label="Judge LLM API Key", type="password", value=judge_llm_key_env
+            label="Judge LLM API Key",
+            type="password",
+            value=shared_state.value.get(
+                "config",
+                {},
+            ).get("judge_llm_api_key", ""),
         )
         judge_llm_api_key_error = gr.Markdown(
-            visible=False, elem_classes=["error-label"]
+            visible=False,
+            elem_classes=["error-label"],
         )
 
         huggingface_api_key = gr.Textbox(
-            label="HuggingFace API Key", type="password", value=hf_key_env
+            label="HuggingFace API Key",
+            type="password",
+            value=shared_state.value.get(
+                "config",
+                {},
+            ).get(
+                "huggingface_api_key",
+                "",
+            ),
         )
         huggingface_api_key_error = gr.Markdown(
             visible=False, elem_classes=["error-label"]
@@ -133,7 +180,6 @@ def create_config_screen(shared_state: gr.State, tabs_component: gr.Tabs):
             config_dict["interview_mode"] = interview_mode_val
             state["config"] = config_dict
 
-            # Create a sanitized config for saving to file (no secrets)
             sanitized_config = {
                 k: v
                 for k, v in config_dict.items()

@@ -5,7 +5,10 @@ import gradio as gr
 from ..services.llm_service import LLMService
 
 
-def create_interviewer_screen(shared_state: gr.State, tabs_component: gr.Tabs):
+def create_interviewer_screen(
+    shared_state: gr.State,
+    tabs_component: gr.Tabs,
+):
     llm_service = LLMService()
 
     with gr.Column():

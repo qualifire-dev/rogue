@@ -2,7 +2,6 @@ from typing import Optional
 
 from litellm import completion
 from loguru import logger
-from pydantic import SecretStr
 
 from ...models.scenario import Scenarios
 
@@ -74,7 +73,7 @@ class LLMService:
     def get_interview_question(
         model: str,
         messages: list,
-        llm_provider_api_key: Optional[SecretStr] = None,
+        llm_provider_api_key: Optional[str] = None,
     ) -> str:
         # Count user messages to decide if we should add the summary prompt.
         num_user_messages = sum(1 for msg in messages if msg["role"] == "user")
@@ -91,11 +90,7 @@ class LLMService:
                 }
             )
 
-        api_key = (
-            None
-            if llm_provider_api_key is None
-            else llm_provider_api_key.get_secret_value()
-        )
+        api_key = None if llm_provider_api_key is None else llm_provider_api_key
 
         try:
             response = completion(
@@ -111,7 +106,7 @@ class LLMService:
     def generate_scenarios(
         model: str,
         context: str,
-        llm_provider_api_key: Optional[SecretStr] = None,
+        llm_provider_api_key: Optional[str] = None,
     ) -> Scenarios:
         system_prompt = SCENARIO_GENERATION_SYSTEM_PROMPT.replace(
             r"{$BUSINESS_CONTEXT}",
@@ -123,11 +118,7 @@ class LLMService:
             {"role": "user", "content": "start"},
         ]
 
-        api_key = (
-            None
-            if llm_provider_api_key is None
-            else llm_provider_api_key.get_secret_value()
-        )
+        api_key = None if llm_provider_api_key is None else llm_provider_api_key
 
         try:
             response = completion(
