@@ -2,7 +2,7 @@ from pathlib import Path
 
 import gradio as gr
 
-from .components.config_screen import create_config_screen
+from .components.config_screen import create_config_screen, load_config_from_file
 from .components.interviewer import create_interviewer_screen
 from .components.report_generator import create_report_generator_screen
 from .components.scenario_generator import create_scenario_generator_screen
@@ -11,11 +11,13 @@ from .config.theme import theme
 
 
 def get_app(workdir: Path):
+    # Load config from file if it exists
+    loaded_config = load_config_from_file(workdir)
     with gr.Blocks(theme=theme, title="Qualifire Agent Evaluator") as app:
         # A single state object to hold all shared data across tabs
         shared_state = gr.State(
             {
-                "config": {},
+                "config": loaded_config if loaded_config else {},
                 "business_context": "",
                 "scenarios": [],
                 "results": [],

@@ -1,7 +1,28 @@
 import gradio as gr
+from loguru import logger
 from pydantic import ValidationError
+import json
+from pathlib import Path
 
 from ...models.config import AgentConfig, AuthType
+
+
+def load_config_from_file(workdir: Path) -> dict:
+    config_path = Path(workdir) / "user_config.json"
+    logger.info(f"Config file not found at {config_path}, creating empty config")
+    if not config_path.exists():
+        # Create an empty config file if it doesn't exist, then return empty config
+        with open(config_path, "w") as f:
+            json.dump({}, f)
+        return {}
+
+    # If the file exists, try to load it
+    with open(config_path, "r") as f:
+        try:
+            return json.load(f)
+        except json.JSONDecodeError:
+            # If the file is empty or malformed, return an empty config
+            return {}
 
 
 def create_config_screen(shared_state: gr.State, tabs_component: gr.Tabs):
@@ -13,6 +34,16 @@ def create_config_screen(shared_state: gr.State, tabs_component: gr.Tabs):
             value="http://localhost:10001",
         )
         agent_url_error = gr.Markdown(visible=False, elem_classes=["error-label"])
+
+        # with gr.Group():
+        gr.Markdown("**Interview Mode**")
+        interview_mode = gr.Checkbox(
+            label="Enable AI-powered business context interview",
+            value=True,
+        )
+        gr.Markdown(
+            "When enabled, you'll be guided through an AI-powered interview to extract your agent's business context. Turn off to skip this step."
+        )
 
         auth_type = gr.Dropdown(
             label="Authentication Type",
@@ -60,7 +91,14 @@ def create_config_screen(shared_state: gr.State, tabs_component: gr.Tabs):
         outputs=[auth_credentials],
     )
 
-    def save_config(state, url, auth_t, creds, llm, llm_key, hf_key):
+    def save_config_to_file(config: dict, workdir: Path):
+        config_path = Path(workdir) / "user_config.json"
+        with open(config_path, "w") as f:
+            json.dump(config, f, indent=2)
+
+    def save_config(
+        state, url, interview_mode_val, auth_t, creds, llm, llm_key, hf_key
+    ):
         # Start by creating updates to clear all error labels
         label_updates = {
             label: gr.update(value="", visible=False) for label in error_labels.values()
@@ -76,12 +114,25 @@ def create_config_screen(shared_state: gr.State, tabs_component: gr.Tabs):
                 judge_llm_api_key=llm_key,
                 huggingface_api_key=hf_key,
             )
-            state["config"] = config.model_dump()
-            gr.Info("Configuration saved!")
+            config_dict = config.model_dump(mode="json")
+            config_dict["interview_mode"] = interview_mode_val
+            state["config"] = config_dict
 
-            outputs = [state, gr.Tabs(selected="interview")] + list(
-                label_updates.values()
-            )
+            # Create a sanitized config for saving to file (no secrets)
+            sanitized_config = {
+                k: v
+                for k, v in config_dict.items()
+                if not k.endswith("_key") and k != "auth_credentials"
+            }
+
+            # Save sanitized config to file
+            workdir = state.get("workdir")
+            if workdir:
+                save_config_to_file(sanitized_config, workdir)
+
+            gr.Info("Configuration saved!")
+            next_tab = "interview" if interview_mode_val else "scenarios"
+            outputs = [state, gr.Tabs(selected=next_tab)] + list(label_updates.values())
             return outputs
 
         except ValidationError as e:
@@ -119,6 +170,7 @@ def create_config_screen(shared_state: gr.State, tabs_component: gr.Tabs):
         inputs=[
             shared_state,
             agent_url,
+            interview_mode,
             auth_type,
             auth_credentials,
             judge_llm,
@@ -136,6 +188,7 @@ def create_config_screen(shared_state: gr.State, tabs_component: gr.Tabs):
     # doesn't change Gradio's layout
     return [
         agent_url,
+        interview_mode,
         auth_type,
         auth_credentials,
         judge_llm,

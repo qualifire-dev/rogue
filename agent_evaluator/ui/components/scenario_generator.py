@@ -12,6 +12,7 @@ def create_scenario_generator_screen(shared_state: gr.State, tabs_component: gr.
             label="Finalized Business Context",
             lines=5,
             interactive=True,
+            placeholder="Please provide a brief summary of your agent's business context, including its main goals, user interactions, and key functionalities.",
         )
         scenarios_output = gr.JSON(label="Generated Scenarios")
         generate_button = gr.Button("Generate Scenarios")
