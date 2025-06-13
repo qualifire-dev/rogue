@@ -54,7 +54,7 @@ def _get_headers(
     return {"Authorization": prefix + auth_credentials}
 
 
-def _run_agent(
+async def _run_agent(
     agent_runner: Runner,
     input_text: str,
     session: Session,
@@ -68,7 +68,7 @@ def _run_agent(
     agent_output = ""
 
     # Run the agent with the runner
-    for event in agent_runner.run(
+    async for event in agent_runner.run_async(
         user_id=session.user_id,
         session_id=session.id,
         new_message=content,
@@ -130,7 +130,7 @@ async def arun_evaluator_agent(
 
         logger.info(f"evaluator_agent started")
 
-        return _run_agent(runner, input_text="start", session=session)
+        return await _run_agent(runner, input_text="start", session=session)
 
 
 def run_evaluator_agent(

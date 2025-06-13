@@ -8,7 +8,9 @@ def create_config_screen(shared_state: gr.State, tabs_component: gr.Tabs):
     with gr.Column():
         gr.Markdown("## Agent Configuration")
         agent_url = gr.Textbox(
-            label="Agent URL", placeholder="http://localhost:8000/agent"
+            label="Agent URL",
+            placeholder="http://localhost:8000/agent",
+            value="http://localhost:10001",
         )
         agent_url_error = gr.Markdown(visible=False, elem_classes=["error-label"])
 
@@ -27,7 +29,7 @@ def create_config_screen(shared_state: gr.State, tabs_component: gr.Tabs):
         )
 
         gr.Markdown("## Evaluator Configuration")
-        judge_llm = gr.Textbox(label="Judge LLM", value="openai/o3-mini")
+        judge_llm = gr.Textbox(label="Judge LLM", value="openai/gpt-4.1-nano")
         judge_llm_api_key = gr.Textbox(label="Judge LLM API Key", type="password")
         judge_llm_api_key_error = gr.Markdown(
             visible=False, elem_classes=["error-label"]

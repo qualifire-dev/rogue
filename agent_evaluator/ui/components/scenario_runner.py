@@ -1,7 +1,9 @@
 import gradio as gr
-from pydantic import ValidationError
+from loguru import logger
+from pydantic import ValidationError, HttpUrl, SecretStr
 
 from ...evaluator_agent.run_evaluator_agent import run_evaluator_agent
+from ...models.config import AuthType
 from ...models.scenario import Scenarios
 
 
@@ -23,7 +25,7 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
             return state, "Missing config or scenarios.", gr.update()
 
         try:
-            Scenarios.model_validate_json(scenarios)
+            scenarios = Scenarios.model_validate(scenarios)
         except ValidationError:
             return (
                 state,
@@ -31,26 +33,38 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                 gr.update(),
             )
 
-        agent_url = config.get("agent_url")
-        agent_auth_type = config.get("auth_type")
-        agent_auth_credentials = config.get("auth_credentials")
-        judge_llm = config.get("judge_llm")
-        judge_llm_key = config.get("judge_llm_api_key")
+        agent_url: HttpUrl = config.get("agent_url")  # type: ignore
+        agent_auth_type: AuthType = config.get("auth_type")  # type: ignore
+        agent_auth_credentials: SecretStr = config.get("auth_credentials")  # type: ignore
+        judge_llm: str = config.get("judge_llm")  # type: ignore
+        judge_llm_key: SecretStr = config.get("judge_llm_api_key")  # type: ignore
+
+        if agent_auth_credentials is None:
+            agent_auth_credentials = SecretStr("")
+        if judge_llm_key is None:
+            judge_llm_key = SecretStr("")
 
         status_updates = "Starting execution...\n"
-        results = []
         state["results"] = []  # Clear previous results
 
         yield state, status_updates, gr.update()
 
-        run_evaluator_agent(
-            evaluated_agent_url=agent_url,
-            auth_type=agent_auth_type,
-            auth_credentials=agent_auth_credentials,
-            judge_llm=judge_llm,
-            judge_llm_api_key=judge_llm_key,
-            scenarios=Scenarios.model_validate_json(scenarios),
-        )
+        try:
+            results = run_evaluator_agent(
+                evaluated_agent_url=str(agent_url),
+                auth_type=agent_auth_type,
+                auth_credentials=agent_auth_credentials.get_secret_value(),
+                judge_llm=judge_llm,
+                judge_llm_api_key=judge_llm_key.get_secret_value(),
+                scenarios=scenarios,
+            )
+        except Exception:
+            logger.exception("Error running evaluator agent")
+            return (
+                state,
+                "Error evaluating scenarios.",
+                gr.update(),
+            )
 
         status_updates += "\nAll scenarios complete."
         state["results"] = results
