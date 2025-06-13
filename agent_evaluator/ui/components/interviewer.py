@@ -59,19 +59,8 @@ def create_interviewer_screen(shared_state: gr.State, tabs_component: gr.Tabs):
                 gr.Info("Business context finalized!")
                 return state, gr.Tabs(selected="scenarios")
 
-            state["business_context"] = (
-                "The AI agent operates within a T-shirt sales business, "
-                "primarily focusing on transactional support and customer assistance. "
-                "Its main goal is to increase sales by helping customers with product "
-                "recommendations and answering questions, while explicitly not "
-                "offering discounts or promotions. The agent leverages existing "
-                "product details and customers' purchase history to personalize "
-                "interactions and encourage more sales."
-            )
-            return state, gr.Tabs(selected="scenarios")
-
-            # gr.Warning("Could not determine business context from conversation.")
-            # return state, gr.update()
+            gr.Warning("Could not determine business context from conversation.")
+            return state, gr.update()
 
         chatbot.value = [
             [
