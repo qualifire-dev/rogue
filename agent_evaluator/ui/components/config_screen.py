@@ -1,6 +1,7 @@
 import gradio as gr
 from pydantic import ValidationError
-from ..models.config import AgentConfig, AuthType
+
+from ...models.config import AgentConfig, AuthType
 
 
 def create_config_screen(shared_state: gr.State, tabs_component: gr.Tabs):
