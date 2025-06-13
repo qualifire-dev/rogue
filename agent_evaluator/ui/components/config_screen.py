@@ -1,4 +1,5 @@
 import gradio as gr
+from loguru import logger
 from pydantic import ValidationError
 import json
 from pathlib import Path
@@ -61,7 +62,6 @@ def create_config_screen(
         )
         agent_url_error = gr.Markdown(visible=False, elem_classes=["error-label"])
 
-        # with gr.Group():
         gr.Markdown("**Interview Mode**")
         interview_mode = gr.Checkbox(
             label="Enable AI-powered business context interview",
@@ -104,7 +104,16 @@ def create_config_screen(
         )
 
         gr.Markdown("## Evaluator Configuration")
-        judge_llm = gr.Textbox(label="Judge LLM", value="openai/gpt-4.1")
+        judge_llm = gr.Textbox(
+            label="Judge LLM",
+            value=shared_state.value.get(
+                "config",
+                {},
+            ).get(
+                "judge_llm",
+                "openai/gpt-4.1",
+            ),
+        )
         judge_llm_api_key = gr.Textbox(
             label="Judge LLM API Key",
             type="password",
@@ -159,7 +168,14 @@ def create_config_screen(
             json.dump(config, f, indent=2)
 
     def save_config(
-        state, url, interview_mode_val, auth_t, creds, llm, llm_key, hf_key
+        state,
+        url,
+        interview_mode_val,
+        auth_t,
+        creds,
+        llm,
+        llm_key,
+        hf_key,
     ):
         # Start by creating updates to clear all error labels
         label_updates = {
@@ -169,13 +185,52 @@ def create_config_screen(
 
         try:
             config = AgentConfig(
-                agent_url=url,
-                auth_type=auth_t,
-                auth_credentials=creds,
-                judge_llm=llm,
-                judge_llm_api_key=llm_key,
-                huggingface_api_key=hf_key,
+                agent_url=state.get(
+                    "config",
+                    {},
+                ).get(
+                    "agent_url",
+                    url,
+                ),
+                auth_type=state.get(
+                    "config",
+                    {},
+                ).get(
+                    "auth_type",
+                    auth_t,
+                ),
+                auth_credentials=state.get(
+                    "config",
+                    {},
+                ).get(
+                    "auth_credentials",
+                    creds,
+                ),
+                judge_llm=state.get(
+                    "config",
+                    {},
+                ).get(
+                    "judge_llm",
+                    llm,
+                ),
+                judge_llm_api_key=state.get(
+                    "config",
+                    {},
+                ).get(
+                    "judge_llm_api_key",
+                    llm_key,
+                ),
+                huggingface_api_key=state.get(
+                    "config",
+                    {},
+                ).get(
+                    "huggingface_api_key",
+                    hf_key,
+                ),
             )
+
+            logger.info(f"Config: {config}, state={state}")
+
             config_dict = config.model_dump(mode="json")
             config_dict["interview_mode"] = interview_mode_val
             state["config"] = config_dict
