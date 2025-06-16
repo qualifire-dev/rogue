@@ -1,9 +1,10 @@
+import json
+import os
+from pathlib import Path
+
 import gradio as gr
 from loguru import logger
 from pydantic import ValidationError
-import json
-from pathlib import Path
-import os
 
 from ...models.config import AgentConfig, AuthType
 
@@ -12,13 +13,6 @@ def load_config_from_file(workdir: Path) -> dict:
     config_path = Path(workdir) / "user_config.json"
 
     # --- Pre-load keys from environment variables ---
-    judge_llm_key_env = (
-        os.environ.get("OPENAI_API_KEY")
-        or os.environ.get("ANTHROPIC_API_KEY")
-        or os.environ.get("COHERE_API_KEY")
-        or os.environ.get("REPLICATE_API_KEY")
-        or os.environ.get("AZURE_API_KEY")
-    )
     hf_key_env = os.environ.get("HUGGING_FACE_API_KEY") or os.environ.get("HF_TOKEN")
 
     if not config_path.exists():
@@ -26,7 +20,6 @@ def load_config_from_file(workdir: Path) -> dict:
         with open(config_path, "w") as f:
             json.dump({}, f)
         return {
-            "judge_llm_api_key": judge_llm_key_env,
             "huggingface_api_key": hf_key_env,
         }
 
@@ -35,7 +28,6 @@ def load_config_from_file(workdir: Path) -> dict:
         logger.info(f"Loading config from {config_path}")
         try:
             res = json.load(f)
-            res["judge_llm_api_key"] = judge_llm_key_env
             res["huggingface_api_key"] = hf_key_env
             logger.info(f"Loaded config: {res}")
             return res

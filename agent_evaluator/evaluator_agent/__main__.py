@@ -15,7 +15,9 @@ if __name__ == "__main__":
             evaluated_agent_url="http://localhost:10001",
             auth_type=AuthType.NO_AUTH,
             auth_credentials=None,
-            judge_llm="openai/gpt-4o",
+            judge_llm="openai/gpt-4.1-nano",
+            # judge_llm="gemini-2.0-flash",
+            # judge_llm="anthropic/claude-3-5-haiku-20241022",
             judge_llm_api_key=None,
             scenarios=Scenarios(
                 scenarios=[
