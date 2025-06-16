@@ -71,7 +71,7 @@ You have these tools at your disposal:
 - Parameters:
 - `message`: The text to send to the other agent
 - `context_id`: The context ID for this conversation
-- Returns: The other agent's response
+- Returns: The other agent's response. If there is no response from the other agent, an empty string is returned.
 
 3. `_log_evaluation(scenario: dict, context_id: str, evaluation_passed: bool, reason: str)`
 - Parameters:
@@ -226,7 +226,7 @@ class EvaluatorAgent:
         self,
         message: str,
         context_id: str,
-    ) -> str | None:
+    ) -> str:
         """
         Sends a message to the evaluated agent.
         :param message: the text to send to the other agent.
@@ -234,6 +234,7 @@ class EvaluatorAgent:
             Each conversation has a unique context_id. All messages in the conversation
             have the same context_id.
         :return: The response from the evaluated agent.
+            If there is no response from the other agent, an empty string is returned.
         """
         logger.debug(
             "_send_message_to_evaluated_agent - enter",
@@ -273,7 +274,7 @@ class EvaluatorAgent:
 
         if not response:
             logger.debug("_send_message_to_evaluated_agent - no response")
-            return None
+            return ""
 
         self._context_id_to_chat_history[context_id].add_message(
             HistoryMessage(
@@ -289,7 +290,7 @@ class EvaluatorAgent:
         return response.model_dump_json()
 
     @staticmethod
-    async def _get_conversation_context_id() -> str:
+    def _get_conversation_context_id() -> str:
         """
         Generates a unique context_id for the conversation.
         :return: The context ID for the conversation.
