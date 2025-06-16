@@ -2,6 +2,7 @@ from argparse import ArgumentParser
 
 from dotenv import load_dotenv
 
+from .common.configure_logger import configure_logger
 from .run_cli import run_cli
 from .run_ui import run_ui
 
@@ -61,6 +62,7 @@ def parse_args():
 
 
 def main():
+    configure_logger()
     args = parse_args()
 
     if args.mode == "ui":

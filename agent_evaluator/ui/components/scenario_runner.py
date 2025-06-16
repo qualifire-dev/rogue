@@ -60,6 +60,10 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                 judge_llm_api_key=judge_llm_key,
                 scenarios=scenarios,
             )
+            logger.debug(
+                "scenario runner finished running evaluator agent",
+                extra={"results": results},
+            )
         except Exception:
             logger.exception("Error running evaluator agent")
             return (
@@ -70,6 +74,7 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
 
         status_updates += f"\nEvaluation completed.\nResults:\n{results}."
         state["results"] = results
+        yield state, status_updates, gr.update()
         # Final update after loop completes
         return state, status_updates, gr.Tabs(selected="report")
 
