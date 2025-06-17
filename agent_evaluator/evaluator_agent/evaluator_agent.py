@@ -1,4 +1,5 @@
 import json
+import pandas as pd
 from typing import Any, Optional
 from uuid import uuid4
 
@@ -13,6 +14,7 @@ from a2a.types import (
 )
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
+from gradio import Dataframe
 from httpx import AsyncClient
 from loguru import logger
 
@@ -96,6 +98,9 @@ each conversation individually before making a decision.
 """  # noqa: E501
 
 
+EVALUATION_RESULTS_FILE = "evaluation_results.csv"
+
+
 class EvaluatorAgent:
     def __init__(
         self,
@@ -110,7 +115,15 @@ class EvaluatorAgent:
         self._model = model
         self._llm_auth = llm_auth
         self._scenarios = scenarios
-        self._evaluation_logs: list[dict[str, Any]] = []
+        self._evaluation_logs: pd.DataFrame = pd.DataFrame(
+            columns=[
+                "scenario",
+                "context_id",
+                "conversation",
+                "evaluation_passed",
+                "reason",
+            ]
+        )
         self.__evaluated_agent_client: RemoteAgentConnections | None = None
         self._context_id_to_chat_history: dict[str, ChatHistory] = {}
 
@@ -179,17 +192,27 @@ class EvaluatorAgent:
             },
         )
 
-        self._evaluation_logs.append(
-            {
-                "scenario": scenario,
-                "context_id": context_id,
-                "conversation": self._context_id_to_chat_history.get(
-                    context_id,
+        self._evaluation_logs = pd.concat(
+            [
+                self._evaluation_logs,
+                pd.DataFrame(
+                    [
+                        {
+                            "scenario": scenario,
+                            "context_id": context_id,
+                            "conversation": self._context_id_to_chat_history.get(
+                                context_id,
+                            ),
+                            "evaluation_passed": evaluation_passed,
+                            "reason": reason,
+                        }
+                    ]
                 ),
-                "evaluation_passed": evaluation_passed,
-                "reason": reason,
-            },
+            ],
+            ignore_index=True,
         )
+
+        self._evaluation_logs.to_csv(EVALUATION_RESULTS_FILE, index=False)
 
     @staticmethod
     def _get_text_from_response(
