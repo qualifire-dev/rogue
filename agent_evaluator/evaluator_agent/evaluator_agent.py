@@ -183,7 +183,9 @@ class EvaluatorAgent:
             {
                 "scenario": scenario,
                 "context_id": context_id,
-                "conversation": self._context_id_to_chat_history.get(context_id),
+                "conversation": self._context_id_to_chat_history.get(
+                    context_id,
+                ),
                 "evaluation_passed": evaluation_passed,
                 "reason": reason,
             },

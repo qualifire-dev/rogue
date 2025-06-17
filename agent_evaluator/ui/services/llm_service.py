@@ -25,6 +25,10 @@ Generate 10-15 test scenarios based on the business context above. Your scenario
 3. Cover a diverse range of potential interactions
 4. Be specific and detailed enough to properly evaluate the agent
 5. Be realistic within the context of the business
+6. Do not include any scenarios that are not relevant to the business context
+7. Do not include any scenarios that are not relevant to the agent's functionality
+8. Scenarios must not be open to interpretation. They must be clear and specific.
+9. Scenario results must be deterministic and binary (pass or fail).
 
 ## Guidelines for Creating Effective Test Scenarios
 - Think about boundary conditions where the agent might struggle
@@ -33,6 +37,15 @@ Generate 10-15 test scenarios based on the business context above. Your scenario
 - Think about unusual but valid requests
 - Consider scenarios that test the agent's ability to follow policy constraints
 - Include scenarios that test the agent's knowledge limitations
+- Look for extreme cases that might cause the agent to fail
+- Use emotional scenarios to test the agent's ability to handle emotional content
+- Use scenarios that test the agent's ability to handle different languages
+- Use scenarios that test the agent's ability to handle different cultures
+- Use scenarios that test the agent's ability to handle different timezones
+- Use scenarios that test the agent's ability to handle different currencies
+- Use scenarios that test the agent's ability to handle different units of measurement
+- Use scenarios that test the agent's ability to handle different date format
+
 
 ## Output Format
 Your output must be in valid JSON format as shown below. Notice that you only create "policy" scenarios:
