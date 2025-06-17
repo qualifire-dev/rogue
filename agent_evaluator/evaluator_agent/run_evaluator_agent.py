@@ -1,4 +1,6 @@
 import asyncio
+import pandas as pd
+from pathlib import Path
 
 from a2a.types import (
     AgentCapabilities,
@@ -83,7 +85,7 @@ async def _run_agent(
             logger.info(f"evaluator_agent response: {event_text}")
 
         if event.is_final_response():
-            logger.info(f"evaluator_agent done")
+            logger.info("evaluator_agent done")
             break  # Without this, this loop will be infinite
 
     return agent_output
@@ -98,7 +100,8 @@ async def arun_evaluator_agent(
     judge_llm: str,
     judge_llm_api_key: str | None,
     scenarios: Scenarios,
-) -> str:
+    workdir: Path,
+) -> pd.DataFrame:
     # agent_card = _get_agent_card(host, port)
     headers = _get_headers(auth_credentials, auth_type)
 
@@ -109,6 +112,7 @@ async def arun_evaluator_agent(
             model=judge_llm,
             scenarios=scenarios,
             llm_auth=judge_llm_api_key,
+            workdir=workdir,
         )
 
         session_service = InMemorySessionService()
@@ -126,9 +130,10 @@ async def arun_evaluator_agent(
             session_service=session_service,
         )
 
-        logger.info(f"evaluator_agent started")
+        logger.info("evaluator_agent started")
 
-        return await _run_agent(runner, input_text="start", session=session)
+        await _run_agent(runner, input_text="start", session=session)
+        return evaluator_agent._evaluation_logs
 
 
 def run_evaluator_agent(
@@ -140,7 +145,8 @@ def run_evaluator_agent(
     judge_llm: str,
     judge_llm_api_key: str | None,
     scenarios: Scenarios,
-) -> str:
+    workdir: Path,
+) -> pd.DataFrame:
     return asyncio.run(
         arun_evaluator_agent(
             evaluated_agent_url=evaluated_agent_url,
@@ -149,5 +155,6 @@ def run_evaluator_agent(
             judge_llm=judge_llm,
             judge_llm_api_key=judge_llm_api_key,
             scenarios=scenarios,
+            workdir=workdir,
         )
     )

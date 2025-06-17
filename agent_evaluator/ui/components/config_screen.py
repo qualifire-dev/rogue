@@ -222,7 +222,6 @@ def create_config_screen(
             if workdir:
                 save_config_to_file(sanitized_config, workdir)
 
-            gr.Info("Configuration saved!")
             next_tab = "interview" if interview_mode_val else "scenarios"
             return {
                 **label_updates,

@@ -83,17 +83,19 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
         yield state, status_updates, gr.update()
 
         try:
-            results = run_evaluator_agent(
+            workdir = state.get("workdir")
+            results_df = run_evaluator_agent(
                 evaluated_agent_url=str(agent_url),
                 auth_type=agent_auth_type,
                 auth_credentials=agent_auth_credentials,
                 judge_llm=judge_llm,
                 judge_llm_api_key=judge_llm_key,
                 scenarios=scenarios,
+                workdir=workdir,
             )
             logger.debug(
                 "scenario runner finished running evaluator agent",
-                extra={"results": results},
+                extra={"results": results_df.to_dict()},
             )
         except Exception:
             logger.exception("Error running evaluator agent")
@@ -104,8 +106,8 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
             )
             return
 
-        status_updates += f"\nEvaluation completed.\nResults:\n{results}."
-        state["results"] = results
+        status_updates += "\nEvaluation completed."
+        state["results"] = results_df.to_dict(orient="records")
         # Final update after loop completes
         yield state, status_updates, gr.update(selected="report")
 

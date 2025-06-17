@@ -1,7 +1,8 @@
 import json
 import pandas as pd
-from typing import Any, Optional
+from typing import Optional
 from uuid import uuid4
+from pathlib import Path
 
 from a2a.client import A2ACardResolver
 from a2a.types import (
@@ -14,7 +15,6 @@ from a2a.types import (
 )
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
-from gradio import Dataframe
 from httpx import AsyncClient
 from loguru import logger
 
@@ -109,12 +109,14 @@ class EvaluatorAgent:
         model: str,
         scenarios: Scenarios,
         llm_auth: Optional[str] = None,
+        workdir: Path = Path("."),
     ) -> None:
         self._http_client = http_client
         self._evaluated_agent_address = evaluated_agent_address
         self._model = model
         self._llm_auth = llm_auth
         self._scenarios = scenarios
+        self._workdir = workdir
         self._evaluation_logs: pd.DataFrame = pd.DataFrame(
             columns=[
                 "scenario",
@@ -192,16 +194,21 @@ class EvaluatorAgent:
             },
         )
 
+        conversation_history = self._context_id_to_chat_history.get(
+            context_id,
+        )
         self._evaluation_logs = pd.concat(
             [
                 self._evaluation_logs,
                 pd.DataFrame(
                     [
                         {
-                            "scenario": scenario,
+                            "scenario": json.dumps(scenario),
                             "context_id": context_id,
-                            "conversation": self._context_id_to_chat_history.get(
-                                context_id,
+                            "conversation": (
+                                conversation_history.model_dump_json()
+                                if conversation_history
+                                else "[]"
                             ),
                             "evaluation_passed": evaluation_passed,
                             "reason": reason,
@@ -212,7 +219,8 @@ class EvaluatorAgent:
             ignore_index=True,
         )
 
-        self._evaluation_logs.to_csv(EVALUATION_RESULTS_FILE, index=False)
+        output_path = self._workdir / EVALUATION_RESULTS_FILE
+        self._evaluation_logs.to_csv(output_path, index=False)
 
     @staticmethod
     def _get_text_from_response(
