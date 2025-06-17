@@ -41,3 +41,24 @@ class Scenario(BaseModel):
 
 class Scenarios(BaseModel):
     scenarios: list[Scenario]
+
+    def get_scenarios_by_type(self, scenario_type: ScenarioType) -> "Scenarios":
+        return Scenarios(
+            scenarios=[
+                scenario
+                for scenario in self.scenarios
+                if scenario.scenario_type == scenario_type
+            ]
+        )
+
+    def get_policy_scenarios(self) -> "Scenarios":
+        return self.get_scenarios_by_type(ScenarioType.POLICY)
+
+    def get_prompt_injection_scenarios(self) -> "Scenarios":
+        return self.get_scenarios_by_type(ScenarioType.PROMPT_INJECTION)
+
+    def get_safety_scenarios(self) -> "Scenarios":
+        return self.get_scenarios_by_type(ScenarioType.SAFETY)
+
+    def get_grounding_scenarios(self) -> "Scenarios":
+        return self.get_scenarios_by_type(ScenarioType.GROUNDING)

@@ -2,7 +2,7 @@ from typing import List
 
 import gradio as gr
 
-from ..services.llm_service import LLMService
+from ...services.llm_service import LLMService
 
 
 def create_interviewer_screen(

@@ -4,4 +4,5 @@ litellm==1.71.2
 datasets==3.6.0
 loguru==0.7.3
 pydantic
+pydantic-yaml==1.5.1
 pandas

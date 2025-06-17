@@ -1,4 +1,5 @@
 from argparse import ArgumentParser
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -26,7 +27,8 @@ def parse_args():
     )
     ui_parser.add_argument(
         "--workdir",
-        type=str,
+        type=Path,
+        default=Path.home() / ".qualifire" / "agent_evaluator_runs",
         help="Working directory",
     )
 

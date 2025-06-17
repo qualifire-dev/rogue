@@ -3,7 +3,7 @@ from typing import Optional
 from litellm import completion
 from loguru import logger
 
-from ...models.scenario import Scenario, ScenarioType, Scenarios
+from ..models.scenario import Scenario, ScenarioType, Scenarios
 
 SCENARIO_GENERATION_SYSTEM_PROMPT = """
 # Test Scenario Designer

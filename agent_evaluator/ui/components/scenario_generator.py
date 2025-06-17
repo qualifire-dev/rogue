@@ -1,6 +1,6 @@
 import gradio as gr
 
-from ..services.llm_service import LLMService
+from ...services.llm_service import LLMService
 
 
 def create_scenario_generator_screen(shared_state: gr.State, tabs_component: gr.Tabs):

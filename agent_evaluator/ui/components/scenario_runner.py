@@ -1,11 +1,12 @@
+import json
+
 import gradio as gr
 from loguru import logger
 from pydantic import ValidationError, HttpUrl
-import json
 
-from ...evaluator_agent.run_evaluator_agent import run_evaluator_agent
 from ...models.config import AuthType
 from ...models.scenario import Scenarios
+from ...services.scenario_evaluation_service import ScenarioEvaluationService
 
 
 def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tabs):
@@ -60,7 +61,8 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
         except (ValidationError, AttributeError):
             return (
                 state,
-                "Scenarios are misconfigured. Please check the JSON format and regenerate them if needed.",
+                "Scenarios are misconfigured. "
+                "Please check the JSON format and regenerate them if needed.",
                 gr.update(),
             )
 
@@ -84,15 +86,24 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
 
         try:
             workdir = state.get("workdir")
-            results_df = run_evaluator_agent(
+            results_df = ScenarioEvaluationService(
                 evaluated_agent_url=str(agent_url),
-                auth_type=agent_auth_type,
-                auth_credentials=agent_auth_credentials,
+                evaluated_agent_auth_type=agent_auth_type,
+                evaluated_agent_auth_credentials=agent_auth_credentials,
                 judge_llm=judge_llm,
                 judge_llm_api_key=judge_llm_key,
                 scenarios=scenarios,
                 workdir=workdir,
-            )
+            ).evaluate_scenarios()
+            # results_df = run_evaluator_agent(
+            #     evaluated_agent_url=str(agent_url),
+            #     auth_type=agent_auth_type,
+            #     auth_credentials=agent_auth_credentials,
+            #     judge_llm=judge_llm,
+            #     judge_llm_api_key=judge_llm_key,
+            #     scenarios=scenarios,
+            #     workdir=workdir,
+            # )
             logger.debug(
                 "scenario runner finished running evaluator agent",
                 extra={"results": results_df.to_dict()},

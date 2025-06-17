@@ -1,7 +1,7 @@
 import asyncio
-import pandas as pd
 from pathlib import Path
 
+import pandas as pd
 from a2a.types import (
     AgentCapabilities,
     AgentCard,
@@ -133,7 +133,7 @@ async def arun_evaluator_agent(
         logger.info("evaluator_agent started")
 
         await _run_agent(runner, input_text="start", session=session)
-        return evaluator_agent._evaluation_logs
+        return evaluator_agent.get_results_df()
 
 
 def run_evaluator_agent(
