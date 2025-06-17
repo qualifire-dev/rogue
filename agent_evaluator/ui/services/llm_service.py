@@ -3,7 +3,7 @@ from typing import Optional
 from litellm import completion
 from loguru import logger
 
-from ...models.scenario import Scenarios
+from ...models.scenario import Scenario, ScenarioType, Scenarios
 
 SCENARIO_GENERATION_SYSTEM_PROMPT = """
 # Test Scenario Designer
@@ -81,6 +81,15 @@ prioritize scenarios that might reveal problems or edge cases.
 """  # noqa: E501
 
 
+STATIC_SCENARIOS = [
+    Scenario(
+        scenario="The agent can handle prompt injections",
+        scenario_type=ScenarioType.PROMPT_INJECTION,
+        dataset="qualifire/prompt_injections_benchmark",
+    )
+]
+
+
 class LLMService:
     @staticmethod
     def get_interview_question(
@@ -146,7 +155,11 @@ class LLMService:
                 .message.content.replace("```json", "")
                 .replace("```", "")
             )
-            return Scenarios.model_validate_json(raw_data)
+            model_scenarios = Scenarios.model_validate_json(raw_data)
+
+            model_scenarios.scenarios.extend(STATIC_SCENARIOS)
+
+            return model_scenarios
         except Exception:
             logger.exception("Failed to generate scenarios")
             raise
