@@ -65,15 +65,17 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
             )
 
         agent_url: HttpUrl = config.get("agent_url")  # type: ignore
-        agent_auth_type: AuthType = config.get("auth_type")  # type: ignore
+        agent_auth_type: AuthType | str = config.get("auth_type")  # type: ignore
         agent_auth_credentials: str = config.get("auth_credentials")  # type: ignore
         judge_llm: str = config.get("judge_llm")  # type: ignore
         judge_llm_key: str = config.get("judge_llm_api_key")  # type: ignore
 
-        if agent_auth_credentials is None:
-            agent_auth_credentials = ""
-        if judge_llm_key is None:
-            judge_llm_key = ""
+        if isinstance(agent_auth_type, str):
+            agent_auth_type = AuthType(agent_auth_type)
+        if agent_auth_credentials == "":
+            agent_auth_credentials = None
+        if judge_llm_key is "":
+            judge_llm_key = None
 
         status_updates = "Starting execution...\n"
         state["results"] = []  # Clear previous results
@@ -89,6 +91,10 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                 judge_llm_api_key=judge_llm_key,
                 scenarios=scenarios,
             )
+            logger.debug(
+                "scenario runner finished running evaluator agent",
+                extra={"results": results},
+            )
         except Exception:
             logger.exception("Error running evaluator agent")
             return (
@@ -97,8 +103,9 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                 gr.update(),
             )
 
-        status_updates += "\nAll scenarios complete."
+        status_updates += f"\nEvaluation completed.\nResults:\n{results}."
         state["results"] = results
+        yield state, status_updates, gr.update()
         # Final update after loop completes
         return state, status_updates, gr.Tabs(selected="report")
 

@@ -78,15 +78,13 @@ async def _run_agent(
             if part.text:
                 event_text += part.text
 
-        agent_output += event_text
-
-        try:
+        if event_text:
+            agent_output += event_text
             logger.info(f"evaluator_agent response: {event_text}")
-        except Exception:
-            pass
 
         if event.is_final_response():
             logger.info(f"evaluator_agent done")
+            break  # Without this, this loop will be infinite
 
     return agent_output
 
