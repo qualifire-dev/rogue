@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 
 import gradio as gr
 
@@ -45,8 +46,12 @@ def get_app(workdir: Path):
                     _,
                 ) = create_scenario_generator_screen(shared_state, tabs)
 
-            with gr.TabItem("4. Run & Evaluate", id="run"):
-                create_scenario_runner_screen(shared_state, tabs)
+            with gr.TabItem("4. Run & Evaluate", id="run") as run_tab:
+                (
+                    scenarios_display_runner,
+                    _,
+                    _,
+                ) = create_scenario_runner_screen(shared_state, tabs)
 
             with gr.TabItem("5. Report", id="report"):
                 create_report_generator_screen(shared_state)
@@ -58,6 +63,21 @@ def get_app(workdir: Path):
             fn=update_context_display,
             inputs=[shared_state],
             outputs=[business_context_display],
+        )
+
+        def update_scenarios_display(state):
+            scenarios = state.get("scenarios", [])
+            if scenarios:
+                # Scenarios object might be a Pydantic model, so dump it
+                if hasattr(scenarios, "model_dump_json"):
+                    return scenarios.model_dump_json(indent=2, exclude_none=True)
+                return json.dumps(scenarios, indent=2)
+            return "{}"
+
+        run_tab.select(
+            fn=update_scenarios_display,
+            inputs=[shared_state],
+            outputs=[scenarios_display_runner],
         )
 
         def load_and_update_ui():

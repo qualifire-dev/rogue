@@ -36,18 +36,19 @@ def create_scenario_generator_screen(shared_state: gr.State, tabs_component: gr.
             )
             state["scenarios"] = scenarios
             gr.Info("Scenarios generated successfully!")
-            return (
-                state,
-                scenarios.model_dump_json(indent=2, exclude_none=True),
-                gr.Tabs(selected="run"),
-            )
+            return {
+                shared_state: state,
+                scenarios_output: scenarios.model_dump_json(
+                    indent=2, exclude_none=True
+                ),
+                tabs_component: gr.update(selected="run"),
+            }
         except Exception:
             gr.Error("Failed to generate scenarios from LLM response.")
-            return (
-                state,
-                {"error": "Failed to generate scenarios."},
-                gr.update(),
-            )
+            return {
+                shared_state: state,
+                scenarios_output: {"error": "Failed to generate scenarios."},
+            }
 
     generate_button.click(
         fn=generate_and_display_scenarios,

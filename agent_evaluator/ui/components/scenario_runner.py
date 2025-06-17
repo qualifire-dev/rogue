@@ -1,6 +1,7 @@
 import gradio as gr
 from loguru import logger
 from pydantic import ValidationError, HttpUrl
+import json
 
 from ...evaluator_agent.run_evaluator_agent import run_evaluator_agent
 from ...models.config import AuthType
@@ -10,8 +11,38 @@ from ...models.scenario import Scenarios
 def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tabs):
     with gr.Column():
         gr.Markdown("## Scenario Runner & Evaluator")
-        status_box = gr.Textbox(label="Execution Status", lines=10, interactive=False)
+        scenarios_display = gr.Code(
+            label="Scenarios to Run",
+            language="json",
+            interactive=True,
+        )
+        status_box = gr.Textbox(
+            label="Execution Status",
+            lines=10,
+            interactive=False,
+        )
         run_button = gr.Button("Run Scenarios")
+
+    def update_scenarios_in_state(
+        scenarios_string,
+        state,
+    ):
+        try:
+            scenarios_json = json.loads(
+                scenarios_string,
+            )
+            state["scenarios"] = scenarios_json
+            logger.info("Updated scenarios in state from editable code block.")
+        except json.JSONDecodeError:
+            logger.error("Invalid JSON in scenarios input.")
+            gr.Warning("Could not save, invalid JSON format.")
+        return state
+
+    scenarios_display.blur(
+        fn=update_scenarios_in_state,
+        inputs=[scenarios_display, shared_state],
+        outputs=[shared_state],
+    )
 
     def run_and_evaluate_scenarios(state):
         config = state.get("config", {})
@@ -26,10 +57,10 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
 
         try:
             scenarios = Scenarios.model_validate(scenarios)
-        except ValidationError:
+        except (ValidationError, AttributeError):
             return (
                 state,
-                "Scenarios are misconfigured. Please regenerate them in the previous steps.",
+                "Scenarios are misconfigured. Please check the JSON format and regenerate them if needed.",
                 gr.update(),
             )
 
@@ -74,7 +105,11 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
     run_button.click(
         fn=run_and_evaluate_scenarios,
         inputs=[shared_state],
-        outputs=[shared_state, status_box, tabs_component],
+        outputs=[
+            shared_state,
+            status_box,
+            tabs_component,
+        ],
     )
 
-    return [status_box, run_button]
+    return scenarios_display, status_box, run_button
