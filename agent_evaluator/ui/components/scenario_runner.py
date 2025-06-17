@@ -74,7 +74,7 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
             agent_auth_type = AuthType(agent_auth_type)
         if agent_auth_credentials == "":
             agent_auth_credentials = None
-        if judge_llm_key is "":
+        if judge_llm_key == "":
             judge_llm_key = None
 
         status_updates = "Starting execution...\n"
@@ -97,17 +97,17 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
             )
         except Exception:
             logger.exception("Error running evaluator agent")
-            return (
+            yield (
                 state,
                 "Error evaluating scenarios.",
                 gr.update(),
             )
+            return
 
         status_updates += f"\nEvaluation completed.\nResults:\n{results}."
         state["results"] = results
-        yield state, status_updates, gr.update()
         # Final update after loop completes
-        return state, status_updates, gr.Tabs(selected="report")
+        yield state, status_updates, gr.update(selected="report")
 
     run_button.click(
         fn=run_and_evaluate_scenarios,

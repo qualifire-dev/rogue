@@ -5,7 +5,10 @@ import gradio as gr
 
 from .components.config_screen import create_config_screen, load_config_from_file
 from .components.interviewer import create_interviewer_screen
-from .components.report_generator import create_report_generator_screen
+from .components.report_generator import (
+    create_report_generator_screen,
+    setup_report_generator_logic,
+)
 from .components.scenario_generator import create_scenario_generator_screen
 from .components.scenario_runner import create_scenario_runner_screen
 from .config.theme import theme
@@ -54,7 +57,16 @@ def get_app(workdir: Path):
                 ) = create_scenario_runner_screen(shared_state, tabs)
 
             with gr.TabItem("5. Report", id="report"):
-                create_report_generator_screen(shared_state)
+                (
+                    dataframe_display,
+                    summary_display,
+                    refresh_button,
+                ) = create_report_generator_screen(shared_state)
+
+        # --- Event Handlers ---
+        setup_report_generator_logic(
+            tabs, dataframe_display, summary_display, refresh_button, shared_state
+        )
 
         def update_context_display(state):
             return gr.update(value=state.get("business_context", ""))

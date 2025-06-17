@@ -1,37 +1,99 @@
 import gradio as gr
+import pandas as pd
+from pathlib import Path
 
 
 def create_report_generator_screen(shared_state: gr.State):
     with gr.Column():
         gr.Markdown("# Test Report")
-        report_display = gr.Markdown("No report generated yet.")
-        refresh_button = gr.Button("Load Latest Report")
+        with gr.Row():
+            refresh_button = gr.Button("Load Latest Report")
+        gr.Markdown("## Evaluation Results")
+        dataframe_display = gr.DataFrame(interactive=False)
+        gr.Markdown("## Summary")
+        summary_display = gr.Markdown("No summary generated yet.")
 
-    def generate_report_from_state(state):
-        results = state.get("results", [])
-        scenarios = state.get("scenarios", [])
+    def load_report_data(state):
+        workdir = state.get("workdir")
+        if not workdir:
+            return pd.DataFrame(), "Working directory not found."
 
-        if not results:
-            return "No results found in state. Please run the evaluator."
+        csv_path = Path(workdir) / "evaluation_results.csv"
+        summary_text = "No summary available."
+        df = pd.DataFrame()
 
-        full_report = "## Overall Results\n\n"
-        # Add summary logic here later
+        if csv_path.exists():
+            df = pd.read_csv(csv_path)
+            # You can customize the summary based on the results
+            # For now, let's just show the raw results from the state
+            results = state.get("results", [])
+            if results:
+                summary_text = "### Agent Evaluation Summary:\n"
+                for i, result in enumerate(results):
+                    score = result.get("score", "N/A")
+                    reasoning = result.get("reasoning", "No reasoning provided.")
+                    summary_text += (
+                        f"**Scenario {i+1}**: Score {score}/10\n" f"> *{reasoning}*\n\n"
+                    )
+        else:
+            summary_text = "evaluation_results.csv not found."
 
-        full_report += "\n## Detailed Scenario Results\n\n"
-        for i, result in enumerate(results):
-            scenario_name = scenarios[i].get("name", f"Scenario {i+1}")
-            score = result.get("score", "N/A")
-            reasoning = result.get("reasoning", "N/A")
-            full_report += (
-                f"### {scenario_name}\n"
-                f"- **Score**: {score}/10\n"
-                f"- **Reasoning**: {reasoning}\n\n"
-            )
+        return df, summary_text
 
-        return full_report
+    return dataframe_display, summary_display, refresh_button
 
-    refresh_button.click(
-        fn=generate_report_from_state, inputs=[shared_state], outputs=[report_display]
+
+def setup_report_generator_logic(
+    tabs_component, dataframe_display, summary_display, refresh_button, shared_state
+):
+    def load_report_data(state):
+        workdir = state.get("workdir")
+        if not workdir:
+            return pd.DataFrame(), "Working directory not found."
+
+        csv_path = Path(workdir) / "evaluation_results.csv"
+        summary_text = "No summary available."
+        df = pd.DataFrame()
+
+        if csv_path.exists():
+            df = pd.read_csv(csv_path)
+            results = state.get("results", [])
+            if results:
+                summary_text = "### Agent Evaluation Summary:\n"
+                # Simple conversion of results to markdown
+                summary_text += "\n\n".join(
+                    [
+                        f"**Scenario {i+1}** (Passed: {res.get('evaluation_passed', 'N/A')})\n"
+                        f"> {res.get('reason', 'No reason provided.')}"
+                        for i, res in enumerate(results)
+                    ]
+                )
+
+        else:
+            summary_text = "evaluation_results.csv not found."
+
+        return df, summary_text
+
+    def on_report_tab_select(state):
+        df, summary = load_report_data(state)
+        return {
+            dataframe_display: gr.update(value=df),
+            summary_display: gr.update(value=summary),
+        }
+
+    report_tab = next(
+        (t for t in tabs_component.children if t.id == "report"),
+        None,
     )
 
-    return [report_display]
+    if report_tab:
+        report_tab.select(
+            fn=on_report_tab_select,
+            inputs=[shared_state],
+            outputs=[dataframe_display, summary_display],
+        )
+        refresh_button.click(
+            fn=on_report_tab_select,
+            inputs=[shared_state],
+            outputs=[dataframe_display, summary_display],
+        )
