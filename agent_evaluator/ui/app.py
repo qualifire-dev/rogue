@@ -1,5 +1,5 @@
-from pathlib import Path
 import json
+from pathlib import Path
 
 import gradio as gr
 
@@ -58,14 +58,18 @@ def get_app(workdir: Path):
 
             with gr.TabItem("5. Report", id="report"):
                 (
-                    dataframe_display,
+                    evaluation_results_display,
                     summary_display,
                     refresh_button,
                 ) = create_report_generator_screen(shared_state)
 
         # --- Event Handlers ---
         setup_report_generator_logic(
-            tabs, dataframe_display, summary_display, refresh_button, shared_state
+            tabs,
+            evaluation_results_display,
+            summary_display,
+            refresh_button,
+            shared_state,
         )
 
         def update_context_display(state):

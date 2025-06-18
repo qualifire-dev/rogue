@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 
 import gradio as gr
 from loguru import logger
@@ -86,27 +87,22 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
 
         try:
             workdir = state.get("workdir")
-            results_df = ScenarioEvaluationService(
+            output_path = (
+                workdir / f"evaluation_results_{datetime.now().isoformat()}.json"
+            )
+            state["evaluation_results_output_path"] = output_path
+            evaluation_results = ScenarioEvaluationService(
                 evaluated_agent_url=str(agent_url),
                 evaluated_agent_auth_type=agent_auth_type,
                 evaluated_agent_auth_credentials=agent_auth_credentials,
                 judge_llm=judge_llm,
                 judge_llm_api_key=judge_llm_key,
                 scenarios=scenarios,
-                workdir=workdir,
+                evaluation_results_output_path=output_path,
             ).evaluate_scenarios()
-            # results_df = run_evaluator_agent(
-            #     evaluated_agent_url=str(agent_url),
-            #     auth_type=agent_auth_type,
-            #     auth_credentials=agent_auth_credentials,
-            #     judge_llm=judge_llm,
-            #     judge_llm_api_key=judge_llm_key,
-            #     scenarios=scenarios,
-            #     workdir=workdir,
-            # )
             logger.debug(
                 "scenario runner finished running evaluator agent",
-                extra={"results": results_df.to_dict()},
+                extra={"results": evaluation_results.model_dump_json()},
             )
         except Exception:
             logger.exception("Error running evaluator agent")
@@ -118,7 +114,7 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
             return
 
         status_updates += "\nEvaluation completed."
-        state["results"] = results_df.to_dict(orient="records")
+        state["results"] = evaluation_results
         # Final update after loop completes
         yield state, status_updates, gr.update(selected="report")
 

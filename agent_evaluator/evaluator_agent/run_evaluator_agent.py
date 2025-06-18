@@ -1,5 +1,4 @@
 import asyncio
-from pathlib import Path
 
 import pandas as pd
 from a2a.types import (
@@ -16,6 +15,7 @@ from loguru import logger
 from .evaluator_agent import EvaluatorAgent
 from ..common.agent_sessions import create_session
 from ..models.config import AuthType
+from ..models.evaluation_result import EvaluationResults
 from ..models.scenario import Scenarios
 
 
@@ -92,17 +92,13 @@ async def _run_agent(
 
 
 async def arun_evaluator_agent(
-    # host: str,
-    # port: int,
     evaluated_agent_url: str,
     auth_type: AuthType,
     auth_credentials: str | None,
     judge_llm: str,
     judge_llm_api_key: str | None,
     scenarios: Scenarios,
-    workdir: Path,
-) -> pd.DataFrame:
-    # agent_card = _get_agent_card(host, port)
+) -> EvaluationResults:
     headers = _get_headers(auth_credentials, auth_type)
 
     async with AsyncClient(headers=headers) as httpx_client:
@@ -112,7 +108,6 @@ async def arun_evaluator_agent(
             model=judge_llm,
             scenarios=scenarios,
             llm_auth=judge_llm_api_key,
-            workdir=workdir,
         )
 
         session_service = InMemorySessionService()
@@ -120,7 +115,7 @@ async def arun_evaluator_agent(
         app_name = "Evaluator_Agent"
 
         runner = Runner(
-            app_name=app_name,  # agent_card.name,
+            app_name=app_name,
             agent=evaluator_agent.get_underlying_agent(),
             session_service=session_service,
         )
@@ -133,19 +128,16 @@ async def arun_evaluator_agent(
         logger.info("evaluator_agent started")
 
         await _run_agent(runner, input_text="start", session=session)
-        return evaluator_agent.get_results_df()
+        return evaluator_agent.get_evaluation_results()
 
 
 def run_evaluator_agent(
-    # host: str,
-    # port: int,
     evaluated_agent_url: str,
     auth_type: AuthType,
     auth_credentials: str | None,
     judge_llm: str,
     judge_llm_api_key: str | None,
     scenarios: Scenarios,
-    workdir: Path,
 ) -> pd.DataFrame:
     return asyncio.run(
         arun_evaluator_agent(
@@ -155,6 +147,5 @@ def run_evaluator_agent(
             judge_llm=judge_llm,
             judge_llm_api_key=judge_llm_api_key,
             scenarios=scenarios,
-            workdir=workdir,
         )
     )

@@ -1,9 +1,7 @@
 import json
-from pathlib import Path
 from typing import Optional
 from uuid import uuid4
 
-import pandas as pd
 from a2a.client import A2ACardResolver
 from a2a.types import (
     Message,
@@ -17,6 +15,7 @@ from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
 from httpx import AsyncClient
 from loguru import logger
+from pydantic import ValidationError
 from pydantic_yaml import to_yaml_str
 
 from ..common.agent_model_wrapper import get_llm_from_model
@@ -25,7 +24,12 @@ from ..common.remote_agent_connection import (
     JSON_RPC_ERROR_TYPES,
 )
 from ..models.chat_history import ChatHistory, Message as HistoryMessage
-from ..models.scenario import Scenarios
+from ..models.evaluation_result import (
+    EvaluationResults,
+    ConversationEvaluation,
+    EvaluationResult,
+)
+from ..models.scenario import Scenarios, Scenario
 
 AGENT_INSTRUCTIONS = """
 You are a scenario tester agent. Your task is to test the given scenarios against another agent and
@@ -105,9 +109,6 @@ Run all scenarios without stopping or asking for user input.
 """  # noqa: E501
 
 
-EVALUATION_RESULTS_FILE = "evaluation_results.csv"
-
-
 class EvaluatorAgent:
     def __init__(
         self,
@@ -116,23 +117,13 @@ class EvaluatorAgent:
         model: str,
         scenarios: Scenarios,
         llm_auth: Optional[str] = None,
-        workdir: Path = Path("."),
     ) -> None:
         self._http_client = http_client
         self._evaluated_agent_address = evaluated_agent_address
         self._model = model
         self._llm_auth = llm_auth
         self._scenarios = scenarios
-        self._workdir = workdir
-        self._evaluation_logs: pd.DataFrame = pd.DataFrame(
-            columns=[
-                "scenario",
-                "context_id",
-                "conversation",
-                "evaluation_passed",
-                "reason",
-            ]
-        )
+        self._evaluation_results: EvaluationResults = EvaluationResults()
         self.__evaluated_agent_client: RemoteAgentConnections | None = None
         self._context_id_to_chat_history: dict[str, ChatHistory] = {}
 
@@ -206,36 +197,51 @@ class EvaluatorAgent:
             },
         )
 
+        try:
+            scenario_parsed = Scenario.model_validate(scenario)
+        except ValidationError:
+            if isinstance(scenario, str):
+                # in case the llm just sent the scenario string instead of the entire
+                # object, we will simply create the object ourselves
+                logger.warning(
+                    "Recovered from scenario validation failure. "
+                    "Scenario was sent as a string",
+                    extra={
+                        "scenario": scenario,
+                    },
+                )
+                scenario_parsed = Scenario(scenario=scenario)
+            else:
+                # We can't do anything if this is an unparseable scenario
+                logger.exception(
+                    "Scenario validation failed. Scenario is not in the correct format",
+                    extra={
+                        "scenario": scenario,
+                    },
+                )
+                return
+
         conversation_history = self._context_id_to_chat_history.get(
             context_id,
+            ChatHistory(),
         )
-        self._evaluation_logs = pd.concat(
-            [
-                self._evaluation_logs,
-                pd.DataFrame(
-                    [
-                        {
-                            "scenario": json.dumps(scenario),
-                            "context_id": context_id,
-                            "conversation": (
-                                conversation_history.model_dump_json()
-                                if conversation_history
-                                else "[]"
-                            ),
-                            "evaluation_passed": evaluation_passed,
-                            "reason": reason,
-                        }
-                    ]
-                ),
+
+        evaluation_result = EvaluationResult(
+            scenario=scenario_parsed,
+            conversations=[
+                ConversationEvaluation(
+                    messages=conversation_history,
+                    passed=evaluation_passed,
+                    reason=reason,
+                )
             ],
-            ignore_index=True,
+            passed=evaluation_passed,
         )
 
-        output_path = self._workdir / EVALUATION_RESULTS_FILE
-        self._evaluation_logs.to_csv(output_path, index=False)
+        self._evaluation_results.add_result(evaluation_result)
 
-    def get_results_df(self) -> pd.DataFrame:
-        return self._evaluation_logs
+    def get_evaluation_results(self) -> EvaluationResults:
+        return self._evaluation_results
 
     @staticmethod
     def _get_text_from_response(
