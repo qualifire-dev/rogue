@@ -43,3 +43,9 @@ class EvaluationResults(BaseModel):
 
             combined.results.extend(evaluation_result.results)
         return combined
+
+
+class PolicyEvaluationResult(BaseModel):
+    passed: bool
+    reason: str
+    policy: str

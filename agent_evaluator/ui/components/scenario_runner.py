@@ -7,6 +7,7 @@ from pydantic import ValidationError, HttpUrl
 
 from ...models.config import AuthType
 from ...models.scenario import Scenarios
+from ...services.llm_service import LLMService
 from ...services.scenario_evaluation_service import ScenarioEvaluationService
 
 
@@ -104,6 +105,15 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                 "scenario runner finished running evaluator agent",
                 extra={"results": evaluation_results.model_dump_json()},
             )
+
+            # Generate summary
+            summary = LLMService().generate_summary_from_results(
+                model=judge_llm,
+                results=evaluation_results,
+                llm_provider_api_key=judge_llm_key,
+            )
+            state["summary"] = summary
+
         except Exception:
             logger.exception("Error running evaluator agent")
             yield (

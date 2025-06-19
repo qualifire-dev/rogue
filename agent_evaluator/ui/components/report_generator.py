@@ -4,13 +4,11 @@ from typing import Tuple
 import gradio as gr
 
 from agent_evaluator.models.evaluation_result import EvaluationResults
-from agent_evaluator.services.llm_service import LLMService
 
 
 def _load_report_data_from_files(
     evaluation_results_output_path: Path | None,
     results: EvaluationResults | None,
-    config: dict,
 ) -> tuple[EvaluationResults, str]:
     if (
         not evaluation_results_output_path
@@ -25,14 +23,6 @@ def _load_report_data_from_files(
             evaluation_results_output_path.read_text(),
         )
 
-    if results and results.results:
-        llm_service = LLMService()
-        summary_text = llm_service.generate_summary_from_results(
-            model=config.get("judge_llm", "default/model"),
-            results=results,
-            llm_provider_api_key=config.get("judge_llm_api_key"),
-        )
-
     return results, summary_text
 
 
@@ -43,14 +33,12 @@ def create_report_generator_screen(
         gr.Markdown("# Test Report")
         with gr.Row():
             refresh_button = gr.Button("Load Latest Report")
-        gr.Markdown("## Evaluation Results")
-        results_display = gr.JSON(
-            label="Evaluation Results",
-        )
         gr.Markdown("## Summary")
         summary_display = gr.Markdown(
             shared_state.value.get("summary_text", "No summary generated yet.")
         )
+        gr.Markdown("## Evaluation Results")
+        results_display = gr.JSON(label="Evaluation Results")
 
     return results_display, summary_display, refresh_button
 
@@ -63,17 +51,12 @@ def setup_report_generator_logic(
     shared_state,
 ):
     def on_report_tab_select(state):
-        evaluation_results_output_path = state.get("evaluation_results_output_path")
         results = state.get("results", EvaluationResults())
-        config = state.get("config", {})
-        evaluation_results, summary = _load_report_data_from_files(
-            evaluation_results_output_path,
-            results,
-            config,
-        )
+        summary = state.get("summary", "No summary available.")
+
         return {
             evaluation_results_display: gr.update(
-                value=evaluation_results.model_dump_json(
+                value=results.model_dump_json(
                     indent=2,
                     exclude_none=True,
                 ),
