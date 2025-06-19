@@ -35,7 +35,6 @@ def create_scenario_generator_screen(shared_state: gr.State, tabs_component: gr.
                 llm_provider_api_key=judge_llm_api_key,
             )
             state["scenarios"] = scenarios
-            gr.Info("Scenarios generated successfully!")
             return {
                 shared_state: state,
                 scenarios_output: scenarios.model_dump_json(

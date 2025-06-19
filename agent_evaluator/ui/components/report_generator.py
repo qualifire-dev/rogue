@@ -4,11 +4,13 @@ from typing import Tuple
 import gradio as gr
 
 from agent_evaluator.models.evaluation_result import EvaluationResults
+from agent_evaluator.services.llm_service import LLMService
 
 
 def _load_report_data_from_files(
     evaluation_results_output_path: Path | None,
-    results: EvaluationResults,
+    results: EvaluationResults | None,
+    config: dict,
 ) -> tuple[EvaluationResults, str]:
     if (
         not evaluation_results_output_path
@@ -18,12 +20,18 @@ def _load_report_data_from_files(
 
     summary_text = "No summary available."
 
-    if results:
-        return results, summary_text
+    if not results:
+        results = EvaluationResults.model_validate_json(
+            evaluation_results_output_path.read_text(),
+        )
 
-    results = EvaluationResults.model_validate(
-        evaluation_results_output_path.read_text(),
-    )
+    if results and results.results:
+        llm_service = LLMService()
+        summary_text = llm_service.generate_summary_from_results(
+            model=config.get("judge_llm", "default/model"),
+            results=results,
+            llm_provider_api_key=config.get("judge_llm_api_key"),
+        )
 
     return results, summary_text
 
@@ -36,13 +44,13 @@ def create_report_generator_screen(
         with gr.Row():
             refresh_button = gr.Button("Load Latest Report")
         gr.Markdown("## Evaluation Results")
-        results_display = gr.Code(
+        results_display = gr.JSON(
             label="Evaluation Results",
-            language="json",
-            interactive=True,
         )
         gr.Markdown("## Summary")
-        summary_display = gr.Markdown("No summary generated yet.")
+        summary_display = gr.Markdown(
+            shared_state.value.get("summary_text", "No summary generated yet.")
+        )
 
     return results_display, summary_display, refresh_button
 
@@ -57,9 +65,11 @@ def setup_report_generator_logic(
     def on_report_tab_select(state):
         evaluation_results_output_path = state.get("evaluation_results_output_path")
         results = state.get("results", EvaluationResults())
+        config = state.get("config", {})
         evaluation_results, summary = _load_report_data_from_files(
             evaluation_results_output_path,
             results,
+            config,
         )
         return {
             evaluation_results_display: gr.update(

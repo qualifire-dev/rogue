@@ -3,6 +3,7 @@ from typing import Optional
 from litellm import completion
 from loguru import logger
 
+from agent_evaluator.models.evaluation_result import EvaluationResults
 from ..models.scenario import Scenario, ScenarioType, Scenarios
 
 SCENARIO_GENERATION_SYSTEM_PROMPT = """
@@ -79,6 +80,36 @@ and constraints.
 Remember that the primary goal is to identify potential weaknesses in the agent's implementation, so
 prioritize scenarios that might reveal problems or edge cases.
 """  # noqa: E501
+
+SUMMARY_GENERATION_SYSTEM_PROMPT = """
+# Evaluation Results Summarizer
+
+You are a test results summarizer. Your task is to analyze the provided evaluation results
+and generate a concise, insightful, and human-readable summary in Markdown format.
+
+## Evaluation Results (JSON)
+<evaluation_results>
+{$EVALUATION_RESULTS}
+</evaluation_results>
+
+## Your Task
+Based on the JSON data above, create a summary that includes:
+
+1.  **Overall Summary**: A brief, high-level overview of the agent's performance,
+    highlighting the pass/fail ratio and any critical issues discovered.
+2.  **Key Findings**: Bullet points detailing the most significant discoveries, both
+    positive and negative. Focus on patterns of failure or notable successes.
+3.  **Recommendations**: Suggest concrete next steps for improving the agent. These
+    could include fixing specific bugs, improving training data, or clarifying policies.
+4.  **Detailed Breakdown**: A table or section that provides a granular look at each
+    scenario that was tested, including the pass/fail status and a brief note on the outcome.
+
+## Guidelines
+- Use clear and professional language.
+- Format the output using Markdown for readability (headings, bold text, lists, etc.).
+- Be objective and base your summary strictly on the provided data.
+- Ensure the summary is well-organized and easy to navigate.
+"""
 
 
 STATIC_SCENARIOS = [
@@ -163,3 +194,35 @@ class LLMService:
         except Exception:
             logger.exception("Failed to generate scenarios")
             raise
+
+    @staticmethod
+    def generate_summary_from_results(
+        model: str,
+        results: EvaluationResults,
+        llm_provider_api_key: Optional[str] = None,
+    ) -> str:
+        system_prompt = SUMMARY_GENERATION_SYSTEM_PROMPT.replace(
+            r"{$EVALUATION_RESULTS}",
+            results.model_dump_json(indent=2),
+        )
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {
+                "role": "user",
+                "content": "Please generate the summary based on the provided results.",
+            },
+        ]
+
+        api_key = None if llm_provider_api_key is None else llm_provider_api_key
+
+        try:
+            response = completion(
+                model=model,
+                messages=messages,
+                api_key=api_key,
+            )
+            return response.choices[0].message.content
+        except Exception:
+            logger.exception("Failed to generate summary from results")
+            return "Error: Could not generate a summary for the evaluation results."
