@@ -137,6 +137,7 @@ class EvaluatorAgent:
         model: str,
         scenarios: Scenarios,
         llm_auth: Optional[str] = None,
+        debug: bool = False,
     ) -> None:
         self._http_client = http_client
         self._evaluated_agent_address = evaluated_agent_address
@@ -146,6 +147,7 @@ class EvaluatorAgent:
         self._evaluation_results: EvaluationResults = EvaluationResults()
         self.__evaluated_agent_client: RemoteAgentConnections | None = None
         self._context_id_to_chat_history: dict[str, ChatHistory] = {}
+        self._debug = debug
 
     async def _get_evaluated_agent_client(self) -> RemoteAgentConnections:
         logger.debug("_get_evaluated_agent - enter")
@@ -184,23 +186,20 @@ class EvaluatorAgent:
                 FunctionTool(func=self._log_evaluation),
                 FunctionTool(func=self._evaluate_policy),
             ],
-            # generate_content_config=GenerateContentConfig(
-            #     automatic_function_calling=AutomaticFunctionCallingConfig(
-            #         disable=False,
-            #     ),
-            # ),
             before_tool_callback=self._before_tool_callback,
             after_tool_callback=self._after_tool_callback,
             before_model_callback=self._before_model_callback,
             after_model_callback=self._after_model_callback,
         )
 
-    @staticmethod
     def _before_tool_callback(
+        self,
         tool: BaseTool,
         args: dict[str, Any],
         tool_context: ToolContext,
     ) -> Optional[dict]:
+        if not self._debug:
+            return None
         logger.info(
             "before_tool_callback",
             extra={
@@ -214,13 +213,15 @@ class EvaluatorAgent:
         )
         return None
 
-    @staticmethod
     def _after_tool_callback(
+        self,
         tool: BaseTool,
         args: dict[str, Any],
         tool_context: ToolContext,
         tool_response: Optional[dict],
     ) -> Optional[dict]:
+        if not self._debug:
+            return None
         logger.info(
             "after_tool_callback",
             extra={
@@ -235,11 +236,13 @@ class EvaluatorAgent:
         )
         return None
 
-    @staticmethod
     def _before_model_callback(
+        self,
         callback_context: CallbackContext,
         llm_request: LlmRequest,
     ) -> Optional[dict]:
+        if not self._debug:
+            return None
         logger.info(
             "before_model_callback",
             extra={
@@ -255,11 +258,13 @@ class EvaluatorAgent:
         )
         return None
 
-    @staticmethod
     def _after_model_callback(
+        self,
         callback_context: CallbackContext,
         llm_response: LlmResponse,
     ):
+        if not self._debug:
+            return None
         logger.info(
             "after_model_callback",
             extra={

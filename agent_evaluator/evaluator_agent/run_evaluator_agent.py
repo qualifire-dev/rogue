@@ -1,6 +1,5 @@
 import asyncio
 
-import pandas as pd
 from a2a.types import (
     AgentCapabilities,
     AgentCard,
@@ -75,11 +74,6 @@ async def _run_agent(
         session_id=session.id,
         new_message=content,
     ):
-        print("------")
-        print(event.model_dump_json())
-        print(event.is_final_response())
-        print("------")
-
         if not event.content:
             continue
 
@@ -146,7 +140,7 @@ def run_evaluator_agent(
     judge_llm: str,
     judge_llm_api_key: str | None,
     scenarios: Scenarios,
-) -> pd.DataFrame:
+) -> EvaluationResults:
     return asyncio.run(
         arun_evaluator_agent(
             evaluated_agent_url=evaluated_agent_url,
