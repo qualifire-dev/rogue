@@ -1,5 +1,5 @@
 import json
-from typing import Optional
+from typing import Optional, Any
 from uuid import uuid4
 
 from a2a.client import A2ACardResolver
@@ -12,14 +12,15 @@ from a2a.types import (
     Task,
 )
 from google.adk.agents import LlmAgent
-from google.adk.tools import FunctionTool
+from google.adk.agents.callback_context import CallbackContext
+from google.adk.models import LlmRequest, LlmResponse
+from google.adk.tools import FunctionTool, BaseTool, ToolContext
 from httpx import AsyncClient
 from loguru import logger
 from pydantic import ValidationError
 from pydantic_yaml import to_yaml_str
 
-from agent_evaluator.evaluator_agent.policy_evaluation import evaluate_policy
-
+from .policy_evaluation import evaluate_policy
 from ..common.agent_model_wrapper import get_llm_from_model
 from ..common.remote_agent_connection import (
     RemoteAgentConnections,
@@ -30,7 +31,6 @@ from ..models.evaluation_result import (
     EvaluationResults,
     ConversationEvaluation,
     EvaluationResult,
-    PolicyEvaluationResult,
 )
 from ..models.scenario import Scenarios, Scenario
 
@@ -84,11 +84,14 @@ You have these tools at your disposal:
 - Parameters:
 - `message`: The text to send to the other agent
 - `context_id`: The context ID for this conversation
-- Returns: The other agent's response. If there is no response from the other agent, an empty string is returned.
+- Returns: A dictionary containing the other agent's response:
+    - "response": A string containing the other agent's response. If there is no response from the other agent, the string is empty.
 
 3. `_log_evaluation(scenario: dict, context_id: str, evaluation_passed: bool, reason: str)`
 - Parameters:
-- `scenario`: The entire scenario object being tested
+- `scenario`: The entire scenario json object being tested. The json-object contains:
+    - "scenario": The scenario text.
+    - "scenario_type": The scenario type.
 - `context_id`: The conversation's context ID
 - `evaluation_passed`: Boolean indicating whether the agent complied with the policy
 - `reason`: A brief explanation of your decision
@@ -116,6 +119,7 @@ You have these tools at your disposal:
 - For each conversation, clearly decide whether the agent passed or failed
 - Provide clear, specific reasons for your evaluation decisions
 - Log every conversation using the `_log_evaluation` tool
+- Run a single interaction at a time. Don't parallelize the message creation or evaluation.
 
 Remember to test each scenario thoroughly with multiple
 conversation approaches and evaluate
@@ -180,11 +184,100 @@ class EvaluatorAgent:
                 FunctionTool(func=self._log_evaluation),
                 FunctionTool(func=self._evaluate_policy),
             ],
+            # generate_content_config=GenerateContentConfig(
+            #     automatic_function_calling=AutomaticFunctionCallingConfig(
+            #         disable=False,
+            #     ),
+            # ),
+            before_tool_callback=self._before_tool_callback,
+            after_tool_callback=self._after_tool_callback,
+            before_model_callback=self._before_model_callback,
+            after_model_callback=self._after_model_callback,
         )
+
+    @staticmethod
+    def _before_tool_callback(
+        tool: BaseTool,
+        args: dict[str, Any],
+        tool_context: ToolContext,
+    ) -> Optional[dict]:
+        logger.info(
+            "before_tool_callback",
+            extra={
+                "tool": tool.name,
+                "args": args,
+                "context": {
+                    "function_call_id": tool_context.function_call_id,
+                    "event_actions": tool_context.actions,
+                },
+            },
+        )
+        return None
+
+    @staticmethod
+    def _after_tool_callback(
+        tool: BaseTool,
+        args: dict[str, Any],
+        tool_context: ToolContext,
+        tool_response: Optional[dict],
+    ) -> Optional[dict]:
+        logger.info(
+            "after_tool_callback",
+            extra={
+                "tool": tool.name,
+                "args": args,
+                "tool_response": tool_response,
+                "tool_context": {
+                    "function_call_id": tool_context.function_call_id,
+                    "event_actions": tool_context.actions,
+                },
+            },
+        )
+        return None
+
+    @staticmethod
+    def _before_model_callback(
+        callback_context: CallbackContext,
+        llm_request: LlmRequest,
+    ) -> Optional[dict]:
+        logger.info(
+            "before_model_callback",
+            extra={
+                "llm_request_clean": llm_request.model_dump(exclude_none=True),
+                "llm_request": llm_request.model_dump(),
+                "context": {
+                    "state": callback_context.state,
+                    "user_content": callback_context.user_content,
+                    "invocation_id": callback_context.invocation_id,
+                    "agent_name": callback_context.agent_name,
+                },
+            },
+        )
+        return None
+
+    @staticmethod
+    def _after_model_callback(
+        callback_context: CallbackContext,
+        llm_response: LlmResponse,
+    ):
+        logger.info(
+            "after_model_callback",
+            extra={
+                "llm_response_clean": llm_response.model_dump(exclude_none=True),
+                "llm_response": llm_response.model_dump(),
+                "callback_context": {
+                    "state": callback_context.state,
+                    "user_content": callback_context.user_content,
+                    "invocation_id": callback_context.invocation_id,
+                    "agent_name": callback_context.agent_name,
+                },
+            },
+        )
+        return None
 
     def _log_evaluation(
         self,
-        scenario: dict,
+        scenario: dict[str, str],
         context_id: str,
         evaluation_passed: bool,
         reason: str,
@@ -192,10 +285,13 @@ class EvaluatorAgent:
         """
         Logs the evaluation of the given scenario and test case.
         :param scenario: The scenario being evaluated.
+            This is the scenario dictionary containing both the scenario text and the scenario type:
+            - scenario: The scenario text.
+            - scenario_type: The scenario type.
         :param context_id: The conversation's context_id.
             This allows us to distinguish which conversation is being evaluated.
-        :param evaluation_passed: The evaluation result.
-        :param reason: The reason for the evaluation.
+        :param evaluation_passed: A boolean value with the evaluation result.
+        :param reason: A string with the reason for the evaluation.
         :return: None
         """
         logger.debug(
@@ -295,17 +391,17 @@ class EvaluatorAgent:
 
     async def _send_message_to_evaluated_agent(
         self,
-        message: str,
         context_id: str,
-    ) -> str:
+        message: str,
+    ) -> dict:
         """
         Sends a message to the evaluated agent.
         :param message: the text to send to the other agent.
         :param context_id: The context ID of the conversation.
             Each conversation has a unique context_id. All messages in the conversation
             have the same context_id.
-        :return: The response from the evaluated agent.
-            If there is no response from the other agent, an empty string is returned.
+        :return: A dictionary containing the response from the evaluated agent.
+            - "response": the response string. If there is no response from the other agent, the string is empty.
         """
         logger.debug(
             "_send_message_to_evaluated_agent - enter",
@@ -345,7 +441,7 @@ class EvaluatorAgent:
 
         if not response:
             logger.debug("_send_message_to_evaluated_agent - no response")
-            return ""
+            return {"response": ""}
 
         self._context_id_to_chat_history[context_id].add_message(
             HistoryMessage(
@@ -373,11 +469,18 @@ class EvaluatorAgent:
         self,
         context_id: str,
         policy: str,
-    ) -> PolicyEvaluationResult:
+    ) -> dict[str, Any]:
         """
         Evaluates the given conversation against the given policy.
         :param context_id: The ID of the conversation to evaluate.
         :param policy: The policy to evaluate against.
+        :return: a dictionary containing the evaluation results.
+            The dictionary schema is:
+            {
+                "passed": bool
+                "reason": str
+                "policy": str
+            }
         """
         conversation = self._context_id_to_chat_history[context_id]
         return evaluate_policy(
@@ -385,4 +488,4 @@ class EvaluatorAgent:
             policy=policy,
             model=self._model,
             api_key=self._llm_auth,
-        )
+        ).model_dump()

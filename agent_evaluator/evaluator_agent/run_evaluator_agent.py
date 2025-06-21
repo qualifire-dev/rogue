@@ -75,6 +75,14 @@ async def _run_agent(
         session_id=session.id,
         new_message=content,
     ):
+        print("------")
+        print(event.model_dump_json())
+        print(event.is_final_response())
+        print("------")
+
+        if not event.content:
+            continue
+
         event_text = ""
         for part in event.content.parts:
             if part.text:
@@ -147,5 +155,5 @@ def run_evaluator_agent(
             judge_llm=judge_llm,
             judge_llm_api_key=judge_llm_api_key,
             scenarios=scenarios,
-        )
+        ),
     )

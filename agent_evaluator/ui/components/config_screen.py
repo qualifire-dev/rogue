@@ -40,7 +40,6 @@ def create_config_screen(
     shared_state: gr.State,
     tabs_component: gr.Tabs,
 ):
-
     with gr.Column():
         gr.Markdown("## Agent Configuration")
         agent_url = gr.Textbox(
@@ -68,7 +67,8 @@ def create_config_screen(
             ),
         )
         gr.Markdown(
-            "When enabled, you'll be guided through an AI-powered interview to extract your agent's business context. Turn off to skip this step."
+            "When enabled, you'll be guided through an AI-powered interview to "
+            "extract your agent's business context. Turn off to skip this step."
         )
 
         auth_type = gr.Dropdown(
