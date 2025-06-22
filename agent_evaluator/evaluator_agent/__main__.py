@@ -32,17 +32,15 @@ openai_models: list[str] = [
     # "openai/o4-mini",  # working
 ]
 gemini_models: list[str] = [
-    "gemini-1.0-pro-001",
-    "gemini-1.5-pro-001",
-    "gemini-1.5-pro-002",
-    "gemini-1.5-flash-001",
-    "gemini-1.5-flash-002",
-    "gemini-1.5-flash-8b-001",
-    "gemini-2.0-flash-001",
-    "gemini-2.0-flash-lite",
-    "gemini-2.5-flash",
-    "gemini-2.5-flash-lite-preview",
-    "gemini-2.5-pro",
+    # "gemini-1.0-pro",  # not found
+    # "gemini-1.5-pro",  # working
+    # "gemini-1.5-flash",  # semi-working. only sends 1 conversation for each scenario
+    # "gemini-1.5-flash-8b",  # not found
+    # "gemini-2.0-flash",  # Working
+    # "gemini-2.0-flash-lite",  # sometimes working
+    # "gemini-2.5-flash",  # working
+    # "gemini-2.5-flash-lite-preview",  # not found
+    # "gemini-2.5-pro",  # Expensive
 ]
 anthropic_models: list[str] = [
     "claude-opus-4",
@@ -131,7 +129,7 @@ def test_models(models: list[str] | None = None) -> dict[bool, list[str]]:
 def main():
     configure_logger()
     # litellm._turn_on_debug()
-    print(test_models(openai_models))
+    print(test_models(gemini_models))
     # run_agent("gemini-2.0-flash-001")
 
 
