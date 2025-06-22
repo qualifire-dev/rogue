@@ -2,7 +2,7 @@
 
 
 ## Supported models
-We have successfully ran our agent with the following models:
+### We have successfully run our agent with the following models:
 
 #### OpenAI:
 - openai/gpt-4.1
@@ -21,7 +21,7 @@ We have successfully ran our agent with the following models:
 - tbd
 
 
-The following models are not supported:
+### The following models are not supported:
 
 #### OpenAI:
 - openai/gpt-3.5
@@ -37,7 +37,7 @@ The following models are not supported:
 #### Anthropic:
 - tbd
 
-The following models haven't been tested:
+### The following models haven't been tested:
 
 #### OpenAI:
 - openai/gpt-4
@@ -52,3 +52,4 @@ The following models haven't been tested:
 - gemini-1.0-pro
 - gemini-1.5-flash-8b
 - gemini-2.5-pro
+- gemini-2.5-flash-lite-preview
