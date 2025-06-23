@@ -18,6 +18,7 @@ class ScenarioEvaluationService:
         judge_llm_api_key: str | None,
         scenarios: Scenarios,
         evaluation_results_output_path: Path,
+        business_context: str,
     ):
         self._evaluated_agent_url = evaluated_agent_url
         self._evaluated_agent_auth_type = evaluated_agent_auth_type
@@ -26,6 +27,7 @@ class ScenarioEvaluationService:
         self._judge_llm_api_key = judge_llm_api_key
         self._scenarios = scenarios
         self._evaluation_results_output_path = evaluation_results_output_path
+        self._business_context = business_context
 
     def _evaluate_policy_scenarios(self) -> EvaluationResults | None:
         policy_scenarios = self._scenarios.get_policy_scenarios()
@@ -37,6 +39,7 @@ class ScenarioEvaluationService:
                 judge_llm=self._judge_llm,
                 judge_llm_api_key=self._judge_llm_api_key,
                 scenarios=policy_scenarios,
+                business_context=self._business_context,
             )
         except Exception:
             logger.exception("Error evaluating policy scenarios")

@@ -71,8 +71,12 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
         agent_url: HttpUrl = config.get("agent_url")  # type: ignore
         agent_auth_type: AuthType | str = config.get("auth_type")  # type: ignore
         agent_auth_credentials: str = config.get("auth_credentials")  # type: ignore
+        service_llm: str = config.get("service_llm")  # type: ignore
         judge_llm: str = config.get("judge_llm")  # type: ignore
         judge_llm_key: str = config.get("judge_llm_api_key")  # type: ignore
+        business_context: str = config.get("business_context")  # type: ignore
+        
+        logger.info(f"Business context: {business_context}")
 
         if isinstance(agent_auth_type, str):
             agent_auth_type = AuthType(agent_auth_type)
@@ -100,6 +104,7 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                 judge_llm_api_key=judge_llm_key,
                 scenarios=scenarios,
                 evaluation_results_output_path=output_path,
+                business_context=business_context,
             ).evaluate_scenarios()
             logger.debug(
                 "scenario runner finished running evaluator agent",
@@ -108,7 +113,7 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
 
             # Generate summary
             summary = LLMService().generate_summary_from_results(
-                model=judge_llm,
+                model=service_llm,
                 results=evaluation_results,
                 llm_provider_api_key=judge_llm_key,
             )

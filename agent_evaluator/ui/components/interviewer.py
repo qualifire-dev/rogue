@@ -42,13 +42,14 @@ def create_interviewer_screen(
                 if assistant_msg:
                     messages.append({"role": "assistant", "content": assistant_msg})
 
-            judge_llm = state.get("config", {}).get("judge_llm", "openai/o3-mini")
-            judge_llm_api_key = state.get("config", {}).get("judge_llm_api_key")
+            config = state.get("config", {})
+            service_llm = config.get("service_llm", "openai/gpt-4.1")
+            api_key = config.get("judge_llm_api_key")
 
             bot_message = llm_service.get_interview_question(
-                model=judge_llm,
+                model=service_llm,
                 messages=messages,
-                llm_provider_api_key=judge_llm_api_key,
+                llm_provider_api_key=api_key,
             )
 
             # Add bot response to the last entry in history

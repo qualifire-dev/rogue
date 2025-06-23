@@ -136,6 +136,7 @@ class EvaluatorAgent:
         evaluated_agent_address: str,
         model: str,
         scenarios: Scenarios,
+        business_context: str,
         llm_auth: Optional[str] = None,
         debug: bool = False,
     ) -> None:
@@ -148,6 +149,7 @@ class EvaluatorAgent:
         self.__evaluated_agent_client: RemoteAgentConnections | None = None
         self._context_id_to_chat_history: dict[str, ChatHistory] = {}
         self._debug = debug
+        self._business_context = business_context
 
     async def _get_evaluated_agent_client(self) -> RemoteAgentConnections:
         logger.debug("_get_evaluated_agent - enter")
@@ -493,4 +495,5 @@ class EvaluatorAgent:
             policy=policy,
             model=self._model,
             api_key=self._llm_auth,
+            business_context=self._business_context,
         ).model_dump()

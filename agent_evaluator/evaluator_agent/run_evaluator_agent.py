@@ -100,6 +100,7 @@ async def arun_evaluator_agent(
     judge_llm: str,
     judge_llm_api_key: str | None,
     scenarios: Scenarios,
+    business_context: str,
 ) -> EvaluationResults:
     headers = _get_headers(auth_credentials, auth_type)
 
@@ -110,6 +111,7 @@ async def arun_evaluator_agent(
             model=judge_llm,
             scenarios=scenarios,
             llm_auth=judge_llm_api_key,
+            business_context=business_context,
         )
 
         session_service = InMemorySessionService()
@@ -139,6 +141,7 @@ def run_evaluator_agent(
     auth_credentials: str | None,
     judge_llm: str,
     judge_llm_api_key: str | None,
+    business_context: str,
     scenarios: Scenarios,
 ) -> EvaluationResults:
     return asyncio.run(
@@ -148,6 +151,7 @@ def run_evaluator_agent(
             auth_credentials=auth_credentials,
             judge_llm=judge_llm,
             judge_llm_api_key=judge_llm_api_key,
+            business_context=business_context,
             scenarios=scenarios,
         ),
     )

@@ -34,7 +34,7 @@ def get_app(workdir: Path):
                     interview_mode,
                     auth_type,
                     auth_credentials,
-                    interviewer_llm,
+                    service_llm,
                     judge_llm,
                     judge_llm_api_key,
                     huggingface_api_key,
@@ -116,8 +116,8 @@ def get_app(workdir: Path):
                     value=config.get("auth_credentials"),
                     visible=auth_type_val != AuthType.NO_AUTH.value,
                 ),
-                interviewer_llm: gr.update(
-                    value=config.get("interviewer_llm", "openai/gpt-4.1")
+                service_llm: gr.update(
+                    value=config.get("service_llm", "openai/gpt-4.1")
                 ),
                 judge_llm: gr.update(value=config.get("judge_llm", "openai/o4-mini")),
                 judge_llm_api_key: gr.update(value=config.get("judge_llm_api_key")),
@@ -133,7 +133,7 @@ def get_app(workdir: Path):
                 interview_mode,
                 auth_type,
                 auth_credentials,
-                interviewer_llm,
+                service_llm,
                 judge_llm,
                 judge_llm_api_key,
                 huggingface_api_key,

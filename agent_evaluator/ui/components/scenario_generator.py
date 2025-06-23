@@ -26,12 +26,12 @@ def create_scenario_generator_screen(shared_state: gr.State, tabs_component: gr.
         state["business_context"] = current_context
 
         config = state.get("config", {})
-        interviewer_llm = config.get("interviewer_llm")
+        service_llm = config.get("service_llm")
         api_key = config.get("judge_llm_api_key")
 
         try:
             scenarios = llm_service.generate_scenarios(
-                interviewer_llm,
+                service_llm,
                 current_context,
                 llm_provider_api_key=api_key,
             )

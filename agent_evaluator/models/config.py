@@ -15,7 +15,7 @@ class AgentConfig(BaseModel):
     agent_url: HttpUrl
     auth_type: AuthType
     auth_credentials: Optional[str] = None
-    interviewer_llm: str = "openai/gpt-4.1"
+    service_llm: str = "openai/gpt-4.1"
     judge_llm: str = "openai/o4-mini"
     interview_mode: bool = True
 

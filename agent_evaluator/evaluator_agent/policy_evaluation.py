@@ -11,6 +11,11 @@ You are tasked with evaluating an AI's adherence to a specific policy rule in a 
 You will be provided with the conversation history in JSON format and a policy rule to evaluate against.
 Your goal is to determine if the AI's responses in the conversation comply with the given policy.
 
+Here is the business context:
+<business_context>
+{BUSINESS_CONTEXT}
+</business_context>
+
 First, here is the conversation history in JSON format:
 <conversation_history>
 {CONVERSATION_HISTORY}
@@ -55,6 +60,7 @@ def evaluate_policy(
     conversation: ChatHistory,
     policy: str,
     model: str,
+    business_context: str,
     api_key: str | None = None,
 ) -> PolicyEvaluationResult:
     if "/" not in model and model.startswith("gemini"):
@@ -80,6 +86,7 @@ def evaluate_policy(
                 "content": POLICY_EVALUATION_PROMPT.format(
                     CONVERSATION_HISTORY=conversation.model_dump_json(),
                     POLICY_RULE=policy,
+                    BUSINESS_CONTEXT=business_context,
                 ),
             },
             {
