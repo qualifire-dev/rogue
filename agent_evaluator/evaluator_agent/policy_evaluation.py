@@ -1,9 +1,10 @@
-from loguru import logger
-from agent_evaluator.models.chat_history import ChatHistory
+import os
 
 from litellm import completion
+from loguru import logger
 
-from agent_evaluator.models.evaluation_result import PolicyEvaluationResult
+from ..models.chat_history import ChatHistory
+from ..models.evaluation_result import PolicyEvaluationResult
 
 POLICY_EVALUATION_PROMPT = """
 You are tasked with evaluating an AI's adherence to a specific policy rule in a given conversation.
@@ -56,7 +57,20 @@ def evaluate_policy(
     model: str,
     api_key: str | None = None,
 ) -> PolicyEvaluationResult:
-    logger.info(f"Evaluating policy: {policy}")
+    if "/" not in model and model.startswith("gemini"):
+        if os.getenv("GOOGLE_GENAI_USE_VERTEXAI", "false").lower() == "true":
+            model = f"vertex_ai/{model}"
+        else:
+            model = f"gemini/{model}"
+
+    logger.info(
+        f"Evaluating policy",
+        extra={
+            "policy": policy,
+            "model": model,
+        },
+    )
+
     response = completion(
         model=model,
         api_key=api_key,
@@ -67,6 +81,10 @@ def evaluate_policy(
                     CONVERSATION_HISTORY=conversation.model_dump_json(),
                     POLICY_RULE=policy,
                 ),
+            },
+            {
+                "role": "user",
+                "content": "start",
             },
         ],
     )
