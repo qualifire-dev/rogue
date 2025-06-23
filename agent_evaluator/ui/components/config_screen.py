@@ -98,6 +98,21 @@ def create_config_screen(
         )
 
         gr.Markdown("## Evaluator Configuration")
+        gr.Markdown(
+            "Specify the models to be used for the evaluation process. The **Interviewer LLM** is "
+            "used to conduct the initial interview and generate test scenarios. The **Judge LLM** "
+            "is used by the evaluator agent to score the agent's performance against those scenarios."
+        )
+        interviewer_llm = gr.Textbox(
+            label="Interviewer LLM",
+            value=shared_state.value.get(
+                "config",
+                {},
+            ).get(
+                "interviewer_llm",
+                "openai/gpt-4.1",
+            ),
+        )
         judge_llm = gr.Textbox(
             label="Judge LLM",
             value=shared_state.value.get(
@@ -156,6 +171,7 @@ def create_config_screen(
         (interview_mode, "interview_mode"),
         (auth_type, "auth_type"),
         (auth_credentials, "auth_credentials"),
+        (interviewer_llm, "interviewer_llm"),
         (judge_llm, "judge_llm"),
         (judge_llm_api_key, "judge_llm_api_key"),
         (huggingface_api_key, "huggingface_api_key"),
@@ -187,6 +203,7 @@ def create_config_screen(
         interview_mode_val,
         auth_t,
         creds,
+        interviewer_llm_val,
         llm,
         llm_key,
         hf_key,
@@ -202,6 +219,7 @@ def create_config_screen(
                 agent_url=url,
                 auth_type=auth_t,
                 auth_credentials=creds,
+                interviewer_llm=interviewer_llm_val,
                 judge_llm=llm,
                 judge_llm_api_key=llm_key,
                 huggingface_api_key=hf_key,
@@ -260,6 +278,7 @@ def create_config_screen(
             interview_mode,
             auth_type,
             auth_credentials,
+            interviewer_llm,
             judge_llm,
             judge_llm_api_key,
             huggingface_api_key,
@@ -277,6 +296,7 @@ def create_config_screen(
         interview_mode,
         auth_type,
         auth_credentials,
+        interviewer_llm,
         judge_llm,
         judge_llm_api_key,
         huggingface_api_key,

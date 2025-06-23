@@ -15,7 +15,8 @@ class AgentConfig(BaseModel):
     agent_url: HttpUrl
     auth_type: AuthType
     auth_credentials: Optional[str] = None
-    judge_llm: str = "openai/gpt-4o"
+    interviewer_llm: str = "openai/gpt-4.1"
+    judge_llm: str = "openai/o4-mini"
     interview_mode: bool = True
 
     # This can be none when env is properly configured and/or in vertexai for example
