@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Iterator
 
 from loguru import logger
 
@@ -54,22 +55,33 @@ class ScenarioEvaluationService:
     def _evaluate_grounding_scenarios(self) -> EvaluationResults | None:
         pass
 
-    def evaluate_scenarios(self) -> EvaluationResults:
-        policy_results = self._evaluate_policy_scenarios()
-        prompt_injection_results = self._evaluate_prompt_injection_scenarios()
-        safety_results = self._evaluate_safety_scenarios()
-        grounding_results = self._evaluate_grounding_scenarios()
+    def evaluate_scenarios(self) -> Iterator[str | EvaluationResults]:
+        all_results = EvaluationResults()
 
-        combined_results = EvaluationResults.combine(
-            policy_results,
-            prompt_injection_results,
-            safety_results,
-            grounding_results,
-        )
+        # TODO: Implement this for all scenario types
+        for scenario in self._scenarios.scenarios:
+            yield f"Running scenario: {scenario.scenario}"
+            try:
+                scenarios = Scenarios(scenarios=[scenario])
+                results = run_evaluator_agent(
+                    evaluated_agent_url=str(self._evaluated_agent_url),
+                    auth_type=self._evaluated_agent_auth_type,
+                    auth_credentials=self._evaluated_agent_auth_credentials,
+                    judge_llm=self._judge_llm,
+                    judge_llm_api_key=self._judge_llm_api_key,
+                    scenarios=scenarios,
+                    business_context=self._business_context,
+                )
+                if results:
+                    all_results.add_result(results.results[0])
+            except Exception:
+                logger.exception(f"Error evaluating scenario: {scenario.scenario}")
+                # Optionally yield an error status
+                yield f"Error running scenario: {scenario.scenario}"
 
         self._evaluation_results_output_path.write_text(
-            combined_results.model_dump_json(indent=2, exclude_none=True),
+            all_results.model_dump_json(indent=2, exclude_none=True),
             encoding="utf-8",
         )
 
-        return combined_results
+        yield all_results

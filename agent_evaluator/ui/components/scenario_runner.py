@@ -75,7 +75,7 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
         judge_llm: str = config.get("judge_llm")  # type: ignore
         judge_llm_key: str = config.get("judge_llm_api_key")  # type: ignore
         business_context: str = config.get("business_context")  # type: ignore
-        
+
         logger.info(f"Business context: {business_context}")
 
         if isinstance(agent_auth_type, str):
@@ -96,7 +96,7 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                 workdir / f"evaluation_results_{datetime.now().isoformat()}.json"
             )
             state["evaluation_results_output_path"] = output_path
-            evaluation_results = ScenarioEvaluationService(
+            evaluation_service = ScenarioEvaluationService(
                 evaluated_agent_url=str(agent_url),
                 evaluated_agent_auth_type=agent_auth_type,
                 evaluated_agent_auth_credentials=agent_auth_credentials,
@@ -105,19 +105,31 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                 scenarios=scenarios,
                 evaluation_results_output_path=output_path,
                 business_context=business_context,
-            ).evaluate_scenarios()
+            )
+
+            final_results = None
+            for update in evaluation_service.evaluate_scenarios():
+                if isinstance(update, str):
+                    status_updates += f"{update}\n"
+                    yield state, status_updates, gr.update()
+                else:
+                    final_results = update
+
             logger.debug(
                 "scenario runner finished running evaluator agent",
-                extra={"results": evaluation_results.model_dump_json()},
+                extra={
+                    "results": final_results.model_dump_json() if final_results else {}
+                },
             )
 
             # Generate summary
             summary = LLMService().generate_summary_from_results(
                 model=service_llm,
-                results=evaluation_results,
+                results=final_results,
                 llm_provider_api_key=judge_llm_key,
             )
             state["summary"] = summary
+            state["results"] = final_results
 
         except Exception:
             logger.exception("Error running evaluator agent")
@@ -129,7 +141,6 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
             return
 
         status_updates += "\nEvaluation completed."
-        state["results"] = evaluation_results
         # Final update after loop completes
         yield state, status_updates, gr.update(selected="report")
 
