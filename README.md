@@ -18,7 +18,12 @@
 - gemini-2.5-flash
 
 #### Anthropic:
-- tbd
+- anthropic/claude-3-haiku-20240307
+- anthropic/claude-3-opus-latest
+- anthropic/claude-3-sonnet-20240229
+- anthropic/claude-3-5-haiku-latest
+- anthropic/claude-3-5-sonnet-latest
+- anthropic/claude-3-7-sonnet-latest
 
 
 ### The following models are not supported:
@@ -34,8 +39,6 @@
 - gemini-1.5-flash (working, but only sends 1 conversation for each scenario)
 - gemini-2.0-flash-lite (sometimes working)
 
-#### Anthropic:
-- tbd
 
 ### The following models haven't been tested:
 
@@ -53,3 +56,7 @@
 - gemini-1.5-flash-8b
 - gemini-2.5-pro
 - gemini-2.5-flash-lite-preview
+
+#### Anthropic:
+- anthropic/claude-opus-4-20250514
+- anthropic/claude-sonnet-4-20250514

@@ -11,6 +11,8 @@ from ..models.scenario import Scenarios, Scenario
 load_dotenv()
 
 
+BUSINESS_CONTEXT = "The agent sells t shirts to customers."
+
 openai_models: list[str] = [
     # "openai/gpt-3.5",
     # "openai/gpt-3.5-turbo",  # Not working
@@ -43,13 +45,14 @@ gemini_models: list[str] = [
     # "gemini-2.5-pro",  # Expensive
 ]
 anthropic_models: list[str] = [
-    "claude-opus-4",
-    "claude-sonnet-4",
-    "claude-3-7-sonnet",
-    "claude-3-5-haiku",
-    "claude-3-5-sonnet",
-    "claude-3-opus",
-    "claude-3-haiku",
+    # "anthropic/claude-3-haiku-20240307",  # working
+    # "anthropic/claude-3-opus-latest",  # working
+    # "anthropic/claude-3-sonnet-20240229",  # working
+    # "anthropic/claude-3-5-haiku-latest",  # working
+    # "anthropic/claude-3-5-sonnet-latest",  # working
+    # "anthropic/claude-3-7-sonnet-latest",  # working
+    # "anthropic/claude-opus-4-20250514",
+    # "anthropic/claude-sonnet-4-20250514",
 ]
 
 scenarios = Scenarios(
@@ -71,6 +74,7 @@ def run_agent(model: str) -> EvaluationResults:
         judge_llm=model,
         judge_llm_api_key=None,
         scenarios=scenarios,
+        business_context=BUSINESS_CONTEXT,
     )
 
 
@@ -129,7 +133,7 @@ def test_models(models: list[str] | None = None) -> dict[bool, list[str]]:
 def main():
     configure_logger()
     # litellm._turn_on_debug()
-    print(test_models(gemini_models))
+    print(test_models(anthropic_models))
     # run_agent("gemini-2.0-flash-001")
 
 
