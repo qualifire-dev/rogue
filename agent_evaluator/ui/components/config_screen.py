@@ -121,7 +121,7 @@ def create_config_screen(
                 {},
             ).get(
                 "judge_llm",
-                "openai/gpt-4.1",
+                "openai/o4-mini",
             ),
         )
         judge_llm_api_key = gr.Textbox(

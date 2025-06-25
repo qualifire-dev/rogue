@@ -476,6 +476,8 @@ class EvaluatorAgent:
         self,
         context_id: str,
         policy: str,
+        *args,  # noqa: ARG002
+        **kwargs,  # noqa: ARG002
     ) -> dict[str, Any]:
         """
         Evaluates the given conversation against the given policy.
@@ -489,6 +491,10 @@ class EvaluatorAgent:
                 "policy": str
             }
         """
+        if policy is None or policy == "":
+            logger.warning("Policy is empty, skipping evaluation")
+            return {"passed": False, "reason": "Policy is empty", "policy": policy}
+
         conversation = self._context_id_to_chat_history[context_id]
         return evaluate_policy(
             conversation=conversation,
