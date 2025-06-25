@@ -1,7 +1,9 @@
 import os
+import re
 
 from litellm import completion
 from loguru import logger
+from pydantic import ValidationError
 
 from ..models.chat_history import ChatHistory
 from ..models.evaluation_result import PolicyEvaluationResult
@@ -43,9 +45,9 @@ Be specific and reference particular parts of the conversation if relevant.
 
 6. Create a JSON output with the following structure:
    {{
-       "reason": [Your reason for the judgment],
-       "passed": [true if the conversation complied with the policy, false if it violated it],
-       "policy": [The policy rule that was evaluated]
+       "reason": <Your reason for the judgment>,
+       "passed": <true if the conversation complied with the policy, false if it violated it>,
+       "policy": <The policy rule that was evaluated>
    }}
 
 Remember to think critically about the nuances of the conversation and
@@ -54,6 +56,69 @@ subtle ways the AI might have failed to adhere to the policy.
 
 Your final output should be just the JSON object described above. Do not include any additional explanation or commentary outside of this JSON structure.
 """
+
+llm_output_regexes = [
+    re.compile(r"```json\n(.*)\n```", re.DOTALL),
+    re.compile(r"(\{.*\})", re.DOTALL),
+]
+
+
+def _try_parse_raw_json(output: str) -> PolicyEvaluationResult | None:
+    logger.debug(
+        "Attempting to parse LLM output as raw JSON",
+        extra={
+            "output": output,
+        },
+    )
+    cleaned_output = output.replace(
+        "```json",
+        "",
+    ).replace(
+        "```",
+        "",
+    )
+    try:
+        return PolicyEvaluationResult.model_validate_json(cleaned_output)
+    except ValidationError:
+        logger.error(  # We don't need the traceback here, so I'm not using logger.exception
+            "Failed to parse response as raw",
+            extra={
+                "output": output,
+                "cleaned_output": cleaned_output,
+            },
+        )
+        return None
+
+
+def _try_parse_regex(output: str) -> PolicyEvaluationResult | None:
+    """
+    this is a fallback for when the LLM output returns more than one JSON object
+    """
+    logger.debug(
+        "Attempting to parse LLM output as regex",
+        extra={
+            "output": output,
+        },
+    )
+    for llm_output_regex in llm_output_regexes:
+        try:
+            match = llm_output_regex.search(output)
+            if match:
+                return PolicyEvaluationResult.model_validate_json(match.group(1))
+        except Exception:
+            continue
+    logger.error(
+        "Failed to parse LLM output as regex",
+        extra={"output": output},
+    )
+    return None
+
+
+def _parse_llm_output(output: str) -> PolicyEvaluationResult:
+    evaluation_result = _try_parse_raw_json(output) or _try_parse_regex(output)
+    if evaluation_result is None:
+        raise ValueError("Failed to parse LLM output")
+    return evaluation_result
 
 
 def evaluate_policy(
@@ -96,20 +161,4 @@ def evaluate_policy(
         ],
     )
 
-    raw_data = (
-        response.choices[0]
-        .message.content.replace(
-            "```json",
-            "",
-        )
-        .replace(
-            "```",
-            "",
-        )
-    )
-
-    policy_evaluation_response = PolicyEvaluationResult.model_validate_json(
-        raw_data,
-    )
-
-    return policy_evaluation_response
+    return _parse_llm_output(response.choices[0].message.content)
