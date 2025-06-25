@@ -1,9 +1,9 @@
 from pathlib import Path
-from typing import Iterator
+from typing import AsyncGenerator, Any
 
 from loguru import logger
 
-from ..evaluator_agent.run_evaluator_agent import run_evaluator_agent
+from ..evaluator_agent.run_evaluator_agent import arun_evaluator_agent
 from ..models.config import AuthType
 from ..models.evaluation_result import EvaluationResults
 from ..models.scenario import Scenarios
@@ -33,7 +33,7 @@ class ScenarioEvaluationService:
     def _evaluate_policy_scenarios(self) -> EvaluationResults | None:
         policy_scenarios = self._scenarios.get_policy_scenarios()
         try:
-            return run_evaluator_agent(
+            return arun_evaluator_agent(
                 evaluated_agent_url=str(self._evaluated_agent_url),
                 auth_type=self._evaluated_agent_auth_type,
                 auth_credentials=self._evaluated_agent_auth_credentials,
@@ -55,15 +55,15 @@ class ScenarioEvaluationService:
     def _evaluate_grounding_scenarios(self) -> EvaluationResults | None:
         pass
 
-    def evaluate_scenarios(self) -> Iterator[str | EvaluationResults]:
+    async def evaluate_scenarios(self) -> AsyncGenerator[tuple[str, Any], None]:
         all_results = EvaluationResults()
 
         # TODO: Implement this for all scenario types
         for scenario in self._scenarios.scenarios:
-            yield f"Running scenario: {scenario.scenario}"
+            yield "status", f"Running scenario: {scenario.scenario}"
             try:
                 scenarios = Scenarios(scenarios=[scenario])
-                results = run_evaluator_agent(
+                async for update_type, data in arun_evaluator_agent(
                     evaluated_agent_url=str(self._evaluated_agent_url),
                     auth_type=self._evaluated_agent_auth_type,
                     auth_credentials=self._evaluated_agent_auth_credentials,
@@ -71,17 +71,22 @@ class ScenarioEvaluationService:
                     judge_llm_api_key=self._judge_llm_api_key,
                     scenarios=scenarios,
                     business_context=self._business_context,
-                )
-                if results:
-                    all_results.add_result(results.results[0])
+                ):
+                    if update_type == "results":
+                        results = data
+                        if results and results.results:
+                            all_results.add_result(results.results[0])
+                    else:  # it's a 'chat' update
+                        yield update_type, data
+
             except Exception:
                 logger.exception(f"Error evaluating scenario: {scenario.scenario}")
                 # Optionally yield an error status
-                yield f"Error running scenario: {scenario.scenario}"
+                yield "status", f"Error running scenario: {scenario.scenario}"
 
         self._evaluation_results_output_path.write_text(
             all_results.model_dump_json(indent=2, exclude_none=True),
             encoding="utf-8",
         )
 
-        yield all_results
+        yield "results", all_results

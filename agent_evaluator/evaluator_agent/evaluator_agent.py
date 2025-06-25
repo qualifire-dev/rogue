@@ -1,5 +1,5 @@
 import json
-from typing import Optional, Any
+from typing import Optional, Any, Callable
 from uuid import uuid4
 
 from a2a.client import A2ACardResolver
@@ -139,6 +139,7 @@ class EvaluatorAgent:
         business_context: str,
         llm_auth: Optional[str] = None,
         debug: bool = False,
+        chat_update_callback: Optional[Callable[[dict], None]] = None,
     ) -> None:
         self._http_client = http_client
         self._evaluated_agent_address = evaluated_agent_address
@@ -150,6 +151,7 @@ class EvaluatorAgent:
         self._context_id_to_chat_history: dict[str, ChatHistory] = {}
         self._debug = debug
         self._business_context = business_context
+        self._chat_update_callback = chat_update_callback
 
     async def _get_evaluated_agent_client(self) -> RemoteAgentConnections:
         logger.debug("_get_evaluated_agent - enter")
@@ -418,6 +420,11 @@ class EvaluatorAgent:
             },
         )
 
+        if self._chat_update_callback:
+            self._chat_update_callback(
+                {"role": "Evaluator Agent", "content": message},
+            )
+
         if context_id not in self._context_id_to_chat_history:
             self._context_id_to_chat_history[context_id] = ChatHistory()
 
@@ -450,12 +457,20 @@ class EvaluatorAgent:
             logger.debug("_send_message_to_evaluated_agent - no response")
             return {"response": ""}
 
+        agent_response_text = (
+            self._get_text_from_response(response) or "Not a text response"
+        )
         self._context_id_to_chat_history[context_id].add_message(
             HistoryMessage(
                 role="assistant",
-                content=self._get_text_from_response(response) or "Not a test response",
+                content=agent_response_text,
             ),
         )
+
+        if self._chat_update_callback:
+            self._chat_update_callback(
+                {"role": "Agent Under Test", "content": agent_response_text},
+            )
 
         logger.debug(
             "_send_message_to_evaluated_agent - response",

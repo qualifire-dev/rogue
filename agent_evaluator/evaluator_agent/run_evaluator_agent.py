@@ -1,4 +1,5 @@
 import asyncio
+from typing import AsyncGenerator, Any
 
 from a2a.types import (
     AgentCapabilities,
@@ -14,7 +15,6 @@ from loguru import logger
 from .evaluator_agent import EvaluatorAgent
 from ..common.agent_sessions import create_session
 from ..models.config import AuthType
-from ..models.evaluation_result import EvaluationResults
 from ..models.scenario import Scenarios
 
 
@@ -101,8 +101,10 @@ async def arun_evaluator_agent(
     judge_llm_api_key: str | None,
     scenarios: Scenarios,
     business_context: str,
-) -> EvaluationResults:
+) -> AsyncGenerator[tuple[str, Any], None]:
     headers = _get_headers(auth_credentials, auth_type)
+    update_queue = asyncio.Queue()
+    results_queue = asyncio.Queue()
 
     async with AsyncClient(headers=headers) as httpx_client:
         evaluator_agent = EvaluatorAgent(
@@ -112,6 +114,7 @@ async def arun_evaluator_agent(
             scenarios=scenarios,
             llm_auth=judge_llm_api_key,
             business_context=business_context,
+            chat_update_callback=update_queue.put_nowait,
         )
 
         session_service = InMemorySessionService()
@@ -131,27 +134,24 @@ async def arun_evaluator_agent(
 
         logger.info("evaluator_agent started")
 
-        await _run_agent(runner, input_text="start", session=session)
-        return evaluator_agent.get_evaluation_results()
+        async def agent_runner_task():
+            # This task just runs the agent and puts the final result on a separate queue
+            await _run_agent(runner, "start", session)
+            results = evaluator_agent.get_evaluation_results()
+            await results_queue.put(results)
 
+        runner_task = asyncio.create_task(agent_runner_task())
 
-def run_evaluator_agent(
-    evaluated_agent_url: str,
-    auth_type: AuthType,
-    auth_credentials: str | None,
-    judge_llm: str,
-    judge_llm_api_key: str | None,
-    business_context: str,
-    scenarios: Scenarios,
-) -> EvaluationResults:
-    return asyncio.run(
-        arun_evaluator_agent(
-            evaluated_agent_url=evaluated_agent_url,
-            auth_type=auth_type,
-            auth_credentials=auth_credentials,
-            judge_llm=judge_llm,
-            judge_llm_api_key=judge_llm_api_key,
-            business_context=business_context,
-            scenarios=scenarios,
-        ),
-    )
+        while not runner_task.done():
+            try:
+                # wait for a chat message, but with a timeout
+                message = await asyncio.wait_for(update_queue.get(), timeout=0.1)
+                yield "chat", message
+            except asyncio.TimeoutError:
+                continue
+
+        # once runner_task is done, get the final result
+        final_results = await results_queue.get()
+        yield "results", final_results
+
+        await runner_task  # check for exceptions

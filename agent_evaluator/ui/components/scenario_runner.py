@@ -24,6 +24,11 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
             lines=10,
             interactive=False,
         )
+        live_chat_display = gr.Chatbot(
+            label="Live Evaluation Chat",
+            height=400,
+            visible=False,
+        )
         run_button = gr.Button("Run Scenarios")
 
     def update_scenarios_in_state(
@@ -47,26 +52,33 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
         outputs=[shared_state],
     )
 
-    def run_and_evaluate_scenarios(state):
+    async def run_and_evaluate_scenarios(state):
         config = state.get("config", {})
         scenarios = state.get("scenarios")
+
+        yield state, "Starting...", gr.update(visible=True, value=[]), gr.update()
 
         if not config or not scenarios:
             gr.Warning(
                 "Config or scenarios not found. " "Please complete previous steps."
             )
             # The return signature must match the outputs of the click event
-            return state, "Missing config or scenarios.", gr.update()
+            yield state, "Missing config or scenarios.", gr.update(
+                value=[]
+            ), gr.update()
+            return
 
         try:
             scenarios = Scenarios.model_validate(scenarios)
         except (ValidationError, AttributeError):
-            return (
+            yield (
                 state,
                 "Scenarios are misconfigured. "
                 "Please check the JSON format and regenerate them if needed.",
+                gr.update(value=[]),
                 gr.update(),
             )
+            return
 
         agent_url: HttpUrl = config.get("agent_url")  # type: ignore
         agent_auth_type: AuthType | str = config.get("auth_type")  # type: ignore
@@ -87,8 +99,9 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
 
         status_updates = "Starting execution...\n"
         state["results"] = []  # Clear previous results
+        chat_history = []
 
-        yield state, status_updates, gr.update()
+        yield state, status_updates, chat_history, gr.update()
 
         try:
             workdir = state.get("workdir")
@@ -108,12 +121,25 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
             )
 
             final_results = None
-            for update in evaluation_service.evaluate_scenarios():
-                if isinstance(update, str):
-                    status_updates += f"{update}\n"
-                    yield state, status_updates, gr.update()
-                else:
-                    final_results = update
+            async for update_type, data in evaluation_service.evaluate_scenarios():
+                if update_type == "status":
+                    status_updates += f"{data}\n"
+                    chat_history = []  # Clear chat for new scenario
+                    yield state, status_updates, chat_history, gr.update()
+                elif update_type == "chat":
+                    if data["role"] == "Evaluator Agent":
+                        chat_history.append([data["content"], None])
+                    else:  # Agent Under Test
+                        if chat_history and chat_history[-1][1] is None:
+                            chat_history[-1][1] = data["content"]
+                        else:  # Should not happen if messages are paired
+                            chat_history.append([None, data["content"]])
+                    yield state, status_updates, chat_history, gr.update()
+                elif update_type == "results":
+                    final_results = data
+
+            if not final_results:
+                raise ValueError("Evaluation failed to produce results.")
 
             logger.debug(
                 "scenario runner finished running evaluator agent",
@@ -136,13 +162,14 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
             yield (
                 state,
                 "Error evaluating scenarios.",
+                chat_history,
                 gr.update(),
             )
             return
 
         status_updates += "\nEvaluation completed."
         # Final update after loop completes
-        yield state, status_updates, gr.update(selected="report")
+        yield state, status_updates, chat_history, gr.update(selected="report")
 
     run_button.click(
         fn=run_and_evaluate_scenarios,
@@ -150,6 +177,7 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
         outputs=[
             shared_state,
             status_box,
+            live_chat_display,
             tabs_component,
         ],
     )
