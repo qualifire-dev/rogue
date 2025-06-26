@@ -31,7 +31,7 @@ runs:
         pip install -r ${{ inputs.requirements_file }}
     - name: "Bandit"
       shell: bash
-      run: bandit -c .bandit.yaml -rv ${{ inputs.workdir }}
+      run: bandit -c .bandit.yaml -r -v ${{ inputs.workdir }}
     - name: "Mypy"
       shell: bash
       run: mypy --config-file .mypy.ini ${{ inputs.workdir }}
