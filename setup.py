@@ -5,9 +5,9 @@ with open("requirements.txt", "r") as f:
 
 
 setuptools.setup(
-    name="agent_evaluator",
+    name="rogue",
     version="0.0.1",
-    description="Qualifire Agent Evaluator",
+    description="Rogue agent evaluator",
     python_requires=">=3.11",
     install_requires=requirements,
 )

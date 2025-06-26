@@ -40,15 +40,17 @@ def create_config_screen(
     shared_state: gr.State,
     tabs_component: gr.Tabs,
 ):
+    config_data = {}
+    if shared_state.value and isinstance(shared_state.value, dict):
+        config_data = shared_state.value.get("config", {})
+
+    logger.info(f">>>>>>>>>>> Config data: {config_data}")
     with gr.Column():
         gr.Markdown("## Agent Configuration")
         agent_url = gr.Textbox(
             label="Agent URL",
-            placeholder="http://localhost:8000/agent",
-            value=shared_state.value.get(
-                "config",
-                {},
-            ).get(
+            placeholder="http://localhost:8000",
+            value=config_data.get(
                 "agent_url",
                 "http://localhost:10001",
             ),
@@ -58,10 +60,7 @@ def create_config_screen(
         gr.Markdown("**Interview Mode**")
         interview_mode = gr.Checkbox(
             label="Enable AI-powered business context interview",
-            value=shared_state.value.get(
-                "config",
-                {},
-            ).get(
+            value=config_data.get(
                 "interview_mode",
                 True,
             ),
@@ -74,10 +73,7 @@ def create_config_screen(
         auth_type = gr.Dropdown(
             label="Authentication Type",
             choices=[e.value for e in AuthType],
-            value=shared_state.value.get(
-                "config",
-                {},
-            ).get(
+            value=config_data.get(
                 "auth_type",
                 AuthType.NO_AUTH.value,
             ),
@@ -86,10 +82,7 @@ def create_config_screen(
             label="Authentication Credentials",
             type="password",
             visible=(
-                shared_state.value.get(
-                    "config",
-                    {},
-                ).get("auth_type", AuthType.NO_AUTH.value)
+                config_data.get("auth_type", AuthType.NO_AUTH.value)
                 != AuthType.NO_AUTH.value
             ),
         )
@@ -102,25 +95,23 @@ def create_config_screen(
             "Specify the models for the evaluation process. The **Service LLM** will be used to "
             "interview, generate scenarios and summaries. The **Judge LLM** is used by the "
             "evaluator agent to score the agent's performance against those scenarios."
-            "\n\nℹ️ Under the hood we're using litellm to abstract the model so see a list of supported models [here](https://docs.litellm.ai/docs/providers). This also means that you can just use the environment variables to set the api keys ."
         )
-        
+        gr.Markdown(
+            "ℹ️ Under the hood we're using `litellm`. See the "
+            "[list of supported models](https://docs.litellm.ai/docs/providers). "
+            "You can use environment variables for API keys."
+        )
+
         service_llm = gr.Textbox(
             label="Service LLM",
-            value=shared_state.value.get(
-                "config",
-                {},
-            ).get(
+            value=config_data.get(
                 "service_llm",
                 "openai/gpt-4.1",
             ),
         )
         judge_llm = gr.Textbox(
             label="Judge LLM",
-            value=shared_state.value.get(
-                "config",
-                {},
-            ).get(
+            value=config_data.get(
                 "judge_llm",
                 "openai/o4-mini",
             ),
@@ -128,10 +119,7 @@ def create_config_screen(
         judge_llm_api_key = gr.Textbox(
             label="Judge LLM API Key",
             type="password",
-            value=shared_state.value.get(
-                "config",
-                {},
-            ).get("judge_llm_api_key", ""),
+            value=config_data.get("judge_llm_api_key", ""),
         )
         judge_llm_api_key_error = gr.Markdown(
             visible=False,
@@ -141,10 +129,7 @@ def create_config_screen(
         huggingface_api_key = gr.Textbox(
             label="HuggingFace API Key",
             type="password",
-            value=shared_state.value.get(
-                "config",
-                {},
-            ).get(
+            value=config_data.get(
                 "huggingface_api_key",
                 "",
             ),

@@ -13,7 +13,6 @@ from .orchestrator_agent.orchestrator_agent import OrchestratorAgentFactory
 
 
 def get_config_from_ui() -> UserConfig:
-    # TODO: dror
     # this is a placeholder for now
     return UserConfig(
         evaluated_agent_url="http://localhost:10001",

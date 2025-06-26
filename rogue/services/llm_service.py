@@ -3,7 +3,7 @@ from typing import Optional
 from litellm import completion
 from loguru import logger
 
-from agent_evaluator.models.evaluation_result import EvaluationResults
+from rogue.models.evaluation_result import EvaluationResults
 from ..models.scenario import Scenario, ScenarioType, Scenarios
 
 SCENARIO_GENERATION_SYSTEM_PROMPT = """

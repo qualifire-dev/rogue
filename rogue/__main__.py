@@ -28,7 +28,7 @@ def parse_args():
     ui_parser.add_argument(
         "--workdir",
         type=Path,
-        default=Path.home() / ".qualifire" / "agent_evaluator_runs",
+        default=Path.home() / ".rogue" / "agent_evaluator_runs",
         help="Working directory",
     )
 

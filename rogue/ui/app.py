@@ -109,19 +109,23 @@ def get_app(workdir: Path):
             auth_type_val = config.get("auth_type", AuthType.NO_AUTH.value)
             return {
                 shared_state: state,
-                agent_url: gr.update(value=config.get("agent_url")),
-                interview_mode: gr.update(value=config.get("interview_mode")),
+                agent_url: gr.update(
+                    value=config.get("agent_url", "http://localhost:10001")
+                ),
+                interview_mode: gr.update(value=config.get("interview_mode", True)),
                 auth_type: gr.update(value=auth_type_val),
                 auth_credentials: gr.update(
-                    value=config.get("auth_credentials"),
+                    value=config.get("auth_credentials", ""),
                     visible=auth_type_val != AuthType.NO_AUTH.value,
                 ),
                 service_llm: gr.update(
                     value=config.get("service_llm", "openai/gpt-4.1")
                 ),
                 judge_llm: gr.update(value=config.get("judge_llm", "openai/o4-mini")),
-                judge_llm_api_key: gr.update(value=config.get("judge_llm_api_key")),
-                huggingface_api_key: gr.update(value=config.get("huggingface_api_key")),
+                judge_llm_api_key: gr.update(value=config.get("judge_llm_api_key", "")),
+                huggingface_api_key: gr.update(
+                    value=config.get("huggingface_api_key", "")
+                ),
             }
 
         app.load(

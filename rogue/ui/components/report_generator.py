@@ -4,7 +4,7 @@ from typing import Tuple
 import gradio as gr
 from loguru import logger
 
-from agent_evaluator.models.evaluation_result import EvaluationResults
+from rogue.models.evaluation_result import EvaluationResults
 
 
 def _load_report_data_from_files(

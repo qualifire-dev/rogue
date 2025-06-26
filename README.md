@@ -40,7 +40,7 @@ Rogue's workflow is designed to be simple and intuitive, managed entirely throug
 1.  **Clone the repository:**
 
     ```bash
-    git clone https://github.com/your-username/rogue.git
+    git clone https://github.com/qualifire-dev/rogue.git
     cd rogue
     ```
 
@@ -48,6 +48,7 @@ Rogue's workflow is designed to be simple and intuitive, managed entirely throug
 
     ```bash
     pip install -r requirements.txt
+    pip install -e .
     ```
 
 3.  **OPTIONALLY: Set up your environment variables:**
@@ -63,7 +64,7 @@ Rogue's workflow is designed to be simple and intuitive, managed entirely throug
 Launch the Gradio web UI with the following command:
 
 ```bash
-python -m agent_evaluator.ui.run_ui
+python -m rogue
 ```
 
 Navigate to the URL displayed in your terminal (usually `http://127.0.0.1:7860`) to begin.
@@ -77,7 +78,7 @@ This repository includes a simple example agent that sells T-shirts. You can use
 1.  **Start the example agent server** in a separate terminal:
 
     ```bash
-    python -m examples.tshirt_store_agent
+    python examples/tshirt_store_agent
     ```
 
     This will start the agent on `http://localhost:10001`.
