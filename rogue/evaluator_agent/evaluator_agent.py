@@ -169,7 +169,7 @@ class EvaluatorAgent:
         evaluated_agent_address: str,
         model: str,
         scenarios: Scenarios,
-        business_context: str,
+        business_context: Optional[str],
         llm_auth: Optional[str] = None,
         debug: bool = False,
         chat_update_callback: Optional[Callable[[dict], None]] = None,
@@ -184,7 +184,7 @@ class EvaluatorAgent:
         self.__evaluated_agent_client: RemoteAgentConnections | None = None
         self._context_id_to_chat_history: dict[str, ChatHistory] = {}
         self._debug = debug
-        self._business_context = business_context
+        self._business_context = business_context or ""
         self._chat_update_callback = chat_update_callback
         self._deep_test_mode = deep_test_mode
 

@@ -86,7 +86,7 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
         service_llm: str = config.get("service_llm")  # type: ignore
         judge_llm: str = config.get("judge_llm")  # type: ignore
         judge_llm_key: str = config.get("judge_llm_api_key")  # type: ignore
-        business_context: str = config.get("business_context")  # type: ignore
+        business_context: str = state.get("business_context")  # type: ignore
         deep_test_mode: bool = config.get("deep_test_mode", False)  # type: ignore
 
         logger.info(f"Business context: {business_context}")
