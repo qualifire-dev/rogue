@@ -4,32 +4,6 @@
 
 Rogue is a powerful, UI-driven tool designed to evaluate the performance, compliance, and reliability of other AI agents. It pits a dynamic `EvaluatorAgent` against your agent, testing it with a range of scenarios to ensure it behaves exactly as intended.
 
-```mermaid
-graph TD;
-    subgraph "You"
-        User[Developer]
-    end
-
-    subgraph "Rogue"
-        UI[Gradio UI]
-        Evaluator[Evaluator Agent]
-        LLM[LLM Services]
-    end
-
-    subgraph "Your Agent"
-        AUT[Agent Under Test]
-    end
-
-    User -- "1. Provides Agent URL & Business Context" --> UI;
-    UI -- "2. Gets Scenarios from" --> LLM;
-    UI -- "3. Starts Evaluation" --> Evaluator;
-    Evaluator -- "4. Sends Test Messages" --> AUT;
-    AUT -- "5. Responds" --> Evaluator;
-    Evaluator -- "6. Gets Judgment from" --> LLM;
-    Evaluator -- "7. Streams Live Chat" --> UI;
-    UI -- "8. Displays Final Report" --> User;
-```
-
 ## Key Features
 
 - **Dynamic Scenario Generation**: Automatically creates a comprehensive test suite from your high-level business context.
