@@ -29,7 +29,7 @@ def _load_report_data_from_files(
 
 def create_report_generator_screen(
     shared_state: gr.State,
-) -> Tuple[gr.Code, gr.Markdown, gr.Button]:
+) -> Tuple[gr.JSON, gr.Markdown, gr.Button]:
     with gr.Column():
         gr.Markdown("# Test Report")
         with gr.Row():

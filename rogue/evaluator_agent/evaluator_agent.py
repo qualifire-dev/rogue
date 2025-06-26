@@ -441,7 +441,7 @@ class EvaluatorAgent:
         self,
         context_id: str,
         message: str,
-    ) -> dict:
+    ) -> str:
         """
         Sends a message to the evaluated agent.
         :param message: the text to send to the other agent.

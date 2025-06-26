@@ -1,4 +1,5 @@
 import asyncio
+from asyncio import Queue
 from typing import AsyncGenerator, Any
 
 from a2a.types import (
@@ -104,8 +105,8 @@ async def arun_evaluator_agent(
     deep_test_mode: bool,
 ) -> AsyncGenerator[tuple[str, Any], None]:
     headers = _get_headers(auth_credentials, auth_type)
-    update_queue = asyncio.Queue()
-    results_queue = asyncio.Queue()
+    update_queue: Queue = Queue()
+    results_queue: Queue = Queue()
 
     async with AsyncClient(headers=headers) as httpx_client:
         evaluator_agent = EvaluatorAgent(

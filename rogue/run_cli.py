@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 import httpx
 from a2a.client import A2ACardResolver
 from a2a.types import AgentCard
@@ -17,7 +19,7 @@ def get_config_from_ui() -> UserConfig:
     return UserConfig(
         evaluated_agent_url="http://localhost:10001",
         authorization_header=None,
-        model="openai/gpt-4o",
+        judge_model="openai/gpt-4o",
     )
 
 
@@ -63,12 +65,16 @@ def create_orchestrator_agent(
     ).create_agent()
 
 
-def run_sequential_agent(
+async def run_sequential_agent(
     sequential_agent_runner: Runner,
     input_text: str,
     session: Session | None = None,
 ) -> None:
-    session = session or create_session()
+    session = session or await create_session(
+        app_name="rogue agent evaluator",
+        session_service=InMemorySessionService(),
+        user_id=uuid4().hex,
+    )
 
     # Create content from user input
     content = types.Content(
@@ -118,7 +124,7 @@ async def run_cli(
         session_service=InMemorySessionService(),
     )
 
-    run_sequential_agent(
+    await run_sequential_agent(
         root_agent_runner,
         input_text="start",
     )

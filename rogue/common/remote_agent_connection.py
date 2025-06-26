@@ -91,7 +91,7 @@ class RemoteAgentConnections:
                     return event
 
                 # Otherwise we are in the Task + TaskUpdate cycle.
-                if task_callback and event:
+                if task_callback is not None and event:
                     task = task_callback(event, self.card)
                 if hasattr(event, "final") and event.final:
                     break
@@ -113,6 +113,6 @@ class RemoteAgentConnections:
             if isinstance(response.root.result, Message):
                 return response.root.result
 
-            if task_callback:
+            if task_callback is not None:
                 task_callback(response.root.result, self.card)
             return response.root.result

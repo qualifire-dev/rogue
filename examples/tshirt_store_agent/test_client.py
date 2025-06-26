@@ -90,7 +90,7 @@ async def send_message(
         print_json_response(get_response, "Query Task Response")
 
     try:
-        return get_response.root.result.artifacts[0].parts[0].root.text
+        return get_response.root.result.artifacts[0].parts[0].root.text  # type: ignore
     except Exception:
         return "Unable to get response from agent"
 
