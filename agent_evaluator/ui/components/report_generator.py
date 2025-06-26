@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Tuple
 
 import gradio as gr
+from loguru import logger
 
 from agent_evaluator.models.evaluation_result import EvaluationResults
 
@@ -53,6 +54,16 @@ def setup_report_generator_logic(
     def on_report_tab_select(state):
         results = state.get("results", EvaluationResults())
         summary = state.get("summary", "No summary available.")
+
+        # Ensure results is not a list before calling model_dump_json
+        if isinstance(results, list):
+            logger.warning(
+                "Results is a list, setting to empty EvaluationResults",
+                extra={
+                    "results": results,
+                },
+            )
+            results = EvaluationResults()
 
         return {
             evaluation_results_display: gr.update(

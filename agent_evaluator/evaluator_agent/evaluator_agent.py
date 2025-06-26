@@ -390,7 +390,8 @@ class EvaluatorAgent:
             artifacts_text = ""
 
             for artifact in response.artifacts:
-                artifacts_text += f"Artifact: {artifact.name}:\n"
+                if artifact.name:
+                    artifacts_text += f"Artifact: {artifact.name}:\n"
                 artifacts_text += get_parts_text(artifact.parts)
                 artifacts_text += "\n"
 

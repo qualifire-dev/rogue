@@ -2,16 +2,18 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Rogue is a powerful, UI-driven tool designed to evaluate the performance, compliance, and reliability of other AI agents. It pits a dynamic `EvaluatorAgent` against your agent, testing it with a range of scenarios to ensure it behaves exactly as intended.
+Rogue is a powerful, tool designed to evaluate the performance, compliance, and reliability of AI agents. It pits a dynamic `EvaluatorAgent` against your agent using Google's A2A protocol, testing it with a range of scenarios to ensure it behaves exactly as intended.
+
+![Rogue Flow](flow.png)
 
 ## Key Features
 
-- **Dynamic Scenario Generation**: Automatically creates a comprehensive test suite from your high-level business context.
-- **Live Evaluation Monitoring**: Watch the interaction between the Evaluator and your agent in a real-time chat interface.
-- **Comprehensive Reporting**: Generates a detailed summary of the evaluation, including pass/fail rates, key findings, and recommendations.
-- **Multi-Faceted Testing**: Natively supports testing for policy compliance, with a flexible framework to expand to other areas like prompt injection or safety.
-- **Broad Model Support**: Compatible with a wide range of models from providers like OpenAI, Google (Gemini), and Anthropic.
-- **User-Friendly Interface**: A simple, step-by-step Gradio UI guides you through configuration, execution, and reporting.
+- **🔄 Dynamic Scenario Generation**: Automatically creates a comprehensive test suite from your high-level business context.
+- **👀 Live Evaluation Monitoring**: Watch the interaction between the Evaluator and your agent in a real-time chat interface.
+- **📊 Comprehensive Reporting**: Generates a detailed summary of the evaluation, including pass/fail rates, key findings, and recommendations.
+- **🔍 Multi-Faceted Testing**: Natively supports testing for policy compliance, with a flexible framework to expand to other areas like prompt injection or safety.
+- **🤖 Broad Model Support**: Compatible with a wide range of models from providers like OpenAI, Google (Gemini), and Anthropic.
+- **🎯 User-Friendly Interface**: A simple, step-by-step Gradio UI guides you through configuration, execution, and reporting.
 
 ---
 
@@ -26,11 +28,11 @@ Rogue's workflow is designed to be simple and intuitive, managed entirely throug
 
 ---
 
-## Getting Started
+## 🔥 Quick Start
 
 ### Prerequisites
 
-- Python 3.9+
+- Python 3.11+
 - An API key for an LLM provider (e.g., OpenAI, Google, Anthropic).
 
 ### Installation
@@ -48,7 +50,7 @@ Rogue's workflow is designed to be simple and intuitive, managed entirely throug
     pip install -r requirements.txt
     ```
 
-3.  **Set up your environment variables:**
+3.  **OPTIONALLY: Set up your environment variables:**
     Create a `.env` file in the root directory and add your API keys. Rogue uses `LiteLLM`, so you can set keys for various providers.
     ```env
     OPENAI_API_KEY="sk-..."
@@ -106,57 +108,25 @@ _The following tables show the models we have tested with Rogue._
 
 #### Gemini (vertex or google-ai):
 
-- gemini-2.0-flash
-- gemini-1.5-pro
 - gemini-2.5-flash
+- gemini-2.5-pro
 
 #### Anthropic:
 
-- anthropic/claude-3-haiku-20240307
-- anthropic/claude-3-opus-latest
-- anthropic/claude-3-sonnet-20240229
-- anthropic/claude-3-5-haiku-latest
 - anthropic/claude-3-5-sonnet-latest
 - anthropic/claude-3-7-sonnet-latest
+- anthropic/claude-4-sonnet-latest
 
 ### The following models are not supported:
 
 #### OpenAI:
 
-- openai/gpt-3.5
-- openai/gpt-3.5-turbo
-- openai/gpt-4.1-nano
-- openai/o1-mini
-- openai/o3-mini
+- openai/o1 (including mini)
+- openai/o4 (including mini)
 
 #### Gemini (vertex or google-ai):
 
-- gemini-1.5-flash (working, but only sends 1 conversation for each scenario)
-- gemini-2.0-flash-lite (sometimes working)
-
-### The following models haven't been tested:
-
-#### OpenAI:
-
-- openai/gpt-4
-- openai/gpt-4-32k
-- openai/gpt-4-turbo
-- openai/o1
-- openai/o1-pro
-- openai/o3
-- openai/o3-pro
-
-#### Gemini
-
-- gemini-1.0-pro
-- gemini-1.5-flash-8b
-- gemini-2.5-pro
-- gemini-2.5-flash-lite-preview
-
-#### Anthropic:
-
-- anthropic/claude-opus-4-20250514
-- anthropic/claude-sonnet-4-20250514
+- gemini-2.5-flash (partial support)
 
 ---
 

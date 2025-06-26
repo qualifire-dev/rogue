@@ -168,7 +168,6 @@ class LLMService:
 
         messages = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": "start"},
         ]
 
         api_key = None if llm_provider_api_key is None else llm_provider_api_key
