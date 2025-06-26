@@ -4,7 +4,31 @@
 
 Rogue is a powerful, UI-driven tool designed to evaluate the performance, compliance, and reliability of other AI agents. It pits a dynamic `EvaluatorAgent` against your agent, testing it with a range of scenarios to ensure it behaves exactly as intended.
 
-![Rogue Architecture Diagram](https://mermaid.ink/svg/pako:eNqNVMtqwzAQ_JdCchdKbNu2Q-lDQqElPRR6KAXb2MZWlkS2k4IQ_71z0oYtFNpLkvfNeDNzYwEbkV1KkQeEAW2Jq5zKCaK39D20t0_y3K-cK63tQp22Y2A1g-cCTYt8pS0yW0U0L8o_dGzWwQpTz24F75q0b4dZ6d7wOaC7601NAnX_n2RkI8E30E14M9S7T5wB3y2-e2V1h1hY-f0i-eC3e-Qj5j53zN-gP90d1q-2y09h_3s-P_D8mPjC9i22kI8YyR7jTz2xJ40_5uS793t5g3J56a5c1x66w1mU6WlHwJmI31eI6QjC9c8Qk1hWzGgK201kYn_G68Y_hM62vV-wz_T-vJm6H6yO_i3iE_J8-y3_C_4D9Yk_gE9oP_v)
+```mermaid
+graph TD;
+    subgraph "You"
+        User[Developer]
+    end
+
+    subgraph "Rogue"
+        UI[Gradio UI]
+        Evaluator[Evaluator Agent]
+        LLM[LLM Services]
+    end
+
+    subgraph "Your Agent"
+        AUT[Agent Under Test]
+    end
+
+    User -- "1. Provides Agent URL & Business Context" --> UI;
+    UI -- "2. Gets Scenarios from" --> LLM;
+    UI -- "3. Starts Evaluation" --> Evaluator;
+    Evaluator -- "4. Sends Test Messages" --> AUT;
+    AUT -- "5. Responds" --> Evaluator;
+    Evaluator -- "6. Gets Judgment from" --> LLM;
+    Evaluator -- "7. Streams Live Chat" --> UI;
+    UI -- "8. Displays Final Report" --> User;
+```
 
 ## Key Features
 
