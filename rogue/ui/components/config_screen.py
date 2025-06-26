@@ -70,6 +70,16 @@ def create_config_screen(
             "extract your agent's business context. Turn off to skip this step."
         )
 
+        gr.Markdown("**Deep Test Mode**")
+        deep_test_mode = gr.Checkbox(
+            label="Enable deep test mode.",
+            value=config_data.get("deep_test_mode", False),
+        )
+        gr.Markdown(
+            "When enabled, the evaluator will approach each scenario from different angles, "
+            "using different models and different prompts."
+        )
+
         auth_type = gr.Dropdown(
             label="Authentication Type",
             choices=[e.value for e in AuthType],
@@ -162,6 +172,7 @@ def create_config_screen(
         (judge_llm, "judge_llm"),
         (judge_llm_api_key, "judge_llm_api_key"),
         (huggingface_api_key, "huggingface_api_key"),
+        (deep_test_mode, "deep_test_mode"),
     ]:
         component.change(
             fn=update_state,
@@ -188,6 +199,7 @@ def create_config_screen(
         state,
         url,
         interview_mode_val,
+        deep_test_mode_val,
         auth_t,
         creds,
         service_llm_val,
@@ -210,6 +222,7 @@ def create_config_screen(
                 judge_llm=llm,
                 judge_llm_api_key=llm_key,
                 huggingface_api_key=hf_key,
+                deep_test_mode=deep_test_mode_val,
             )
 
             config_dict = config.model_dump(mode="json")
@@ -263,6 +276,7 @@ def create_config_screen(
             shared_state,
             agent_url,
             interview_mode,
+            deep_test_mode,
             auth_type,
             auth_credentials,
             service_llm,
@@ -287,4 +301,5 @@ def create_config_screen(
         judge_llm,
         judge_llm_api_key,
         huggingface_api_key,
+        deep_test_mode,
     )

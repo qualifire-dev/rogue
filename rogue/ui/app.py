@@ -38,6 +38,7 @@ def get_app(workdir: Path):
                     judge_llm,
                     judge_llm_api_key,
                     huggingface_api_key,
+                    deep_test_mode,
                 ) = create_config_screen(shared_state, tabs)
 
             with gr.TabItem("2. Interview", id="interview"):
@@ -113,6 +114,7 @@ def get_app(workdir: Path):
                     value=config.get("agent_url", "http://localhost:10001")
                 ),
                 interview_mode: gr.update(value=config.get("interview_mode", True)),
+                deep_test_mode: gr.update(value=config.get("deep_test_mode", False)),
                 auth_type: gr.update(value=auth_type_val),
                 auth_credentials: gr.update(
                     value=config.get("auth_credentials", ""),
@@ -141,6 +143,7 @@ def get_app(workdir: Path):
                 judge_llm,
                 judge_llm_api_key,
                 huggingface_api_key,
+                deep_test_mode,
             ],
         )
 

@@ -20,6 +20,7 @@ class ScenarioEvaluationService:
         scenarios: Scenarios,
         evaluation_results_output_path: Path,
         business_context: str,
+        deep_test_mode: bool,
     ):
         self._evaluated_agent_url = evaluated_agent_url
         self._evaluated_agent_auth_type = evaluated_agent_auth_type
@@ -29,6 +30,7 @@ class ScenarioEvaluationService:
         self._scenarios = scenarios
         self._evaluation_results_output_path = evaluation_results_output_path
         self._business_context = business_context
+        self._deep_test_mode = deep_test_mode
 
     def _evaluate_policy_scenarios(self) -> EvaluationResults | None:
         policy_scenarios = self._scenarios.get_policy_scenarios()
@@ -41,6 +43,7 @@ class ScenarioEvaluationService:
                 judge_llm_api_key=self._judge_llm_api_key,
                 scenarios=policy_scenarios,
                 business_context=self._business_context,
+                deep_test_mode=self._deep_test_mode,
             )
         except Exception:
             logger.exception("Error evaluating policy scenarios")
@@ -71,6 +74,7 @@ class ScenarioEvaluationService:
                     judge_llm_api_key=self._judge_llm_api_key,
                     scenarios=scenarios,
                     business_context=self._business_context,
+                    deep_test_mode=self._deep_test_mode,
                 ):
                     if update_type == "results":
                         results = data

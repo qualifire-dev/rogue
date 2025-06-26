@@ -87,6 +87,7 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
         judge_llm: str = config.get("judge_llm")  # type: ignore
         judge_llm_key: str = config.get("judge_llm_api_key")  # type: ignore
         business_context: str = config.get("business_context")  # type: ignore
+        deep_test_mode: bool = config.get("deep_test_mode", False)  # type: ignore
 
         logger.info(f"Business context: {business_context}")
 
@@ -118,6 +119,7 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                 scenarios=scenarios,
                 evaluation_results_output_path=output_path,
                 business_context=business_context,
+                deep_test_mode=deep_test_mode,
             )
 
             final_results = None

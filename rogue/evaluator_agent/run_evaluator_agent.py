@@ -101,6 +101,7 @@ async def arun_evaluator_agent(
     judge_llm_api_key: str | None,
     scenarios: Scenarios,
     business_context: str,
+    deep_test_mode: bool,
 ) -> AsyncGenerator[tuple[str, Any], None]:
     headers = _get_headers(auth_credentials, auth_type)
     update_queue = asyncio.Queue()
@@ -115,6 +116,7 @@ async def arun_evaluator_agent(
             llm_auth=judge_llm_api_key,
             business_context=business_context,
             chat_update_callback=update_queue.put_nowait,
+            deep_test_mode=deep_test_mode,
         )
 
         session_service = InMemorySessionService()
