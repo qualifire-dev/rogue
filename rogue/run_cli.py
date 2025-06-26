@@ -84,7 +84,8 @@ def run_sequential_agent(
         try:
             logger.info(f"orchestration_agent response: {event.content.parts[0].text}")
         except Exception:
-            pass  # Not continue, we want the "done" log
+            # We don't want to continue the for, we want the "done" log
+            pass  # nosec: B110
 
         if event.is_final_response():
             logger.info(f"orchestration_agent done")

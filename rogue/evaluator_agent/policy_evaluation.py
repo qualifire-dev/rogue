@@ -106,6 +106,13 @@ def _try_parse_regex(output: str) -> PolicyEvaluationResult | None:
             if match:
                 return PolicyEvaluationResult.model_validate_json(match.group(1))
         except Exception:
+            logger.error(
+                "Failed to parse LLM output as regex",
+                extra={
+                    "output": output,
+                    "regex": llm_output_regex,
+                },
+            )
             continue
     logger.error(
         "Failed to parse LLM output as regex",
