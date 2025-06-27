@@ -15,7 +15,7 @@ runs:
     - name: Setup Python
       uses: actions/setup-python@v5
       with:
-        python-version: "3.12.5"
+        python-version: "3.12.6"
     - name: Install checklist dependencies
       shell: bash
       run: |
