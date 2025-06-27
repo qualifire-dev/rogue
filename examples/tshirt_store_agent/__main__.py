@@ -16,7 +16,7 @@ from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 
-from tshirt_store_agent import create_tshirt_store_agent
+from tshirt_store_agent import create_tshirt_store_agent  # type: ignore
 from tshirt_store_agent_executor import TShirtStoreAgentExecutor
 
 load_dotenv()

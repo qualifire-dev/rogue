@@ -7,7 +7,7 @@ from pydantic import BaseModel, HttpUrl, model_validator
 class AuthType(Enum):
     NO_AUTH = "no_auth"
     API_KEY = "api_key"
-    BEARER_TOKEN = "bearer_token"
+    BEARER_TOKEN = "bearer_token"  # nosec: B105
     BASIC_AUTH = "basic_auth"
 
 

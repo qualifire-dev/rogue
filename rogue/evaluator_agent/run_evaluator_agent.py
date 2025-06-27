@@ -1,4 +1,5 @@
 import asyncio
+from asyncio import Queue
 from typing import AsyncGenerator, Any
 
 from a2a.types import (
@@ -15,6 +16,7 @@ from loguru import logger
 from .evaluator_agent import EvaluatorAgent
 from ..common.agent_sessions import create_session
 from ..models.config import AuthType
+from ..models.evaluation_result import EvaluationResults
 from ..models.scenario import Scenarios
 
 
@@ -104,8 +106,8 @@ async def arun_evaluator_agent(
     deep_test_mode: bool,
 ) -> AsyncGenerator[tuple[str, Any], None]:
     headers = _get_headers(auth_credentials, auth_type)
-    update_queue = asyncio.Queue()
-    results_queue = asyncio.Queue()
+    update_queue: Queue = Queue()
+    results_queue: Queue = Queue()
 
     async with AsyncClient(headers=headers) as httpx_client:
         evaluator_agent = EvaluatorAgent(
@@ -137,7 +139,8 @@ async def arun_evaluator_agent(
         logger.info("evaluator_agent started")
 
         async def agent_runner_task():
-            # This task just runs the agent and puts the final result on a separate queue
+            # This task just runs the agent and puts the final result on a
+            # separate queue
             await _run_agent(runner, "start", session)
             results = evaluator_agent.get_evaluation_results()
             await results_queue.put(results)
@@ -157,3 +160,30 @@ async def arun_evaluator_agent(
         yield "results", final_results
 
         await runner_task  # check for exceptions
+
+
+def run_evaluator_agent(
+    evaluated_agent_url: str,
+    auth_type: AuthType,
+    auth_credentials: str | None,
+    judge_llm: str,
+    judge_llm_api_key: str | None,
+    scenarios: Scenarios,
+    business_context: str,
+    deep_test_mode: bool,
+) -> EvaluationResults:
+    async def run_evaluator_agent_task():
+        async for update_type, data in arun_evaluator_agent(
+            evaluated_agent_url=evaluated_agent_url,
+            auth_type=auth_type,
+            auth_credentials=auth_credentials,
+            judge_llm=judge_llm,
+            judge_llm_api_key=judge_llm_api_key,
+            scenarios=scenarios,
+            business_context=business_context,
+            deep_test_mode=deep_test_mode,
+        ):
+            if update_type == "results":
+                return data
+
+    return asyncio.run(run_evaluator_agent_task())

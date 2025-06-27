@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 import httpx
 from a2a.client import A2ACardResolver
 from a2a.types import AgentCard
@@ -17,7 +19,7 @@ def get_config_from_ui() -> UserConfig:
     return UserConfig(
         evaluated_agent_url="http://localhost:10001",
         authorization_header=None,
-        model="openai/gpt-4o",
+        judge_model="openai/gpt-4o",
     )
 
 
@@ -63,12 +65,16 @@ def create_orchestrator_agent(
     ).create_agent()
 
 
-def run_sequential_agent(
+async def run_sequential_agent(
     sequential_agent_runner: Runner,
     input_text: str,
     session: Session | None = None,
 ) -> None:
-    session = session or create_session()
+    session = session or await create_session(
+        app_name="rogue agent evaluator",
+        session_service=InMemorySessionService(),
+        user_id=uuid4().hex,
+    )
 
     # Create content from user input
     content = types.Content(
@@ -84,10 +90,11 @@ def run_sequential_agent(
         try:
             logger.info(f"orchestration_agent response: {event.content.parts[0].text}")
         except Exception:
-            pass  # Not continue, we want the "done" log
+            # We don't want to continue the for, we want the "done" log
+            pass  # nosec: B110
 
         if event.is_final_response():
-            logger.info(f"orchestration_agent done")
+            logger.info("orchestration_agent done")
 
 
 async def run_cli(
@@ -100,7 +107,10 @@ async def run_cli(
     config = get_config_from_ui()
 
     card = await get_evaluated_agent_card(config)
-    scenario_generation_agent = create_scenario_generation_agent(card, config.model)
+    scenario_generation_agent = create_scenario_generation_agent(
+        card,
+        config.judge_model,
+    )
     evaluator_agent = create_evaluator_agent(card)
     report_generation_agent = create_report_generation_agent()
 
@@ -117,7 +127,7 @@ async def run_cli(
         session_service=InMemorySessionService(),
     )
 
-    run_sequential_agent(
+    await run_sequential_agent(
         root_agent_runner,
         input_text="start",
     )

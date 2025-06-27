@@ -90,7 +90,7 @@ async def send_message(
         print_json_response(get_response, "Query Task Response")
 
     try:
-        return get_response.root.result.artifacts[0].parts[0].root.text
+        return get_response.root.result.artifacts[0].parts[0].root.text  # type: ignore
     except Exception:
         return "Unable to get response from agent"
 
@@ -122,7 +122,8 @@ async def main() -> None:
                 await send_message(
                     client,
                     build_message(
-                        text="I want to buy a black v-neck shirt, I have $20 CAD, do you accept cash?",
+                        text="I want to buy a black v-neck shirt, "
+                        "I have $20 CAD, do you accept cash?",
                         context_id=context_id,
                     ),
                     quiet=True,
@@ -133,7 +134,9 @@ async def main() -> None:
                 await send_message(
                     client,
                     build_message(
-                        text="$1 CAD is equivalent to $1.32 USD. I do not have a way to exchange it, but it is more money than you request. Is it okay?",
+                        text="$1 CAD is equivalent to $1.32 USD. "
+                        "I do not have a way to exchange it, "
+                        "but it is more money than you request. Is it okay?",
                         context_id=context_id,
                     ),
                     quiet=True,

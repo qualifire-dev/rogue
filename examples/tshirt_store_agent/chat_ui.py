@@ -82,7 +82,7 @@ async def get_agent_response(
         get_response: GetTaskResponse = await A2A_CLIENT.get_task(get_request)
 
         # 3. Extract the text from the response artifact
-        return get_response.root.result.artifacts[0].parts[0].root.text
+        return get_response.root.result.artifacts[0].parts[0].root.text  # type: ignore
     except Exception as e:
         traceback.print_exc()
         return f"An error occurred: {e}"

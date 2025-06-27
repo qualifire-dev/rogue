@@ -1,2 +1,9 @@
 [flake8]
-max-line-length = 200
+max-line-length = 88
+exclude =
+    .git,
+    __pycache__,
+    __init__.py
+ignore =
+    W503
+    E712

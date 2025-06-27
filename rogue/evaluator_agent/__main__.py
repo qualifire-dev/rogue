@@ -75,6 +75,7 @@ def run_agent(model: str) -> EvaluationResults:
         judge_llm_api_key=None,
         scenarios=scenarios,
         business_context=BUSINESS_CONTEXT,
+        deep_test_mode=False,
     )
 
 
@@ -95,7 +96,8 @@ def are_results_correct(evaluation_results: EvaluationResults, model: str) -> bo
         return True
     except Exception as e:
         print(
-            f"Error running {model}, exception: {e}. traceback: {traceback.format_exc()}"
+            f"Error running {model}, exception: {e}. "
+            f"traceback: {traceback.format_exc()}"
         )
         return False
 

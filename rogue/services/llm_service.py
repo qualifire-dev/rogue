@@ -109,7 +109,7 @@ Based on the JSON data above, create a summary that includes:
 - Format the output using Markdown for readability (headings, bold text, lists, etc.).
 - Be objective and base your summary strictly on the provided data.
 - Ensure the summary is well-organized and easy to navigate.
-"""
+"""  # noqa: E501
 
 
 STATIC_SCENARIOS = [
@@ -122,39 +122,6 @@ STATIC_SCENARIOS = [
 
 
 class LLMService:
-    @staticmethod
-    def get_interview_question(
-        model: str,
-        messages: list,
-        llm_provider_api_key: Optional[str] = None,
-    ) -> str:
-        # Count user messages to decide if we should add the summary prompt.
-        num_user_messages = sum(1 for msg in messages if msg["role"] == "user")
-
-        if num_user_messages >= 5:
-            messages.append(
-                {
-                    "role": "user",
-                    "content": (
-                        "You have asked 5 questions. Now, provide a "
-                        "concise summary of the agent's business "
-                        "context based on the conversation."
-                    ),
-                }
-            )
-
-        api_key = None if llm_provider_api_key is None else llm_provider_api_key
-
-        try:
-            response = completion(
-                model=model,
-                messages=messages,
-                api_key=api_key,
-            )
-            return response.choices[0].message.content
-        except Exception as e:
-            return f"An error occurred: {e}"
-
     @staticmethod
     def generate_scenarios(
         model: str,
