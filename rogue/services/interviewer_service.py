@@ -57,24 +57,6 @@ class InterviewerService:
             {"role": "system", "content": INTERVIEWER_SYSTEM_PROMPT},
         ]
 
-    @property
-    def model(self):
-        return self._model
-
-    @model.setter
-    def model(self, value):
-        self._model = value
-
-    @property
-    def llm_provider_api_key(self):
-        return self._llm_provider_api_key
-
-    @llm_provider_api_key.setter
-    def llm_provider_api_key(self, value: str | None):
-        if value == "":
-            value = None
-        self._llm_provider_api_key = value
-
     def send_message(self, user_input: str):
         self._messages.append(
             {

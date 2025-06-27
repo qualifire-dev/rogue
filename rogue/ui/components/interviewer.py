@@ -3,16 +3,12 @@ from typing import List
 import gradio as gr
 
 from ...services.interviewer_service import InterviewerService
-from ...services.llm_service import LLMService
 
 
 def create_interviewer_screen(
     shared_state: gr.State,
     tabs_component: gr.Tabs,
 ):
-    llm_service = LLMService()
-    interviewer_service = InterviewerService()
-
     with gr.Column():
         gr.Markdown("## AI-Powered Interviewer")
         gr.Markdown(
@@ -34,9 +30,12 @@ def create_interviewer_screen(
             service_llm = config.get("service_llm", "openai/gpt-4.1")
             api_key = config.get("judge_llm_api_key")
 
-            interviewer_service.model = service_llm
-            interviewer_service.llm_provider_api_key = api_key
-
+            if "interviewer_service" not in state:
+                state["interviewer_service"] = InterviewerService(
+                    model=service_llm,
+                    llm_provider_api_key=api_key,
+                )
+            interviewer_service = state["interviewer_service"]
             bot_message = interviewer_service.send_message(message)
 
             # Add bot response to the last entry in history
