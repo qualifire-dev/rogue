@@ -16,6 +16,7 @@ from loguru import logger
 from .evaluator_agent import EvaluatorAgent
 from ..common.agent_sessions import create_session
 from ..models.config import AuthType
+from ..models.evaluation_result import EvaluationResults
 from ..models.scenario import Scenarios
 
 
@@ -158,3 +159,30 @@ async def arun_evaluator_agent(
         yield "results", final_results
 
         await runner_task  # check for exceptions
+
+
+def run_evaluator_agent(
+    evaluated_agent_url: str,
+    auth_type: AuthType,
+    auth_credentials: str | None,
+    judge_llm: str,
+    judge_llm_api_key: str | None,
+    scenarios: Scenarios,
+    business_context: str,
+    deep_test_mode: bool,
+) -> EvaluationResults:
+    async def run_evaluator_agent_task():
+        async for update_type, data in arun_evaluator_agent(
+            evaluated_agent_url=evaluated_agent_url,
+            auth_type=auth_type,
+            auth_credentials=auth_credentials,
+            judge_llm=judge_llm,
+            judge_llm_api_key=judge_llm_api_key,
+            scenarios=scenarios,
+            business_context=business_context,
+            deep_test_mode=deep_test_mode,
+        ):
+            if update_type == "results":
+                return data
+
+    return asyncio.run(run_evaluator_agent_task())

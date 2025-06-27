@@ -441,7 +441,7 @@ class EvaluatorAgent:
         self,
         context_id: str,
         message: str,
-    ) -> str:
+    ) -> dict[str, str]:
         """
         Sends a message to the evaluated agent.
         :param message: the text to send to the other agent.
@@ -515,7 +515,7 @@ class EvaluatorAgent:
             "_send_message_to_evaluated_agent - response",
             extra={"response": response.model_dump_json()},
         )
-        return response.model_dump_json()
+        return {"response": response.model_dump_json()}
 
     @staticmethod
     def _get_conversation_context_id() -> str:

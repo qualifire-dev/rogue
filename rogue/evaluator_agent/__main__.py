@@ -75,6 +75,7 @@ def run_agent(model: str) -> EvaluationResults:
         judge_llm_api_key=None,
         scenarios=scenarios,
         business_context=BUSINESS_CONTEXT,
+        deep_test_mode=False,
     )
 
 

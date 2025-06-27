@@ -107,7 +107,10 @@ async def run_cli(
     config = get_config_from_ui()
 
     card = await get_evaluated_agent_card(config)
-    scenario_generation_agent = create_scenario_generation_agent(card, config.model)
+    scenario_generation_agent = create_scenario_generation_agent(
+        card,
+        config.judge_model,
+    )
     evaluator_agent = create_evaluator_agent(card)
     report_generation_agent = create_report_generation_agent()
 

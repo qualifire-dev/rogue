@@ -31,23 +31,35 @@ class ScenarioEvaluationService:
         self._evaluation_results_output_path = evaluation_results_output_path
         self._business_context = business_context
         self._deep_test_mode = deep_test_mode
+        self._results = EvaluationResults()
 
-    def _evaluate_policy_scenarios(self) -> EvaluationResults | None:
-        policy_scenarios = self._scenarios.get_policy_scenarios()
-        try:
-            return arun_evaluator_agent(
-                evaluated_agent_url=str(self._evaluated_agent_url),
-                auth_type=self._evaluated_agent_auth_type,
-                auth_credentials=self._evaluated_agent_auth_credentials,
-                judge_llm=self._judge_llm,
-                judge_llm_api_key=self._judge_llm_api_key,
-                scenarios=policy_scenarios,
-                business_context=self._business_context,
-                deep_test_mode=self._deep_test_mode,
-            )
-        except Exception:
-            logger.exception("Error evaluating policy scenarios")
-            return None
+    async def _evaluate_policy_scenarios(self) -> AsyncGenerator[tuple[str, Any], None]:
+        for scenario in self._scenarios.get_policy_scenarios().scenarios:
+            yield "status", f"Running policy scenario: {scenario.scenario}"
+            try:
+                async for update_type, data in arun_evaluator_agent(
+                    evaluated_agent_url=str(self._evaluated_agent_url),
+                    auth_type=self._evaluated_agent_auth_type,
+                    auth_credentials=self._evaluated_agent_auth_credentials,
+                    judge_llm=self._judge_llm,
+                    judge_llm_api_key=self._judge_llm_api_key,
+                    scenarios=Scenarios(scenarios=[scenario]),
+                    business_context=self._business_context,
+                    deep_test_mode=self._deep_test_mode,
+                ):
+                    if update_type == "results":
+                        results = data
+                        if results and results.results:
+                            self._results.add_result(results.results[0])
+                    else:  # it's a 'chat' update
+                        yield update_type, data
+            except Exception:
+                logger.exception(
+                    "Error evaluating policy scenario",
+                    extra={"scenario": scenario},
+                )
+                yield "status", f"Error running scenario: {scenario.scenario}"
+                continue
 
     def _evaluate_prompt_injection_scenarios(self) -> EvaluationResults | None:
         pass
@@ -59,38 +71,13 @@ class ScenarioEvaluationService:
         pass
 
     async def evaluate_scenarios(self) -> AsyncGenerator[tuple[str, Any], None]:
-        all_results = EvaluationResults()
-
         # TODO: Implement this for all scenario types
-        for scenario in self._scenarios.scenarios:
-            yield "status", f"Running scenario: {scenario.scenario}"
-            try:
-                scenarios = Scenarios(scenarios=[scenario])
-                async for update_type, data in arun_evaluator_agent(
-                    evaluated_agent_url=str(self._evaluated_agent_url),
-                    auth_type=self._evaluated_agent_auth_type,
-                    auth_credentials=self._evaluated_agent_auth_credentials,
-                    judge_llm=self._judge_llm,
-                    judge_llm_api_key=self._judge_llm_api_key,
-                    scenarios=scenarios,
-                    business_context=self._business_context,
-                    deep_test_mode=self._deep_test_mode,
-                ):
-                    if update_type == "results":
-                        results = data
-                        if results and results.results:
-                            all_results.add_result(results.results[0])
-                    else:  # it's a 'chat' update
-                        yield update_type, data
-
-            except Exception:
-                logger.exception(f"Error evaluating scenario: {scenario.scenario}")
-                # Optionally yield an error status
-                yield "status", f"Error running scenario: {scenario.scenario}"
+        async for status, data in self._evaluate_policy_scenarios():
+            yield status, data
 
         self._evaluation_results_output_path.write_text(
-            all_results.model_dump_json(indent=2, exclude_none=True),
+            self._results.model_dump_json(indent=2, exclude_none=True),
             encoding="utf-8",
         )
 
-        yield "results", all_results
+        yield "results", self._results

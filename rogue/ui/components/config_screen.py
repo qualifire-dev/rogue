@@ -174,7 +174,7 @@ def create_config_screen(
         (huggingface_api_key, "huggingface_api_key"),
         (deep_test_mode, "deep_test_mode"),
     ]:
-        component.change(
+        component.change(  # type: ignore
             fn=update_state,
             inputs=[shared_state, gr.State(key), component],
             outputs=[shared_state],
