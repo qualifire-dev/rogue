@@ -1,3 +1,4 @@
+import asyncio
 from pathlib import Path
 from typing import AsyncGenerator, Any
 
@@ -33,33 +34,54 @@ class ScenarioEvaluationService:
         self._deep_test_mode = deep_test_mode
         self._results = EvaluationResults()
 
+    async def _evaluate_single_policy_scenario(
+        self,
+        scenario,
+        queue: asyncio.Queue,
+    ):
+        await queue.put(("status", f"Running policy scenario: {scenario.scenario}"))
+        try:
+            async for update_type, data in arun_evaluator_agent(
+                evaluated_agent_url=str(self._evaluated_agent_url),
+                auth_type=self._evaluated_agent_auth_type,
+                auth_credentials=self._evaluated_agent_auth_credentials,
+                judge_llm=self._judge_llm,
+                judge_llm_api_key=self._judge_llm_api_key,
+                scenarios=Scenarios(scenarios=[scenario]),
+                business_context=self._business_context,
+                deep_test_mode=self._deep_test_mode,
+            ):
+                if update_type == "results":
+                    results = data
+                    if results and results.results:
+                        self._results.add_result(results.results[0])
+                else:
+                    await queue.put((update_type, data))
+        except Exception:
+            logger.exception(
+                "Error evaluating policy scenario", extra={"scenario": scenario}
+            )
+            await queue.put(("status", f"Error running scenario: {scenario.scenario}"))
+
     async def _evaluate_policy_scenarios(self) -> AsyncGenerator[tuple[str, Any], None]:
-        for scenario in self._scenarios.get_policy_scenarios().scenarios:
-            yield "status", f"Running policy scenario: {scenario.scenario}"
-            try:
-                async for update_type, data in arun_evaluator_agent(
-                    evaluated_agent_url=str(self._evaluated_agent_url),
-                    auth_type=self._evaluated_agent_auth_type,
-                    auth_credentials=self._evaluated_agent_auth_credentials,
-                    judge_llm=self._judge_llm,
-                    judge_llm_api_key=self._judge_llm_api_key,
-                    scenarios=Scenarios(scenarios=[scenario]),
-                    business_context=self._business_context,
-                    deep_test_mode=self._deep_test_mode,
-                ):
-                    if update_type == "results":
-                        results = data
-                        if results and results.results:
-                            self._results.add_result(results.results[0])
-                    else:  # it's a 'chat' update
-                        yield update_type, data
-            except Exception:
-                logger.exception(
-                    "Error evaluating policy scenario",
-                    extra={"scenario": scenario},
-                )
-                yield "status", f"Error running scenario: {scenario.scenario}"
-                continue
+        queue: asyncio.Queue[tuple[str, Any]] = asyncio.Queue()
+        tasks = [
+            asyncio.create_task(self._evaluate_single_policy_scenario(scenario, queue))
+            for scenario in self._scenarios.get_policy_scenarios().scenarios
+        ]
+
+        async def queue_watcher():
+            while any(not t.done() for t in tasks) or not queue.empty():
+                try:
+                    update = await asyncio.wait_for(queue.get(), timeout=0.1)
+                    yield update
+                except asyncio.TimeoutError:
+                    continue
+
+        async for item in queue_watcher():
+            yield item
+
+        await asyncio.gather(*tasks)
 
     def _evaluate_prompt_injection_scenarios(self) -> EvaluationResults | None:
         pass
