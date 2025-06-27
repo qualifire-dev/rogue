@@ -94,7 +94,7 @@ async def run_sequential_agent(
             pass  # nosec: B110
 
         if event.is_final_response():
-            logger.info(f"orchestration_agent done")
+            logger.info("orchestration_agent done")
 
 
 async def run_cli(

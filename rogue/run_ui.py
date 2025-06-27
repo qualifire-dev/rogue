@@ -12,6 +12,6 @@ def run_ui(
     app = get_app(workdir)
     app.launch(
         inbrowser=True,
-        prevent_thread_lock=False,  # This might need to change after we create the agent
+        prevent_thread_lock=False,  # This might need to change after agent is created
         server_port=port,
     )

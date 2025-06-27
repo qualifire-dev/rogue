@@ -76,8 +76,8 @@ def create_config_screen(
             value=config_data.get("deep_test_mode", False),
         )
         gr.Markdown(
-            "When enabled, the evaluator will approach each scenario from different angles, "
-            "using different models and different prompts."
+            "When enabled, the evaluator will approach each scenario from "
+            "different angles, using different models and different prompts."
         )
 
         auth_type = gr.Dropdown(
@@ -102,8 +102,9 @@ def create_config_screen(
 
         gr.Markdown("## Evaluator Configuration")
         gr.Markdown(
-            "Specify the models for the evaluation process. The **Service LLM** will be used to "
-            "interview, generate scenarios and summaries. The **Judge LLM** is used by the "
+            "Specify the models for the evaluation process. "
+            "The **Service LLM** will be used to interview, "
+            "generate scenarios and summaries. The **Judge LLM** is used by the "
             "evaluator agent to score the agent's performance against those scenarios."
         )
         gr.Markdown(

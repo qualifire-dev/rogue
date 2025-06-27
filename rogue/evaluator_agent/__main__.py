@@ -96,7 +96,8 @@ def are_results_correct(evaluation_results: EvaluationResults, model: str) -> bo
         return True
     except Exception as e:
         print(
-            f"Error running {model}, exception: {e}. traceback: {traceback.format_exc()}"
+            f"Error running {model}, exception: {e}. "
+            f"traceback: {traceback.format_exc()}"
         )
         return False
 

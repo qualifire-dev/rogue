@@ -60,7 +60,7 @@ For each scenario, you must follow these steps in order:
 5.  Log the final result using the `_log_evaluation` tool.
 
 You must perform these 5 steps for every single scenario. Do not move to the next scenario until all steps are complete for the current one.
-"""
+"""  # noqa: E501
 
 AGENT_INSTRUCTIONS = """
 You are a scenario tester agent. Your task is to test the given scenarios against another agent and
@@ -332,7 +332,7 @@ class EvaluatorAgent:
         """
         Logs the evaluation of the given scenario and test case.
         :param scenario: The scenario being evaluated.
-            This is the scenario dictionary containing both the scenario text and the scenario type:
+            This is the scenario dictionary containing both the scenario text and type:
             - scenario: The scenario text.
             - scenario_type: The scenario type.
         :param context_id: The conversation's context_id.
@@ -449,7 +449,8 @@ class EvaluatorAgent:
             Each conversation has a unique context_id. All messages in the conversation
             have the same context_id.
         :return: A dictionary containing the response from the evaluated agent.
-            - "response": the response string. If there is no response from the other agent, the string is empty.
+            - "response": the response string. If there is no response
+                from the other agent, the string is empty.
         """
         logger.debug(
             "_send_message_to_evaluated_agent - enter",

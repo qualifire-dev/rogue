@@ -63,12 +63,11 @@ When you have gathered sufficient information, provide a summary that includes:
 - Compliance or regulatory considerations
 - Potential failure modes or edge cases
 
-Begin the interview now 
+Begin the interview now.
 
 Format your questions clearly and keep them focused on one topic at a time. When ready to summarize,
 put your final business context summary.
-
-"""
+"""  # noqa: E501
             messages = [{"role": "system", "content": system_prompt}]
             for user_msg, assistant_msg in history:
                 if user_msg:
@@ -94,7 +93,6 @@ put your final business context summary.
             if history and len(history) > 1 and history[-1][1] is not None:
                 context = history[-1][1]
                 state["business_context"] = context
-                ("Business context finalized!")
                 return state, gr.Tabs(selected="scenarios")
 
             gr.Warning("Could not determine business context from conversation.")

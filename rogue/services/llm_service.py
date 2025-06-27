@@ -109,7 +109,7 @@ Based on the JSON data above, create a summary that includes:
 - Format the output using Markdown for readability (headings, bold text, lists, etc.).
 - Be objective and base your summary strictly on the provided data.
 - Ensure the summary is well-organized and easy to navigate.
-"""
+"""  # noqa: E501
 
 
 STATIC_SCENARIOS = [

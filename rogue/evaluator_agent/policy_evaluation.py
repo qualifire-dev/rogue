@@ -55,7 +55,7 @@ the policy rule. Consider both direct violations and any indirect or
 subtle ways the AI might have failed to adhere to the policy.
 
 Your final output should be just the JSON object described above. Do not include any additional explanation or commentary outside of this JSON structure.
-"""
+"""  # noqa: E501
 
 llm_output_regexes = [
     re.compile(r"```json\n(.*)\n```", re.DOTALL),
@@ -80,7 +80,8 @@ def _try_parse_raw_json(output: str) -> PolicyEvaluationResult | None:
     try:
         return PolicyEvaluationResult.model_validate_json(cleaned_output)
     except ValidationError:
-        logger.error(  # We don't need the traceback here, so I'm not using logger.exception
+        # We don't need the traceback here, so I'm not using logger.exception
+        logger.error(
             "Failed to parse response as raw",
             extra={
                 "output": output,
@@ -142,7 +143,7 @@ def evaluate_policy(
             model = f"gemini/{model}"
 
     logger.info(
-        f"Evaluating policy",
+        "Evaluating policy",
         extra={
             "policy": policy,
             "model": model,
