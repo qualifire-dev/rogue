@@ -40,18 +40,19 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
 
         for i in range(MAX_PARALLEL_RUNS):
             with gr.Group(visible=False) as output_group:
-                status_box = gr.Textbox(
-                    label=f"Execution Status (Run {i + 1})",
-                    lines=2,
-                    interactive=False,
-                )
-                live_chat_display = gr.Chatbot(
-                    label=f"Live Evaluation Chat (Run {i + 1})",
-                    height=300,
-                    type="messages",
-                )
-                status_boxes.append(status_box)
-                chat_displays.append(live_chat_display)
+                with gr.Accordion(f"Run {i + 1}"):
+                    status_box = gr.Textbox(
+                        label=f"Execution Status (Run {i + 1})",
+                        lines=2,
+                        interactive=False,
+                    )
+                    live_chat_display = gr.Chatbot(
+                        label=f"Live Evaluation Chat (Run {i + 1})",
+                        height=300,
+                        type="messages",
+                    )
+                    status_boxes.append(status_box)
+                    chat_displays.append(live_chat_display)
             output_components.append(output_group)
             output_components.append(status_box)
             output_components.append(live_chat_display)
