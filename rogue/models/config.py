@@ -19,6 +19,7 @@ class AgentConfig(BaseModel):
     judge_llm: str = "openai/o4-mini"
     interview_mode: bool = True
     deep_test_mode: bool = False
+    parallel_runs: int = 1
 
     # This can be none when env is properly configured and/or in vertexai for example
     judge_llm_api_key: Optional[str] = None

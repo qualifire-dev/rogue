@@ -76,9 +76,19 @@ def create_config_screen(
             value=config_data.get("deep_test_mode", False),
         )
         gr.Markdown(
-            "When enabled, the evaluator will approach each scenario from "
-            "different angles, using different models and different prompts."
+            "When enabled, the evaluator will "
+            "approach each scenario from different angles"
         )
+
+        gr.Markdown("### Parallel Runs")
+        parallel_runs = gr.Slider(
+            label="Number of parallel evaluation runs",
+            minimum=1,
+            maximum=10,
+            step=1,
+            value=config_data.get("parallel_runs", 1),
+        )
+        gr.Markdown("### Authentication")
 
         auth_type = gr.Dropdown(
             label="Authentication Type",
@@ -174,6 +184,7 @@ def create_config_screen(
         (judge_llm_api_key, "judge_llm_api_key"),
         (huggingface_api_key, "huggingface_api_key"),
         (deep_test_mode, "deep_test_mode"),
+        (parallel_runs, "parallel_runs"),
     ]:
         component.change(  # type: ignore
             fn=update_state,
@@ -201,13 +212,14 @@ def create_config_screen(
         url,
         interview_mode_val,
         deep_test_mode_val,
+        parallel_runs_val,
         auth_t,
         creds,
         service_llm_val,
         llm,
         llm_key,
         hf_key,
-    ):
+    ):  # noqa: E501, PLR0913
         # Start by creating updates to clear all error labels
         label_updates = {
             label: gr.update(value="", visible=False) for label in error_labels.values()
@@ -224,6 +236,7 @@ def create_config_screen(
                 judge_llm_api_key=llm_key,
                 huggingface_api_key=hf_key,
                 deep_test_mode=deep_test_mode_val,
+                parallel_runs=parallel_runs_val,
             )
 
             config_dict = config.model_dump(mode="json")
@@ -278,6 +291,7 @@ def create_config_screen(
             agent_url,
             interview_mode,
             deep_test_mode,
+            parallel_runs,
             auth_type,
             auth_credentials,
             service_llm,
@@ -303,4 +317,5 @@ def create_config_screen(
         judge_llm_api_key,
         huggingface_api_key,
         deep_test_mode,
+        parallel_runs,
     )
