@@ -155,10 +155,11 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                 await update_queue.put((worker_id, "status", f"Error: {e}"))
                 await update_queue.put((worker_id, "done", None))
 
-        [
+        worker_tasks = [
             asyncio.create_task(worker(batch, i))
             for i, batch in enumerate(scenario_batches)
         ]
+        await asyncio.gather(*worker_tasks)
 
         # 4. --- Process Updates from Queue ---
         finished_workers = 0
