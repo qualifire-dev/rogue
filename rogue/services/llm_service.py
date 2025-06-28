@@ -101,8 +101,8 @@ Based on the JSON data above, create a summary that includes:
     positive and negative. Focus on patterns of failure or notable successes.
 3.  **Recommendations**: Suggest concrete next steps for improving the agent. These
     could include fixing specific bugs, improving training data, or clarifying policies.
-4.  **Detailed Breakdown**: A table or section that provides a granular look at each
-    scenario that was tested, including the pass/fail status and a brief note on the outcome.
+4.  **Detailed Breakdown**: A table that provides a granular look at each
+    scenario that was tested, including the pass/fail with the appropriate emoji ✅/❌ status and a brief note on the outcome.
 
 ## Guidelines
 - Use clear and professional language.
