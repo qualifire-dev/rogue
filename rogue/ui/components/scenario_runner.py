@@ -1,12 +1,10 @@
 import json
 import asyncio
-import numpy as np
 from datetime import datetime
 from pathlib import Path
 
 import gradio as gr
 from loguru import logger
-from pydantic import ValidationError
 
 from ...models.config import AuthType
 from ...models.evaluation_result import EvaluationResults
@@ -22,7 +20,21 @@ def split_into_batches(scenarios: list, n: int) -> list[list]:
         return []
     if n <= 0:
         raise ValueError("Number of batches must be positive.")
-    return [arr.tolist() for arr in np.array_split(scenarios, n) if arr.size > 0]
+
+    # Calculate size of each batch
+    total = len(scenarios)
+    batch_size, remainder = divmod(total, n)
+
+    batches = []
+    start = 0
+    for i in range(n):
+        # Add one extra item to early batches if there's remainder
+        end = start + batch_size + (1 if i < remainder else 0)
+        if start < total:  # Only add non-empty batches
+            batches.append(scenarios[start:end])
+        start = end
+
+    return batches
 
 
 def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tabs):
@@ -67,7 +79,7 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
             scenarios_json = json.loads(
                 scenarios_string,
             )
-            state["scenarios"] = scenarios_json
+            state["scenarios"] = Scenarios.model_validate(scenarios_json)
             logger.info("Updated scenarios in state from editable code block.")
         except json.JSONDecodeError:
             logger.error("Invalid JSON in scenarios input.")
@@ -87,7 +99,13 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
 
         # 1. --- Configuration and Validation ---
         config = state.get("config", {})
-        scenarios_json = state.get("scenarios")
+        scenarios = state.get("scenarios")
+
+        if scenarios is None:
+            gr.Warning("No scenarios found. Please generate scenarios first.")
+            return
+
+        scenarios = scenarios.scenarios
 
         # Hide all runners and clear values
         initial_updates = get_blank_updates()
@@ -97,22 +115,13 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
             initial_updates[i * 3 + 2] = gr.update(value=None, visible=True)  # Chat
         yield tuple(initial_updates)
 
-        if not config or not scenarios_json:
+        if not config or not scenarios:
             gr.Warning("Config or scenarios not found. Please complete previous steps.")
-            return
-
-        try:
-            scenarios_model = Scenarios.model_validate(scenarios_json)
-        except (ValidationError, AttributeError):
-            gr.Warning(
-                "Scenarios are misconfigured. Please "
-                "check the JSON format and regenerate."
-            )
             return
 
         # 2. --- Setup Parallel Execution ---
         parallel_runs = config.get("parallel_runs", 1)
-        scenario_batches = split_into_batches(scenarios_model.scenarios, parallel_runs)
+        scenario_batches = split_into_batches(scenarios, parallel_runs)
         num_runners = len(scenario_batches)
         update_queue = asyncio.Queue()
 
