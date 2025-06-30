@@ -52,8 +52,11 @@ Your output must be a JSON object with two keys:
 
 
 def _get_text_from_response(
-    response: Task | Message | JSON_RPC_ERROR_TYPES,
+    response: Task | Message | JSON_RPC_ERROR_TYPES | None,
 ) -> str | None:
+    if response is None:
+        return None
+
     def get_parts_text(parts: list[Part]) -> str:
         text = ""
         for p in parts:
