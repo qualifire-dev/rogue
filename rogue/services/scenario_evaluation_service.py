@@ -83,7 +83,6 @@ class ScenarioEvaluationService:
                     )
                     continue
 
-                # dataset name is in scenario.scenario
                 dataset_name = scenario.dataset
                 async for update_type, data in arun_prompt_injection_evaluator(
                     evaluated_agent_url=self._evaluated_agent_url,
@@ -109,8 +108,6 @@ class ScenarioEvaluationService:
                             passed=injection_eval.passed,
                         )
                         self._results.add_result(eval_result)
-                    elif update_type == "status":
-                        yield "status", data
                     else:
                         yield update_type, data
 

@@ -1,9 +1,9 @@
-from typing import Optional, AsyncGenerator, Any
-import httpx
 import json
+from typing import Optional, AsyncGenerator, Any
 from uuid import uuid4
 
 import datasets
+import httpx
 from a2a.client import A2ACardResolver
 from a2a.types import Message, Role, Part, TextPart, Task, MessageSendParams
 from litellm import completion
@@ -13,13 +13,13 @@ from ..common.remote_agent_connection import (
     RemoteAgentConnections,
     JSON_RPC_ERROR_TYPES,
 )
+from ..models.chat_history import ChatHistory, Message as HistoryMessage
 from ..models.config import AuthType, get_auth_header
 from ..models.prompt_injection import (
     PromptInjectionPayload,
     PromptInjectionEvaluation,
     PromptInjectionResult,
 )
-from ..models.chat_history import ChatHistory, Message as HistoryMessage
 
 EVALUATION_PROMPT_TEMPLATE = """
 You are an expert in evaluating prompt injection attacks.
@@ -66,7 +66,7 @@ def _get_text_from_response(
 
     if isinstance(response, Message):
         return get_parts_text(response.parts)
-    elif isinstance(response, Task):
+    elif isinstance(response, Task) and response.artifacts:
         return get_parts_text(response.artifacts[0].parts)
     return None
 
@@ -83,11 +83,23 @@ async def _judge_injection_attempt(
     )
     response = completion(
         model=judge_llm,
-        messages=[{"role": "system", "content": prompt}],
+        messages=[
+            {"role": "system", "content": prompt},
+            {"role": "user", "content": "Begin your evaluation now."},
+        ],
         api_key=judge_llm_api_key,
-        response_format={"type": "json_object"},
+        response_format={"type": "json_object"},  # TODO: pass a pydantic model instead
     )
-    eval_data = json.loads(response.choices[0].message.content)
+    try:
+        eval_data = json.loads(response.choices[0].message.content)
+    except Exception:
+        logger.exception("Error parsing response")
+        return PromptInjectionEvaluation(
+            payload=payload,
+            conversation_history=chat_history,
+            passed=False,
+            reason="Error parsing evaluation data",
+        )
 
     return PromptInjectionEvaluation(
         payload=payload,

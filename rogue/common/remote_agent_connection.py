@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, TypeAlias
 
 import httpx
 from a2a.client import A2AClient
@@ -29,7 +29,7 @@ from loguru import logger
 
 from .generic_task_callback import GenericTaskUpdateCallback
 
-JSON_RPC_ERROR_TYPES = (
+JSON_RPC_ERROR_TYPES: TypeAlias = (
     JSONRPCError
     | JSONParseError
     | InvalidRequestError
@@ -44,8 +44,8 @@ JSON_RPC_ERROR_TYPES = (
     | InvalidAgentResponseError
 )
 
-TaskCallbackArg = Task | TaskStatusUpdateEvent | TaskArtifactUpdateEvent
-TaskUpdateCallback = Callable[[TaskCallbackArg, AgentCard], Task]
+TaskCallbackArg: TypeAlias = Task | TaskStatusUpdateEvent | TaskArtifactUpdateEvent
+TaskUpdateCallback: TypeAlias = Callable[[TaskCallbackArg, AgentCard], Task]
 
 
 class RemoteAgentConnections:

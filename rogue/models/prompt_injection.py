@@ -4,7 +4,7 @@ from .chat_history import ChatHistory
 
 
 class PromptInjectionPayload(BaseModel):
-    payload: str = Field(..., description="The prompt injection payload to send")
+    payload: str
 
 
 class PromptInjectionEvaluation(BaseModel):
