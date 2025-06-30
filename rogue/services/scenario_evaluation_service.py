@@ -136,9 +136,10 @@ class ScenarioEvaluationService:
         async for status, data in self._evaluate_prompt_injection_scenarios():
             yield status, data
 
+        all_results = self._results
         self._evaluation_results_output_path.write_text(
-            self._results.model_dump_json(indent=2, exclude_none=True),
+            all_results.model_dump_json(indent=2, exclude_none=True),
             encoding="utf-8",
         )
 
-        yield "results", self._results
+        yield "done", all_results

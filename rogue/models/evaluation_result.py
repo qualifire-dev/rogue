@@ -21,28 +21,15 @@ class EvaluationResult(BaseModel):
 class EvaluationResults(BaseModel):
     results: List[EvaluationResult] = Field(default_factory=list)
 
-    def add_result(self, new_result: EvaluationResult):
-        for result in self.results:
-            if result.scenario.scenario == new_result.scenario.scenario:
-                result.conversations.extend(new_result.conversations)
-                result.passed = result.passed and new_result.passed
-                return
-        self.results.append(new_result)
+    def add_result(self, result: EvaluationResult):
+        self.results.append(result)
 
-    @classmethod
-    def combine(
-        cls, *results: "EvaluationResults" | List["EvaluationResults"] | None
-    ) -> "EvaluationResults":
-        combined = EvaluationResults()
-        for evaluation_result in results:
-            if evaluation_result is None:
-                continue
+    def combine(self, other: "EvaluationResults"):
+        if other and other.results:
+            self.results.extend(other.results)
 
-            if isinstance(evaluation_result, list):
-                evaluation_result = cls.combine(*evaluation_result)
-
-            combined.results.extend(evaluation_result.results)
-        return combined
+    def __bool__(self):
+        return bool(self.results)
 
 
 class PolicyEvaluationResult(BaseModel):
