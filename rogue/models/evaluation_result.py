@@ -21,12 +21,18 @@ class EvaluationResult(BaseModel):
 class EvaluationResults(BaseModel):
     results: List[EvaluationResult] = Field(default_factory=list)
 
-    def add_result(self, result: EvaluationResult):
-        self.results.append(result)
+    def add_result(self, new_result: EvaluationResult):
+        for result in self.results:
+            if result.scenario.scenario == new_result.scenario.scenario:
+                result.conversations.extend(new_result.conversations)
+                result.passed = result.passed and new_result.passed
+                return
+        self.results.append(new_result)
 
     def combine(self, other: "EvaluationResults"):
         if other and other.results:
-            self.results.extend(other.results)
+            for result in other.results:
+                self.add_result(result)
 
     def __bool__(self):
         return bool(self.results)
