@@ -1,0 +1,23 @@
+[project]
+name = "rogue"
+version = "0.1.0"
+description = "Rogue agent evaluator by Qualifire"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "a2a-sdk==0.2.5",
+    "datasets==3.6.0",
+    "google-adk==1.1.1",
+    "litellm==1.71.2",
+    "loguru==0.7.3",
+    "pydantic>=2.11.7",
+    "pydantic-yaml==1.5.1",
+]
+
+[dependency-groups]
+dev = [
+    "bandit>=1.8.5",
+    "black>=25.1.0",
+    "flake8>=7.3.0",
+    "mypy>=1.16.1",
+]

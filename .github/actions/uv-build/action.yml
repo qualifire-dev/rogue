@@ -1,0 +1,13 @@
+name: "uv-build"
+description: "Makes sure the package is buildable using uv"
+inputs:
+  workdir:
+    description: "working directory"
+    required: false
+    default: "."
+runs:
+  using: "composite"
+  steps:
+    - name: Install dependencies and tools
+      shell: bash
+      run: uv build
