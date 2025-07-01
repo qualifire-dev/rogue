@@ -4,7 +4,7 @@ exclude =
     .git,
     __pycache__,
     __init__.py,
-    venv
+    .venv
 ignore =
     W503
     E712
