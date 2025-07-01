@@ -10,9 +10,7 @@ runs:
   steps:
     - name: "Check that uv.lock is up to date"
       shell: bash
-      run: |
-        uv pip compile --locked --generate-uv-lock
-        git diff --exit-code uv.lock
+      run: uv lock --check
     - name: Install dependencies and tools
       shell: bash
       run: |
