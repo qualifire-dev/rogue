@@ -10,4 +10,6 @@ runs:
   steps:
     - name: Install dependencies and tools
       shell: bash
-      run: uv build
+      run: |
+        cd "${{ inputs.workdir }}"
+        uv build
