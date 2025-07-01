@@ -43,10 +43,10 @@ def get_auth_header(
 ) -> dict[str, str]:
     if auth_type == AuthType.NO_AUTH or not auth_credentials:
         return {}
-    if auth_type == AuthType.API_KEY:
+    elif auth_type == AuthType.API_KEY:
         return {"X-API-Key": auth_credentials}
-    if auth_type == AuthType.BEARER_TOKEN:
+    elif auth_type == AuthType.BEARER_TOKEN:
         return {"Authorization": f"Bearer {auth_credentials}"}
-    if auth_type == AuthType.BASIC_AUTH:
+    elif auth_type == AuthType.BASIC_AUTH:
         return {"Authorization": f"Basic {auth_credentials}"}
     return {}

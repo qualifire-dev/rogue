@@ -15,7 +15,7 @@ from loguru import logger
 
 from .evaluator_agent import EvaluatorAgent
 from ..common.agent_sessions import create_session
-from ..models.config import AuthType
+from ..models.config import AuthType, get_auth_header
 from ..models.evaluation_result import EvaluationResults
 from ..models.scenario import Scenarios
 
@@ -39,22 +39,6 @@ def _get_agent_card(host: str, port: int):
         capabilities=AgentCapabilities(streaming=True),
         skills=[skill],
     )
-
-
-def _get_headers(
-    auth_credentials: str | None,
-    auth_type: AuthType,
-) -> dict[str, str] | None:
-    if auth_type is None or auth_type == AuthType.NO_AUTH or not auth_credentials:
-        return None
-
-    prefix = ""
-    if auth_type == AuthType.BEARER_TOKEN:
-        prefix = "Bearer "
-    elif auth_type == AuthType.BASIC_AUTH:
-        prefix = "Basic "
-
-    return {"Authorization": prefix + auth_credentials}
 
 
 async def _run_agent(
@@ -105,7 +89,7 @@ async def arun_evaluator_agent(
     business_context: str,
     deep_test_mode: bool,
 ) -> AsyncGenerator[tuple[str, Any], None]:
-    headers = _get_headers(auth_credentials, auth_type)
+    headers = get_auth_header(auth_type, auth_credentials)
     update_queue: Queue = Queue()
     results_queue: Queue = Queue()
 
