@@ -18,13 +18,13 @@ runs:
         uv sync
     - name: "Bandit"
       shell: bash
-      run: bandit -c .bandit.yaml -r -v ${{ inputs.workdir }}
+      run: uv run bandit -c .bandit.yaml -r -v ${{ inputs.workdir }}
     - name: "Mypy"
       shell: bash
-      run: mypy --config-file .mypy.ini ${{ inputs.workdir }}
+      run: uv run mypy --config-file .mypy.ini ${{ inputs.workdir }}
     - name: "Black"
       shell: bash
-      run: black --check ${{ inputs.workdir }}
+      run: uv run black --check ${{ inputs.workdir }}
     - name: "Flake8"
       shell: bash
-      run: flake8 ${{ inputs.workdir }}
+      run: uv run flake8 ${{ inputs.workdir }}
