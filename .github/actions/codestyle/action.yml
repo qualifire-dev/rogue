@@ -18,7 +18,7 @@ runs:
         uv sync
     - name: "Bandit"
       shell: bash
-      run: uv run bandit -c .bandit.yaml -r -v ${{ inputs.workdir }}
+      run: uv run bandit -c .bandit.yaml -r ${{ inputs.workdir }}
     - name: "Mypy"
       shell: bash
       run: uv run mypy --config-file .mypy.ini ${{ inputs.workdir }}
