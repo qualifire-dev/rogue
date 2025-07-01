@@ -24,7 +24,7 @@ runs:
       run: uv run mypy --config-file .mypy.ini ${{ inputs.workdir }}
     - name: "Black"
       shell: bash
-      run: uv run black --check ${{ inputs.workdir }}
+      run: uv run black --exclude ".venv" --check ${{ inputs.workdir }}
     - name: "Flake8"
       shell: bash
       run: uv run flake8 ${{ inputs.workdir }}

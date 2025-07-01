@@ -3,7 +3,8 @@ max-line-length = 88
 exclude =
     .git,
     __pycache__,
-    __init__.py
+    __init__.py,
+    venv
 ignore =
     W503
     E712
