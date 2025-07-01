@@ -15,8 +15,7 @@ runs:
       shell: bash
       run: |
         cd ${{ inputs.workdir }}
-        uv venv
-        uv pip install ".[dev]"
+        uv sync
     - name: "Bandit"
       shell: bash
       run: bandit -c .bandit.yaml -r -v ${{ inputs.workdir }}
