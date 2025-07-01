@@ -17,7 +17,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "bandit==1.8.5",
-    "blac===25.1.0",
+    "black===25.1.0",
     "flake8==7.3.0",
     "mypy==1.16.1",
 ]

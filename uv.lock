@@ -1969,10 +1969,10 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "bandit", specifier = ">=1.8.5" },
-    { name = "black", specifier = ">=25.1.0" },
-    { name = "flake8", specifier = ">=7.3.0" },
-    { name = "mypy", specifier = ">=1.16.1" },
+    { name = "bandit", specifier = "==1.8.5" },
+    { name = "black", specifier = "===25.1.0" },
+    { name = "flake8", specifier = "==7.3.0" },
+    { name = "mypy", specifier = "==1.16.1" },
 ]
 
 [[package]]
