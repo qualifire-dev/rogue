@@ -219,7 +219,7 @@ def create_config_screen(
         llm,
         llm_key,
         hf_key,
-    ):  # noqa: E501, PLR0913
+    ):
         # Start by creating updates to clear all error labels
         label_updates = {
             label: gr.update(value="", visible=False) for label in error_labels.values()
