@@ -60,7 +60,7 @@ async def _run_agent(
         session_id=session.id,
         new_message=content,
     ):
-        if not event.content:
+        if not event or not event.content or not event.content.parts:
             continue
 
         event_text = ""

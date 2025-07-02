@@ -282,7 +282,7 @@ class EvaluatorAgent:
         self,
         callback_context: CallbackContext,
         llm_request: LlmRequest,
-    ) -> Optional[dict]:
+    ) -> None:
         if not self._debug:
             return None
         logger.info(
@@ -304,7 +304,7 @@ class EvaluatorAgent:
         self,
         callback_context: CallbackContext,
         llm_response: LlmResponse,
-    ):
+    ) -> None:
         if not self._debug:
             return None
         logger.info(

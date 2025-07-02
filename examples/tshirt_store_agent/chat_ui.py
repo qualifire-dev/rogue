@@ -54,7 +54,10 @@ def build_message(
         task_id=task_id,
         context_id=context_id,
     )
-    return SendMessageRequest(params=MessageSendParams(**send_payload))
+    return SendMessageRequest(
+        id=uuid4().hex,
+        params=MessageSendParams(**send_payload),
+    )
 
 
 async def get_agent_response(
@@ -78,7 +81,10 @@ async def get_agent_response(
         task_id: str = send_response.root.result.id
 
         # 2. Poll for the task result
-        get_request = GetTaskRequest(params=TaskQueryParams(id=task_id))
+        get_request = GetTaskRequest(
+            id=uuid4().hex,
+            params=TaskQueryParams(id=task_id),
+        )
         get_response: GetTaskResponse = await A2A_CLIENT.get_task(get_request)
 
         # 3. Extract the text from the response artifact

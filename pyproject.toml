@@ -8,6 +8,7 @@ dependencies = [
     "a2a-sdk==0.2.10",
     "datasets==3.6.0",
     "google-adk==1.5.0",
+    "gradio==5.35.0",
     "litellm==1.71.2",
     "loguru==0.7.3",
     "pydantic==2.11.7",

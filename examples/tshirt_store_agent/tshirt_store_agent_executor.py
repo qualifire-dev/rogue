@@ -60,16 +60,16 @@ class TShirtStoreAgentExecutor(AgentExecutor):
         session_id = session_obj.id
 
         async for event in self._run_agent(session_id, new_message):
-
             if event.is_final_response():
-                parts = convert_genai_parts_to_a2a(event.content.parts)
-                logger.debug(f"Yielding final response. parts: {parts}")
-                task_updater.add_artifact(parts)
-                task_updater.complete()
+                if event.content:
+                    parts = convert_genai_parts_to_a2a(event.content.parts)
+                    logger.debug(f"Yielding final response. parts: {parts}")
+                    await task_updater.add_artifact(parts)
+                await task_updater.complete()
                 break
-            if not event.get_function_calls():
+            if not event.get_function_calls() and event.content:
                 logger.debug("Yielding update response")
-                task_updater.update_status(
+                await task_updater.update_status(
                     TaskState.working,
                     message=task_updater.new_agent_message(
                         convert_genai_parts_to_a2a(event.content.parts),
@@ -91,8 +91,8 @@ class TShirtStoreAgentExecutor(AgentExecutor):
         )
         # Immediately notify that the task is submitted.
         if not context.current_task:
-            updater.submit()
-        updater.start_work()
+            await updater.submit()
+        await updater.start_work()
 
         if context.message is not None:
             await self._process_request(
@@ -165,8 +165,9 @@ def convert_a2a_part_to_genai(part: Part) -> types.Part:
     raise ValueError(f"Unsupported part type: {type(part)}")
 
 
-def convert_genai_parts_to_a2a(parts: list[types.Part]) -> list[Part]:
+def convert_genai_parts_to_a2a(parts: list[types.Part] | None) -> list[Part]:
     """Convert a list of Google Gen AI Part types into a list of A2A Part types."""
+    parts = parts or []
     return [
         convert_genai_part_to_a2a(part)
         for part in parts
