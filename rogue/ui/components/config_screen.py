@@ -44,7 +44,6 @@ def create_config_screen(
     if shared_state.value and isinstance(shared_state.value, dict):
         config_data = shared_state.value.get("config", {})
 
-    logger.info(f">>>>>>>>>>> Config data: {config_data}")
     with gr.Column():
         gr.Markdown("## Agent Configuration")
         agent_url = gr.Textbox(
