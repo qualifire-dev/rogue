@@ -29,20 +29,13 @@ class EvaluationResults(BaseModel):
                 return
         self.results.append(new_result)
 
-    @classmethod
-    def combine(
-        cls, *results: "EvaluationResults" | List["EvaluationResults"] | None
-    ) -> "EvaluationResults":
-        combined = EvaluationResults()
-        for evaluation_result in results:
-            if evaluation_result is None:
-                continue
+    def combine(self, other: "EvaluationResults"):
+        if other and other.results:
+            for result in other.results:
+                self.add_result(result)
 
-            if isinstance(evaluation_result, list):
-                evaluation_result = cls.combine(*evaluation_result)
-
-            combined.results.extend(evaluation_result.results)
-        return combined
+    def __bool__(self):
+        return bool(self.results)
 
 
 class PolicyEvaluationResult(BaseModel):

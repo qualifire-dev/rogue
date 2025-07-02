@@ -37,8 +37,9 @@ def get_app(workdir: Path):
                     service_llm,
                     judge_llm,
                     judge_llm_api_key,
-                    huggingface_api_key,
+                    # huggingface_api_key,
                     deep_test_mode,
+                    parallel_runs,
                 ) = create_config_screen(shared_state, tabs)
 
             with gr.TabItem("2. Interview", id="interview"):
@@ -54,7 +55,6 @@ def get_app(workdir: Path):
             with gr.TabItem("4. Run & Evaluate", id="run") as run_tab:
                 (
                     scenarios_display_runner,
-                    _,
                     _,
                 ) = create_scenario_runner_screen(shared_state, tabs)
 
@@ -115,6 +115,7 @@ def get_app(workdir: Path):
                 ),
                 interview_mode: gr.update(value=config.get("interview_mode", True)),
                 deep_test_mode: gr.update(value=config.get("deep_test_mode", False)),
+                parallel_runs: gr.update(value=config.get("parallel_runs", 1)),
                 auth_type: gr.update(value=auth_type_val),
                 auth_credentials: gr.update(
                     value=config.get("auth_credentials", ""),
@@ -125,9 +126,9 @@ def get_app(workdir: Path):
                 ),
                 judge_llm: gr.update(value=config.get("judge_llm", "openai/o4-mini")),
                 judge_llm_api_key: gr.update(value=config.get("judge_llm_api_key", "")),
-                huggingface_api_key: gr.update(
-                    value=config.get("huggingface_api_key", "")
-                ),
+                # huggingface_api_key: gr.update(
+                #     value=config.get("huggingface_api_key", "")
+                # ),
             }
 
         app.load(
@@ -142,8 +143,9 @@ def get_app(workdir: Path):
                 service_llm,
                 judge_llm,
                 judge_llm_api_key,
-                huggingface_api_key,
+                # huggingface_api_key,
                 deep_test_mode,
+                parallel_runs,
             ],
         )
 
