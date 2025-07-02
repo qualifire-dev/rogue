@@ -23,7 +23,7 @@ class AgentConfig(BaseModel):
 
     # This can be none when env is properly configured and/or in vertexai for example
     judge_llm_api_key: Optional[str] = None
-    huggingface_api_key: Optional[str] = None
+    # huggingface_api_key: Optional[str] = None
 
     @model_validator(mode="after")
     def check_auth_credentials(self) -> "AgentConfig":

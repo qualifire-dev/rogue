@@ -37,7 +37,7 @@ def get_app(workdir: Path):
                     service_llm,
                     judge_llm,
                     judge_llm_api_key,
-                    huggingface_api_key,
+                    # huggingface_api_key,
                     deep_test_mode,
                     parallel_runs,
                 ) = create_config_screen(shared_state, tabs)
@@ -126,9 +126,9 @@ def get_app(workdir: Path):
                 ),
                 judge_llm: gr.update(value=config.get("judge_llm", "openai/o4-mini")),
                 judge_llm_api_key: gr.update(value=config.get("judge_llm_api_key", "")),
-                huggingface_api_key: gr.update(
-                    value=config.get("huggingface_api_key", "")
-                ),
+                # huggingface_api_key: gr.update(
+                #     value=config.get("huggingface_api_key", "")
+                # ),
             }
 
         app.load(
@@ -143,7 +143,7 @@ def get_app(workdir: Path):
                 service_llm,
                 judge_llm,
                 judge_llm_api_key,
-                huggingface_api_key,
+                # huggingface_api_key,
                 deep_test_mode,
                 parallel_runs,
             ],

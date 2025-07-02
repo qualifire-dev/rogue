@@ -23,12 +23,12 @@ def load_config_from_file(workdir: Path) -> dict:
             "huggingface_api_key": hf_key_env,
         }
 
-    # If the file exists, try to load it
+    # # If the file exists, try to load it
     with open(config_path, "r") as f:
         logger.info(f"Loading config from {config_path}")
         try:
             res = json.load(f)
-            res["huggingface_api_key"] = hf_key_env
+            # res["huggingface_api_key"] = hf_key_env
             logger.info(f"Loaded config: {res}")
             return res
         except json.JSONDecodeError:
@@ -147,17 +147,17 @@ def create_config_screen(
             elem_classes=["error-label"],
         )
 
-        huggingface_api_key = gr.Textbox(
-            label="HuggingFace API Key",
-            type="password",
-            value=config_data.get(
-                "huggingface_api_key",
-                "",
-            ),
-        )
-        huggingface_api_key_error = gr.Markdown(
-            visible=False, elem_classes=["error-label"]
-        )
+        # huggingface_api_key = gr.Textbox(
+        #     label="HuggingFace API Key",
+        #     type="password",
+        #     value=config_data.get(
+        #         "huggingface_api_key",
+        #         "",
+        #     ),
+        # )
+        # huggingface_api_key_error = gr.Markdown(
+        #     visible=False, elem_classes=["error-label"]
+        # )
 
         save_button = gr.Button("Save Configuration")
         general_error_label = gr.Markdown(visible=False, elem_classes=["error-label"])
@@ -166,7 +166,7 @@ def create_config_screen(
             "agent_url": agent_url_error,
             "auth_credentials": auth_credentials_error,
             "judge_llm_api_key": judge_llm_api_key_error,
-            "huggingface_api_key": huggingface_api_key_error,
+            # "huggingface_api_key": huggingface_api_key_error,
         }
 
     def update_state(state, key, value):
@@ -182,7 +182,7 @@ def create_config_screen(
         (service_llm, "service_llm"),
         (judge_llm, "judge_llm"),
         (judge_llm_api_key, "judge_llm_api_key"),
-        (huggingface_api_key, "huggingface_api_key"),
+        # (huggingface_api_key, "huggingface_api_key"),
         (deep_test_mode, "deep_test_mode"),
         (parallel_runs, "parallel_runs"),
     ]:
@@ -297,7 +297,7 @@ def create_config_screen(
             service_llm,
             judge_llm,
             judge_llm_api_key,
-            huggingface_api_key,
+            # huggingface_api_key,
         ],
         outputs=[
             shared_state,
@@ -315,7 +315,7 @@ def create_config_screen(
         service_llm,
         judge_llm,
         judge_llm_api_key,
-        huggingface_api_key,
+        # huggingface_api_key,
         deep_test_mode,
         parallel_runs,
     )
