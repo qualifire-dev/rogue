@@ -32,12 +32,15 @@ def create_scenario_generator_screen(shared_state: gr.State, tabs_component: gr.
         api_key = config.get("judge_llm_api_key")
 
         try:
+            workdir = state.get("workdir")
             scenarios = llm_service.generate_scenarios(
                 service_llm,
                 current_context,
                 llm_provider_api_key=api_key,
+                output_dir=workdir,
             )
             state["scenarios"] = scenarios
+            state["scenarios_hash"] = hash(scenarios)
             return {
                 shared_state: state,
                 scenarios_output: scenarios.model_dump_json(

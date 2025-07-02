@@ -38,6 +38,9 @@ class Scenario(BaseModel):
             self.dataset = None
         return self
 
+    def __hash__(self):
+        return hash((self.scenario, self.scenario_type.value, self.dataset))
+
 
 class Scenarios(BaseModel):
     scenarios: list[Scenario]
@@ -62,3 +65,6 @@ class Scenarios(BaseModel):
 
     def get_grounding_scenarios(self) -> "Scenarios":
         return self.get_scenarios_by_type(ScenarioType.GROUNDING)
+
+    def __hash__(self):
+        return hash(tuple(self.scenarios))
