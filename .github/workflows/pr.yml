@@ -20,5 +20,3 @@ jobs:
           python-version-file: ".python-version"
       - name: Python codestyle
         uses: ./.github/actions/codestyle
-      - name: Build
-        uses: ./.github/actions/uv-build
