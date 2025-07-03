@@ -5,39 +5,26 @@ inputs:
     description: "working directory"
     required: false
     default: "."
-  requirements_file:
-    description: "requirements file"
-    required: false
-    default: "requirements.txt"
 runs:
   using: "composite"
   steps:
-    - name: Setup Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.12.6"
-    - name: Install checklist dependencies
+    - name: "Check that uv.lock is up to date"
       shell: bash
-      run: |
-        pip install \
-          black==25.1.0 \
-          flake8==7.3.0 \
-          bandit==1.8.5 \
-          mypy==1.16.1
-    - name: Install given dependencies
+      run: uv lock --check
+    - name: Install dependencies and tools
       shell: bash
       run: |
         cd ${{ inputs.workdir }}
-        pip install -r ${{ inputs.requirements_file }}
+        uv sync
     - name: "Bandit"
       shell: bash
-      run: bandit -c .bandit.yaml -r -v ${{ inputs.workdir }}
+      run: uv run bandit -c .bandit.yaml -r ${{ inputs.workdir }}
     - name: "Mypy"
       shell: bash
-      run: mypy --config-file .mypy.ini ${{ inputs.workdir }}
+      run: uv run mypy --config-file .mypy.ini ${{ inputs.workdir }}
     - name: "Black"
       shell: bash
-      run: black --check ${{ inputs.workdir }}
+      run: uv run black --exclude ".venv" --check ${{ inputs.workdir }}
     - name: "Flake8"
       shell: bash
-      run: flake8 ${{ inputs.workdir }}
+      run: uv run flake8 ${{ inputs.workdir }}

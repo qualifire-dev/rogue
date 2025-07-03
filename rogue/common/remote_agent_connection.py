@@ -1,4 +1,5 @@
 from typing import Callable, TypeAlias
+from uuid import uuid4
 
 import httpx
 from a2a.client import A2AClient
@@ -77,7 +78,10 @@ class RemoteAgentConnections:
         if stream:
             task = None
             async for stream_response in self.agent_client.send_message_streaming(
-                SendStreamingMessageRequest(params=request)
+                SendStreamingMessageRequest(
+                    id=uuid4().hex,
+                    params=request,
+                )
             ):
                 logger.debug(
                     "received stream response from remote agent",
@@ -102,7 +106,10 @@ class RemoteAgentConnections:
             return task
         else:  # Non-streaming
             response = await self.agent_client.send_message(
-                SendMessageRequest(params=request)
+                SendMessageRequest(
+                    id=uuid4().hex,
+                    params=request,
+                )
             )
 
             logger.debug(

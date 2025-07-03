@@ -59,7 +59,10 @@ def build_message(
         task_id=task_id,
         context_id=context_id,
     )
-    return SendMessageRequest(params=MessageSendParams(**send_payload))
+    return SendMessageRequest(
+        id=uuid4().hex,
+        params=MessageSendParams(**send_payload),
+    )
 
 
 async def send_message(
@@ -83,7 +86,10 @@ async def send_message(
     task_id: str = send_response.root.result.id
     print("---Query Task---")
     # query the task
-    get_request = GetTaskRequest(params=TaskQueryParams(id=task_id))
+    get_request = GetTaskRequest(
+        id=uuid4().hex,
+        params=TaskQueryParams(id=task_id),
+    )
     get_response: GetTaskResponse = await client.get_task(get_request)
 
     if not quiet:

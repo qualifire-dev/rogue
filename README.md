@@ -32,7 +32,7 @@ Rogue's workflow is designed to be simple and intuitive, managed entirely throug
 
 ### Prerequisites
 
-- Python 3.11+
+- Python 3.10+
 - An API key for an LLM provider (e.g., OpenAI, Google, Anthropic).
 
 ### Installation
@@ -45,9 +45,14 @@ Rogue's workflow is designed to be simple and intuitive, managed entirely throug
     ```
 
 2.  **Install dependencies:**
-
+    
+    If you are using uv:
     ```bash
-    pip install -r requirements.txt
+    uv sync
+    ```
+    
+    Or, if you are using pip:
+    ```bash
     pip install -e .
     ```
 
@@ -63,6 +68,12 @@ Rogue's workflow is designed to be simple and intuitive, managed entirely throug
 
 Launch the Gradio web UI with the following command:
 
+If you are using uv:
+```bash
+uv run -m rogue
+```
+
+If not:
 ```bash
 python -m rogue
 ```
@@ -77,6 +88,12 @@ This repository includes a simple example agent that sells T-shirts. You can use
 
 1.  **Start the example agent server** in a separate terminal:
 
+    If you are using uv:
+    ```bash
+    uv run examples/tshirt_store_agent
+    ```
+    
+    If not:
     ```bash
     python examples/tshirt_store_agent
     ```
