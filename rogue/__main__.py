@@ -28,7 +28,7 @@ def parse_args():
     ui_parser.add_argument(
         "--workdir",
         type=Path,
-        default=Path.home() / ".rogue",
+        default=Path(".") / ".rogue",
         help="Working directory",
     )
 

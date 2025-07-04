@@ -1,4 +1,3 @@
-from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -172,9 +171,7 @@ class LLMService:
             model_scenarios.scenarios.extend(STATIC_SCENARIOS)
 
             if output_dir is not None:
-                output_file = (
-                    output_dir / f"scenarios_{datetime.now().isoformat()}.json"
-                )
+                output_file = output_dir / "scenarios.json"
                 output_file.write_text(model_scenarios.model_dump_json(indent=2))
 
             return model_scenarios

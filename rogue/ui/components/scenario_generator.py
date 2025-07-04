@@ -41,15 +41,6 @@ def create_scenario_generator_screen(shared_state: gr.State, tabs_component: gr.
             )
             state["scenarios"] = scenarios
 
-            if workdir is not None:
-                # If the workdir is set, and the scenarios are stored to a file,
-                # then we need the hash to make sure we don't create an identical file
-                # later on.
-                # But if the workdir is not set, then we won't store the hash to
-                # still give the option to store it later, even if the scenarios
-                # are unchanged.
-                state["scenarios_hash"] = hash(scenarios)
-
             return {
                 shared_state: state,
                 scenarios_output: scenarios.model_dump_json(
