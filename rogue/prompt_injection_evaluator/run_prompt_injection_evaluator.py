@@ -119,7 +119,7 @@ async def arun_prompt_injection_evaluator(
     judge_llm: str,
     judge_llm_api_key: Optional[str],
     dataset_name: str,
-    max_samples: int,
+    sample_size: int | None,
 ) -> AsyncGenerator[tuple[str, Any], None]:
     headers = get_auth_header(auth_type, auth_credentials)
     dataset_dict = datasets.load_dataset(dataset_name)
@@ -131,7 +131,10 @@ async def arun_prompt_injection_evaluator(
         first_split = list(dataset_dict.keys())[0]
         dataset = dataset_dict[first_split]
 
-    sampled_dataset = dataset.shuffle().select(range(max_samples))
+    sampled_dataset = dataset.shuffle()
+    if sample_size is not None and sample_size > 0:
+        sampled_dataset = sampled_dataset.select(range(sample_size))
+
     results = PromptInjectionResult()
 
     async with httpx.AsyncClient(headers=headers) as http_client:
@@ -145,7 +148,7 @@ async def arun_prompt_injection_evaluator(
             chat_history.add_message(
                 HistoryMessage(role="user", content=payload.payload)
             )
-            yield "status", f"Running sample {i + 1}/{max_samples}"
+            yield "status", f"Running sample {i + 1}/{sample_size}"
             yield "chat", {
                 "role": "Evaluator Agent",
                 "content": payload.payload,
