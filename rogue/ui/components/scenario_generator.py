@@ -1,6 +1,6 @@
 import gradio as gr
 
-from ...common.workdir_utils import dump_business_context, dump_scenarios
+from ...common.workdir_utils import dump_scenarios, dump_business_context
 from ...services.llm_service import LLMService
 
 
@@ -27,6 +27,7 @@ def create_scenario_generator_screen(shared_state: gr.State, tabs_component: gr.
 
         # Update the shared state with the potentially edited context
         state["business_context"] = current_context
+        dump_business_context(state, current_context)
 
         config = state.get("config", {})
         service_llm = config.get("service_llm")
@@ -54,11 +55,6 @@ def create_scenario_generator_screen(shared_state: gr.State, tabs_component: gr.
                 shared_state: state,
                 scenarios_output: {"error": "Failed to generate scenarios."},
             }
-
-    generate_button.click(
-        fn=dump_business_context,
-        inputs=[shared_state, business_context_display],
-    )
 
     generate_button.click(
         fn=generate_and_display_scenarios,
