@@ -7,20 +7,20 @@ from pydantic import BaseModel, model_validator
 class ScenarioType(Enum):
     POLICY = "policy"  # default
     PROMPT_INJECTION = "prompt_injection"
-    SAFETY = "safety"
-    GROUNDING = "grounding"
 
 
 class Scenario(BaseModel):
     scenario: str
     scenario_type: ScenarioType = ScenarioType.POLICY
-    dataset: str | None = None  # None if scenario_type in [policy, grounding]
+    dataset: str | None = None  # None if scenario_type in [policy]
+
+    # None if dataset is None, negative for all items in the dataset
+    dataset_sample_size: int | None = None
 
     @model_validator(mode="after")
     def validate_dataset_for_type(self) -> "Scenario":
         non_dataset_types = [
             ScenarioType.POLICY,
-            ScenarioType.GROUNDING,
         ]
 
         dataset_required = self.scenario_type not in non_dataset_types
@@ -36,6 +36,17 @@ class Scenario(BaseModel):
                 f"'{self.scenario_type.value}', ignoring.",
             )
             self.dataset = None
+        return self
+
+    @model_validator(mode="after")
+    def validate_dataset_sample_size(self) -> "Scenario":
+        if self.dataset is None:
+            self.dataset_sample_size = None
+            return self
+
+        if self.dataset_sample_size is None:
+            raise ValueError("`dataset_sample_size` must be set when `dataset` is set")
+
         return self
 
 
@@ -56,9 +67,3 @@ class Scenarios(BaseModel):
 
     def get_prompt_injection_scenarios(self) -> "Scenarios":
         return self.get_scenarios_by_type(ScenarioType.PROMPT_INJECTION)
-
-    def get_safety_scenarios(self) -> "Scenarios":
-        return self.get_scenarios_by_type(ScenarioType.SAFETY)
-
-    def get_grounding_scenarios(self) -> "Scenarios":
-        return self.get_scenarios_by_type(ScenarioType.GROUNDING)
