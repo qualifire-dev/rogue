@@ -50,6 +50,8 @@ def main():
     configure_logger()
     args = parse_args()
 
+    args.workdir.mkdir(exist_ok=True, parents=True)
+
     if args.mode == "ui":
         run_ui(args)
     elif args.mode == "cli":

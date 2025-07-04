@@ -10,12 +10,6 @@ def set_ui_args(parser: ArgumentParser) -> None:
         type=int,
         help="Port to run the UI on",
     )
-    parser.add_argument(
-        "--workdir",
-        type=Path,
-        default=Path.home() / ".rogue",
-        help="Working directory",
-    )
 
 
 def run_ui(args: Namespace) -> None:
