@@ -1,5 +1,6 @@
 import gradio as gr
 
+from ...common.workdir_utils import dump_scenarios, dump_business_context
 from ...services.llm_service import LLMService
 
 
@@ -26,19 +27,19 @@ def create_scenario_generator_screen(shared_state: gr.State, tabs_component: gr.
 
         # Update the shared state with the potentially edited context
         state["business_context"] = current_context
+        dump_business_context(state, current_context)
 
         config = state.get("config", {})
         service_llm = config.get("service_llm")
         api_key = config.get("judge_llm_api_key")
 
         try:
-            workdir = state.get("workdir")
             scenarios = llm_service.generate_scenarios(
                 service_llm,
                 current_context,
                 llm_provider_api_key=api_key,
-                output_dir=workdir,
             )
+            dump_scenarios(state, scenarios)
             state["scenarios"] = scenarios
 
             return {

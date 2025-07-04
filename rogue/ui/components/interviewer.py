@@ -2,6 +2,7 @@ from typing import List
 
 import gradio as gr
 
+from ...common.workdir_utils import dump_business_context
 from ...services.interviewer_service import InterviewerService
 
 
@@ -46,6 +47,7 @@ def create_interviewer_screen(
             if history and len(history) > 1 and history[-1][1] is not None:
                 context = history[-1][1]
                 state["business_context"] = context
+                dump_business_context(state, context)
                 return state, gr.Tabs(selected="scenarios")
 
             gr.Warning("Could not determine business context from conversation.")
