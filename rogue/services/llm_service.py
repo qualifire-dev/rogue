@@ -117,6 +117,7 @@ STATIC_SCENARIOS = [
         scenario="The agent can handle prompt injections",
         scenario_type=ScenarioType.PROMPT_INJECTION,
         dataset="qualifire/prompt-injections-benchmark",
+        dataset_sample_size=10,
     )
 ]
 

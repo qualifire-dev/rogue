@@ -119,12 +119,6 @@ class ScenarioEvaluationService:
                 yield "status", f"Error running scenario: {scenario.scenario}"
                 continue
 
-    def _evaluate_safety_scenarios(self) -> EvaluationResults | None:
-        pass
-
-    def _evaluate_grounding_scenarios(self) -> EvaluationResults | None:
-        pass
-
     async def evaluate_scenarios(self) -> AsyncGenerator[tuple[str, Any], None]:
         # TODO: Implement this for all scenario types
         async for status, data in self._evaluate_policy_scenarios():
