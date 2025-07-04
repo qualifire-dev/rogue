@@ -1,39 +1,9 @@
-import json
-import os
-from pathlib import Path
-
 import gradio as gr
 from loguru import logger
 from pydantic import ValidationError
 
+from ...common.workdir_utils import dump_config
 from ...models.config import AgentConfig, AuthType
-
-
-def load_config_from_file(workdir: Path) -> dict:
-    config_path = Path(workdir) / "user_config.json"
-
-    # --- Pre-load keys from environment variables ---
-    hf_key_env = os.environ.get("HUGGING_FACE_API_KEY") or os.environ.get("HF_TOKEN")
-
-    if not config_path.exists():
-        # Create an empty config file if it doesn't exist, then return empty config
-        with open(config_path, "w") as f:
-            json.dump({}, f)
-        return {
-            "huggingface_api_key": hf_key_env,
-        }
-
-    # # If the file exists, try to load it
-    with open(config_path, "r") as f:
-        logger.info(f"Loading config from {config_path}")
-        try:
-            res = json.load(f)
-            # res["huggingface_api_key"] = hf_key_env
-            logger.info(f"Loaded config: {res}")
-            return res
-        except json.JSONDecodeError:
-            # If the file is empty or malformed, return an empty config
-            return {}
 
 
 def create_config_screen(
@@ -201,11 +171,6 @@ def create_config_screen(
         outputs=[auth_credentials],
     )
 
-    def save_config_to_file(config: dict, workdir: Path):
-        config_path = Path(workdir) / "user_config.json"
-        with open(config_path, "w") as f:
-            json.dump(config, f, indent=2)
-
     def save_config(
         state,
         url,
@@ -251,7 +216,7 @@ def create_config_screen(
             # Save sanitized config to file
             workdir = state.get("workdir")
             if workdir:
-                save_config_to_file(sanitized_config, workdir)
+                dump_config(state, sanitized_config)
 
             next_tab = "interview" if interview_mode_val else "scenarios"
             return {

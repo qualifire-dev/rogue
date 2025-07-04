@@ -17,8 +17,6 @@ from ..prompt_injection_evaluator.run_prompt_injection_evaluator import (
 
 
 class ScenarioEvaluationService:
-    MAX_SAMPLES = 10
-
     def __init__(
         self,
         evaluated_agent_url: str,
@@ -91,7 +89,7 @@ class ScenarioEvaluationService:
                     judge_llm=self._judge_llm,
                     judge_llm_api_key=self._judge_llm_api_key,
                     dataset_name=dataset_name,
-                    max_samples=self.MAX_SAMPLES,
+                    sample_size=scenario.dataset_sample_size,
                 ):
                     if update_type == "result":
                         # Convert PromptInjectionEvaluation to EvaluationResult
@@ -118,12 +116,6 @@ class ScenarioEvaluationService:
                 )
                 yield "status", f"Error running scenario: {scenario.scenario}"
                 continue
-
-    def _evaluate_safety_scenarios(self) -> EvaluationResults | None:
-        pass
-
-    def _evaluate_grounding_scenarios(self) -> EvaluationResults | None:
-        pass
 
     async def evaluate_scenarios(self) -> AsyncGenerator[tuple[str, Any], None]:
         # TODO: Implement this for all scenario types

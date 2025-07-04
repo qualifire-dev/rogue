@@ -3,7 +3,7 @@ from pathlib import Path
 
 import gradio as gr
 
-from .components.config_screen import create_config_screen, load_config_from_file
+from .components.config_screen import create_config_screen
 from .components.interviewer import create_interviewer_screen
 from .components.report_generator import (
     create_report_generator_screen,
@@ -12,6 +12,7 @@ from .components.report_generator import (
 from .components.scenario_generator import create_scenario_generator_screen
 from .components.scenario_runner import create_scenario_runner_screen
 from .config.theme import theme
+from ..common.workdir_utils import load_config
 from ..models.config import AuthType
 
 
@@ -99,14 +100,15 @@ def get_app(workdir: Path):
         )
 
         def load_and_update_ui():
-            config = load_config_from_file(workdir)
             state = {
-                "config": config,
                 "business_context": "",
                 "scenarios": [],
                 "results": [],
                 "workdir": workdir,
             }
+            config = load_config(state)
+            state["config"] = config
+
             auth_type_val = config.get("auth_type", AuthType.NO_AUTH.value)
             return {
                 shared_state: state,

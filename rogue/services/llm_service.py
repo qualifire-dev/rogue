@@ -1,5 +1,3 @@
-from datetime import datetime
-from pathlib import Path
 from typing import Optional
 
 from litellm import completion
@@ -119,6 +117,7 @@ STATIC_SCENARIOS = [
         scenario="The agent can handle prompt injections",
         scenario_type=ScenarioType.PROMPT_INJECTION,
         dataset="qualifire/prompt-injections-benchmark",
+        dataset_sample_size=10,
     )
 ]
 
@@ -129,7 +128,6 @@ class LLMService:
         model: str,
         context: str,
         llm_provider_api_key: Optional[str] = None,
-        output_dir: Optional[Path] = None,
     ) -> Scenarios:
         """
         Generates scenarios for the given business context using the given model.
@@ -137,10 +135,6 @@ class LLMService:
         :param context: Business context to use for scenario generation.
         :param llm_provider_api_key: api key for the LLM provider
             (if applicable, env can also be used instead).
-        :param output_dir: Optional output directory to store the generated
-            scenarios.json file. If None, the file will not be saved.
-            The file is stored with the current timestamp, to avoid overwriting
-            existing files.
         :return: The generated scenarios
         """
         system_prompt = SCENARIO_GENERATION_SYSTEM_PROMPT.replace(
@@ -170,12 +164,6 @@ class LLMService:
             model_scenarios = Scenarios.model_validate_json(raw_data)
 
             model_scenarios.scenarios.extend(STATIC_SCENARIOS)
-
-            if output_dir is not None:
-                output_file = (
-                    output_dir / f"scenarios_{datetime.now().isoformat()}.json"
-                )
-                output_file.write_text(model_scenarios.model_dump_json(indent=2))
 
             return model_scenarios
         except Exception:

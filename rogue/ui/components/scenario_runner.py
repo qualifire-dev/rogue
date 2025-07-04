@@ -6,6 +6,7 @@ from pathlib import Path
 import gradio as gr
 from loguru import logger
 
+from ...common.workdir_utils import dump_scenarios
 from ...models.config import AuthType
 from ...models.evaluation_result import EvaluationResults
 from ...models.scenario import Scenarios
@@ -92,18 +93,6 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
         outputs=[shared_state],
     )
 
-    def dump_scenarios_to_file(state, scenarios: Scenarios):
-        generated_scenarios_hash = state.get("scenarios_hash")
-        scenarios_hash = hash(scenarios)
-
-        # If the hash hasn't changed, the generator already stored the scenarios.
-        # The hash can change if the user manually edits the scenarios in the ui.
-        if generated_scenarios_hash != scenarios_hash:
-            workdir = state.get("workdir")
-            if workdir is not None:
-                output_file = workdir / f"scenarios_{datetime.now().isoformat()}.json"
-                output_file.write_text(scenarios.model_dump_json(indent=2))
-
     async def run_and_evaluate_scenarios(state):
         # --- Create a list of "no-op" updates for all components ---
         def get_blank_updates():
@@ -117,7 +106,7 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
             gr.Warning("No scenarios found. Please generate scenarios first.")
             return
 
-        dump_scenarios_to_file(state, scenarios)
+        dump_scenarios(state, scenarios)
 
         scenarios = scenarios.scenarios
 

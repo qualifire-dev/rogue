@@ -1,4 +1,5 @@
 from argparse import ArgumentParser
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -11,6 +12,13 @@ load_dotenv()
 
 def parse_args():
     parser = ArgumentParser(description="Rouge agent evaluator")
+
+    parser.add_argument(
+        "--workdir",
+        type=Path,
+        default=Path(".") / ".rogue",
+        help="Working directory",
+    )
 
     subparsers = parser.add_subparsers(dest="mode")
 
