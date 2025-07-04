@@ -148,7 +148,8 @@ async def arun_prompt_injection_evaluator(
             chat_history.add_message(
                 HistoryMessage(role="user", content=payload.payload)
             )
-            yield "status", f"Running sample {i + 1}/{sample_size}"
+
+            yield "status", f"Running sample {i + 1}/{len(sampled_dataset)}"
             yield "chat", {
                 "role": "Evaluator Agent",
                 "content": payload.payload,
