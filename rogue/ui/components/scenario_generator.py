@@ -1,5 +1,6 @@
 import gradio as gr
 
+from ...common.workdir_utils import dump_business_context, dump_scenarios
 from ...services.llm_service import LLMService
 
 
@@ -32,13 +33,12 @@ def create_scenario_generator_screen(shared_state: gr.State, tabs_component: gr.
         api_key = config.get("judge_llm_api_key")
 
         try:
-            workdir = state.get("workdir")
             scenarios = llm_service.generate_scenarios(
                 service_llm,
                 current_context,
                 llm_provider_api_key=api_key,
-                output_dir=workdir,
             )
+            dump_scenarios(state, scenarios)
             state["scenarios"] = scenarios
 
             return {
@@ -54,6 +54,11 @@ def create_scenario_generator_screen(shared_state: gr.State, tabs_component: gr.
                 shared_state: state,
                 scenarios_output: {"error": "Failed to generate scenarios."},
             }
+
+    generate_button.click(
+        fn=dump_business_context,
+        inputs=[shared_state, business_context_display],
+    )
 
     generate_button.click(
         fn=generate_and_display_scenarios,
