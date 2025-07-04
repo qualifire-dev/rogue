@@ -1,5 +1,5 @@
-import json
 import asyncio
+import json
 from datetime import datetime
 from pathlib import Path
 
@@ -92,6 +92,12 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
         outputs=[shared_state],
     )
 
+    def dump_scenarios_to_file(state, scenarios: Scenarios):
+        workdir = state.get("workdir")
+        if workdir is not None:
+            output_file = workdir / "scenarios.json"
+            output_file.write_text(scenarios.model_dump_json(indent=2))
+
     async def run_and_evaluate_scenarios(state):
         # --- Create a list of "no-op" updates for all components ---
         def get_blank_updates():
@@ -104,6 +110,8 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
         if scenarios is None:
             gr.Warning("No scenarios found. Please generate scenarios first.")
             return
+
+        dump_scenarios_to_file(state, scenarios)
 
         scenarios = scenarios.scenarios
 
