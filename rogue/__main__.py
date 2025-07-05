@@ -1,3 +1,4 @@
+import asyncio
 import sys
 from argparse import ArgumentParser
 from pathlib import Path
@@ -19,6 +20,12 @@ def parse_args():
         type=Path,
         default=Path(".") / ".rogue",
         help="Working directory",
+    )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        default=False,
+        help="Enable debug logging",
     )
 
     subparsers = parser.add_subparsers(dest="mode")
@@ -48,15 +55,15 @@ def parse_args():
 
 
 def main():
-    configure_logger()
     args = parse_args()
+    configure_logger(args.debug)
 
     args.workdir.mkdir(exist_ok=True, parents=True)
 
     if args.mode == "ui":
         run_ui(args)
     elif args.mode == "cli":
-        exit_code = run_cli(args)
+        exit_code = asyncio.run(run_cli(args))
         sys.exit(exit_code)
     else:
         raise ValueError(f"Unknown mode: {args.mode}")

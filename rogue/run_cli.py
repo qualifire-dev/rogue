@@ -2,7 +2,7 @@ from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
 from loguru import logger
-from pydantic import ValidationError
+from pydantic import ValidationError, SecretStr
 
 from .models.cli_input import CLIInput, PartialCLIInput
 from .models.config import AuthType, AgentConfig
@@ -41,7 +41,7 @@ def set_cli_args(parser: ArgumentParser) -> None:
         "--input-scenarios-file",
         required=False,
         type=Path,
-        help="Path to input scenarios file",
+        help="Path to input scenarios file. defaults to `<workdir>/scenarios.json`",
     )
     parser.add_argument(
         "--output-report-file",
@@ -64,7 +64,6 @@ def set_cli_args(parser: ArgumentParser) -> None:
     parser.add_argument(
         "--deep-test-mode",
         default=False,
-        type=bool,
         action="store_true",
         help="Enable deep test mode",
     )
@@ -83,14 +82,25 @@ def set_cli_args(parser: ArgumentParser) -> None:
 async def run_scenarios(
     evaluated_agent_url: str,
     evaluated_agent_auth_type: AuthType,
-    evaluated_agent_auth_credentials: str | None,
+    evaluated_agent_auth_credentials_secret: SecretStr | None,
     judge_llm: str,
-    judge_llm_api_key: str | None,
+    judge_llm_api_key_secret: SecretStr | None,
     scenarios: Scenarios,
     evaluation_results_output_path: Path,
     business_context: str,
     deep_test_mode: bool,
 ) -> EvaluationResults | None:
+    evaluated_agent_auth_credentials = (
+        evaluated_agent_auth_credentials_secret.get_secret_value()
+        if evaluated_agent_auth_credentials_secret
+        else None
+    )
+    judge_llm_api_key = (
+        judge_llm_api_key_secret.get_secret_value()
+        if judge_llm_api_key_secret
+        else None
+    )
+
     scenario_evaluation_service = ScenarioEvaluationService(
         evaluated_agent_url=evaluated_agent_url,
         evaluated_agent_auth_type=evaluated_agent_auth_type,
@@ -114,8 +124,13 @@ def create_report(
     judge_llm: str,
     results: EvaluationResults,
     output_report_file: Path,
-    judge_llm_api_key: str | None = None,
-):
+    judge_llm_api_key_secret: SecretStr | None = None,
+) -> str:
+    judge_llm_api_key = (
+        judge_llm_api_key_secret.get_secret_value()
+        if judge_llm_api_key_secret
+        else None
+    )
     summary = LLMService().generate_summary_from_results(
         model=judge_llm,
         results=results,
@@ -124,6 +139,7 @@ def create_report(
 
     output_report_file.parent.mkdir(parents=True, exist_ok=True)
     output_report_file.write_text(summary)
+    return summary
 
 
 def get_exit_code(evaluation_results: EvaluationResults) -> int:
@@ -164,7 +180,7 @@ def merge_config_with_cli(
 
 
 def read_config_file(config_file: Path) -> dict:
-    if config_file.exists():
+    if config_file.is_file():
         try:
             return AgentConfig.model_validate_json(config_file.read_text()).model_dump()
         except ValidationError:
@@ -178,19 +194,24 @@ async def run_cli(args: Namespace) -> int:
 
     cli_input = merge_config_with_cli(config, args)
 
-    logger.info("Running CLI", extra=cli_input.model_dump())
+    logger.debug("Running CLI", extra=cli_input.model_dump())
 
     scenarios = Scenarios.model_validate_json(
         cli_input.input_scenarios_file.read_text()
     )
 
-    logger.info("Running scenarios")
+    logger.info(
+        "Running scenarios",
+        extra={
+            "scenarios_length": len(scenarios.scenarios),
+        },
+    )
     results = await run_scenarios(
         evaluated_agent_url=cli_input.evaluated_agent_url,
         evaluated_agent_auth_type=cli_input.evaluated_agent_auth_type,
-        evaluated_agent_auth_credentials=cli_input.evaluated_agent_credentials,
+        evaluated_agent_auth_credentials_secret=cli_input.evaluated_agent_credentials,
         judge_llm=cli_input.judge_llm_model,
-        judge_llm_api_key=cli_input.judge_llm_api_key,
+        judge_llm_api_key_secret=cli_input.judge_llm_api_key,
         scenarios=scenarios,
         evaluation_results_output_path=args.workdir / "evaluation_results.json",
         business_context=cli_input.business_context,
@@ -202,11 +223,15 @@ async def run_cli(args: Namespace) -> int:
         )
 
     logger.info("Creating report")
-    create_report(
+    report_summary = create_report(
         judge_llm=cli_input.judge_llm_model,
         results=results,
         output_report_file=cli_input.output_report_file,
-        judge_llm_api_key=cli_input.judge_llm_api_key,
+        judge_llm_api_key_secret=cli_input.judge_llm_api_key,
     )
+
+    logger.info("Report saved", extra={"report_file": cli_input.output_report_file})
+    logger.info(report_summary)
+    logger.info("Done")
 
     return get_exit_code(results)

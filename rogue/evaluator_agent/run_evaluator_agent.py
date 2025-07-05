@@ -70,10 +70,10 @@ async def _run_agent(
 
         if event_text:
             agent_output += event_text
-            logger.info(f"evaluator_agent response: {event_text}")
+            logger.debug(f"evaluator_agent response: {event_text}")
 
         if event.is_final_response():
-            logger.info("evaluator_agent done")
+            logger.debug("evaluator_agent done")
             break  # Without this, this loop will be infinite
 
     return agent_output
@@ -120,7 +120,7 @@ async def arun_evaluator_agent(
             session_service=session_service,
         )
 
-        logger.info("evaluator_agent started")
+        logger.debug("evaluator_agent started")
 
         async def agent_runner_task():
             # This task just runs the agent and puts the final result on a

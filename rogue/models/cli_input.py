@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from pydantic import BaseModel, model_validator, field_validator
+from pydantic import BaseModel, model_validator, field_validator, SecretStr
 
 from .config import AuthType
 
@@ -10,13 +10,14 @@ class CLIInput(BaseModel):
     This is the actual model needed for the CLI.
     """
 
+    workdir: Path = Path(".") / ".rogue"
     evaluated_agent_url: str
     evaluated_agent_auth_type: AuthType = AuthType.NO_AUTH
-    evaluated_agent_credentials: str | None = None
+    evaluated_agent_credentials: SecretStr | None = None
     judge_llm_model: str
-    judge_llm_api_key: str | None = None
-    input_scenarios_file: Path
-    output_report_file: Path
+    judge_llm_api_key: SecretStr | None = None
+    input_scenarios_file: Path = workdir / "scenarios.json"
+    output_report_file: Path = workdir / "report.md"
     business_context: str
     deep_test_mode: bool = False
 
@@ -48,13 +49,14 @@ class PartialCLIInput(BaseModel):
     This is used to allow the user to provide both a config file and CLI arguments.
     """
 
+    workdir: Path = Path(".") / ".rogue"
     evaluated_agent_url: str | None = None
-    evaluated_agent_auth_type: AuthType | None = None
-    evaluated_agent_credentials: str | None = None
+    evaluated_agent_auth_type: AuthType = AuthType.NO_AUTH
+    evaluated_agent_credentials: SecretStr | None = None
     judge_llm_model: str | None = None
-    judge_llm_api_key: str | None = None
-    input_scenarios_file: Path | None = None
-    output_report_file: Path | None = None
+    judge_llm_api_key: SecretStr | None = None
+    input_scenarios_file: Path = workdir / "scenarios.json"
+    output_report_file: Path = workdir / "report.md"
     business_context: str | None = None
-    business_context_file: Path | None = None
-    deep_test_mode: bool | None = None
+    business_context_file: Path = workdir / "business_context.md"
+    deep_test_mode: bool = False

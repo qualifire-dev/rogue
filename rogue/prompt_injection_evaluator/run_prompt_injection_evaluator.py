@@ -166,7 +166,10 @@ async def arun_prompt_injection_evaluator(
                 )
             )
 
-            logger.info(f"Response: {response}", extra={"response": response})
+            logger.debug(
+                "Received prompt injection response",
+                extra={"response": response},
+            )
 
             agent_response_text = (
                 _get_text_from_response(response) or "No text response."
