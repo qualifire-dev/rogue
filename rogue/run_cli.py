@@ -1,10 +1,10 @@
-import sys
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
 from loguru import logger
 from pydantic import ValidationError
 
+from .models.cli_input import CLIInput, PartialCLIInput
 from .models.config import AuthType, AgentConfig
 from .models.evaluation_result import EvaluationResults
 from .models.scenario import Scenarios
@@ -50,12 +50,13 @@ def set_cli_args(parser: ArgumentParser) -> None:
         help="Path to output report file",
     )
     parser.add_argument(
-        "--model",
+        "-m",
+        "--judge-llm-model",
         required=False,
         help="Model to use for scenario evaluation and report generation",
     )
     parser.add_argument(
-        "--llm-provider-api-key",
+        "--judge-llm-api-key",
         required=False,
         help="Api key to use when communicating with the LLM provider. "
         "Can be left unset if env is used.",
@@ -110,48 +111,19 @@ async def run_scenarios(
 
 
 def create_report(
-    model: str,
+    judge_llm: str,
     results: EvaluationResults,
     output_report_file: Path,
-    llm_provider_api_key: str | None = None,
+    judge_llm_api_key: str | None = None,
 ):
     summary = LLMService().generate_summary_from_results(
-        model=model,
+        model=judge_llm,
         results=results,
-        llm_provider_api_key=llm_provider_api_key,
+        llm_provider_api_key=judge_llm_api_key,
     )
 
+    output_report_file.parent.mkdir(parents=True, exist_ok=True)
     output_report_file.write_text(summary)
-
-
-def validate_args(
-    evaluated_agent_url: str | None,
-    evaluated_agent_auth_type: AuthType,
-    evaluated_agent_credentials: str | None,
-    model: str | None,
-    input_scenarios_file: Path,
-    business_context: str | None,
-):
-    required_args = {
-        "evaluated_agent_url": evaluated_agent_url,
-        "model": model,
-        "input_scenarios_file": input_scenarios_file,
-        "business_context": business_context,
-    }
-    for arg, value in required_args.items():
-        if not value:
-            raise ValueError(f"Missing required argument: {arg}")
-
-    if (
-        evaluated_agent_auth_type != AuthType.NO_AUTH
-        and not evaluated_agent_credentials
-    ):
-        raise ValueError(
-            "Authentication credentials are required for authenticated agents"
-        )
-
-    if not input_scenarios_file.exists():
-        raise ValueError(f"Input scenarios file does not exist: {input_scenarios_file}")
 
 
 def get_exit_code(evaluation_results: EvaluationResults) -> int:
@@ -161,76 +133,80 @@ def get_exit_code(evaluation_results: EvaluationResults) -> int:
     return 0
 
 
-async def run_cli(args: Namespace):
-    config_file = args.config_file or args.workdir / "user_config.json"
+def merge_config_with_cli(
+    config_data: dict,
+    cli_args: Namespace,
+) -> CLIInput:
+    # Convert CLI args Namespace to dict, removing None values
+    cli_dict = {k: v for k, v in vars(cli_args).items() if v is not None}
 
-    config = {}
+    # Merge CLI > Config
+    merged = {
+        **config_data,
+        **cli_dict,
+    }
+
+    partial = PartialCLIInput(**merged)
+
+    # Handle business_context_file logic
+    if (
+        partial.business_context is None
+        and partial.business_context_file is not None
+        and partial.business_context_file.exists()
+    ):
+        partial.business_context = partial.business_context_file.read_text()
+
+    # Remove file-specific fields not in final schema
+    data = partial.model_dump(exclude={"business_context_file"})
+
+    # Finally, validate as full input
+    return CLIInput(**data)
+
+
+def read_config_file(config_file: Path) -> dict:
     if config_file.exists():
         try:
-            config = AgentConfig.model_validate_json(
-                config_file.read_text()
-            ).model_dump()
+            return AgentConfig.model_validate_json(config_file.read_text()).model_dump()
         except ValidationError:
             logger.exception("Failed to load config from file")
+    return {}
 
-    # CLI args override config file
-    evaluated_agent_url: str | None = args.evaluated_agent_url or config.get(
-        "agent_url",
-    )
-    evaluated_agent_auth_type: AuthType = args.evaluated_agent_auth_type or config.get(
-        "auth_type",
-        AuthType.NO_AUTH,
-    )
-    evaluated_agent_credentials: str | None = (
-        args.evaluated_agent_credentials
-        or config.get(
-            "auth_credentials",
-        )
-    )
-    model: str | None = args.model or config.get("judge_llm")
-    llm_provider_api_key: str | None = args.llm_provider_api_key or config.get(
-        "judge_llm_api_key",
-    )
-    deep_test_mode: bool = args.deep_test_mode or config.get("deep_test_mode", False)
 
-    input_scenarios_file: Path = args.input_scenarios_file
-    output_report_file: Path = args.output_report_file or args.workdir / "report.md"
-    business_context: str | None = args.business_context
-    business_context_file = args.business_context_file
+async def run_cli(args: Namespace) -> int:
+    config_file = args.config_file or args.workdir / "user_config.json"
+    config = read_config_file(config_file)
 
-    if business_context_file and business_context_file.exists():
-        business_context = business_context_file.read_text()
+    cli_input = merge_config_with_cli(config, args)
 
-    validate_args(
-        evaluated_agent_url=evaluated_agent_url,
-        evaluated_agent_auth_type=evaluated_agent_auth_type,
-        evaluated_agent_credentials=evaluated_agent_credentials,
-        model=model,
-        input_scenarios_file=input_scenarios_file,
-        business_context=business_context,
+    logger.info("Running CLI", extra=cli_input.model_dump())
+
+    scenarios = Scenarios.model_validate_json(
+        cli_input.input_scenarios_file.read_text()
     )
 
-    scenarios = Scenarios.model_validate_json(input_scenarios_file.read_text())
-
+    logger.info("Running scenarios")
     results = await run_scenarios(
-        evaluated_agent_url=str(evaluated_agent_url),
-        evaluated_agent_auth_type=evaluated_agent_auth_type,
-        evaluated_agent_auth_credentials=evaluated_agent_credentials,
-        judge_llm=str(model),
-        judge_llm_api_key=llm_provider_api_key,
+        evaluated_agent_url=cli_input.evaluated_agent_url,
+        evaluated_agent_auth_type=cli_input.evaluated_agent_auth_type,
+        evaluated_agent_auth_credentials=cli_input.evaluated_agent_credentials,
+        judge_llm=cli_input.judge_llm_model,
+        judge_llm_api_key=cli_input.judge_llm_api_key,
         scenarios=scenarios,
         evaluation_results_output_path=args.workdir / "evaluation_results.json",
-        business_context=str(business_context),
-        deep_test_mode=deep_test_mode,
+        business_context=cli_input.business_context,
+        deep_test_mode=cli_input.deep_test_mode,
     )
     if not results:
-        raise ValueError(f"No scenarios were evaluated for {evaluated_agent_url}")
+        raise ValueError(
+            f"No scenarios were evaluated for {cli_input.evaluated_agent_url}"
+        )
 
+    logger.info("Creating report")
     create_report(
-        model=str(model),
+        judge_llm=cli_input.judge_llm_model,
         results=results,
-        output_report_file=output_report_file,
-        llm_provider_api_key=llm_provider_api_key,
+        output_report_file=cli_input.output_report_file,
+        judge_llm_api_key=cli_input.judge_llm_api_key,
     )
 
-    sys.exit(get_exit_code(results))
+    return get_exit_code(results)

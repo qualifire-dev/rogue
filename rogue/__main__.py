@@ -1,3 +1,4 @@
+import sys
 from argparse import ArgumentParser
 from pathlib import Path
 
@@ -55,7 +56,8 @@ def main():
     if args.mode == "ui":
         run_ui(args)
     elif args.mode == "cli":
-        run_cli(args)
+        exit_code = run_cli(args)
+        sys.exit(exit_code)
     else:
         raise ValueError(f"Unknown mode: {args.mode}")
 
