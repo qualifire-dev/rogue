@@ -173,7 +173,12 @@ def merge_config_with_cli(
         partial.business_context = partial.business_context_file.read_text()
 
     # Remove file-specific fields not in final schema
-    data = partial.model_dump(exclude={"business_context_file"})
+    data = partial.model_dump(
+        exclude={
+            "business_context_file",
+            "config_file",
+        },
+    )
 
     # Finally, validate as full input
     return CLIInput(**data)
@@ -182,23 +187,30 @@ def merge_config_with_cli(
 def read_config_file(config_file: Path) -> dict:
     if config_file.is_file():
         try:
-            return AgentConfig.model_validate_json(config_file.read_text()).model_dump()
+            return AgentConfig.model_validate_json(
+                config_file.read_text(),
+            ).model_dump(
+                by_alias=True,
+                exclude_none=True,
+            )
         except ValidationError:
             logger.exception("Failed to load config from file")
     return {}
 
 
-async def run_cli(args: Namespace) -> int:
-    config_file = args.config_file or args.workdir / "user_config.json"
+def get_cli_input(cli_args: Namespace) -> CLIInput:
+    config_file = cli_args.config_file or cli_args.workdir / "user_config.json"
     config = read_config_file(config_file)
 
-    cli_input = merge_config_with_cli(config, args)
+    cli_input = merge_config_with_cli(config, cli_args)
+    return cli_input
 
+
+async def run_cli(args: Namespace) -> int:
+    cli_input = get_cli_input(args)
     logger.debug("Running CLI", extra=cli_input.model_dump())
 
-    scenarios = Scenarios.model_validate_json(
-        cli_input.input_scenarios_file.read_text()
-    )
+    scenarios = cli_input.get_scenarios_from_file()
 
     logger.info(
         "Running scenarios",
@@ -207,7 +219,7 @@ async def run_cli(args: Namespace) -> int:
         },
     )
     results = await run_scenarios(
-        evaluated_agent_url=cli_input.evaluated_agent_url,
+        evaluated_agent_url=cli_input.evaluated_agent_url.encoded_string(),
         evaluated_agent_auth_type=cli_input.evaluated_agent_auth_type,
         evaluated_agent_auth_credentials_secret=cli_input.evaluated_agent_credentials,
         judge_llm=cli_input.judge_llm_model,

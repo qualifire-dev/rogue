@@ -16,8 +16,6 @@ def run_ui(args: Namespace) -> None:
     port: int | None = args.port
     workdir: Path = args.workdir
 
-    workdir.mkdir(parents=True, exist_ok=True)
-
     app = get_app(workdir)
     app.launch(
         inbrowser=True,

@@ -1,8 +1,9 @@
 from pathlib import Path
 
-from pydantic import BaseModel, model_validator, field_validator, SecretStr
+from pydantic import BaseModel, model_validator, SecretStr, HttpUrl
 
 from .config import AuthType
+from .scenario import Scenarios
 
 
 class CLIInput(BaseModel):
@@ -11,7 +12,7 @@ class CLIInput(BaseModel):
     """
 
     workdir: Path = Path(".") / ".rogue"
-    evaluated_agent_url: str
+    evaluated_agent_url: HttpUrl
     evaluated_agent_auth_type: AuthType = AuthType.NO_AUTH
     evaluated_agent_credentials: SecretStr | None = None
     judge_llm_model: str
@@ -21,15 +22,17 @@ class CLIInput(BaseModel):
     business_context: str
     deep_test_mode: bool = False
 
-    # noinspection PyNestedDecorators
-    @field_validator("input_scenarios_file", mode="after")
-    @classmethod
-    def validate_input_scenarios_file(cls, value: Path) -> Path:
-        if not value.exists():
-            raise ValueError(f"Input scenarios file does not exist: {value}")
-        if not value.is_file():
-            raise ValueError(f"Input scenarios file is not a file: {value}")
-        return value
+    def get_scenarios_from_file(self) -> Scenarios:
+        if not self.input_scenarios_file.exists():
+            raise ValueError(
+                f"Input scenarios file does not exist: {self.input_scenarios_file}"
+            )
+        if not self.input_scenarios_file.is_file():
+            raise ValueError(
+                f"Input scenarios file is not a file: {self.input_scenarios_file}"
+            )
+
+        return Scenarios.model_validate_json(self.input_scenarios_file.read_text())
 
     @model_validator(mode="after")
     def check_auth_credentials(self) -> "CLIInput":
@@ -50,7 +53,7 @@ class PartialCLIInput(BaseModel):
     """
 
     workdir: Path = Path(".") / ".rogue"
-    evaluated_agent_url: str | None = None
+    evaluated_agent_url: HttpUrl | None = None
     evaluated_agent_auth_type: AuthType = AuthType.NO_AUTH
     evaluated_agent_credentials: SecretStr | None = None
     judge_llm_model: str | None = None
