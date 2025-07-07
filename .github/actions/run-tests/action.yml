@@ -1,0 +1,21 @@
+name: "Run Tests"
+description: "Runs pytest"
+
+runs:
+  using: "composite"
+  steps:
+    - name: "Run tests"
+      shell: bash
+      run: uv run pytest --junitxml=test-results.xml --cov=rogue --cov-report=xml
+
+    - name: "Upload Test Results"
+      uses: actions/upload-artifact@v4
+      with:
+        name: junit-results
+        path: test-results.xml
+
+    - name: "Upload Coverage Results"
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: coverage.xml
