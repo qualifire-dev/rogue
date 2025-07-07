@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from typing import AsyncGenerator, Any
 
@@ -43,6 +44,11 @@ class ScenarioEvaluationService:
     async def _evaluate_policy_scenarios(self) -> AsyncGenerator[tuple[str, Any], None]:
         for scenario in self._scenarios.get_policy_scenarios().scenarios:
             yield "status", f"Running policy scenario: {scenario.scenario}"
+            logger.info(
+                "Evaluating scenario",
+                # Not using scenario.model_dump here so enums will be serialized
+                extra=json.loads(scenario.model_dump_json(exclude_none=True)),
+            )
             try:
                 async for update_type, data in arun_evaluator_agent(
                     evaluated_agent_url=str(self._evaluated_agent_url),
@@ -73,6 +79,11 @@ class ScenarioEvaluationService:
     ) -> AsyncGenerator[tuple[str, Any], None]:
         for scenario in self._scenarios.get_prompt_injection_scenarios().scenarios:
             yield "status", f"Running prompt injection scenario: {scenario.scenario}"
+            logger.info(
+                "Evaluating scenario",
+                # Not using scenario.model_dump here so enums will be serialized
+                extra=json.loads(scenario.model_dump_json(exclude_none=True)),
+            )
             try:
                 if not scenario.dataset:
                     logger.warning(

@@ -142,7 +142,7 @@ def evaluate_policy(
         else:
             model = f"gemini/{model}"
 
-    logger.info(
+    logger.debug(
         "Evaluating policy",
         extra={
             "policy": policy,

@@ -1,17 +1,32 @@
+import asyncio
+import sys
 from argparse import ArgumentParser
 from pathlib import Path
 
 from dotenv import load_dotenv
 
 from .common.configure_logger import configure_logger
-from .run_cli import run_cli
-from .run_ui import run_ui
+from .run_cli import run_cli, set_cli_args
+from .run_ui import run_ui, set_ui_args
 
 load_dotenv()
 
 
 def parse_args():
     parser = ArgumentParser(description="Rouge agent evaluator")
+
+    parser.add_argument(
+        "--workdir",
+        type=Path,
+        default=Path(".") / ".rogue",
+        help="Working directory",
+    )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        default=False,
+        help="Enable debug logging",
+    )
 
     subparsers = parser.add_subparsers(dest="mode")
 
@@ -20,38 +35,14 @@ def parse_args():
         "ui",
         help="Run in interactive UI mode",
     )
-    ui_parser.add_argument(
-        "--port",
-        type=int,
-        help="Port to run the UI on",
-    )
-    ui_parser.add_argument(
-        "--workdir",
-        type=Path,
-        default=Path(".") / ".rogue",
-        help="Working directory",
-    )
+    set_ui_args(ui_parser)
 
     # CLI mode
     cli_parser = subparsers.add_parser(
         "cli",
         help="Run in non-interactive CLI mode",
     )
-    cli_parser.add_argument(
-        "--evaluated-agent-url",
-        required=True,
-        help="URL of the agent to evaluate",
-    )
-    cli_parser.add_argument(
-        "--input-scenarios-file",
-        required=True,
-        help="Path to input scenarios file",
-    )
-    cli_parser.add_argument(
-        "--output-report-file",
-        required=True,
-        help="Path to output report file",
-    )
+    set_cli_args(cli_parser)
 
     args, unknown = parser.parse_known_args()
 
@@ -64,17 +55,16 @@ def parse_args():
 
 
 def main():
-    configure_logger()
     args = parse_args()
+    configure_logger(args.debug)
+
+    args.workdir.mkdir(exist_ok=True, parents=True)
 
     if args.mode == "ui":
-        run_ui(args.port, args.workdir)
+        run_ui(args)
     elif args.mode == "cli":
-        run_cli(
-            args.evaluated_agent_url,
-            args.input_scenarios_file,
-            args.output_report_file,
-        )
+        exit_code = asyncio.run(run_cli(args))
+        sys.exit(exit_code)
     else:
         raise ValueError(f"Unknown mode: {args.mode}")
 

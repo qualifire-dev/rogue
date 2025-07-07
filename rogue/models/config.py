@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, HttpUrl, model_validator
+from pydantic import BaseModel, HttpUrl, model_validator, ConfigDict, Field
 
 
 class AuthType(Enum):
@@ -12,11 +12,19 @@ class AuthType(Enum):
 
 
 class AgentConfig(BaseModel):
-    agent_url: HttpUrl
-    auth_type: AuthType
-    auth_credentials: Optional[str] = None
+    model_config = ConfigDict(populate_by_name=True)
+
+    agent_url: HttpUrl = Field(alias="evaluated_agent_url")
+    auth_type: AuthType = Field(
+        alias="evaluated_agent_auth_type",
+        default=AuthType.NO_AUTH,
+    )
+    auth_credentials: Optional[str] = Field(
+        alias="evaluated_agent_credentials",
+        default=None,
+    )
     service_llm: str = "openai/gpt-4.1"
-    judge_llm: str = "openai/o4-mini"
+    judge_llm: str = Field(alias="judge_llm_model", default="openai/o4-mini")
     interview_mode: bool = True
     deep_test_mode: bool = False
     parallel_runs: int = 1

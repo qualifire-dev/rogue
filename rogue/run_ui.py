@@ -1,13 +1,20 @@
+from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
 from .ui.app import get_app
 
 
-def run_ui(
-    port: int | None,
-    workdir: Path,
-):
-    workdir.mkdir(parents=True, exist_ok=True)
+def set_ui_args(parser: ArgumentParser) -> None:
+    parser.add_argument(
+        "--port",
+        type=int,
+        help="Port to run the UI on",
+    )
+
+
+def run_ui(args: Namespace) -> None:
+    port: int | None = args.port
+    workdir: Path = args.workdir
 
     app = get_app(workdir)
     app.launch(
