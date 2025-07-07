@@ -32,3 +32,5 @@ jobs:
 
       - name: Run tests
         uses: ./.github/actions/run-tests
+        with:
+          python-version: ${{ matrix.python-version }}

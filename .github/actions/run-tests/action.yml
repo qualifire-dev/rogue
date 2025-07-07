@@ -1,6 +1,12 @@
 name: "Run Tests"
 description: "Runs pytest"
 
+
+inputs:
+  python-version:
+    description: "Python version used for the test run. This is only used for output file naming to avoid conflicts."
+    required: true
+
 runs:
   using: "composite"
   steps:
@@ -11,11 +17,11 @@ runs:
     - name: "Upload Test Results"
       uses: actions/upload-artifact@v4
       with:
-        name: junit-results
+        name: junit-results-${{ inputs.python-version }}
         path: test-results.xml
 
     - name: "Upload Coverage Results"
       uses: actions/upload-artifact@v4
       with:
-        name: coverage-report
+        name: coverage-report-${{ inputs.python-version }}
         path: coverage.xml
