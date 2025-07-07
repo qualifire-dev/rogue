@@ -1,20 +1,15 @@
-name: Build Matrix
+name: Build
 
 on:
   pull_request:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version:
-          - "3.10"
-          - "3.11"
-          - "3.12"
-          - "3.13"
-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -25,11 +20,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version-file: ".python-version"
 
       - name: Run uv build
         uses: ./.github/actions/uv-build
-
-      # TODO:
-      # - name: Run tests
-      #   run: uv run pytest

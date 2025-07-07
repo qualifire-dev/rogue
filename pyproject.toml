@@ -23,5 +23,6 @@ dev = [
     "flake8==7.3.0",
     "mypy==1.16.1",
     "pytest>=8.4.1",
+    "pytest-cov>=6.2.1",
     "pytest-mock>=3.14.1",
 ]
