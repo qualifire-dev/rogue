@@ -128,17 +128,19 @@ class ScenarioEvaluationService:
                 yield "status", f"Error running scenario: {scenario.scenario}"
                 continue
 
+    def _dump_results(self):
+        self._evaluation_results_output_path.write_text(
+            self._results.model_dump_json(indent=2, exclude_none=True),
+            encoding="utf-8",
+        )
+
     async def evaluate_scenarios(self) -> AsyncGenerator[tuple[str, Any], None]:
-        # TODO: Implement this for all scenario types
         async for status, data in self._evaluate_policy_scenarios():
             yield status, data
 
         async for status, data in self._evaluate_prompt_injection_scenarios():
             yield status, data
 
-        self._evaluation_results_output_path.write_text(
-            self._results.model_dump_json(indent=2, exclude_none=True),
-            encoding="utf-8",
-        )
+        self._dump_results()
 
         yield "done", self._results
