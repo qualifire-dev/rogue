@@ -1,7 +1,13 @@
 # Rogue - The AI Agent Evaluator
 
+<div align="center">
+
 [![License: ELASTIC](https://img.shields.io/badge/License-elastic-yellow.svg)](https://www.elastic.co/licensing/elastic-license)
 ![Tests](https://github.com/qualifire-dev/rogue-private/actions/workflows/test.yml/badge.svg?branch=main)
+
+<img src="./freddy-rogue.png" width="200">
+
+</div>
 
 Rogue is a powerful, tool designed to evaluate the performance, compliance, and reliability of AI agents. It pits a dynamic `EvaluatorAgent` against your agent using Google's A2A protocol, testing it with a range of scenarios to ensure it behaves exactly as intended.
 
@@ -46,13 +52,15 @@ Rogue's workflow is designed to be simple and intuitive, managed entirely throug
     ```
 
 2.  **Install dependencies:**
-    
+
     If you are using uv:
+
     ```bash
     uv sync
     ```
-    
+
     Or, if you are using pip:
+
     ```bash
     pip install -e .
     ```
@@ -70,11 +78,13 @@ Rogue's workflow is designed to be simple and intuitive, managed entirely throug
 Launch the Gradio web UI with the following command:
 
 If you are using uv:
+
 ```bash
 uv run -m rogue
 ```
 
 If not:
+
 ```bash
 python -m rogue
 ```
@@ -90,11 +100,13 @@ This repository includes a simple example agent that sells T-shirts. You can use
 1.  **Start the example agent server** in a separate terminal:
 
     If you are using uv:
+
     ```bash
     uv run examples/tshirt_store_agent
     ```
-    
+
     If not:
+
     ```bash
     python examples/tshirt_store_agent
     ```
