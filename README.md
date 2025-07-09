@@ -1,9 +1,13 @@
 # Rogue - The AI Agent Evaluator
 
+<div align="center">
+
 [![License: ELASTIC](https://img.shields.io/badge/License-elastic-yellow.svg)](https://www.elastic.co/licensing/elastic-license)
 ![Tests](https://github.com/qualifire-dev/rogue-private/actions/workflows/test.yml/badge.svg?branch=main)
 
 <img src="./freddy-rogue.png" width="200">
+
+</div>
 
 Rogue is a powerful, tool designed to evaluate the performance, compliance, and reliability of AI agents. It pits a dynamic `EvaluatorAgent` against your agent using Google's A2A protocol, testing it with a range of scenarios to ensure it behaves exactly as intended.
 
