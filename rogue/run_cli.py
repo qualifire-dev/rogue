@@ -194,7 +194,15 @@ def read_config_file(config_file: Path) -> dict:
                 exclude_none=True,
             )
         except ValidationError:
-            logger.exception("Failed to load config from file")
+            logger.exception("Failed to parse config as AgentConfig from file")
+
+        try:
+            return PartialCLIInput.model_validate_json(
+                config_file.read_text(),
+            ).model_dump(exclude_none=True)
+        except ValidationError:
+            logger.exception("Failed to parse config as PartialCLIInput from file")
+
     return {}
 
 

@@ -3,7 +3,8 @@ from pathlib import Path
 
 from loguru import logger
 
-from rogue.models.scenario import Scenarios
+from ..models.config import AgentConfig
+from ..models.scenario import Scenarios
 
 
 def dump_business_context(state: dict, current_context: str):
@@ -22,12 +23,22 @@ def dump_scenarios(state: dict, scenarios: Scenarios):
         output_file.write_text(scenarios.model_dump_json(indent=2))
 
 
-def dump_config(state: dict, config: dict):
+def dump_config(state: dict, config: AgentConfig):
     workdir: Path | None = state.get("workdir")
-    if workdir is not None:
-        workdir.mkdir(parents=True, exist_ok=True)
-        config_path = workdir / "user_config.json"
-        config_path.write_text(json.dumps(config, indent=2))
+    if not workdir:
+        return
+
+    config_dict = config.model_dump(mode="json")
+    # Not storing any api keys or credentials
+    sanitized_config = {
+        k: v
+        for k, v in config_dict.items()
+        if not k.endswith("_key") and k != "auth_credentials"
+    }
+
+    workdir.mkdir(parents=True, exist_ok=True)
+    config_path = workdir / "user_config.json"
+    config_path.write_text(json.dumps(sanitized_config, indent=2))
 
 
 def load_config(state: dict) -> dict:

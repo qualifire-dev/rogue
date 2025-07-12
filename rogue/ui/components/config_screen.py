@@ -182,7 +182,7 @@ def create_config_screen(
         service_llm_val,
         llm,
         llm_key,
-        hf_key,
+        # hf_key,
     ):
         # Start by creating updates to clear all error labels
         label_updates = {
@@ -198,25 +198,14 @@ def create_config_screen(
                 service_llm=service_llm_val,
                 judge_llm=llm,
                 judge_llm_api_key=llm_key,
-                huggingface_api_key=hf_key,
                 deep_test_mode=deep_test_mode_val,
+                interview_mode=interview_mode_val,
                 parallel_runs=parallel_runs_val,
             )
 
             config_dict = config.model_dump(mode="json")
-            config_dict["interview_mode"] = interview_mode_val
+            dump_config(state, config)
             state["config"] = config_dict
-
-            sanitized_config = {
-                k: v
-                for k, v in config_dict.items()
-                if not k.endswith("_key") and k != "auth_credentials"
-            }
-
-            # Save sanitized config to file
-            workdir = state.get("workdir")
-            if workdir:
-                dump_config(state, sanitized_config)
 
             next_tab = "interview" if interview_mode_val else "scenarios"
             return {
