@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 @click.option("--host", "host", default="localhost")
 @click.option("--port", "port", default=10002)
 @click.option("--model", "model", default="openai:gpt-4o")
-def main(host, port, model):
+def main(host: str, port: int, model: str) -> None:
     skill = AgentSkill(
         id="sell_tshirt",
         name="Sell T-Shirt",

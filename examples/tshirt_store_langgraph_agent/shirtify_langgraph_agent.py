@@ -41,7 +41,7 @@ class ResponseFormat(BaseModel):
 
 
 class ShirtifyAgent:
-    def __init__(self, model: str = "openai:gpt-4o"):
+    def __init__(self, model: str = "openai:gpt-4o") -> None:
         self.memory = MemorySaver()
 
         self.graph: CompiledStateGraph = create_react_agent(
@@ -57,7 +57,11 @@ class ShirtifyAgent:
         self.graph.invoke({"messages": [("user", query)]}, config)
         return self.get_agent_response(config)
 
-    async def stream(self, query, session_id) -> AsyncIterable[Dict[str, Any]]:
+    async def stream(
+        self,
+        query: str,
+        session_id: str,
+    ) -> AsyncIterable[Dict[str, Any]]:
         inputs = {"messages": [("user", query)]}
         config = {"configurable": {"thread_id": session_id}}
 
@@ -82,7 +86,7 @@ class ShirtifyAgent:
 
         yield self.get_agent_response(config)
 
-    def get_agent_response(self, config):
+    def get_agent_response(self, config: Dict[str, Any]) -> Dict[str, Any]:
         current_state = self.graph.get_state(config)
         structured_response = current_state.values.get("structured_response")
         if structured_response and isinstance(structured_response, ResponseFormat):
