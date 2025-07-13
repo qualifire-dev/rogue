@@ -1,2 +1,7 @@
+click==8.2.1
 langgraph==0.5.2
 langchain==0.3.26
+langchain-openai==0.3.27
+a2a-sdk==0.2.10
+google-adk==1.5.0
+python-dotenv==1.1.1

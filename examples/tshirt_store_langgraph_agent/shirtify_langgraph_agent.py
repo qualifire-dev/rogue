@@ -1,6 +1,7 @@
 from typing import Dict, Any, AsyncIterable, Literal
 
 from langchain_core.messages import AIMessage, ToolMessage
+from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import create_react_agent
 from pydantic import BaseModel
@@ -41,11 +42,14 @@ class ResponseFormat(BaseModel):
 
 class ShirtifyAgent:
     def __init__(self, model: str = "openai:gpt-4o"):
+        self.memory = MemorySaver()
+
         self.graph: CompiledStateGraph = create_react_agent(
             model=model,
             prompt=AGENT_INSTRUCTIONS,
             tools=[],
             response_format=ResponseFormat,
+            checkpointer=self.memory,
         )
 
     def invoke(self, query: str, session_id: str) -> Dict[str, Any]:
@@ -82,13 +86,7 @@ class ShirtifyAgent:
         current_state = self.graph.get_state(config)
         structured_response = current_state.values.get("structured_response")
         if structured_response and isinstance(structured_response, ResponseFormat):
-            if structured_response.status == "input_required":
-                return {
-                    "is_task_complete": False,
-                    "require_user_input": True,
-                    "content": structured_response.message,
-                }
-            elif structured_response.status == "error":
+            if structured_response.status in ("input_required", "error"):
                 return {
                     "is_task_complete": False,
                     "require_user_input": True,
