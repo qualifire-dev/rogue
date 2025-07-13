@@ -1,6 +1,7 @@
 import logging
 
 import click
+import uvicorn
 from a2a.server.apps import A2AStarletteApplication
 from a2a.server.request_handlers import DefaultRequestHandler
 from a2a.server.tasks import InMemoryTaskStore
@@ -51,7 +52,6 @@ def main(host, port, model):
         agent_card=agent_card,
         http_handler=request_handler,
     )
-    import uvicorn
 
     uvicorn.run(
         a2a_app.build(),
