@@ -1,6 +1,7 @@
 from typing import Dict, Any, AsyncIterable, Literal
 
 from langchain_core.messages import AIMessage, ToolMessage
+from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import create_react_agent
@@ -53,7 +54,7 @@ class ShirtifyAgent:
         )
 
     def invoke(self, query: str, session_id: str) -> Dict[str, Any]:
-        config = {"configurable": {"thread_id": session_id}}
+        config = RunnableConfig(configurable={"thread_id": session_id})
         self.graph.invoke({"messages": [("user", query)]}, config)
         return self.get_agent_response(config)
 
@@ -63,7 +64,7 @@ class ShirtifyAgent:
         session_id: str,
     ) -> AsyncIterable[Dict[str, Any]]:
         inputs = {"messages": [("user", query)]}
-        config = {"configurable": {"thread_id": session_id}}
+        config = RunnableConfig(configurable={"thread_id": session_id})
 
         for item in self.graph.stream(inputs, config, stream_mode="values"):
             message = item["messages"][-1]
@@ -86,7 +87,7 @@ class ShirtifyAgent:
 
         yield self.get_agent_response(config)
 
-    def get_agent_response(self, config: Dict[str, Any]) -> Dict[str, Any]:
+    def get_agent_response(self, config: RunnableConfig) -> Dict[str, Any]:
         current_state = self.graph.get_state(config)
         structured_response = current_state.values.get("structured_response")
         if structured_response and isinstance(structured_response, ResponseFormat):
