@@ -166,7 +166,6 @@ def merge_config_with_cli(
     logger.debug("partial CLI input", extra=partial.model_dump())
     logger.debug(f"{partial.business_context_file=}")
     logger.debug(f"{partial.business_context_file.exists()=}")
-    logger.debug(f"{partial.business_context_file.read_text()=}")
 
     # Handle business_context_file logic
     if (
