@@ -42,40 +42,43 @@ runs:
     - name: "Run rogue"
       shell: bash
       run: |
-        ARGS="--workdir ${{ inputs.workdir }} \
-          --evaluated-agent-url ${{ inputs.evaluated_agent_url }}"
+        ARGS=()
+        
+        ARGS+=(--workdir "${{ inputs.workdir }}")
+        ARGS+=(--evaluated-agent-url "${{ inputs.evaluated_agent_url }}")
+          
 
         if [[ -n "${{ inputs.evaluated_agent_auth_type }}" ]]; then
-          ARGS+=" --evaluated-agent-auth-type ${{ inputs.evaluated_agent_auth_type }}"
+          ARGS+=(--evaluated-agent-auth-type "${{ inputs.evaluated_agent_auth_type }}")
         fi
 
         if [[ -n "${{ inputs.evaluated_agent_credentials }}" ]]; then
-          ARGS+=" --evaluated-agent-credentials ${{ inputs.evaluated_agent_credentials }}"
+          ARGS+=(--evaluated-agent-credentials "${{ inputs.evaluated_agent_credentials }}")
         fi
 
         if [[ -n "${{ inputs.input_scenarios_file }}" ]]; then
-          ARGS+=" --input-scenarios-file ${{ inputs.input_scenarios_file }}"
+          ARGS+=(--input-scenarios-file "${{ inputs.input_scenarios_file }}")
         fi
 
         if [[ -n "${{ inputs.output_report_file }}" ]]; then
-          ARGS+=" --output-report-file ${{ inputs.output_report_file }}"
+          ARGS+=(--output-report-file "${{ inputs.output_report_file }}")
         fi
 
         if [[ -n "${{ inputs.judge_llm_model }}" ]]; then
-          ARGS+=" --judge-llm-model ${{ inputs.judge_llm_model }}"
+          ARGS+=(--judge-llm-model "${{ inputs.judge_llm_model }}")
         fi
         
         if [[ -n "${{ inputs.judge_llm_api_key }}" ]]; then
-          ARGS+=" --judge-llm-api-key ${{ inputs.judge_llm_api_key }}"
+          ARGS+=(--judge-llm-api-key "${{ inputs.judge_llm_api_key }}")
         fi
 
         if [[ -n "${{ inputs.deep_test_mode }}" ]]; then
-          ARGS+=" --deep-test-mode ${{ inputs.deep_test_mode }}"
+          ARGS+=(--deep-test-mode "${{ inputs.deep_test_mode }}")
         fi
 
         if [[ -n "${{ inputs.business_context_file }}" ]]; then
-          ARGS+=" --business-context-file ${{ inputs.business_context_file }}"
+          ARGS+=(--business-context-file "${{ inputs.business_context_file }}")
         fi
 
-        echo "Running: 'uv run -m rogue cli $ARGS'"
-        uv run -m rogue cli $ARGS
+        echo "Running: 'uv run -m rogue cli "${ARGS[@]}"'"
+        uv run -m rogue cli "${ARGS[@]}"
