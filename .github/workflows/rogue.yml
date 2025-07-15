@@ -1,0 +1,33 @@
+name: Build
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install rogue
+        run: uv install -e .
+
+      - name: Run rogue
+        uses: ./.github/actions/rogue
+        with:
+          evaluated_agent_url: "http://localhost:10001"
+          judge_llm_model: "openai/o4-mini"
+          workdir: "./examples/tshirt_store_agent/.rogue"
