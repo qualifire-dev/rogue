@@ -40,6 +40,8 @@ jobs:
 
       - name: Run rogue
         uses: ./.github/actions/rogue
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         with:
           evaluated_agent_url: "http://localhost:10001"
           judge_llm_model: "openai/o4-mini"
