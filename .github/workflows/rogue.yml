@@ -1,4 +1,4 @@
-name: Build
+name: Rogue
 
 on:
   pull_request:
