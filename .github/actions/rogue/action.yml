@@ -80,5 +80,5 @@ runs:
           ARGS+=(--business-context-file "${{ inputs.business_context_file }}")
         fi
 
-        echo "Running: 'uv run -m rogue cli --debug "${ARGS[@]}"'"
+        echo "Running: 'uv run -m rogue cli "${ARGS[@]}"'"
         uv run -m rogue cli "${ARGS[@]}"
