@@ -23,7 +23,7 @@ jobs:
           python-version-file: ".python-version"
 
       - name: Install rogue
-        run: uv pip install -e .
+        run: uv pip install -e . --system
 
       - name: Run rogue
         uses: ./.github/actions/rogue
