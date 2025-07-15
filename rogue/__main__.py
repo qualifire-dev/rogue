@@ -12,20 +12,27 @@ from .run_ui import run_ui, set_ui_args
 load_dotenv()
 
 
-def parse_args():
-    parser = ArgumentParser(description="Rouge agent evaluator")
-
-    parser.add_argument(
+def common_parser():
+    parent_parser = ArgumentParser(add_help=False)
+    parent_parser.add_argument(
         "--workdir",
         type=Path,
         default=Path(".") / ".rogue",
         help="Working directory",
     )
-    parser.add_argument(
+    parent_parser.add_argument(
         "--debug",
         action="store_true",
         default=False,
         help="Enable debug logging",
+    )
+    return parent_parser
+
+
+def parse_args():
+    parser = ArgumentParser(
+        description="Rouge agent evaluator",
+        parents=[common_parser()],
     )
 
     subparsers = parser.add_subparsers(dest="mode")
@@ -34,6 +41,7 @@ def parse_args():
     ui_parser = subparsers.add_parser(
         "ui",
         help="Run in interactive UI mode",
+        parents=[common_parser()],
     )
     set_ui_args(ui_parser)
 
@@ -41,6 +49,7 @@ def parse_args():
     cli_parser = subparsers.add_parser(
         "cli",
         help="Run in non-interactive CLI mode",
+        parents=[common_parser()],
     )
     set_cli_args(cli_parser)
 
