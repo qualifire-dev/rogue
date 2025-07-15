@@ -170,7 +170,10 @@ def merge_config_with_cli(
         and partial.business_context_file is not None
         and partial.business_context_file.exists()
     ):
+        logger.info("Using business context file")
         partial.business_context = partial.business_context_file.read_text()
+    else:
+        logger.info("Using business context str")
 
     # Remove file-specific fields not in final schema
     data = partial.model_dump(
@@ -179,6 +182,8 @@ def merge_config_with_cli(
             "config_file",
         },
     )
+
+    logger.debug(f"Running with parameters: {data}")
 
     # Finally, validate as full input
     return CLIInput(**data)
@@ -203,6 +208,7 @@ def read_config_file(config_file: Path) -> dict:
         except ValidationError:
             logger.exception("Failed to parse config as PartialCLIInput from file")
 
+    logger.info("Config file not found")
     return {}
 
 
