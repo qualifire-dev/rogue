@@ -41,7 +41,7 @@ jobs:
       - name: Run shirtify agent in background
         uses: JarvusInnovations/background-action@v1
         with:
-          run: uv run examples/tshirt_store_agent --host 0.0.0.0 --port 10001
+          run: uv run examples/tshirt_store_agent --host 0.0.0.0 --port 10001 &
           wait-on: http-get://localhost:10001/.well-known/agent.json
           tail: true
 
