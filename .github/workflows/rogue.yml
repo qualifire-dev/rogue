@@ -27,7 +27,7 @@ jobs:
 
       - name: Run shirtify agent
         run: |
-          uv run examples/tshirt_store_agent --port 10001 &
+          nohup uv run examples/tshirt_store_agent --port 10001 &
           test_command="curl -s http://localhost:10001/.well-known/agent.json"
           for attempt in {1..20}; do
             sleep 3
