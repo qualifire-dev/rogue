@@ -231,7 +231,7 @@ def get_agent_card(agent_url: str) -> AgentCard:
             f"{agent_url}/.well-known/agent.json",
             timeout=5,
         )
-        return AgentCard.model_validate(response.json)
+        return AgentCard.model_validate(response.json())
     except Exception:
         logger.debug(
             "Failed to connect to agent",
