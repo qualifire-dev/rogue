@@ -1,6 +1,8 @@
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
+import requests
+from a2a.types import AgentCard
 from loguru import logger
 from pydantic import ValidationError, SecretStr
 
@@ -223,9 +225,28 @@ def get_cli_input(cli_args: Namespace) -> CLIInput:
     return cli_input
 
 
+def get_agent_card(agent_url: str) -> AgentCard:
+    try:
+        response = requests.get(
+            f"{agent_url}/.well-known/agent.json",
+            timeout=5,
+        )
+        return AgentCard.model_validate(response.json)
+    except Exception:
+        logger.debug(
+            "Failed to connect to agent",
+            extra={"agent_url": agent_url},
+            exc_info=True,
+        )
+        raise
+
+
 async def run_cli(args: Namespace) -> int:
     cli_input = get_cli_input(args)
     logger.debug("Running CLI", extra=cli_input.model_dump())
+
+    # fast fail if the agent is not reachable
+    get_agent_card(cli_input.evaluated_agent_url.encoded_string())
 
     scenarios = cli_input.get_scenarios_from_file()
 
