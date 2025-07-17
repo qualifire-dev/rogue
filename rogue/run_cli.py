@@ -5,6 +5,8 @@ import requests
 from a2a.types import AgentCard
 from loguru import logger
 from pydantic import ValidationError, SecretStr
+from rich.console import Console
+from rich.markdown import Markdown
 
 from .models.cli_input import CLIInput, PartialCLIInput
 from .models.config import AuthType, AgentConfig
@@ -281,7 +283,8 @@ async def run_cli(args: Namespace) -> int:
     )
 
     logger.info("Report saved", extra={"report_file": cli_input.output_report_file})
-    logger.info(report_summary)
-    logger.info("Done")
+
+    console = Console()
+    console.print(Markdown(report_summary))
 
     return get_exit_code(results)
