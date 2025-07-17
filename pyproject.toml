@@ -25,4 +25,5 @@ dev = [
     "pytest>=8.4.1",
     "pytest-cov>=6.2.1",
     "pytest-mock>=3.14.1",
+    "types-requests>=2.32.4.20250611",
 ]
