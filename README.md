@@ -97,7 +97,19 @@ Navigate to the URL displayed in your terminal (usually `http://127.0.0.1:7860`)
 
 This repository includes a simple example agent that sells T-shirts. You can use it to see Rogue in action.
 
-1.  **Start the example agent server** in a separate terminal:
+1. **Install exmaple dependencies:**
+    
+    If you are using uv:
+    ```bash
+     uv sync --group examples
+    ```
+   
+    or, if you are using pip:
+    ```bash
+    pip install -e .[examples]
+    ```
+
+2. **Start the example agent server** in a separate terminal:
 
     If you are using uv:
 
@@ -113,12 +125,12 @@ This repository includes a simple example agent that sells T-shirts. You can use
 
     This will start the agent on `http://localhost:10001`.
 
-2.  **Configure Rogue** in the UI to point to the example agent:
+3.  **Configure Rogue** in the UI to point to the example agent:
 
     - **Agent URL**: `http://localhost:10001`
     - **Authentication**: `no-auth`
 
-3.  **Run the evaluation** and watch Rogue test the T-Shirt agent's policies!
+4.  **Run the evaluation** and watch Rogue test the T-Shirt agent's policies!
 
 ---
 
