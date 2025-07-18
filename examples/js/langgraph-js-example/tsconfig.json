@@ -1,0 +1,26 @@
+//{
+//  "compilerOptions": {
+//    "module": "ESNext",
+//    "moduleResolution": "nodenext",
+//    "target": "ES2015",
+//    "lib": ["ES2015", "DOM"]
+//  }
+//}
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "NodeNext",
+    "lib": ["ES2020"],
+    "declaration": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "sourceMap": true,
+    "resolveJsonModule": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
