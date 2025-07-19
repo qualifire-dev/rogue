@@ -1,11 +1,3 @@
-//{
-//  "compilerOptions": {
-//    "module": "ESNext",
-//    "moduleResolution": "nodenext",
-//    "target": "ES2015",
-//    "lib": ["ES2015", "DOM"]
-//  }
-//}
 {
   "compilerOptions": {
     "target": "ES2020",
