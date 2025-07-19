@@ -43,7 +43,7 @@ export class Agent {
     });
   }
 
-  async getAgent() {
+  public getAgent() {
     return this.agent;
   }
 }
