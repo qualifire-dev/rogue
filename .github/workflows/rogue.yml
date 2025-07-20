@@ -1,0 +1,44 @@
+name: Rogue
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install rogue
+        run: uv pip install -e . --system
+
+      - name: Run shirtify agent in background
+        uses: JarvusInnovations/background-action@v1
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        with:
+          run: uv run examples/tshirt_store_agent --host 0.0.0.0 --port 10001 &
+          wait-on: http-get://localhost:10001/.well-known/agent.json
+          tail: true
+
+      - name: Run rogue
+        uses: ./.github/actions/rogue
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        with:
+          evaluated_agent_url: "http://localhost:10001"
+          judge_llm_model: "openai/o4-mini"
+          workdir: "./examples/tshirt_store_agent/.rogue"
