@@ -87,3 +87,4 @@ tasks.json
 tasks/ 
 
 dist/
+.adk/
