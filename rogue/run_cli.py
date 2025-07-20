@@ -1,8 +1,12 @@
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
+import requests
+from a2a.types import AgentCard
 from loguru import logger
 from pydantic import ValidationError, SecretStr
+from rich.console import Console
+from rich.markdown import Markdown
 
 from .models.cli_input import CLIInput, PartialCLIInput
 from .models.config import AuthType, AgentConfig
@@ -163,6 +167,9 @@ def merge_config_with_cli(
     }
 
     partial = PartialCLIInput(**merged)
+    logger.debug("partial CLI input", extra=partial.model_dump())
+    logger.debug(f"{partial.business_context_file=}")
+    logger.debug(f"{partial.business_context_file.exists()=}")
 
     # Handle business_context_file logic
     if (
@@ -170,7 +177,10 @@ def merge_config_with_cli(
         and partial.business_context_file is not None
         and partial.business_context_file.exists()
     ):
+        logger.info("Using business context file")
         partial.business_context = partial.business_context_file.read_text()
+    else:
+        logger.info("Using business context str")
 
     # Remove file-specific fields not in final schema
     data = partial.model_dump(
@@ -179,6 +189,8 @@ def merge_config_with_cli(
             "config_file",
         },
     )
+
+    logger.debug(f"Running with parameters: {data}")
 
     # Finally, validate as full input
     return CLIInput(**data)
@@ -203,6 +215,7 @@ def read_config_file(config_file: Path) -> dict:
         except ValidationError:
             logger.exception("Failed to parse config as PartialCLIInput from file")
 
+    logger.info("Config file not found")
     return {}
 
 
@@ -214,9 +227,28 @@ def get_cli_input(cli_args: Namespace) -> CLIInput:
     return cli_input
 
 
+def get_agent_card(agent_url: str) -> AgentCard:
+    try:
+        response = requests.get(
+            f"{agent_url}/.well-known/agent.json",
+            timeout=5,
+        )
+        return AgentCard.model_validate(response.json())
+    except Exception:
+        logger.debug(
+            "Failed to connect to agent",
+            extra={"agent_url": agent_url},
+            exc_info=True,
+        )
+        raise
+
+
 async def run_cli(args: Namespace) -> int:
     cli_input = get_cli_input(args)
     logger.debug("Running CLI", extra=cli_input.model_dump())
+
+    # fast fail if the agent is not reachable
+    get_agent_card(cli_input.evaluated_agent_url.encoded_string())
 
     scenarios = cli_input.get_scenarios_from_file()
 
@@ -251,7 +283,8 @@ async def run_cli(args: Namespace) -> int:
     )
 
     logger.info("Report saved", extra={"report_file": cli_input.output_report_file})
-    logger.info(report_summary)
-    logger.info("Done")
+
+    console = Console()
+    console.print(Markdown(report_summary))
 
     return get_exit_code(results)

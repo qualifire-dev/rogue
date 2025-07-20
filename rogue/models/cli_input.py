@@ -58,8 +58,18 @@ class PartialCLIInput(BaseModel):
     evaluated_agent_credentials: SecretStr | None = None
     judge_llm_model: str | None = None
     judge_llm_api_key: SecretStr | None = None
-    input_scenarios_file: Path = workdir / "scenarios.json"
-    output_report_file: Path = workdir / "report.md"
     business_context: str | None = None
-    business_context_file: Path = workdir / "business_context.md"
+    business_context_file: Path = None  # type: ignore # fixed in model_post_init
+    input_scenarios_file: Path = None  # type: ignore # fixed in model_post_init
+    output_report_file: Path = None  # type: ignore # fixed in model_post_init
     deep_test_mode: bool = False
+
+    def model_post_init(self, __context):
+        # Set defaults based on workdir if not provided
+        # This must be done in instance creation and not in the model itself
+        if self.input_scenarios_file is None:
+            self.input_scenarios_file = self.workdir / "scenarios.json"
+        if self.output_report_file is None:
+            self.output_report_file = self.workdir / "report.md"
+        if self.business_context_file is None:
+            self.business_context_file = self.workdir / "business_context.md"
