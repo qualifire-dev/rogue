@@ -32,7 +32,6 @@ def common_parser():
 def parse_args():
     parser = ArgumentParser(
         description="Rouge agent evaluator",
-        parents=[common_parser()],
     )
 
     subparsers = parser.add_subparsers(dest="mode")
@@ -53,14 +52,12 @@ def parse_args():
     )
     set_cli_args(cli_parser)
 
-    args, unknown = parser.parse_known_args()
+    # Inject 'ui' if no subcommand is present
+    argv = sys.argv[1:]
+    if len(argv) == 0 or argv[0] not in {"ui", "cli"}:
+        argv = ["ui"] + argv
 
-    # Default to UI mode if no subcommand is provided
-    if args.mode is None:
-        # Parse again, but this time with defaulting to "ui"
-        args = parser.parse_args(["ui"] + unknown)
-
-    return args
+    return parser.parse_args(argv)
 
 
 def main():
