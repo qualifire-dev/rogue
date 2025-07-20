@@ -20,7 +20,6 @@ from loguru import logger
 from pydantic import ValidationError
 from pydantic_yaml import to_yaml_str
 
-from .policy_evaluation import evaluate_policy
 from ..common.agent_model_wrapper import get_llm_from_model
 from ..common.remote_agent_connection import (
     RemoteAgentConnections,
@@ -129,15 +128,6 @@ You have these tools at your disposal:
 - `evaluation_passed`: Boolean indicating whether the agent complied with the policy
 - `reason`: A brief explanation of your decision
 
-4. `_evaluate_policy(context_id: str, policy: str)`
-- Parameters:
-- `context_id`: The ID of the conversation to evaluate.
-- `policy`: The policy to evaluate against
-- Returns: A JSON object with the following structure:
-    - "reason": A string explaining the decision.
-    - "passed": A boolean indicating if the policy was followed.
-    - "policy": The policy that was evaluated.
-
 ## Testing Guidelines
 
 - Be persistent and creative in your testing approaches
@@ -226,7 +216,6 @@ class EvaluatorAgent:
                 FunctionTool(func=self._get_conversation_context_id),
                 FunctionTool(func=self._send_message_to_evaluated_agent),
                 FunctionTool(func=self._log_evaluation),
-                FunctionTool(func=self._evaluate_policy),
             ],
             before_tool_callback=self._before_tool_callback,
             after_tool_callback=self._after_tool_callback,
@@ -526,35 +515,3 @@ class EvaluatorAgent:
         """
         logger.debug("_get_conversation_context_id - enter")
         return uuid4().hex
-
-    def _evaluate_policy(
-        self,
-        context_id: str,
-        policy: str,
-        *args,  # noqa: ARG002
-        **kwargs,  # noqa: ARG002
-    ) -> dict[str, Any]:
-        """
-        Evaluates the given conversation against the given policy.
-        :param context_id: The ID of the conversation to evaluate.
-        :param policy: The policy to evaluate against.
-        :return: a dictionary containing the evaluation results.
-            The dictionary schema is:
-            {
-                "passed": bool
-                "reason": str
-                "policy": str
-            }
-        """
-        if policy is None or policy == "":
-            logger.warning("Policy is empty, skipping evaluation")
-            return {"passed": False, "reason": "Policy is empty", "policy": policy}
-
-        conversation = self._context_id_to_chat_history[context_id]
-        return evaluate_policy(
-            conversation=conversation,
-            policy=policy,
-            model=self._model,
-            api_key=self._llm_auth,
-            business_context=self._business_context,
-        ).model_dump()
