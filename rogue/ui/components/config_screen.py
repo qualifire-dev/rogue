@@ -42,7 +42,7 @@ def create_config_screen(
         gr.Markdown("**Deep Test Mode**")
         deep_test_mode = gr.Checkbox(
             label="Enable deep test mode.",
-            value=config_data.get("deep_test_mode", False),
+            value=config_data.get("deep_test_mode", True),
         )
         gr.Markdown(
             "When enabled, the evaluator will "
