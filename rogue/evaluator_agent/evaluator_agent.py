@@ -452,71 +452,78 @@ class EvaluatorAgent:
             - "response": the response string. If there is no response
                 from the other agent, the string is empty.
         """
-        logger.debug(
-            "_send_message_to_evaluated_agent - enter",
-            extra={
-                "message": message,
-                "context_id": context_id,
-            },
-        )
-
-        if self._chat_update_callback:
-            self._chat_update_callback(
-                {"role": "Evaluator Agent", "content": message},
+        try:
+            logger.debug(
+                "_send_message_to_evaluated_agent - enter",
+                extra={
+                    "message": message,
+                    "context_id": context_id,
+                },
             )
 
-        if context_id not in self._context_id_to_chat_history:
-            self._context_id_to_chat_history[context_id] = ChatHistory()
+            if self._chat_update_callback:
+                self._chat_update_callback(
+                    {"role": "Evaluator Agent", "content": message},
+                )
 
-        self._context_id_to_chat_history[context_id].add_message(
-            HistoryMessage(
-                role="user",
-                content=message,
-            ),
-        )
+            if context_id not in self._context_id_to_chat_history:
+                self._context_id_to_chat_history[context_id] = ChatHistory()
 
-        agent_client = await self._get_evaluated_agent_client()
-        response = await agent_client.send_message(
-            MessageSendParams(
-                message=Message(
-                    contextId=context_id,
-                    messageId=uuid4().hex,
-                    role=Role.user,
-                    parts=[
-                        Part(
-                            root=TextPart(
-                                text=message,
-                            )
-                        ),
-                    ],
+            self._context_id_to_chat_history[context_id].add_message(
+                HistoryMessage(
+                    role="user",
+                    content=message,
                 ),
-            ),
-        )
-
-        if not response:
-            logger.debug("_send_message_to_evaluated_agent - no response")
-            return {"response": ""}
-
-        agent_response_text = (
-            self._get_text_from_response(response) or "Not a text response"
-        )
-        self._context_id_to_chat_history[context_id].add_message(
-            HistoryMessage(
-                role="assistant",
-                content=agent_response_text,
-            ),
-        )
-
-        if self._chat_update_callback:
-            self._chat_update_callback(
-                {"role": "Agent Under Test", "content": agent_response_text},
             )
 
-        logger.debug(
-            "_send_message_to_evaluated_agent - response",
-            extra={"response": response.model_dump_json()},
-        )
-        return {"response": response.model_dump_json()}
+            agent_client = await self._get_evaluated_agent_client()
+            response = await agent_client.send_message(
+                MessageSendParams(
+                    message=Message(
+                        contextId=context_id,
+                        messageId=uuid4().hex,
+                        role=Role.user,
+                        parts=[
+                            Part(
+                                root=TextPart(
+                                    text=message,
+                                )
+                            ),
+                        ],
+                    ),
+                ),
+            )
+
+            if not response:
+                logger.debug("_send_message_to_evaluated_agent - no response")
+                return {"response": ""}
+
+            agent_response_text = (
+                self._get_text_from_response(response) or "Not a text response"
+            )
+            self._context_id_to_chat_history[context_id].add_message(
+                HistoryMessage(
+                    role="assistant",
+                    content=agent_response_text,
+                ),
+            )
+
+            if self._chat_update_callback:
+                self._chat_update_callback(
+                    {"role": "Agent Under Test", "content": agent_response_text},
+                )
+
+            logger.debug(
+                "_send_message_to_evaluated_agent - response",
+                extra={"response": response.model_dump_json()},
+            )
+            return {"response": response.model_dump_json()}
+        except Exception as e:
+            logger.exception(
+                "Error sending message to agent",
+                extra={"message": message, "context_id": context_id},
+            )
+            return {"response": "", "error": str(e)}
 
     @staticmethod
     def _get_conversation_context_id() -> str:
