@@ -11,6 +11,7 @@ class ScenarioType(Enum):
 
 class Scenario(BaseModel):
     scenario: str
+    expected_outcome: str | None = None
     scenario_type: ScenarioType = ScenarioType.POLICY
     dataset: str | None = None  # None if scenario_type in [policy]
 

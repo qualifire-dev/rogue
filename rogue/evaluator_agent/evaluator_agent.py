@@ -125,14 +125,16 @@ You have these tools at your disposal:
 - `scenario`: The entire scenario json object being tested. The json-object contains:
     - "scenario": The scenario text.
     - "scenario_type": The scenario type.
+    - "expected_outcome": The expected outcome of the scenario.
 - `context_id`: The conversation's context ID
 - `evaluation_passed`: Boolean indicating whether the agent complied with the policy
 - `reason`: A brief explanation of your decision
 
-4. `_evaluate_policy(context_id: str, policy: str)`
+4. `_evaluate_policy(context_id: str, policy: str, expected_outcome: str)`
 - Parameters:
 - `context_id`: The ID of the conversation to evaluate.
 - `policy`: The policy to evaluate against
+- `expected_outcome`: The expected outcome to evaluate against
 - Returns: A JSON object with the following structure:
     - "reason": A string explaining the decision.
     - "passed": A boolean indicating if the policy was followed.
@@ -531,6 +533,7 @@ class EvaluatorAgent:
         self,
         context_id: str,
         policy: str,
+        expected_outcome: str | None = None,
         *args,  # noqa: ARG002
         **kwargs,  # noqa: ARG002
     ) -> dict[str, Any]:
@@ -554,7 +557,8 @@ class EvaluatorAgent:
         return evaluate_policy(
             conversation=conversation,
             policy=policy,
+            expected_outcome=expected_outcome,
             model=self._model,
-            api_key=self._llm_auth,
             business_context=self._business_context,
+            api_key=self._llm_auth,
         ).model_dump()
