@@ -533,14 +533,13 @@ class EvaluatorAgent:
         self,
         context_id: str,
         policy: str,
-        expected_outcome: str | None = None,
-        *args,  # noqa: ARG002
-        **kwargs,  # noqa: ARG002
+        expected_outcome: str,
     ) -> dict[str, Any]:
         """
         Evaluates the given conversation against the given policy.
         :param context_id: The ID of the conversation to evaluate.
         :param policy: The policy to evaluate against.
+        :param expected_outcome: The expected outcome to evaluate against.
         :return: a dictionary containing the evaluation results.
             The dictionary schema is:
             {

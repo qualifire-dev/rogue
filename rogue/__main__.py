@@ -65,7 +65,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    configure_logger(args.debug)
+    configure_logger(True)  # args.debug)
 
     args.workdir.mkdir(exist_ok=True, parents=True)
 

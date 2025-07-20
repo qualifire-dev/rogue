@@ -125,7 +125,9 @@ async def arun_evaluator_agent(
         async def agent_runner_task():
             # This task just runs the agent and puts the final result on a
             # separate queue
+            logger.debug("Running evaluator agent")
             await _run_agent(runner, "start", session)
+            logger.debug("Evaluator agent - done")
             results = evaluator_agent.get_evaluation_results()
             await results_queue.put(results)
 
