@@ -557,11 +557,25 @@ class EvaluatorAgent:
             logger.warning("Policy is empty, skipping evaluation")
             return {"passed": False, "reason": "Policy is empty", "policy": policy}
 
-        conversation = self._context_id_to_chat_history[context_id]
-        return evaluate_policy(
-            conversation=conversation,
-            policy=policy,
-            model=self._model,
-            api_key=self._llm_auth,
-            business_context=self._business_context,
-        ).model_dump()
+        try:
+            conversation = self._context_id_to_chat_history[context_id]
+            return evaluate_policy(
+                conversation=conversation,
+                policy=policy,
+                model=self._model,
+                api_key=self._llm_auth,
+                business_context=self._business_context,
+            ).model_dump()
+        except Exception:
+            logger.exception(
+                "Error evaluating policy",
+                extra={
+                    "context_id": context_id,
+                    "policy": policy,
+                },
+            )
+            return {
+                "passed": False,
+                "reason": "Error evaluating policy",
+                "policy": policy,
+            }
