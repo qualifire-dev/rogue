@@ -93,7 +93,7 @@ async def arun_evaluator_agent(
     update_queue: Queue = Queue()
     results_queue: Queue = Queue()
 
-    async with AsyncClient(headers=headers) as httpx_client:
+    async with AsyncClient(headers=headers, timeout=30) as httpx_client:
         evaluator_agent = EvaluatorAgent(
             http_client=httpx_client,
             evaluated_agent_address=evaluated_agent_url,
