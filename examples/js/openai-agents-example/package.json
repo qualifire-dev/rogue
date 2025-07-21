@@ -15,7 +15,9 @@
   "license": "ISC",
   "packageManager": "pnpm@9.6.0+sha512.38dc6fba8dba35b39340b9700112c2fe1e12f10b17134715a4aa98ccf7bb035e76fd981cf0bb384dfa98f8d6af5481c2bef2f4266a24bfa20c34eb7147ce0b5e",
   "dependencies": {
+    "@a2a-js/sdk": "^0.2.4",
     "@openai/agents": "^0.0.12",
+    "uuid": "^11.1.0",
     "zod": "<=3.25.67"
   }
 }

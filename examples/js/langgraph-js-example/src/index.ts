@@ -1,8 +1,8 @@
 import { A2AExpressApp, DefaultRequestHandler, InMemoryTaskStore, TaskStore } from '@a2a-js/sdk/server';
-import { ReactAgentExecutor } from './agent_executor.js';
-import { Agent } from './agent.js';
+import { ReactAgentExecutor } from './agentExecutor.js';
 import express from 'express';
 import { AgentCapabilities, AgentCard, AgentSkill } from '@a2a-js/sdk';
+import { agent } from './agent.js';
 
 function getAgentCard(): AgentCard {
   const skills = [
@@ -31,8 +31,7 @@ function getAgentCard(): AgentCard {
 
 async function main() {
   const taskStore: TaskStore = new InMemoryTaskStore();
-  const agent = new Agent();
-  const agentExecutor: ReactAgentExecutor = new ReactAgentExecutor(agent.getAgent());
+  const agentExecutor: ReactAgentExecutor = new ReactAgentExecutor(agent);
 
   // 3. Create DefaultRequestHandler
   const requestHandler = new DefaultRequestHandler(
