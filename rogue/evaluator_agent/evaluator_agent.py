@@ -394,6 +394,8 @@ class EvaluatorAgent:
 
             evaluation_passed = policy_evaluation_result.passed
             reason = policy_evaluation_result.reason
+        elif scenario_parsed.scenario_type == ScenarioType.PROMPT_INJECTION:
+            pass
         else:
             logger.warning(
                 "Unsupported scenario type for evaluation",

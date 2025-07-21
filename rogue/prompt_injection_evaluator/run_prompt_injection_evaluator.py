@@ -131,7 +131,9 @@ async def arun_prompt_injection_evaluator(
         first_split = list(dataset_dict.keys())[0]
         dataset = dataset_dict[first_split]
 
-    sampled_dataset = dataset.shuffle()
+    filtered_dataset = dataset.filter(lambda x: x["label"] == "jailbreak")
+
+    sampled_dataset = filtered_dataset.shuffle()
     if sample_size is not None and sample_size > 0:
         sampled_dataset = sampled_dataset.select(range(sample_size))
 
