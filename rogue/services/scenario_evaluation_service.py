@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 from typing import AsyncGenerator, Any
 
@@ -8,13 +7,8 @@ from ..evaluator_agent.run_evaluator_agent import arun_evaluator_agent
 from ..models.config import AuthType
 from ..models.evaluation_result import (
     EvaluationResults,
-    EvaluationResult,
-    ConversationEvaluation,
 )
 from ..models.scenario import Scenarios
-from ..prompt_injection_evaluator.run_prompt_injection_evaluator import (
-    arun_prompt_injection_evaluator,
-)
 
 
 class ScenarioEvaluationService:
@@ -41,93 +35,6 @@ class ScenarioEvaluationService:
         self._deep_test_mode = deep_test_mode
         self._results = EvaluationResults()
 
-    async def _evaluate_policy_scenarios(self) -> AsyncGenerator[tuple[str, Any], None]:
-        for scenario in self._scenarios.get_policy_scenarios().scenarios:
-            yield "status", f"Running policy scenario: {scenario.scenario}"
-            logger.info(
-                "Evaluating scenario",
-                # Not using scenario.model_dump here so enums will be serialized
-                extra=json.loads(scenario.model_dump_json(exclude_none=True)),
-            )
-            try:
-                async for update_type, data in arun_evaluator_agent(
-                    evaluated_agent_url=str(self._evaluated_agent_url),
-                    auth_type=self._evaluated_agent_auth_type,
-                    auth_credentials=self._evaluated_agent_auth_credentials,
-                    judge_llm=self._judge_llm,
-                    judge_llm_api_key=self._judge_llm_api_key,
-                    scenarios=Scenarios(scenarios=[scenario]),
-                    business_context=self._business_context,
-                    deep_test_mode=self._deep_test_mode,
-                ):
-                    if update_type == "results":
-                        results = data
-                        if results and results.results:
-                            self._results.add_result(results.results[0])
-                    else:  # it's a 'chat' update
-                        yield update_type, data
-            except Exception:
-                logger.exception(
-                    "Error evaluating policy scenario",
-                    extra={"scenario": scenario},
-                )
-                yield "status", f"Error running scenario: {scenario.scenario}"
-                continue
-
-    async def _evaluate_prompt_injection_scenarios(
-        self,
-    ) -> AsyncGenerator[tuple[str, Any], None]:
-        for scenario in self._scenarios.get_prompt_injection_scenarios().scenarios:
-            yield "status", f"Running prompt injection scenario: {scenario.scenario}"
-            logger.info(
-                "Evaluating scenario",
-                # Not using scenario.model_dump here so enums will be serialized
-                extra=json.loads(scenario.model_dump_json(exclude_none=True)),
-            )
-            try:
-                if not scenario.dataset:
-                    logger.warning(
-                        "Prompt injection scenario is missing dataset, skipping",
-                        extra={"scenario": scenario},
-                    )
-                    continue
-
-                dataset_name = scenario.dataset
-                async for update_type, data in arun_prompt_injection_evaluator(
-                    evaluated_agent_url=self._evaluated_agent_url,
-                    auth_type=self._evaluated_agent_auth_type,
-                    auth_credentials=self._evaluated_agent_auth_credentials,
-                    judge_llm=self._judge_llm,
-                    judge_llm_api_key=self._judge_llm_api_key,
-                    dataset_name=dataset_name,
-                    sample_size=scenario.dataset_sample_size,
-                ):
-                    if update_type == "result":
-                        # Convert PromptInjectionEvaluation to EvaluationResult
-                        injection_eval = data
-                        eval_result = EvaluationResult(
-                            scenario=scenario,
-                            conversations=[
-                                ConversationEvaluation(
-                                    messages=injection_eval.conversation_history,
-                                    passed=injection_eval.passed,
-                                    reason=injection_eval.reason,
-                                )
-                            ],
-                            passed=injection_eval.passed,
-                        )
-                        self._results.add_result(eval_result)
-                    else:
-                        yield update_type, data
-
-            except Exception:
-                logger.exception(
-                    "Error evaluating prompt injection scenario",
-                    extra={"scenario": scenario},
-                )
-                yield "status", f"Error running scenario: {scenario.scenario}"
-                continue
-
     def _dump_results(self):
         self._evaluation_results_output_path.write_text(
             self._results.model_dump_json(indent=2, exclude_none=True),
@@ -135,11 +42,34 @@ class ScenarioEvaluationService:
         )
 
     async def evaluate_scenarios(self) -> AsyncGenerator[tuple[str, Any], None]:
-        async for status, data in self._evaluate_policy_scenarios():
-            yield status, data
+        if not self._scenarios.scenarios:
+            yield "status", "No scenarios to evaluate."
+            self._dump_results()
+            yield "done", self._results
+            return
 
-        async for status, data in self._evaluate_prompt_injection_scenarios():
-            yield status, data
+        yield "status", f"Running {len(self._scenarios.scenarios)} scenarios..."
+        try:
+            async for update_type, data in arun_evaluator_agent(
+                evaluated_agent_url=str(self._evaluated_agent_url),
+                auth_type=self._evaluated_agent_auth_type,
+                auth_credentials=self._evaluated_agent_auth_credentials,
+                judge_llm=self._judge_llm,
+                judge_llm_api_key=self._judge_llm_api_key,
+                scenarios=self._scenarios,
+                business_context=self._business_context,
+                deep_test_mode=self._deep_test_mode,
+            ):
+                if update_type == "results":
+                    results = data
+                    if results and results.results:
+                        for res in results.results:
+                            self._results.add_result(res)
+                else:  # it's a 'chat' or 'status' update
+                    yield update_type, data
+        except Exception:
+            logger.exception("Error evaluating scenarios")
+            yield "status", "Error running scenarios"
 
         self._dump_results()
 
