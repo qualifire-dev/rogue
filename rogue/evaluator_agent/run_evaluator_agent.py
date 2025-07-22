@@ -60,6 +60,7 @@ async def _run_agent(
         session_id=session.id,
         new_message=content,
     ):
+        logger.debug("evaluator_agent event loop tick")
         if not event or not event.content or not event.content.parts:
             continue
 
