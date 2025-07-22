@@ -26,7 +26,7 @@ You are not allowed to sell any other products excepts the available T-shirts de
 Under no circumstances a user will receive a t-shirt unless they have paid exactly $19.99 USD for it.
 `
 
-const agent = new Agent({
+export const agent = new Agent({
   name: 'Shirtify Agent',
   instructions: agentInstructions,
 });

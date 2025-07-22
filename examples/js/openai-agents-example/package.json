@@ -6,7 +6,7 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc",
-    "start": "tsc && node dist/index.js",
+    "start": "tsc && dotenv run node dist/index.js",
     "dev": "npx tsx src/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -17,6 +17,10 @@
   "dependencies": {
     "@a2a-js/sdk": "^0.2.4",
     "@openai/agents": "^0.0.12",
+    "@types/express": "^5.0.3",
+    "express": "^5.1.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3",
     "uuid": "^11.1.0",
     "zod": "<=3.25.67"
   }

@@ -2,7 +2,7 @@ import { Message, Task, TaskStatusUpdateEvent, TextPart } from '@a2a-js/sdk';
 import { AgentExecutor, ExecutionEventBus, RequestContext } from '@a2a-js/sdk/server';
 
 import { v4 as uuidv4 } from 'uuid';
-import { run } from '@openai/agents';
+import { AgentInputItem, run } from '@openai/agents';
 
 // Store for conversation contexts
 const contexts = new Map<string, Message[]>();
@@ -87,9 +87,12 @@ export class OpenAIAgentExecutor implements AgentExecutor {
       role: m.role === 'agent' ? 'assistant' : 'user',
       content: m.parts
         .filter((p): p is TextPart => p.kind === 'text' && !!(p as TextPart).text)
-        .map(p => (p as TextPart).text)
-        .join('\n')
-    }));
+        .map(p => ({
+          type: "input_text",
+          text: (p as TextPart).text
+        }))
+    } as AgentInputItem)
+    );
 
     if (messages.length === 0) {
       console.warn(
@@ -118,10 +121,6 @@ export class OpenAIAgentExecutor implements AgentExecutor {
     }
 
     try {
-      // 4. Run the React agent
-      const input = { messages };
-      const config = { configurable: { thread_id: contextId } };
-
       // Check if the task has been cancelled before starting
       if (this.cancelledTasks.has(taskId)) {
         console.log(`[OpenAIAgentExecutor] Request cancelled for task: ${taskId}`);
@@ -140,17 +139,11 @@ export class OpenAIAgentExecutor implements AgentExecutor {
         return;
       }
 
-      // Stream the agent execution
-      let finalResponse = '';
-      let isInputRequired = false;
-
       // Use the existing config object
-      const stream = await run(this.agent, input, {stream: true});
+      const stream = await run(this.agent, messages, {stream: true});
 
-      for await (const event of stream) {
-        if (event.type === 'raw_model_stream_event') {
-          // Send intermediate updates
-          const intermediateUpdate: TaskStatusUpdateEvent = {
+      for await (const textPart of stream.toTextStream()) {
+        const intermediateUpdate: TaskStatusUpdateEvent = {
             kind: 'status-update',
             taskId: taskId,
             contextId: contextId,
@@ -160,7 +153,7 @@ export class OpenAIAgentExecutor implements AgentExecutor {
                 kind: 'message',
                 role: 'agent',
                 messageId: uuidv4(),
-                parts: [{ kind: 'text', text: event.data }],
+                parts: [{ kind: 'text', text: textPart}],
                 taskId: taskId,
                 contextId: contextId,
               },
@@ -169,38 +162,27 @@ export class OpenAIAgentExecutor implements AgentExecutor {
             final: false,
           };
           eventBus.publish(intermediateUpdate);
-        }
-        // agent updated events
-        if (event.type === 'agent_updated_stream_event') {
-          console.log(`${event.type} %s`, event.agent.name);
-        }
-        // Agent SDK specific events
-        if (event.type === 'run_item_stream_event') {
-          console.log(`${event.type} %o`, event.item);
-        }
       }
 
       // 5. Create the agent's final message
-      // const agentMessage: Message = {
-      //   kind: 'message',
-      //   role: 'agent',
-      //   messageId: uuidv4(),
-      //   parts: [{ kind: 'text', text: finalResponse || "Completed." }],
-      //   taskId: taskId,
-      //   contextId: contextId,
-      // };
-      // historyForAgent.push(agentMessage);
-      // contexts.set(contextId, historyForAgent);
+      const agentMessage: Message = {
+        kind: 'message',
+        role: 'agent',
+        messageId: uuidv4(),
+        parts: [],
+        taskId: taskId,
+        contextId: contextId,
+      };
+      historyForAgent.push(agentMessage);
+      contexts.set(contextId, historyForAgent);
 
       // 6. Publish final task status update
-      const finalState = isInputRequired ? "input-required" : "completed";
-
       const finalUpdate: TaskStatusUpdateEvent = {
         kind: 'status-update',
         taskId: taskId,
         contextId: contextId,
         status: {
-          state: finalState,
+          state: "completed",
           message: agentMessage,
           timestamp: new Date().toISOString(),
         },
@@ -209,7 +191,7 @@ export class OpenAIAgentExecutor implements AgentExecutor {
       eventBus.publish(finalUpdate);
 
       console.log(
-        `[OpenAIAgentExecutor] Task ${taskId} finished with state: ${finalState}`
+        `[OpenAIAgentExecutor] Task ${taskId} finished with state: completed`
       );
 
     } catch (error: any) {
