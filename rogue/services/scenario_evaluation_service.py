@@ -48,7 +48,9 @@ class ScenarioEvaluationService:
             yield "done", self._results
             return
 
-        yield "status", f"Running {len(self._scenarios.scenarios)} scenarios..."
+        yield "status", "Running scenarios:\n" + "\n".join(
+            [scenario.scenario for scenario in self._scenarios.scenarios]
+        )
         try:
             async for update_type, data in arun_evaluator_agent(
                 evaluated_agent_url=str(self._evaluated_agent_url),

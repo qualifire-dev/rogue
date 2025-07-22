@@ -15,6 +15,8 @@ from google.adk.agents import LlmAgent
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.models import LlmRequest, LlmResponse
 from google.adk.tools import FunctionTool, BaseTool, ToolContext
+from google.genai import types
+
 from httpx import AsyncClient
 from loguru import logger
 from pydantic import ValidationError
@@ -224,6 +226,9 @@ class EvaluatorAgent:
             after_tool_callback=self._after_tool_callback,
             before_model_callback=self._before_model_callback,
             after_model_callback=self._after_model_callback,
+            generate_content_config=types.GenerateContentConfig(
+                temperature=0.0,
+            ),
         )
 
     def _before_tool_callback(
