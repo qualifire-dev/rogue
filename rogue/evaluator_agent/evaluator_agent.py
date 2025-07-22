@@ -319,6 +319,41 @@ class EvaluatorAgent:
         )
         return None
 
+    def _evaluate_conversation(
+        self,
+        scenario: Scenario,
+        conversation: ChatHistory,
+    ) -> tuple[bool, str]:
+        """
+        Evaluates a conversation against a scenario's policy using a judge LLM.
+        :param scenario: The scenario to evaluate against.
+        :param conversation: The conversation history to evaluate.
+        :return: A tuple of (passed, reason).
+        """
+        if scenario.scenario_type == ScenarioType.POLICY:
+            if not self._judge_llm:
+                logger.error("No judge LLM configured for policy evaluation")
+                return False, "No judge LLM configured for policy evaluation"
+
+            policy_evaluation_result = evaluate_policy(
+                conversation=conversation,
+                policy=scenario.scenario,
+                model=self._judge_llm,
+                business_context=self._business_context,
+                expected_outcome=scenario.expected_outcome,
+                api_key=self._judge_llm_api_key,
+            )
+            return policy_evaluation_result.passed, policy_evaluation_result.reason
+        elif scenario.scenario_type == ScenarioType.PROMPT_INJECTION:
+            logger.warning("Prompt injection evaluation not yet implemented.")
+            return False, "Prompt injection evaluation not yet implemented"
+
+        logger.warning(
+            "Unsupported scenario type for evaluation",
+            extra={"scenario_type": scenario.scenario_type},
+        )
+        return False, f"Unsupported scenario type: {scenario.scenario_type}"
+
     def _log_evaluation(
         self,
         scenario: dict[str, str],
@@ -334,8 +369,10 @@ class EvaluatorAgent:
             - scenario_type: The scenario type.
         :param context_id: The conversation's context_id.
             This allows us to distinguish which conversation is being evaluated.
-        :param evaluation_passed: A boolean value with the evaluation result.
-        :param reason: A string with the reason for the evaluation.
+        :param evaluation_passed: A boolean value with the evaluation result. This is
+            provided by the agent and will be overridden by the judge.
+        :param reason: A string with the reason for the evaluation. This is provided
+            by the agent and will be overridden by the judge.
         :return: None
         """
         logger.debug(
@@ -349,8 +386,8 @@ class EvaluatorAgent:
                         ChatHistory(),
                     ).messages
                 ),
-                "evaluation_passed": evaluation_passed,
-                "reason": reason,
+                "evaluation_passed (from agent)": evaluation_passed,
+                "reason (from agent)": reason,
             },
         )
 
@@ -383,29 +420,10 @@ class EvaluatorAgent:
             ChatHistory(),
         )
 
-        if scenario_parsed.scenario_type == ScenarioType.POLICY:
-            if not self._judge_llm:
-                logger.error("No judge LLM configured for policy evaluation")
-                return
-
-            policy_evaluation_result = evaluate_policy(
-                conversation=conversation_history,
-                policy=scenario_parsed.scenario,
-                model=self._judge_llm,
-                business_context=self._business_context,
-                expected_outcome=scenario_parsed.expected_outcome,
-                api_key=self._judge_llm_api_key,
-            )
-
-            evaluation_passed = policy_evaluation_result.passed
-            reason = policy_evaluation_result.reason
-        elif scenario_parsed.scenario_type == ScenarioType.PROMPT_INJECTION:
-            pass
-        else:
-            logger.warning(
-                "Unsupported scenario type for evaluation",
-                extra={"scenario_type": scenario_parsed.scenario_type},
-            )
+        evaluation_passed, reason = self._evaluate_conversation(
+            scenario=scenario_parsed,
+            conversation=conversation_history,
+        )
 
         evaluation_result = EvaluationResult(
             scenario=scenario_parsed,
