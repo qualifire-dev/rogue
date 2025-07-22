@@ -7,7 +7,10 @@ from loguru import logger
 
 
 @lru_cache()
-def get_llm_from_model(model: str, llm_auth: Optional[str] = None) -> BaseLlm:
+def get_llm_from_model(
+    model: str,
+    llm_auth: Optional[str] = None,
+) -> BaseLlm:
     try:
         llm_cls = LLMRegistry.resolve(model)
     except ValueError:
@@ -18,6 +21,10 @@ def get_llm_from_model(model: str, llm_auth: Optional[str] = None) -> BaseLlm:
         llm_cls = LiteLlm
 
     if llm_auth and llm_cls is LiteLlm:
-        return LiteLlm(model=model, api_key=llm_auth)
+        return LiteLlm(
+            model=model,
+            api_key=llm_auth,
+            temperature=0.0,
+        )
 
     return llm_cls(model=model)

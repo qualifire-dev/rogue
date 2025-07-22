@@ -56,8 +56,9 @@ def create_interviewer_screen(
         chatbot.value = [
             [
                 None,
-                "Welcome! I'll ask a few questions to understand your agent. "
-                "What is the primary business domain your agent operates in?",
+                "Hi! We'll conduct a short interview to understand "
+                "your agent's business context. Please start be describing"
+                " the Business workflow and the user flow.",
             ]
         ]
 

@@ -104,6 +104,8 @@ async def arun_evaluator_agent(
             business_context=business_context,
             chat_update_callback=update_queue.put_nowait,
             deep_test_mode=deep_test_mode,
+            judge_llm=judge_llm,
+            judge_llm_api_key=judge_llm_api_key,
         )
 
         session_service = InMemorySessionService()

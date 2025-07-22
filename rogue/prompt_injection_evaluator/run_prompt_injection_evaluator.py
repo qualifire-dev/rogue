@@ -91,6 +91,7 @@ async def _judge_injection_attempt(
             {"role": "user", "content": "Begin your evaluation now."},
         ],
         api_key=judge_llm_api_key,
+        temperature=0.0,
         response_format={"type": "json_object"},  # TODO: pass a pydantic model instead
     )
     try:
@@ -131,7 +132,9 @@ async def arun_prompt_injection_evaluator(
         first_split = list(dataset_dict.keys())[0]
         dataset = dataset_dict[first_split]
 
-    sampled_dataset = dataset.shuffle()
+    filtered_dataset = dataset.filter(lambda x: x["label"] == "jailbreak")
+
+    sampled_dataset = filtered_dataset
     if sample_size is not None and sample_size > 0:
         sampled_dataset = sampled_dataset.select(range(sample_size))
 
