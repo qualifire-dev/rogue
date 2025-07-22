@@ -13,6 +13,7 @@ class Scenario(BaseModel):
     scenario: str
     scenario_type: ScenarioType = ScenarioType.POLICY
     dataset: str | None = None  # None if scenario_type in [policy]
+    expected_outcome: str | None = None
 
     # None if dataset is None, negative for all items in the dataset
     dataset_sample_size: int | None = None

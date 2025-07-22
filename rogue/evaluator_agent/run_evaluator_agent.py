@@ -60,6 +60,7 @@ async def _run_agent(
         session_id=session.id,
         new_message=content,
     ):
+        logger.debug("evaluator_agent event loop tick")
         if not event or not event.content or not event.content.parts:
             continue
 
@@ -103,6 +104,8 @@ async def arun_evaluator_agent(
             business_context=business_context,
             chat_update_callback=update_queue.put_nowait,
             deep_test_mode=deep_test_mode,
+            judge_llm=judge_llm,
+            judge_llm_api_key=judge_llm_api_key,
         )
 
         session_service = InMemorySessionService()

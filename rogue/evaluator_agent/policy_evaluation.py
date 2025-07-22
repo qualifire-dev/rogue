@@ -28,6 +28,11 @@ Now, here is the policy rule that needs to be evaluated:
 {POLICY_RULE}
 </policy_rule>
 
+Additionally, here is the expected outcome of the conversation:
+<expected_outcome>
+{EXPECTED_OUTCOME}
+</expected_outcome>
+
 To complete this task, follow these steps:
 
 1. Parse the conversation history JSON and extract the AI's responses.
@@ -134,6 +139,7 @@ def evaluate_policy(
     policy: str,
     model: str,
     business_context: str,
+    expected_outcome: str | None = None,
     api_key: str | None = None,
 ) -> PolicyEvaluationResult:
     if "/" not in model and model.startswith("gemini"):
@@ -147,7 +153,15 @@ def evaluate_policy(
         extra={
             "policy": policy,
             "model": model,
+            "expected_outcome": expected_outcome,
         },
+    )
+
+    prompt = POLICY_EVALUATION_PROMPT.format(
+        CONVERSATION_HISTORY=conversation.model_dump_json(),
+        POLICY_RULE=policy,
+        BUSINESS_CONTEXT=business_context,
+        EXPECTED_OUTCOME=expected_outcome or "Not provided",
     )
 
     response = completion(
@@ -156,11 +170,7 @@ def evaluate_policy(
         messages=[
             {
                 "role": "system",
-                "content": POLICY_EVALUATION_PROMPT.format(
-                    CONVERSATION_HISTORY=conversation.model_dump_json(),
-                    POLICY_RULE=policy,
-                    BUSINESS_CONTEXT=business_context,
-                ),
+                "content": prompt,
             },
             {
                 "role": "user",

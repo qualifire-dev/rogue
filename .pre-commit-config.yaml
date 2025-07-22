@@ -13,7 +13,6 @@ repos:
     rev: "25.1.0"
     hooks:
       - id: black
-        language_version: python3.12
         args:
           [--exclude, .venv]
   - repo: https://github.com/pre-commit/mirrors-mypy
@@ -28,3 +27,7 @@ repos:
       - id: bandit
         args:
           [-c, .bandit.yaml]
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.24.2
+    hooks:
+      - id: gitleaks

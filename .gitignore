@@ -88,3 +88,4 @@ tasks/
 
 dist/
 .adk/
+**/.rogue
