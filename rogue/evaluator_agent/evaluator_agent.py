@@ -368,8 +368,8 @@ class EvaluatorAgent:
         Logs the evaluation of the given scenario and test case.
         :param scenario: The scenario being evaluated.
             This is the entire scenario dictionary containing:
-            - scenario: The scenario text.
-            - scenario_type: The scenario type.
+            - "scenario": The scenario text.
+            - "scenario_type": The scenario type.
             - "expected_outcome": Expected outcome of the scenario, if available.
             - "dataset": Dataset name, if available.
             - "dataset_sample_size": Dataset name, if available.
