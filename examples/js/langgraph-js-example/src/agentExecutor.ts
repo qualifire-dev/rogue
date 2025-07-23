@@ -64,7 +64,7 @@ export class ReactAgentExecutor implements AgentExecutor {
           kind: 'message',
           role: 'agent',
           messageId: uuidv4(),
-          parts: [{ kind: 'text', text: 'Processing your request...' }],
+          parts: [],
           taskId: taskId,
           contextId: contextId,
         },

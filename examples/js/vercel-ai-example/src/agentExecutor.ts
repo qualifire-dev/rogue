@@ -2,16 +2,16 @@ import { Message, Task, TaskStatusUpdateEvent, TextPart } from '@a2a-js/sdk';
 import { AgentExecutor, ExecutionEventBus, RequestContext } from '@a2a-js/sdk/server';
 
 import { v4 as uuidv4 } from 'uuid';
-import { AgentInputItem, run } from '@openai/agents';
+import { VercelAgent } from './agent';
 
 // Store for conversation contexts
 const contexts = new Map<string, Message[]>();
 
-export class OpenAIAgentExecutor implements AgentExecutor {
+export class VercelAgentExecutor implements AgentExecutor {
   private cancelledTasks = new Set<string>();
-  private agent: any;
+  private agent: VercelAgent;
 
-  constructor(agent: any) {
+  constructor(agent: VercelAgent) {
     this.agent = agent;
   }
 
@@ -35,7 +35,7 @@ export class OpenAIAgentExecutor implements AgentExecutor {
     const contextId = userMessage.contextId || existingTask?.contextId || uuidv4();
 
     console.log(
-      `[OpenAIAgentExecutor] Processing message ${userMessage.messageId} for task ${taskId} (context: ${contextId})`
+      `[VercelAgentExecutor] Processing message ${userMessage.messageId} for task ${taskId} (context: ${contextId})`
     );
 
     // 1. Publish initial Task event if it's a new task
@@ -82,21 +82,18 @@ export class OpenAIAgentExecutor implements AgentExecutor {
     }
     contexts.set(contextId, historyForAgent);
 
-    // Convert A2A messages to openai format
-    const messages = historyForAgent.map(m => ({
+    // Convert A2A messages to Vercel format
+    const messages: {role: 'user' | 'assistant', content: string}[] = historyForAgent.map(m => ({
       role: m.role === 'agent' ? 'assistant' : 'user',
       content: m.parts
         .filter((p): p is TextPart => p.kind === 'text' && !!(p as TextPart).text)
-        .map(p => ({
-          type: "input_text",
-          text: (p as TextPart).text
-        }))
-    } as AgentInputItem)
-    );
+        .map(p => ((p as TextPart).text))
+        .join("")
+    }));
 
     if (messages.length === 0) {
       console.warn(
-        `[OpenAIAgentExecutor] No valid text messages found in history for task ${taskId}.`
+        `[VercelAgentExecutor] No valid text messages found in history for task ${taskId}.`
       );
       const failureUpdate: TaskStatusUpdateEvent = {
         kind: 'status-update',
@@ -123,7 +120,7 @@ export class OpenAIAgentExecutor implements AgentExecutor {
     try {
       // Check if the task has been cancelled before starting
       if (this.cancelledTasks.has(taskId)) {
-        console.log(`[OpenAIAgentExecutor] Request cancelled for task: ${taskId}`);
+        console.log(`[VercelAgentExecutor] Request cancelled for task: ${taskId}`);
 
         const cancelledUpdate: TaskStatusUpdateEvent = {
           kind: 'status-update',
@@ -140,9 +137,9 @@ export class OpenAIAgentExecutor implements AgentExecutor {
       }
 
       // Use the existing config object
-      const stream = await run(this.agent, messages, {stream: true});
+      const stream = this.agent.stream(messages);
 
-      for await (const textPart of stream.toTextStream()) {
+      for await (const textPart of stream) {
         const intermediateUpdate: TaskStatusUpdateEvent = {
             kind: 'status-update',
             taskId: taskId,
@@ -191,12 +188,12 @@ export class OpenAIAgentExecutor implements AgentExecutor {
       eventBus.publish(finalUpdate);
 
       console.log(
-        `[OpenAIAgentExecutor] Task ${taskId} finished with state: completed`
+        `[VercelAgentExecutor] Task ${taskId} finished with state: completed`
       );
 
     } catch (error: any) {
       console.error(
-        `[OpenAIAgentExecutor] Error processing task ${taskId}:`,
+        `[VercelAgentExecutor] Error processing task ${taskId}:`,
         error
       );
       const errorUpdate: TaskStatusUpdateEvent = {

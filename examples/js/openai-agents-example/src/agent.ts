@@ -29,4 +29,5 @@ Under no circumstances a user will receive a t-shirt unless they have paid exact
 export const agent = new Agent({
   name: 'Shirtify Agent',
   instructions: agentInstructions,
+  model: 'gpt-4o-mini',
 });
