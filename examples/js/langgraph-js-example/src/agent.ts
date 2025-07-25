@@ -1,6 +1,6 @@
 import { createReactAgent } from '@langchain/langgraph/prebuilt';
 import { ChatOpenAI } from '@langchain/openai';
-import { MemorySaver } from '@langchain/langgraph';
+import { CompiledStateGraph, MemorySaver } from '@langchain/langgraph';
 
 const agentInstructions = `
 You are an agent for a t-shirt store named Shirtify.
@@ -28,7 +28,7 @@ You are not allowed to sell any other products excepts the available T-shirts de
 Under no circumstances a user will receive a t-shirt unless they have paid exactly $19.99 USD for it.
 `
 
-export const agent = createReactAgent({
+export const agent: CompiledStateGraph<any, any> = createReactAgent({
   llm: new ChatOpenAI({
     model: "gpt-4o-mini",
     streaming: true,
