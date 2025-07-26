@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  run-rogue:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -54,10 +54,12 @@ jobs:
           trap 'echo "🛑 Stopping agent..."; kill $AGENT_PID' EXIT
           
           echo "⏳ Waiting for agent to be ready..."
-          curl --retry 10 --retry-delay 5 --retry-connrefused -s --fail http://localhost:10001/.well-known/agent.json
+          curl --retry 10 --retry-delay 5 --retry-connrefused -s --fail -o /dev/null \
+            http://localhost:10001/.well-known/agent.json
           
           echo "🚀 Running rogue..."
           uv run -m rogue cli \
+            --debug \
             --evaluated-agent-url http://localhost:10001 \
             --judge-llm-model openai/o4-mini \
             --workdir './examples/tshirt_store_agent/.rogue'
