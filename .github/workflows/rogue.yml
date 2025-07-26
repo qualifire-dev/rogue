@@ -35,10 +35,9 @@ jobs:
           uv run examples/tshirt_store_agent --host 0.0.0.0 --port 10001 &
           AGENT_PID=$!
           echo "Agent started with PID: $AGENT_PID"
-          # trap 'echo "🛑 Stopping agent..."; kill $AGENT_PID' EXIT
+          trap 'echo "🛑 Stopping agent..."; kill $AGENT_PID' EXIT
+
           echo "⏳ Waiting for agent to be ready..."
-          curl --retry 10 --retry-delay 5 --retry-connrefused -s --fail http://localhost:10001/.well-known/agent.json
-          
           curl --retry 10 --retry-delay 5 --retry-connrefused -s --fail -o /dev/null \
             http://localhost:10001/.well-known/agent.json
           
