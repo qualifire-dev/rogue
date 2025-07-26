@@ -25,21 +25,39 @@ jobs:
 
       - name: Install rogue
         run: uv pip install -e . --system
-
-      - name: Run shirtify agent in background
-        uses: JarvusInnovations/background-action@v1
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        with:
-          run: uv run examples/tshirt_store_agent --host 0.0.0.0 --port 10001 &
-          wait-on: http-get://localhost:10001/.well-known/agent.json
-          tail: true
+#
+#      - name: Run shirtify agent in background
+#        uses: JarvusInnovations/background-action@v1
+#        env:
+#          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+#        with:
+#          run: uv run examples/tshirt_store_agent --host 0.0.0.0 --port 10001 &
+#          wait-on: http-get://localhost:10001/.well-known/agent.json
+#          tail: true
+#
+#      - name: Run rogue
+#        uses: ./.github/actions/rogue
+#        env:
+#          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+#        with:
+#          evaluated_agent_url: "http://localhost:10001"
+#          judge_llm_model: "openai/o4-mini"
+#          workdir: "./examples/tshirt_store_agent/.rogue"
 
       - name: Run rogue
-        uses: ./.github/actions/rogue
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        with:
-          evaluated_agent_url: "http://localhost:10001"
-          judge_llm_model: "openai/o4-mini"
-          workdir: "./examples/tshirt_store_agent/.rogue"
+        shell: bash
+        run: |
+          echo "🚀 Starting AI agent..."
+          uv run examples/tshirt_store_agent --host 0.0.0.0 --port 10001 &
+          AGENT_PID=$!
+          echo "Agent started with PID: $AGENT_PID"
+          trap 'echo "🛑 Stopping agent..."; kill $AGENT_PID' EXIT
+          
+          echo "⏳ Waiting for agent to be ready..."
+          curl --retry 10 --retry-delay 5 --retry-connrefused -s --fail http://localhost:10001/.well-known/agent.json
+          
+          echo "🚀 Running rogue..."
+          uv run -m rogue cli \
+            --evaluated-agent-url http://localhost:10001 \
+            --judge-llm-model openai/o4-mini \
+            --workdir './examples/tshirt_store_agent/.rogue'
