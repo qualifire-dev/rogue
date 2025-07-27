@@ -87,3 +87,7 @@ class ShirtifyAgentExecutor(AgentExecutor):
 
     async def cancel(self, request: RequestContext, event_queue: EventQueue) -> None:
         raise ServerError(error=UnsupportedOperationError())
+
+
+global agent
+agent = ShirtifyAgentExecutor()
