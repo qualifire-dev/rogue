@@ -109,3 +109,7 @@ class ShirtifyAgent:
             "require_user_input": True,
             "content": "We are unable to process your request at the moment. Please try again.",  # noqa: E501
         }
+
+
+global root_agent
+root_agent = ShirtifyAgent()
