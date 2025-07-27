@@ -12,7 +12,7 @@ from a2a.types import (
 )
 from dotenv import load_dotenv
 
-from shirtify_langgraph_agent_executor import ShirtifyAgentExecutor
+from .shirtify_langgraph_agent_executor import ShirtifyAgentExecutor
 
 load_dotenv()
 

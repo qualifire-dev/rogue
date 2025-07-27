@@ -17,7 +17,7 @@ from a2a.utils import (
 )
 from a2a.utils.errors import ServerError
 
-from shirtify_langgraph_agent import ShirtifyAgent
+from .shirtify_langgraph_agent import ShirtifyAgent
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -87,7 +87,3 @@ class ShirtifyAgentExecutor(AgentExecutor):
 
     async def cancel(self, request: RequestContext, event_queue: EventQueue) -> None:
         raise ServerError(error=UnsupportedOperationError())
-
-
-global agent
-agent = ShirtifyAgentExecutor()
