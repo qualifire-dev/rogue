@@ -17,7 +17,7 @@ from a2a.utils import (
 )
 from a2a.utils.errors import ServerError
 
-from shirtify_langgraph_agent import ShirtifyAgent
+from .shirtify_langgraph_agent import ShirtifyAgent
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
