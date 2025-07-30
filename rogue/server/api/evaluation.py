@@ -11,9 +11,11 @@ from ..models.api_models import (
     JobListResponse,
 )
 from ..services.evaluation_service import EvaluationService
+from ...common.logging import get_logger, set_request_context
 
 router = APIRouter()
 evaluation_service = EvaluationService()
+logger = get_logger(__name__)
 
 
 @router.post("/evaluations", response_model=EvaluationResponse)
@@ -22,6 +24,28 @@ async def create_evaluation(
     background_tasks: BackgroundTasks,
 ):
     job_id = str(uuid.uuid4())
+
+    # Set logging context
+    set_request_context(
+        request_id=job_id,
+        job_id=job_id,
+        agent_url=str(request.agent_config.agent_url),
+        scenario_count=len(request.scenarios),
+    )
+
+    logger.info(
+        "Creating evaluation job",
+        extra={
+            "endpoint": "/evaluations",
+            "method": "POST",
+            "agent_url": str(request.agent_config.agent_url),
+            "scenario_count": len(request.scenarios),
+            "judge_llm": request.agent_config.judge_llm,
+            "deep_test_mode": request.agent_config.deep_test_mode,
+            "max_retries": request.max_retries,
+            "timeout_seconds": request.timeout_seconds,
+        },
+    )
 
     job = EvaluationJob(
         job_id=job_id,
@@ -32,6 +56,11 @@ async def create_evaluation(
 
     evaluation_service.add_job(job)
     background_tasks.add_task(evaluation_service.run_evaluation, job_id)
+
+    logger.info(
+        "Evaluation job created successfully",
+        extra={"job_status": "pending", "background_task_scheduled": True},
+    )
 
     return EvaluationResponse(
         job_id=job_id,

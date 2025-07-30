@@ -6,11 +6,13 @@ from ..models.api_models import EvaluationJob, EvaluationStatus
 from ..websocket.manager import websocket_manager
 from ...services.evaluation_library import EvaluationLibrary
 from ...models.scenario import Scenarios
+from ...common.logging import get_logger, set_job_context
 
 
 class EvaluationService:
     def __init__(self):
         self.jobs: Dict[str, EvaluationJob] = {}
+        self.logger = get_logger(__name__)
 
     def add_job(self, job: EvaluationJob):
         self.jobs[job.job_id] = job
@@ -54,6 +56,21 @@ class EvaluationService:
             return
 
         try:
+            # Set job context for logging
+            set_job_context(
+                job_id=job_id, agent_url=str(job.request.agent_config.agent_url)
+            )
+
+            self.logger.info(
+                "Starting evaluation job",
+                extra={
+                    "job_status": "running",
+                    "scenario_count": len(job.request.scenarios),
+                    "agent_url": str(job.request.agent_config.agent_url),
+                    "judge_llm": job.request.agent_config.judge_llm,
+                },
+            )
+
             job.status = EvaluationStatus.RUNNING
             job.started_at = datetime.now(timezone.utc)
             self._notify_job_update(job)
@@ -63,6 +80,14 @@ class EvaluationService:
 
             # Create progress callback for real-time updates
             def progress_callback(update_type: str, data: Any):
+                self.logger.debug(
+                    "Evaluation progress update",
+                    extra={
+                        "update_type": update_type,
+                        "data_preview": str(data)[:100] if data else None,
+                    },
+                )
+
                 if update_type == "status":
                     # Update progress based on status messages
                     if "Running scenarios" in str(data):
@@ -76,6 +101,11 @@ class EvaluationService:
                     self._notify_chat_update(job_id, data)
 
             # Use the library interface directly
+            self.logger.info(
+                "Calling evaluation library",
+                extra={"business_context": "The agent provides customer service."},
+            )
+
             evaluation_results = await EvaluationLibrary.evaluate_agent(
                 agent_config=job.request.agent_config,
                 scenarios=scenarios,
@@ -88,9 +118,36 @@ class EvaluationService:
             job.status = EvaluationStatus.COMPLETED
             job.progress = 1.0
 
+            self.logger.info(
+                "Evaluation job completed successfully",
+                extra={
+                    "job_status": "completed",
+                    "results_count": len(evaluation_results.results),
+                    "duration_seconds": (
+                        (datetime.now(timezone.utc) - job.started_at).total_seconds()
+                        if job.started_at
+                        else None
+                    ),
+                },
+            )
+
         except Exception as e:
             job.status = EvaluationStatus.FAILED
             job.error_message = f"Evaluation error: {str(e)}"
+
+            self.logger.error(
+                "Evaluation job failed",
+                extra={
+                    "job_status": "failed",
+                    "error": str(e),
+                    "error_type": type(e).__name__,
+                    "duration_seconds": (
+                        (datetime.now(timezone.utc) - job.started_at).total_seconds()
+                        if job.started_at
+                        else None
+                    ),
+                },
+            )
         finally:
             job.completed_at = datetime.now(timezone.utc)
             self._notify_job_update(job)

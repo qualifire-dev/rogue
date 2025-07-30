@@ -1,20 +1,26 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-import logging
 
 from .api.evaluation import router as evaluation_router
 from .api.health import router as health_router
 from .websocket.manager import websocket_router
+from ..common.logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Starting Rogue Agent Evaluator Server")
+    logger.info(
+        "Starting Rogue Agent Evaluator Server",
+        extra={"component": "server", "event": "startup"},
+    )
     yield
-    logger.info("Shutting down Rogue Agent Evaluator Server")
+    logger.info(
+        "Shutting down Rogue Agent Evaluator Server",
+        extra={"component": "server", "event": "shutdown"},
+    )
 
 
 def create_app() -> FastAPI:
