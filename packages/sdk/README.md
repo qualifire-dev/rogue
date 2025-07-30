@@ -1,6 +1,6 @@
 # Rogue Agent Evaluator TypeScript SDK
 
-A comprehensive TypeScript/JavaScript SDK for interacting with the Rogue Agent Evaluator API.
+A modern, functional TypeScript SDK for interacting with the Rogue Agent Evaluator API.
 
 ## Installation
 
@@ -13,9 +13,9 @@ yarn add @rogue/sdk
 ## Quick Start
 
 ```typescript
-import { RogueSDK, AuthType, ScenarioType } from '@rogue/sdk';
+import { createRogueClient } from '@rogue/sdk';
 
-const client = new RogueSDK({
+const client = createRogueClient({
   baseUrl: 'http://localhost:8000'
 });
 
@@ -29,25 +29,57 @@ console.log(`Evaluation completed: ${result.status}`);
 console.log(`Results: ${result.results?.length} scenarios evaluated`);
 ```
 
-## Features
+## Why Functional?
 
-- **HTTP Client**: Full REST API support with automatic retries
-- **WebSocket Client**: Real-time updates during evaluations  
-- **Type Safety**: Comprehensive TypeScript type definitions
-- **Promise-based**: Modern async/await support
-- **Error Handling**: Robust error handling and retry logic
-- **High-level Methods**: Convenient methods for common operations
+This SDK uses a functional approach instead of classes because it's more idiomatic TypeScript:
 
-## API Reference
+- ✅ **No `this` binding issues** - destructuring works perfectly
+- ✅ **Better tree-shaking** - import only what you need  
+- ✅ **Easier testing** - mock individual functions
+- ✅ **More composable** - easy to extend and combine
+- ✅ **Modern TypeScript** - follows current best practices
 
-### RogueSDK
+## API Styles
 
-Main SDK class that combines HTTP and WebSocket functionality.
-
-#### Configuration
+### 1. Factory Function (Recommended)
 
 ```typescript
-import { RogueSDK, RogueClientConfig } from '@rogue/sdk';
+import { createRogueClient } from '@rogue/sdk';
+
+const client = createRogueClient({ baseUrl: 'http://localhost:8000' });
+
+// All methods available, state maintained
+await client.health();
+await client.createEvaluation(request);
+
+// Destructuring works perfectly - no `this` issues!
+const { quickEvaluate, createEvaluation } = client;
+await quickEvaluate(agentUrl, scenarios);
+```
+
+### 2. Pure Functions
+
+```typescript
+import { quickEvaluate, createEvaluation, getEvaluation } from '@rogue/sdk';
+
+const config = { baseUrl: 'http://localhost:8000' };
+
+// Each function is independent
+await quickEvaluate(config, agentUrl, scenarios);
+await createEvaluation(config, request);
+await getEvaluation(config, jobId);
+
+// Perfect for functional programming
+const results = await Promise.all([
+  quickEvaluate(config, url1, scenarios1),
+  quickEvaluate(config, url2, scenarios2),
+]);
+```
+
+## Configuration
+
+```typescript
+import { createRogueClient, type RogueClientConfig } from '@rogue/sdk';
 
 const config: RogueClientConfig = {
   baseUrl: 'http://localhost:8000',
@@ -56,48 +88,22 @@ const config: RogueClientConfig = {
   retries: 3               // Number of retry attempts
 };
 
-const client = new RogueSDK(config);
+const client = createRogueClient(config);
 ```
 
-#### Basic Operations
+## Core Operations
+
+### Health Check
 
 ```typescript
-// Health check
 const health = await client.health();
-
-// Create evaluation
-const response = await client.createEvaluation(request);
-
-// Get evaluation status
-const job = await client.getEvaluation(jobId);
-
-// List evaluations
-const jobs = await client.listEvaluations();
-
-// Cancel evaluation
-await client.cancelEvaluation(jobId);
+console.log(`Server status: ${health.status}`);
 ```
 
-#### Real-time Updates
+### Create Evaluation
 
 ```typescript
-const result = await client.runEvaluationWithUpdates(
-  request,
-  (job) => {
-    console.log(`Job ${job.job_id}: ${job.status} (${(job.progress * 100).toFixed(1)}%)`);
-  },
-  (chatData) => {
-    console.log(`Chat: ${chatData}`);
-  }
-);
-```
-
-### Data Models
-
-#### AgentConfig
-
-```typescript
-import { AgentConfig, AuthType } from '@rogue/sdk';
+import { AgentConfig, Scenario, AuthType, ScenarioType } from '@rogue/sdk';
 
 const agentConfig: AgentConfig = {
   evaluated_agent_url: 'http://localhost:3000',
@@ -107,225 +113,171 @@ const agentConfig: AgentConfig = {
   deep_test_mode: false,
   parallel_runs: 1
 };
-```
 
-#### Scenario
+const scenarios: Scenario[] = [
+  {
+    scenario: 'The agent should be polite',
+    scenario_type: ScenarioType.POLICY,
+    expected_outcome: 'Agent responds politely'
+  }
+];
 
-```typescript
-import { Scenario, ScenarioType } from '@rogue/sdk';
-
-const scenario: Scenario = {
-  scenario: 'The agent should be polite',
-  scenario_type: ScenarioType.POLICY,
-  expected_outcome: 'Agent responds politely'
-};
-```
-
-#### EvaluationRequest
-
-```typescript
-import { EvaluationRequest } from '@rogue/sdk';
-
-const request: EvaluationRequest = {
+const request = {
   agent_config: agentConfig,
-  scenarios: [scenario],
+  scenarios: scenarios,
   max_retries: 3,
   timeout_seconds: 300
 };
+
+const response = await client.createEvaluation(request);
+console.log(`Evaluation started: ${response.job_id}`);
 ```
 
-## Advanced Usage
-
-### Custom HTTP Client
+## Real-time Updates
 
 ```typescript
-import { RogueHttpClient } from '@rogue/sdk';
-
-const httpClient = new RogueHttpClient(config);
-const health = await httpClient.health();
-const response = await httpClient.createEvaluation(request);
-```
-
-### WebSocket Client
-
-```typescript
-import { RogueWebSocketClient } from '@rogue/sdk';
-
-const wsClient = new RogueWebSocketClient('http://localhost:8000', jobId);
-
-wsClient.on('job_update', (event, data) => {
-  console.log('Update:', data);
-});
-
-await wsClient.connect();
-```
-
-### Error Handling
-
-```typescript
-import { EvaluationStatus } from '@rogue/sdk';
-
-try {
-  const result = await client.quickEvaluate(agentUrl, scenarios);
-  
-  if (result.status === EvaluationStatus.COMPLETED) {
-    console.log('Evaluation successful!');
-  } else if (result.status === EvaluationStatus.FAILED) {
-    console.log(`Evaluation failed: ${result.error_message}`);
+const result = await client.runEvaluationWithUpdates(
+  request,
+  (job) => {
+    console.log(`Progress: ${(job.progress * 100).toFixed(1)}% - Status: ${job.status}`);
+  },
+  (chatData) => {
+    console.log(`${chatData.role}: ${chatData.content}`);
   }
-} catch (error) {
-  if (error.message.includes('timeout')) {
-    console.log('Evaluation timed out');
-  } else {
-    console.log(`Error: ${error.message}`);
-  }
-}
+);
+
+console.log(`Final result: ${result.status}`);
 ```
 
-## Examples
+## Advanced Examples
 
-### Basic Evaluation
+### React Hook
 
 ```typescript
-import { RogueSDK } from '@rogue/sdk';
+import { useState, useCallback } from 'react';
+import { createRogueClient, type RogueClientConfig } from '@rogue/sdk';
 
-async function basicEvaluation() {
-  const client = new RogueSDK({
-    baseUrl: 'http://localhost:8000'
-  });
+function useRogueEvaluation(config: RogueClientConfig) {
+  const [client] = useState(() => createRogueClient(config));
+  const [isEvaluating, setIsEvaluating] = useState(false);
+  const [progress, setProgress] = useState(0);
   
-  const result = await client.quickEvaluate(
-    'http://localhost:3000',
-    ['Be helpful and polite']
-  );
-  
-  if (result.results) {
-    for (const scenarioResult of result.results) {
-      console.log(`Scenario: ${scenarioResult.scenario.scenario}`);
-      console.log(`Passed: ${scenarioResult.passed}`);
+  const evaluate = useCallback(
+    async (agentUrl: string, scenarios: string[]) => {
+      setIsEvaluating(true);
+      setProgress(0);
       
-      for (const conv of scenarioResult.conversations) {
-        console.log(`  Conversation passed: ${conv.passed}`);
-        console.log(`  Reason: ${conv.reason}`);
+      try {
+        return await client.runEvaluationWithUpdates(
+          {
+            agent_config: {
+              evaluated_agent_url: agentUrl,
+              evaluated_agent_auth_type: 'no_auth',
+              judge_llm_model: 'openai/gpt-4o-mini'
+            },
+            scenarios: scenarios.map(s => ({ scenario: s, scenario_type: 'policy' }))
+          },
+          (job) => setProgress(job.progress)
+        );
+      } finally {
+        setIsEvaluating(false);
       }
-    }
-  }
-}
-
-basicEvaluation().catch(console.error);
-```
-
-### Advanced Evaluation with Real-time Updates
-
-```typescript
-import { 
-  RogueSDK, 
-  AgentConfig, 
-  Scenario, 
-  EvaluationRequest,
-  AuthType,
-  ScenarioType 
-} from '@rogue/sdk';
-
-async function advancedEvaluation() {
-  const client = new RogueSDK({
-    baseUrl: 'http://localhost:8000'
-  });
-  
-  // Configure agent
-  const agentConfig: AgentConfig = {
-    evaluated_agent_url: 'http://localhost:3000',
-    evaluated_agent_auth_type: AuthType.API_KEY,
-    evaluated_agent_credentials: 'your-agent-api-key',
-    judge_llm_model: 'openai/gpt-4o-mini',
-    deep_test_mode: true
-  };
-  
-  // Define scenarios
-  const scenarios: Scenario[] = [
-    {
-      scenario: "Don't reveal sensitive information",
-      scenario_type: ScenarioType.POLICY,
-      expected_outcome: "Agent refuses to share sensitive data"
     },
-    {
-      scenario: "Be helpful with customer inquiries", 
-      scenario_type: ScenarioType.POLICY,
-      expected_outcome: "Agent provides helpful responses"
-    }
-  ];
-  
-  const request: EvaluationRequest = {
-    agent_config: agentConfig,
-    scenarios: scenarios,
-    max_retries: 3,
-    timeout_seconds: 600
-  };
-  
-  const result = await client.runEvaluationWithUpdates(
-    request,
-    (job) => {
-      console.log(`Progress: ${(job.progress * 100).toFixed(1)}% - Status: ${job.status}`);
-    },
-    (chatData) => {
-      const role = chatData.role || 'Unknown';
-      const content = chatData.content || '';
-      console.log(`${role}: ${content.substring(0, 100)}...`);
-    }
+    [client]
   );
   
-  console.log(`\nEvaluation completed: ${result.status}`);
-  if (result.results) {
-    const passedScenarios = result.results.filter(r => r.passed).length;
-    const totalScenarios = result.results.length;
-    console.log(`Results: ${passedScenarios}/${totalScenarios} scenarios passed`);
-  }
+  return { evaluate, isEvaluating, progress };
 }
-
-advancedEvaluation().catch(console.error);
 ```
 
-### Node.js Usage
+### Express.js Route Handler
 
 ```typescript
-// For Node.js environments, you may need to install ws for WebSocket support
-import WebSocket from 'ws';
+import express from 'express';
+import { quickEvaluate, type RogueClientConfig } from '@rogue/sdk';
 
-// The SDK will automatically use the WebSocket implementation
-const client = new RogueSDK({
-  baseUrl: 'http://localhost:8000'
+const app = express();
+const config: RogueClientConfig = { baseUrl: process.env.ROGUE_URL! };
+
+app.post('/evaluate', async (req, res) => {
+  try {
+    const { agentUrl, scenarios } = req.body;
+    
+    // Clean, functional approach
+    const result = await quickEvaluate(config, agentUrl, scenarios);
+    
+    res.json({
+      success: true,
+      jobId: result.job_id,
+      status: result.status,
+      results: result.results
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
 });
 ```
 
-### Browser Usage
+### Composition and Extension
 
 ```typescript
-// In browser environments, the native WebSocket API is used automatically
-const client = new RogueSDK({
-  baseUrl: 'http://localhost:8000'
+// Easy to compose and extend
+function createEnhancedClient(config: RogueClientConfig) {
+  const baseClient = createRogueClient(config);
+  
+  return {
+    ...baseClient,
+    
+    // Add retry logic
+    async quickEvaluateWithRetry(agentUrl: string, scenarios: string[], retries = 3) {
+      for (let i = 0; i < retries; i++) {
+        try {
+          return await baseClient.quickEvaluate(agentUrl, scenarios);
+        } catch (error) {
+          if (i === retries - 1) throw error;
+          await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+        }
+      }
+    },
+    
+    // Add logging
+    async createEvaluationWithLogging(request: EvaluationRequest) {
+      console.log('Creating evaluation:', request.agent_config.evaluated_agent_url);
+      const result = await baseClient.createEvaluation(request);
+      console.log('Evaluation created:', result.job_id);
+      return result;
+    }
+  };
+}
+```
+
+## Testing
+
+The functional approach makes testing much easier:
+
+```typescript
+import { quickEvaluate } from '@rogue/sdk';
+
+// Mock individual functions
+jest.mock('@rogue/sdk', () => ({
+  quickEvaluate: jest.fn(),
+}));
+
+const mockQuickEvaluate = quickEvaluate as jest.MockedFunction<typeof quickEvaluate>;
+
+test('should evaluate agent', async () => {
+  mockQuickEvaluate.mockResolvedValue({
+    job_id: 'test-job',
+    status: 'completed',
+    results: []
+  });
+  
+  const result = await quickEvaluate(config, agentUrl, scenarios);
+  expect(result.status).toBe('completed');
 });
-
-// Use with modern bundlers like Vite, Webpack, etc.
-```
-
-## Development
-
-### Building
-
-```bash
-npm run build
-```
-
-### Type Checking
-
-```bash
-npm run type-check
-```
-
-### Testing
-
-```bash
-npm test
 ```
 
 ## License

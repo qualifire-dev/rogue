@@ -1,45 +1,50 @@
 /**
  * Rogue Agent Evaluator TypeScript SDK
  * 
- * A comprehensive SDK for interacting with the Rogue Agent Evaluator API.
+ * A functional TypeScript SDK for interacting with the Rogue Agent Evaluator API.
  * 
- * @example
+ * @example Factory function approach
  * ```typescript
- * import { RogueSDK, AuthType, ScenarioType } from '@rogue/sdk';
+ * import { createRogueClient } from '@rogue/sdk';
  * 
- * const client = new RogueSDK({
- *   baseUrl: 'http://localhost:8000'
- * });
+ * const client = createRogueClient({ baseUrl: 'http://localhost:8000' });
+ * const result = await client.quickEvaluate(agentUrl, scenarios);
  * 
- * // Quick evaluation
- * const result = await client.quickEvaluate(
- *   'http://localhost:3000',
- *   ['The agent should be polite', 'The agent should not give discounts']
- * );
+ * // Destructuring works perfectly
+ * const { quickEvaluate, createEvaluation } = client;
+ * await quickEvaluate(agentUrl, scenarios);
+ * ```
  * 
- * // Evaluation with real-time updates
- * const job = await client.runEvaluationWithUpdates(
- *   {
- *     agent_config: {
- *       evaluated_agent_url: 'http://localhost:3000',
- *       evaluated_agent_auth_type: AuthType.NO_AUTH,
- *       judge_llm_model: 'openai/gpt-4o-mini'
- *     },
- *     scenarios: [{
- *       scenario: 'Test scenario',
- *       scenario_type: ScenarioType.POLICY
- *     }]
- *   },
- *   (job) => console.log('Job update:', job.status),
- *   (chat) => console.log('Chat update:', chat)
+ * @example Pure functions approach
+ * ```typescript
+ * import { quickEvaluate, createEvaluation } from '@rogue/sdk';
+ * 
+ * const config = { baseUrl: 'http://localhost:8000' };
+ * const result = await quickEvaluate(config, agentUrl, scenarios);
+ * ```
+ * 
+ * @example Real-time updates
+ * ```typescript
+ * const client = createRogueClient(config);
+ * 
+ * const result = await client.runEvaluationWithUpdates(
+ *   request,
+ *   (job) => console.log(`Progress: ${(job.progress * 100).toFixed(1)}%`),
+ *   (chat) => console.log(`Chat: ${chat.content}`)
  * );
  * ```
  */
 
-// Main SDK class
-export { RogueSDK } from './sdk';
+// Main functional API
+export { 
+  createRogueClient, 
+  quickEvaluate, 
+  createEvaluation, 
+  getEvaluation,
+  type RogueClient 
+} from './sdk';
 
-// HTTP and WebSocket clients
+// Low-level clients
 export { RogueHttpClient } from './client';
 export { RogueWebSocketClient } from './websocket';
 
@@ -47,4 +52,4 @@ export { RogueWebSocketClient } from './websocket';
 export * from './types';
 
 // Default export
-export { RogueSDK as default } from './sdk';
+export { createRogueClient as default } from './sdk';

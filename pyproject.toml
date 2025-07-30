@@ -36,3 +36,15 @@ examples = [
     "langchain-openai==0.3.27",
     "langgraph==0.5.2",
 ]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["rogue*"]
+exclude = ["sdks*", "packages*", "examples*", "tests*"]
+
+[tool.setuptools.package-data]
+"*" = ["*.yaml", "*.yml", "*.json", "*.txt", "*.md"]
