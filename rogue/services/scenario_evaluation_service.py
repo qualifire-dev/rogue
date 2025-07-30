@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import AsyncGenerator, Any
 
 from loguru import logger
@@ -20,7 +19,6 @@ class ScenarioEvaluationService:
         judge_llm: str,
         judge_llm_api_key: str | None,
         scenarios: Scenarios,
-        evaluation_results_output_path: Path,
         business_context: str,
         deep_test_mode: bool,
     ):
@@ -30,21 +28,13 @@ class ScenarioEvaluationService:
         self._judge_llm = judge_llm
         self._judge_llm_api_key = judge_llm_api_key
         self._scenarios = scenarios
-        self._evaluation_results_output_path = evaluation_results_output_path
         self._business_context = business_context
         self._deep_test_mode = deep_test_mode
         self._results = EvaluationResults()
 
-    def _dump_results(self):
-        self._evaluation_results_output_path.write_text(
-            self._results.model_dump_json(indent=2, exclude_none=True),
-            encoding="utf-8",
-        )
-
     async def evaluate_scenarios(self) -> AsyncGenerator[tuple[str, Any], None]:
         if not self._scenarios.scenarios:
             yield "status", "No scenarios to evaluate."
-            self._dump_results()
             yield "done", self._results
             return
 
@@ -72,7 +62,5 @@ class ScenarioEvaluationService:
         except Exception:
             logger.exception("Error evaluating scenarios")
             yield "status", "Error running scenarios"
-
-        self._dump_results()
 
         yield "done", self._results

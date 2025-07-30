@@ -1,7 +1,5 @@
 import asyncio
 import json
-from datetime import datetime
-from pathlib import Path
 
 import gradio as gr
 from loguru import logger
@@ -152,9 +150,6 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                     judge_llm=worker_config.get("judge_llm"),
                     judge_llm_api_key=worker_config.get("judge_llm_api_key"),
                     scenarios=Scenarios(scenarios=batch),
-                    evaluation_results_output_path=Path(
-                        f"{worker_state.get('workdir')}/temp_results_{worker_id}.json"
-                    ),
                     business_context=worker_state.get("business_context"),
                     deep_test_mode=worker_config.get("deep_test_mode", False),
                 )
@@ -202,11 +197,12 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
 
         # 5. --- Finalize and Summarize ---
         logger.info("All evaluation runs completed.")
-        workdir = state.get("workdir")
-        final_output_path = (
-            workdir / f"evaluation_results_{datetime.now().isoformat()}.json"
-        )
-        final_output_path.write_text(all_results.model_dump_json(indent=2))
+        # workdir = state.get("workdir")
+
+        # final_output_path = (
+        #     workdir / f"evaluation_results_{datetime.now().isoformat()}.json"
+        # )
+        # final_output_path.write_text(all_results.model_dump_json(indent=2))
 
         summary = LLMService().generate_summary_from_results(
             model=config.get("service_llm"),
@@ -216,7 +212,7 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
 
         state["results"] = all_results
         state["summary"] = summary
-        state["evaluation_results_output_path"] = final_output_path
+        # state["evaluation_results_output_path"] = final_output_path
 
         final_ui_update = get_blank_updates()
         final_ui_update[-1] = gr.update(selected="report")

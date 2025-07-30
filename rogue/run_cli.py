@@ -112,13 +112,23 @@ async def run_scenarios(
         judge_llm=judge_llm,
         judge_llm_api_key=judge_llm_api_key,
         scenarios=scenarios,
-        evaluation_results_output_path=evaluation_results_output_path,
         business_context=business_context,
         deep_test_mode=deep_test_mode,
     )
+
+    results = None
     async for status, data in scenario_evaluation_service.evaluate_scenarios():
         if status == "done":
-            return data  # type: ignore
+            results = data
+            break
+
+    if results:
+        # Write results to file for CLI compatibility
+        evaluation_results_output_path.write_text(
+            results.model_dump_json(indent=2, exclude_none=True),
+            encoding="utf-8",
+        )
+        return results
 
     logger.error("Scenario evaluation failed. Results not found.")
     return None
