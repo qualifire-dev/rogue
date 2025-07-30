@@ -1,8 +1,13 @@
 import { BaseAgentExecutor } from './baseAgentExecutor.js';
 import { Message, TextPart } from '@a2a-js/sdk';
 import { AgentInputItem, run } from '@openai/agents';
+import { Readable } from 'stream';
 
-abstract class BaseOpenAIAgentExecutor extends BaseAgentExecutor {
+export class OpenAIStreamExecutor extends BaseAgentExecutor {
+  public constructor(agent: any) {
+    super(agent);
+  }
+
   protected convertMessages(historyForAgent: Message[]): AgentInputItem[] {
     // Convert A2A messages to correct format
     return historyForAgent.map(m => ({
@@ -16,28 +21,10 @@ abstract class BaseOpenAIAgentExecutor extends BaseAgentExecutor {
       } as AgentInputItem)
     );
   }
-}
 
-export class OpenAIStreamExecutor extends BaseOpenAIAgentExecutor {
-  public constructor(agent: any) {
-    super(agent);
-  }
-
-  protected async runAgent(messages: Message[]): Promise<string | ReadableStream<string>> {
+  protected async runAgent(messages: Message[]): Promise<Readable> {
     const convertedMessages: AgentInputItem[] = this.convertMessages(messages);
     const stream = await run(this.agent, convertedMessages, {stream: true});
-    return stream.toTextStream() as ReadableStream<string>;
-  }
-}
-
-export class OpenAINonStreamExecutor extends BaseOpenAIAgentExecutor {
-  public constructor(agent: any) {
-    super(agent);
-  }
-
-  protected async runAgent(messages: Message[]): Promise<string | ReadableStream<string>> {
-    const convertedMessages: AgentInputItem[] = this.convertMessages(messages);
-    const result = await run(this.agent, convertedMessages, {stream: false});
-    return result.finalOutput;
+    return stream.toTextStream({compatibleWithNodeStreams: true}) as Readable;
   }
 }

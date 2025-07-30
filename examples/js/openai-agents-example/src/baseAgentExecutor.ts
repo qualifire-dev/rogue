@@ -2,6 +2,7 @@ import { Message, Task, TaskState, TaskStatusUpdateEvent } from '@a2a-js/sdk';
 import { AgentExecutor, ExecutionEventBus, RequestContext } from '@a2a-js/sdk/server';
 
 import { v4 as uuidv4 } from 'uuid';
+import { Readable } from 'stream';
 
 // Store for conversation contexts
 const contexts = new Map<string, Message[]>();
@@ -98,7 +99,7 @@ export abstract class BaseAgentExecutor implements AgentExecutor {
         taskId: taskId,
         contextId: contextId,
         status: {
-          state: "completed",
+          state: "input-required",
           timestamp: new Date().toISOString(),
         },
         final: true,
@@ -143,7 +144,7 @@ export abstract class BaseAgentExecutor implements AgentExecutor {
     return historyForAgent;
   }
 
-  protected abstract runAgent(messages: Message[]): Promise<string | ReadableStream<string>>;
+  protected abstract runAgent(messages: Message[]): Promise<Readable>;
 
   private async handleStreamResponse(
     eventBus: ExecutionEventBus,
@@ -151,7 +152,7 @@ export abstract class BaseAgentExecutor implements AgentExecutor {
     contextId: string,
     existingTask: Task | undefined,
     userMessage: Message,
-    response: ReadableStream<string>,
+    response: Readable,
   ): Promise<string> {
     let finalResponse = "";
 
@@ -164,7 +165,7 @@ export abstract class BaseAgentExecutor implements AgentExecutor {
     this.publishStatusUpdate(eventBus, taskId, contextId);
 
     // 3. Stream the agent's response
-    for await (const textPart of response) {
+    for await (const part of response) {
       finalResponse += textPart;
       this.publishStatusUpdate(eventBus, taskId, contextId, textPart);
     }
@@ -173,13 +174,6 @@ export abstract class BaseAgentExecutor implements AgentExecutor {
     this.publishTaskCompletion(taskId, contextId, eventBus);
 
     return finalResponse;
-  }
-
-  private async handleNonStreamResponse(
-    eventBus: ExecutionEventBus,
-    agentMessage: Message,
-  ): Promise<void> {
-    eventBus.publish(agentMessage)
   }
 
   async execute(
@@ -204,27 +198,20 @@ export abstract class BaseAgentExecutor implements AgentExecutor {
     }
 
     try {
-      // Run the agent - Can return a stream or a string.
-      const response: string | ReadableStream<string> = await this.runAgent(historyForAgent);
+      // Run the agent
+      const response: Readable = await this.runAgent(historyForAgent);
+
+      const aggregatedResponse: string = await this.handleStreamResponse(eventBus, taskId, contextId, existingTask, userMessage, response);
 
       // Create the agent's final message for the history - we will fill the parts later
       const agentMessage: Message = {
         kind: 'message',
         role: 'agent',
         messageId: uuidv4(),
-        parts: [],  // We will fill this later
+        parts: [{kind: 'text', text: aggregatedResponse}],  // We will fill this later
         taskId: taskId,
         contextId: contextId,
       };
-
-      if (response instanceof ReadableStream) {
-        const aggregatedResponse: string = await this.handleStreamResponse(eventBus, taskId, contextId, existingTask, userMessage, response);
-        agentMessage.parts.push({kind: 'text', text: aggregatedResponse});
-      } else { // response is a string
-        agentMessage.parts.push({kind: 'text', text: response});
-        await this.handleNonStreamResponse(eventBus, agentMessage);
-      }
-
       this.addMessageToHistory(contextId, agentMessage);
 
       console.log(`[AgentExecutor] Task ${taskId} finished with state: completed`);

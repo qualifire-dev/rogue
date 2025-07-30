@@ -2,7 +2,7 @@ import { A2AExpressApp, DefaultRequestHandler, InMemoryTaskStore, TaskStore } fr
 import express, { Express } from 'express';
 import { AgentCapabilities, AgentCard, AgentSkill } from '@a2a-js/sdk';
 import { agent } from './agent.js';
-import { OpenAINonStreamExecutor, OpenAIStreamExecutor } from './agentExecutor.js';
+import { OpenAIStreamExecutor } from './agentExecutor.js';
 
 function getAgentCard(): AgentCard {
   const skills = [
@@ -30,18 +30,12 @@ function getAgentCard(): AgentCard {
 }
 
 async function main(): Promise<void> {
-  const stream: boolean = (process.env.STREAM || "").toLowerCase() === 'true';
   const taskStore: TaskStore = new InMemoryTaskStore();
 
-  let agentExecutor: OpenAIStreamExecutor | OpenAINonStreamExecutor
+  let agentExecutor: OpenAIStreamExecutor
 
-  if (stream) {
-    agentExecutor = new OpenAIStreamExecutor(agent);
-    console.log("[A2A Agent] Using OpenAIStreamExecutor");
-  } else {
-    agentExecutor = new OpenAINonStreamExecutor(agent);
-    console.log("[A2A Agent] Using OpenAINonStreamExecutor");
-  }
+  agentExecutor = new OpenAIStreamExecutor(agent);
+  console.log("[A2A Agent] Using OpenAIStreamExecutor");
 
   // 3. Create DefaultRequestHandler
   const requestHandler = new DefaultRequestHandler(
