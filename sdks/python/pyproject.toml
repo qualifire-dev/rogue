@@ -1,0 +1,52 @@
+[project]
+name = "rogue-client"
+version = "1.0.0"
+description = "Python SDK for Rogue Agent Evaluator"
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [
+    {name = "Qualifire", email = "support@qualifire.com"}
+]
+license = {text = "MIT"}
+keywords = ["rogue", "agent", "evaluator", "sdk", "python"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+dependencies = [
+    "httpx>=0.24.0",
+    "pydantic>=2.0.0",
+    "websockets>=11.0.0",
+    "typing-extensions>=4.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "isort>=5.0.0",
+    "mypy>=1.0.0",
+    "flake8>=6.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/qualifire/rogue-agent-evaluator"
+Repository = "https://github.com/qualifire/rogue-agent-evaluator"
+Issues = "https://github.com/qualifire/rogue-agent-evaluator/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["rogue_client"]

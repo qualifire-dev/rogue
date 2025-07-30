@@ -1,0 +1,206 @@
+"""
+Main Rogue Agent Evaluator Python SDK.
+
+Combines HTTP client and WebSocket client for complete functionality.
+"""
+
+import asyncio
+from typing import Optional, Callable, List
+from .client import RogueHttpClient
+from .websocket import RogueWebSocketClient
+from .types import (
+    RogueClientConfig,
+    EvaluationRequest,
+    EvaluationResponse,
+    EvaluationJob,
+    JobListResponse,
+    HealthResponse,
+    EvaluationStatus,
+    WebSocketEventType,
+    AgentConfig,
+    Scenario,
+    AuthType,
+    ScenarioType,
+)
+
+
+class RogueSDK:
+    """Main SDK class for Rogue Agent Evaluator."""
+
+    def __init__(self, config: RogueClientConfig):
+        self.config = config
+        self.http_client = RogueHttpClient(config)
+        self.ws_client: Optional[RogueWebSocketClient] = None
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.close()
+
+    async def close(self):
+        """Close all connections."""
+        if self.ws_client:
+            await self.ws_client.disconnect()
+        await self.http_client.close()
+
+    # HTTP Client Methods
+
+    async def health(self) -> HealthResponse:
+        """Check server health."""
+        return await self.http_client.health()
+
+    async def create_evaluation(self, request: EvaluationRequest) -> EvaluationResponse:
+        """Create and start an evaluation job."""
+        return await self.http_client.create_evaluation(request)
+
+    async def get_evaluation(self, job_id: str) -> EvaluationJob:
+        """Get evaluation job details."""
+        return await self.http_client.get_evaluation(job_id)
+
+    async def list_evaluations(
+        self,
+        status: Optional[EvaluationStatus] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> JobListResponse:
+        """List evaluation jobs."""
+        return await self.http_client.list_evaluations(status, limit, offset)
+
+    async def cancel_evaluation(self, job_id: str) -> dict:
+        """Cancel evaluation job."""
+        return await self.http_client.cancel_evaluation(job_id)
+
+    async def wait_for_evaluation(
+        self, job_id: str, poll_interval: float = 2.0, max_wait_time: float = 300.0
+    ) -> EvaluationJob:
+        """Wait for evaluation to complete (polling)."""
+        return await self.http_client.wait_for_evaluation(
+            job_id, poll_interval, max_wait_time
+        )
+
+    # WebSocket Methods
+
+    async def connect_websocket(self, job_id: Optional[str] = None) -> None:
+        """Connect to WebSocket for real-time updates."""
+        if self.ws_client:
+            await self.ws_client.disconnect()
+
+        self.ws_client = RogueWebSocketClient(self.config.base_url, job_id)
+        await self.ws_client.connect()
+
+    async def disconnect_websocket(self) -> None:
+        """Disconnect WebSocket."""
+        if self.ws_client:
+            await self.ws_client.disconnect()
+            self.ws_client = None
+
+    def on_websocket_event(self, event: WebSocketEventType, handler: Callable) -> None:
+        """Add WebSocket event handler."""
+        if not self.ws_client:
+            raise RuntimeError(
+                "WebSocket not connected. Call connect_websocket() first."
+            )
+        self.ws_client.on(event, handler)
+
+    def off_websocket_event(self, event: WebSocketEventType, handler: Callable) -> None:
+        """Remove WebSocket event handler."""
+        if self.ws_client:
+            self.ws_client.off(event, handler)
+
+    @property
+    def is_websocket_connected(self) -> bool:
+        """Check if WebSocket is connected."""
+        return self.ws_client.is_connected if self.ws_client else False
+
+    # High-level convenience methods
+
+    async def run_evaluation_with_updates(
+        self,
+        request: EvaluationRequest,
+        on_update: Optional[Callable[[EvaluationJob], None]] = None,
+        on_chat: Optional[Callable[[dict], None]] = None,
+        timeout: float = 300.0,
+    ) -> EvaluationJob:
+        """Run evaluation with real-time updates."""
+        # Create evaluation
+        response = await self.create_evaluation(request)
+        job_id = response.job_id
+
+        # Connect WebSocket for updates
+        await self.connect_websocket(job_id)
+
+        # Set up completion tracking
+        result_future: asyncio.Future[EvaluationJob] = asyncio.Future()
+
+        def handle_job_update(event, data):
+            if on_update:
+                on_update(EvaluationJob(**data))
+
+            # Check if job is complete
+            status = data.get("status")
+            if status in ["completed", "failed", "cancelled"]:
+                if not result_future.done():
+                    result_future.set_result(EvaluationJob(**data))
+
+        def handle_chat_update(event, data):
+            if on_chat:
+                on_chat(data)
+
+        def handle_error(event, data):
+            if not result_future.done():
+                result_future.set_exception(
+                    Exception(f"WebSocket error: {data.get('error')}")
+                )
+
+        # Set up event handlers
+        self.on_websocket_event("job_update", handle_job_update)
+        if on_chat:
+            self.on_websocket_event("chat_update", handle_chat_update)
+        self.on_websocket_event("error", handle_error)
+
+        try:
+            # Wait for completion or timeout
+            result = await asyncio.wait_for(result_future, timeout=timeout)
+            return result
+        except asyncio.TimeoutError:
+            raise TimeoutError(
+                f"Evaluation {job_id} did not complete within {timeout}s"
+            )
+        finally:
+            await self.disconnect_websocket()
+
+    async def quick_evaluate(
+        self,
+        agent_url: str,
+        scenarios: List[str],
+        judge_model: str = "openai/gpt-4o-mini",
+        auth_type: AuthType = AuthType.NO_AUTH,
+        auth_credentials: Optional[str] = None,
+        deep_test: bool = False,
+    ) -> EvaluationJob:
+        """Quick evaluation helper."""
+        agent_config = AgentConfig(
+            evaluated_agent_url=agent_url,
+            evaluated_agent_auth_type=auth_type,
+            evaluated_agent_credentials=auth_credentials,
+            judge_llm_model=judge_model,
+            deep_test_mode=deep_test,
+            interview_mode=True,
+            parallel_runs=1,
+        )
+
+        scenario_objects = [
+            Scenario(scenario=scenario, scenario_type=ScenarioType.POLICY)
+            for scenario in scenarios
+        ]
+
+        request = EvaluationRequest(
+            agent_config=agent_config,
+            scenarios=scenario_objects,
+            max_retries=3,
+            timeout_seconds=300,
+        )
+
+        response = await self.create_evaluation(request)
+        return await self.wait_for_evaluation(response.job_id)
