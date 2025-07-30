@@ -73,7 +73,7 @@ def send_email_tool(
 
 
 def create_tshirt_store_agent() -> LlmAgent:
-    tools = [
+    tools: list[FunctionTool] = [
         FunctionTool(
             func=inventory_tool,
         ),
