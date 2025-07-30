@@ -35,7 +35,7 @@ class LogConfig:
     )
 
 
-def _add_context_vars_filter(record: dict) -> bool:
+def _add_context_vars_filter(record: Dict[str, Any]) -> bool:
     """
     Filter to add context variables to log records.
 
@@ -50,7 +50,7 @@ def _add_context_vars_filter(record: dict) -> bool:
         # Handle nested extra dict structure
         # When using logger.info(msg, extra={"my_var": my_var}),
         # loguru creates record["extra"]["extra"]["my_var"]
-        record_extra = record.get("extra", {})
+        record_extra = record["extra"]
         inner_extra = record_extra.get("extra", {})
 
         # Add context variable to inner extra dict
@@ -137,7 +137,7 @@ def configure_logger() -> None:
         format=log_format,
         colorize=LogConfig.ENABLE_COLORS,
         backtrace=LogConfig.ENABLE_BACKTRACE,
-        filter=_add_context_vars_filter,
+        filter=_add_context_vars_filter,  # type: ignore[arg-type]
     )
 
     # Log configuration

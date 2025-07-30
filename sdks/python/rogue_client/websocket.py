@@ -8,6 +8,10 @@ import logging
 from typing import Optional, Callable, Dict, List, Any
 import websockets
 from websockets.exceptions import ConnectionClosed, WebSocketException
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from websockets.client import ClientConnection
 
 from .types import WebSocketMessage, WebSocketEventType
 
@@ -20,7 +24,7 @@ class RogueWebSocketClient:
     def __init__(self, base_url: str, job_id: Optional[str] = None):
         self.base_url = base_url.replace("http", "ws").rstrip("/")
         self.job_id = job_id
-        self.websocket: Optional[websockets.WebSocketServerProtocol] = None
+        self.websocket: Optional["ClientConnection"] = None
         self.event_handlers: Dict[WebSocketEventType, List[Callable]] = {}
         self.is_connected = False
         self.reconnect_attempts = 0
@@ -38,7 +42,9 @@ class RogueWebSocketClient:
             ws_url = f"{self.base_url}/ws/{self.job_id}"
 
         try:
-            self.websocket = await websockets.connect(ws_url)
+            self.websocket = await websockets.connect(
+                ws_url,
+            )  # type: ignore[assignment]
             self.is_connected = True
             self.reconnect_attempts = 0
             self._emit("connected", {"url": ws_url})
@@ -56,7 +62,7 @@ class RogueWebSocketClient:
         self.is_connected = False
 
         if self.websocket:
-            await self.websocket.close()
+            await self.websocket.close()  # type: ignore[attr-defined]
             self.websocket = None
 
         self._emit("disconnected", {})
@@ -88,7 +94,7 @@ class RogueWebSocketClient:
             while not self._stop_event.is_set() and self.websocket:
                 try:
                     message_data = await asyncio.wait_for(
-                        self.websocket.recv(), timeout=1.0
+                        self.websocket.recv(), timeout=1.0  # type: ignore[attr-defined]
                     )
 
                     try:

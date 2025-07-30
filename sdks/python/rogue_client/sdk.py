@@ -22,6 +22,7 @@ from .types import (
     AuthType,
     ScenarioType,
 )
+from pydantic import HttpUrl
 
 
 class RogueSDK:
@@ -181,7 +182,7 @@ class RogueSDK:
     ) -> EvaluationJob:
         """Quick evaluation helper."""
         agent_config = AgentConfig(
-            evaluated_agent_url=agent_url,
+            evaluated_agent_url=HttpUrl(agent_url),
             evaluated_agent_auth_type=auth_type,
             evaluated_agent_credentials=auth_credentials,
             judge_llm_model=judge_model,
