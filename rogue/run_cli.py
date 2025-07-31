@@ -183,7 +183,7 @@ async def _run_scenarios_with_sdk(
     # Initialize SDK
     sdk_config = RogueClientConfig(
         base_url="http://localhost:8000",
-        timeout=3000.0,  # Default server URL
+        timeout=600.0,  # Default server URL
     )
     sdk = RogueSDK(sdk_config)
 

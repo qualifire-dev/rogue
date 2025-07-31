@@ -71,10 +71,16 @@ class ChatMessage(BaseModel):
     timestamp: Optional[str] = None
 
 
+class ChatHistory(BaseModel):
+    """Chat history containing messages."""
+    
+    messages: List[ChatMessage]
+
+
 class ConversationEvaluation(BaseModel):
     """Evaluation of a single conversation."""
 
-    messages: List[ChatMessage]
+    messages: ChatHistory
     passed: bool
     reason: str
 
@@ -96,7 +102,7 @@ class EvaluationRequest(BaseModel):
     agent_config: AgentConfig
     scenarios: List[Scenario]
     max_retries: int = 3
-    timeout_seconds: int = 3000
+    timeout_seconds: int = 600
 
 
 class EvaluationJob(BaseModel):
