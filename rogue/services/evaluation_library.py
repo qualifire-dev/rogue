@@ -6,17 +6,14 @@ import asyncio
 from typing import AsyncGenerator, Callable, Optional, Any
 from loguru import logger
 
-# Import SDK AgentConfig for consistency
+from ..common.sdk_utils import setup_sdk_path
 from rogue_client.types import AgentConfig
 from ..models.scenario import Scenarios
 from ..models.evaluation_result import EvaluationResults
 from .scenario_evaluation_service import ScenarioEvaluationService
-import sys
-from pathlib import Path
 
-sdk_path = Path(__file__).parent.parent.parent / "sdks" / "python"
-if str(sdk_path) not in sys.path:
-    sys.path.insert(0, str(sdk_path))
+# Ensure SDK path is set up
+setup_sdk_path()
 
 
 class EvaluationLibrary:

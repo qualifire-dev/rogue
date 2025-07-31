@@ -1,6 +1,7 @@
 import os
 import re
 
+import certifi
 from litellm import completion
 from loguru import logger
 from pydantic import ValidationError
@@ -168,6 +169,10 @@ def evaluate_policy(
         BUSINESS_CONTEXT=business_context,
         EXPECTED_OUTCOME=expected_outcome or "Not provided",
     )
+
+    # Set SSL certificate file environment variable for litellm
+    os.environ["SSL_CERT_FILE"] = certifi.where()
+    os.environ["REQUESTS_CA_BUNDLE"] = certifi.where()
 
     response = completion(
         model=model,
