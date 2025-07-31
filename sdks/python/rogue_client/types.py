@@ -73,7 +73,7 @@ class ChatMessage(BaseModel):
 
 class ChatHistory(BaseModel):
     """Chat history containing messages."""
-    
+
     messages: List[ChatMessage]
 
 

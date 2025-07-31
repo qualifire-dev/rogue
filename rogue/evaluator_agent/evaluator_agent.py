@@ -222,7 +222,7 @@ class EvaluatorAgent:
         # Log the scenarios being tested
         for i, scenario in enumerate(self._scenarios.scenarios):
             logger.info(
-                f"📋 Scenario {i+1}: {scenario.scenario[:100]}...",
+                f"📋 Scenario {i + 1}: {scenario.scenario[:100]}...",
                 extra={
                     "scenario_type": (
                         scenario.scenario_type.value

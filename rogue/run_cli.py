@@ -33,17 +33,38 @@ def _convert_auth_type(auth_type: AuthType) -> SDKAuthType:
 
 def _convert_sdk_results_to_legacy(sdk_results) -> EvaluationResults:
     """Convert SDK results to legacy EvaluationResults format."""
-    # For now, create a basic conversion - this would need to be expanded
-    # based on the actual SDK results structure
     try:
-        if hasattr(sdk_results, "model_dump"):
+        # SDK returns a list of EvaluationResult objects
+        # Legacy format expects EvaluationResults with a 'results' field
+        if isinstance(sdk_results, list):
+            # Convert each SDK EvaluationResult to dict for legacy format
+            results_dicts = []
+            for result in sdk_results:
+                if hasattr(result, "model_dump"):
+                    results_dicts.append(result.model_dump())
+                else:
+                    results_dicts.append(result)
+            return EvaluationResults.model_validate({"results": results_dicts})
+        elif hasattr(sdk_results, "model_dump"):
+            # Pydantic model - get the dict representation
             results_dict = sdk_results.model_dump()
+            if "results" in results_dict:
+                # Already in the right format
+                return EvaluationResults.model_validate(results_dict)
+            else:
+                # Single result - wrap in results array
+                return EvaluationResults.model_validate({"results": [results_dict]})
         else:
-            results_dict = sdk_results
-
-        return EvaluationResults.model_validate(results_dict)
+            # Raw dict or other format
+            if isinstance(sdk_results, dict) and "results" in sdk_results:
+                return EvaluationResults.model_validate(sdk_results)
+            else:
+                # Single result - wrap in results array
+                return EvaluationResults.model_validate({"results": [sdk_results]})
     except Exception as e:
-        logger.warning(f"Failed to convert SDK results to legacy format: {e}")
+        logger.error(f"Failed to convert SDK results to legacy format: {e}")
+        logger.error(f"SDK results type: {type(sdk_results)}")
+        logger.error(f"SDK results content: {sdk_results}")
         # Return empty results as fallback
         return EvaluationResults()
 
