@@ -13,7 +13,39 @@ from .models.config import AuthType, AgentConfig
 from .models.evaluation_result import EvaluationResults
 from .models.scenario import Scenarios
 from .services.llm_service import LLMService
-from .services.scenario_evaluation_service import ScenarioEvaluationService
+
+# Import the Python SDK
+
+from sdks.python.rogue_client import RogueSDK, RogueClientConfig
+from sdks.python.rogue_client.types import AuthType as SDKAuthType
+
+
+def _convert_auth_type(auth_type: AuthType) -> SDKAuthType:
+    """Convert legacy AuthType to SDK AuthType."""
+    mapping = {
+        AuthType.NO_AUTH: SDKAuthType.NO_AUTH,
+        AuthType.API_KEY: SDKAuthType.API_KEY,
+        AuthType.BEARER_TOKEN: SDKAuthType.BEARER_TOKEN,
+        AuthType.BASIC_AUTH: SDKAuthType.BASIC_AUTH,
+    }
+    return mapping.get(auth_type, SDKAuthType.NO_AUTH)
+
+
+def _convert_sdk_results_to_legacy(sdk_results) -> EvaluationResults:
+    """Convert SDK results to legacy EvaluationResults format."""
+    # For now, create a basic conversion - this would need to be expanded
+    # based on the actual SDK results structure
+    try:
+        if hasattr(sdk_results, "model_dump"):
+            results_dict = sdk_results.model_dump()
+        else:
+            results_dict = sdk_results
+
+        return EvaluationResults.model_validate(results_dict)
+    except Exception as e:
+        logger.warning(f"Failed to convert SDK results to legacy format: {e}")
+        # Return empty results as fallback
+        return EvaluationResults()
 
 
 def set_cli_args(parser: ArgumentParser) -> None:
@@ -104,6 +136,111 @@ async def run_scenarios(
         if judge_llm_api_key_secret
         else None
     )
+
+    # Try SDK first, fallback to legacy service if server not available
+    try:
+        return await _run_scenarios_with_sdk(
+            evaluated_agent_url=evaluated_agent_url,
+            evaluated_agent_auth_type=evaluated_agent_auth_type,
+            evaluated_agent_auth_credentials=evaluated_agent_auth_credentials,
+            judge_llm=judge_llm,
+            judge_llm_api_key=judge_llm_api_key,
+            scenarios=scenarios,
+            evaluation_results_output_path=evaluation_results_output_path,
+            business_context=business_context,
+            deep_test_mode=deep_test_mode,
+        )
+    except Exception as e:
+        logger.warning(f"SDK evaluation failed, falling back to legacy service: {e}")
+        return await _run_scenarios_legacy(
+            evaluated_agent_url=evaluated_agent_url,
+            evaluated_agent_auth_type=evaluated_agent_auth_type,
+            evaluated_agent_auth_credentials=evaluated_agent_auth_credentials,
+            judge_llm=judge_llm,
+            judge_llm_api_key=judge_llm_api_key,
+            scenarios=scenarios,
+            evaluation_results_output_path=evaluation_results_output_path,
+            business_context=business_context,
+            deep_test_mode=deep_test_mode,
+        )
+
+
+async def _run_scenarios_with_sdk(
+    evaluated_agent_url: str,
+    evaluated_agent_auth_type: AuthType,
+    evaluated_agent_auth_credentials: str | None,
+    judge_llm: str,
+    judge_llm_api_key: str | None,
+    scenarios: Scenarios,
+    evaluation_results_output_path: Path,
+    business_context: str,
+    deep_test_mode: bool,
+) -> EvaluationResults | None:
+    """Run scenarios using the new SDK."""
+    # Convert AuthType to SDK AuthType
+    sdk_auth_type = _convert_auth_type(evaluated_agent_auth_type)
+
+    # Initialize SDK
+    sdk_config = RogueClientConfig(
+        base_url="http://localhost:8000", timeout=300.0  # Default server URL
+    )
+    sdk = RogueSDK(sdk_config)
+
+    try:
+        # Check if server is available
+        health = await sdk.health()
+        if health.status != "healthy":
+            raise Exception("Server not healthy")
+
+        # Convert scenarios to list of strings for SDK
+        scenario_strings = [scenario.scenario for scenario in scenarios.scenarios]
+
+        # Use SDK's quick_evaluate method
+        job = await sdk.quick_evaluate(
+            agent_url=evaluated_agent_url,
+            scenarios=scenario_strings,
+            auth_type=sdk_auth_type,
+            auth_credentials=evaluated_agent_auth_credentials,
+            judge_model=judge_llm,
+            deep_test=deep_test_mode,
+        )
+
+        logger.info(f"Started evaluation job {job.job_id} using SDK")
+
+        # Wait for completion and get results
+        final_job = await sdk.wait_for_evaluation(job.job_id)
+
+        if final_job.results:
+            # Convert SDK results to legacy format for backward compatibility
+            results = _convert_sdk_results_to_legacy(final_job.results)
+
+            # Write results to file for CLI compatibility
+            evaluation_results_output_path.write_text(
+                results.model_dump_json(indent=2, exclude_none=True),
+                encoding="utf-8",
+            )
+            return results
+        else:
+            logger.error("Scenario evaluation completed but no results found.")
+            return None
+
+    finally:
+        await sdk.close()
+
+
+async def _run_scenarios_legacy(
+    evaluated_agent_url: str,
+    evaluated_agent_auth_type: AuthType,
+    evaluated_agent_auth_credentials: str | None,
+    judge_llm: str,
+    judge_llm_api_key: str | None,
+    scenarios: Scenarios,
+    evaluation_results_output_path: Path,
+    business_context: str,
+    deep_test_mode: bool,
+) -> EvaluationResults | None:
+    """Run scenarios using the legacy service (fallback)."""
+    from .services.scenario_evaluation_service import ScenarioEvaluationService
 
     scenario_evaluation_service = ScenarioEvaluationService(
         evaluated_agent_url=evaluated_agent_url,

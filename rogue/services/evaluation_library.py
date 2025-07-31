@@ -4,11 +4,19 @@ Core evaluation library - Clean API for agent evaluation
 
 import asyncio
 from typing import AsyncGenerator, Callable, Optional, Any
+from loguru import logger
 
-from ..models.config import AgentConfig
+# Import SDK AgentConfig for consistency
+from rogue_client.types import AgentConfig
 from ..models.scenario import Scenarios
 from ..models.evaluation_result import EvaluationResults
 from .scenario_evaluation_service import ScenarioEvaluationService
+import sys
+from pathlib import Path
+
+sdk_path = Path(__file__).parent.parent.parent / "sdks" / "python"
+if str(sdk_path) not in sys.path:
+    sys.path.insert(0, str(sdk_path))
 
 
 class EvaluationLibrary:
@@ -41,30 +49,93 @@ class EvaluationLibrary:
         Returns:
             EvaluationResults containing all evaluation data
         """
-        service = ScenarioEvaluationService(
-            evaluated_agent_url=str(agent_config.agent_url),
-            evaluated_agent_auth_type=agent_config.auth_type,
-            evaluated_agent_auth_credentials=agent_config.auth_credentials,
-            judge_llm=agent_config.judge_llm,
-            judge_llm_api_key=agent_config.judge_llm_api_key,
-            scenarios=scenarios,
-            business_context=business_context,
-            deep_test_mode=agent_config.deep_test_mode,
+        logger.info(
+            "🚀 EvaluationLibrary.evaluate_agent starting",
+            extra={
+                "agent_url": str(agent_config.evaluated_agent_url),
+                "scenario_count": len(scenarios.scenarios),
+                "judge_llm": agent_config.judge_llm_model,
+                "deep_test_mode": agent_config.deep_test_mode,
+                "business_context_length": len(business_context),
+                "has_progress_callback": progress_callback is not None,
+            },
         )
 
-        results = None
-        async for update_type, data in service.evaluate_scenarios():
-            if progress_callback:
-                progress_callback(update_type, data)
+        try:
+            service = ScenarioEvaluationService(
+                evaluated_agent_url=str(agent_config.evaluated_agent_url),
+                evaluated_agent_auth_type=agent_config.evaluated_agent_auth_type,
+                evaluated_agent_auth_credentials=(
+                    agent_config.evaluated_agent_credentials
+                ),
+                judge_llm=agent_config.judge_llm_model,
+                judge_llm_api_key=agent_config.judge_llm_api_key,
+                scenarios=scenarios,
+                business_context=business_context,
+                deep_test_mode=agent_config.deep_test_mode,
+            )
 
-            if update_type == "done":
-                results = data
-                break
+            logger.info("📋 ScenarioEvaluationService created successfully")
 
-        if not results:
-            raise RuntimeError("Evaluation failed - no results returned")
+            results = None
+            update_count = 0
 
-        return results
+            logger.info("🔄 Starting to iterate over scenario evaluation updates")
+
+            async for update_type, data in service.evaluate_scenarios():
+                update_count += 1
+                logger.info(
+                    f"📨 EvaluationLibrary received update #{update_count}",
+                    extra={
+                        "update_type": update_type,
+                        "data_type": type(data).__name__,
+                        "data_preview": str(data)[:100] if data else "None",
+                    },
+                )
+
+                if progress_callback:
+                    logger.debug(
+                        f"📤 Calling progress_callback with update_type='{update_type}'"
+                    )
+                    try:
+                        progress_callback(update_type, data)
+                        logger.debug("✅ progress_callback completed successfully")
+                    except Exception as callback_error:
+                        logger.error(f"❌ progress_callback failed: {callback_error}")
+
+                if update_type == "done":
+                    results = data
+                    logger.info(
+                        "✅ Evaluation completed with "
+                        f"{len(results.results) if results and results.results else 0} "
+                        "results"
+                    )
+                    break
+
+            logger.info(
+                (
+                    "🏁 Finished iterating over updates. "
+                    f"Total updates received: {update_count}"
+                )
+            )
+
+            if not results:
+                logger.error("❌ No results returned from evaluation")
+                raise RuntimeError("Evaluation failed - no results returned")
+
+            logger.info("🎉 EvaluationLibrary.evaluate_agent completed successfully")
+            return results
+
+        except Exception as e:
+            logger.error(
+                f"💥 EvaluationLibrary.evaluate_agent failed with exception: {e}",
+                extra={
+                    "error_type": type(e).__name__,
+                    "agent_url": str(agent_config.evaluated_agent_url),
+                    "scenario_count": len(scenarios.scenarios),
+                },
+            )
+            raise
 
     @staticmethod
     async def evaluate_agent_streaming(
@@ -84,10 +155,10 @@ class EvaluationLibrary:
             Tuple of (update_type, data) for real-time updates
         """
         service = ScenarioEvaluationService(
-            evaluated_agent_url=str(agent_config.agent_url),
-            evaluated_agent_auth_type=agent_config.auth_type,
-            evaluated_agent_auth_credentials=agent_config.auth_credentials,
-            judge_llm=agent_config.judge_llm,
+            evaluated_agent_url=str(agent_config.evaluated_agent_url),
+            evaluated_agent_auth_type=agent_config.evaluated_agent_auth_type,
+            evaluated_agent_auth_credentials=agent_config.evaluated_agent_credentials,
+            judge_llm=agent_config.judge_llm_model,
             judge_llm_api_key=agent_config.judge_llm_api_key,
             scenarios=scenarios,
             business_context=business_context,

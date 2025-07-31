@@ -3,9 +3,16 @@ from pydantic import BaseModel
 from datetime import datetime
 from enum import Enum
 
-from ...models.scenario import Scenario
-from ...models.config import AgentConfig
 from ...models.evaluation_result import EvaluationResult
+
+# Import SDK types for consistency
+from rogue_client.types import AgentConfig, Scenario
+import sys
+from pathlib import Path
+
+sdk_path = Path(__file__).parent.parent.parent.parent / "sdks" / "python"
+if str(sdk_path) not in sys.path:
+    sys.path.insert(0, str(sdk_path))
 
 
 class EvaluationRequest(BaseModel):

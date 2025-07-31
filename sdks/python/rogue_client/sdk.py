@@ -22,6 +22,7 @@ from .types import (
     AuthType,
     ScenarioType,
 )
+from loguru import logger
 from pydantic import HttpUrl
 
 
@@ -135,14 +136,44 @@ class RogueSDK:
         result_future: asyncio.Future[EvaluationJob] = asyncio.Future()
 
         def handle_job_update(event, data):
+            # Don't try to create EvaluationJob from partial WebSocket data
+            # Just pass the status update data to the callback
             if on_update:
-                on_update(EvaluationJob(**data))
+                # Create a simple status update object instead of full EvaluationJob
+                status_update = {
+                    "job_id": job_id,
+                    "status": data.get("status"),
+                    "progress": data.get("progress", 0.0),
+                    "error_message": data.get("error_message"),
+                }
+                # Call the callback with a simple dict instead of EvaluationJob
+                try:
+                    on_update(status_update)
+                except Exception as e:
+                    logger.warning(f"Status update callback failed: {e}")
 
             # Check if job is complete
             status = data.get("status")
             if status in ["completed", "failed", "cancelled"]:
                 if not result_future.done():
-                    result_future.set_result(EvaluationJob(**data))
+                    # Get the full job when complete instead of using partial
+                    # WebSocket data
+                    async def get_final_job():
+                        try:
+                            return await self.get_evaluation(job_id)
+                        except Exception as e:
+                            logger.error(f"Failed to get final job: {e}")
+                            # Return None to indicate failure
+                            return None
+
+                    task = asyncio.create_task(get_final_job())
+                    task.add_done_callback(
+                        lambda t: (
+                            result_future.set_result(t.result())
+                            if not result_future.done() and t.result()
+                            else None
+                        )
+                    )
 
         def handle_chat_update(event, data):
             if on_chat:

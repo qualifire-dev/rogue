@@ -208,10 +208,34 @@ class EvaluatorAgent:
             to_yaml_str(self._scenarios, exclude_none=True),
         ).replace("{$BUSINESS_CONTEXT}", self._business_context)
 
-        logger.debug(
-            "built instruction prompt",
-            extra={"prompt": instructions},
+        logger.info(
+            "🤖 Creating LLM agent with instructions",
+            extra={
+                "deep_test_mode": self._deep_test_mode,
+                "scenario_count": len(self._scenarios.scenarios),
+                "agent_url": self._evaluated_agent_address,
+                "judge_llm": self._model,
+                "instructions_length": len(instructions),
+            },
         )
+
+        # Log the scenarios being tested
+        for i, scenario in enumerate(self._scenarios.scenarios):
+            logger.info(
+                f"📋 Scenario {i+1}: {scenario.scenario[:100]}...",
+                extra={
+                    "scenario_type": (
+                        scenario.scenario_type.value
+                        if scenario.scenario_type
+                        else "unknown"
+                    ),
+                    "expected_outcome": (
+                        scenario.expected_outcome[:50] + "..."
+                        if scenario.expected_outcome
+                        else "None"
+                    ),
+                },
+            )
 
         return LlmAgent(
             name="qualifire_agent_evaluator",
@@ -238,17 +262,16 @@ class EvaluatorAgent:
         args: dict[str, Any],
         tool_context: ToolContext,
     ) -> Optional[dict]:
-        if not self._debug:
-            return None
+        # Always log tool calls, not just in debug mode
         logger.info(
-            "before_tool_callback",
+            f"🔧 Tool call: {tool.name}",
             extra={
                 "tool": tool.name,
-                "args": args,
-                "context": {
-                    "function_call_id": tool_context.function_call_id,
-                    "event_actions": tool_context.actions,
+                "args": {
+                    k: str(v)[:100] + "..." if len(str(v)) > 100 else v
+                    for k, v in args.items()
                 },
+                "function_call_id": tool_context.function_call_id,
             },
         )
         return None
@@ -260,18 +283,17 @@ class EvaluatorAgent:
         tool_context: ToolContext,
         tool_response: Optional[dict],
     ) -> Optional[dict]:
-        if not self._debug:
-            return None
+        # Always log tool responses, not just in debug mode
         logger.info(
-            "after_tool_callback",
+            f"✅ Tool response: {tool.name}",
             extra={
                 "tool": tool.name,
-                "args": args,
-                "tool_response": tool_response,
-                "tool_context": {
-                    "function_call_id": tool_context.function_call_id,
-                    "event_actions": tool_context.actions,
-                },
+                "response_preview": (
+                    str(tool_response)[:200] + "..."
+                    if tool_response and len(str(tool_response)) > 200
+                    else tool_response
+                ),
+                "function_call_id": tool_context.function_call_id,
             },
         )
         return None
@@ -281,22 +303,15 @@ class EvaluatorAgent:
         callback_context: CallbackContext,
         llm_request: LlmRequest,
     ) -> None:
-        if not self._debug:
-            return None
+        # Always log LLM requests to see what the judge is being asked
         logger.info(
-            "before_model_callback",
+            f"🧠 LLM Request to {self._model}",
             extra={
-                "llm_request_clean": llm_request.model_dump(exclude_none=True),
-                "llm_request": llm_request.model_dump(),
-                "context": {
-                    "state": callback_context.state,
-                    "user_content": callback_context.user_content,
-                    "invocation_id": callback_context.invocation_id,
-                    "agent_name": callback_context.agent_name,
-                },
+                "model": self._model,
+                "agent_name": callback_context.agent_name,
+                "invocation_id": callback_context.invocation_id,
             },
         )
-        return None
 
     def _after_model_callback(
         self,
@@ -493,11 +508,12 @@ class EvaluatorAgent:
                 from the other agent, the string is empty.
         """
         try:
-            logger.debug(
-                "_send_message_to_evaluated_agent - enter",
+            logger.info(
+                "🔗 Making A2A call to evaluated agent",
                 extra={
-                    "message": message,
+                    "message": message[:100] + "..." if len(message) > 100 else message,
                     "context_id": context_id,
+                    "agent_url": self._evaluated_agent_address,
                 },
             )
 
@@ -553,15 +569,29 @@ class EvaluatorAgent:
                     {"role": "Agent Under Test", "content": agent_response_text},
                 )
 
-            logger.debug(
-                "_send_message_to_evaluated_agent - response",
-                extra={"response": response.model_dump_json()},
+            logger.info(
+                "✅ A2A call successful - received response from evaluated agent",
+                extra={
+                    "response_length": len(agent_response_text),
+                    "response_preview": (
+                        agent_response_text[:100] + "..."
+                        if len(agent_response_text) > 100
+                        else agent_response_text
+                    ),
+                    "context_id": context_id,
+                },
             )
             return {"response": response.model_dump_json()}
         except Exception as e:
             logger.exception(
-                "Error sending message to agent",
-                extra={"message": message, "context_id": context_id},
+                "❌ A2A call failed - error sending message to evaluated agent",
+                extra={
+                    "message": message[:100] + "..." if len(message) > 100 else message,
+                    "context_id": context_id,
+                    "agent_url": self._evaluated_agent_address,
+                    "error": str(e),
+                    "error_type": type(e).__name__,
+                },
             )
             return {"response": "", "error": str(e)}
 

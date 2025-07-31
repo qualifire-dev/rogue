@@ -148,12 +148,17 @@ def evaluate_policy(
         else:
             model = f"gemini/{model}"
 
-    logger.debug(
-        "Evaluating policy",
+    logger.info(
+        "🔍 Evaluating policy with judge LLM",
         extra={
-            "policy": policy,
+            "policy": policy[:100] + "..." if len(policy) > 100 else policy,
             "model": model,
-            "expected_outcome": expected_outcome,
+            "expected_outcome": (
+                expected_outcome[:100] + "..."
+                if expected_outcome and len(expected_outcome) > 100
+                else expected_outcome
+            ),
+            "conversation_length": len(conversation.messages),
         },
     )
 
@@ -179,4 +184,19 @@ def evaluate_policy(
         ],
     )
 
-    return _parse_llm_output(response.choices[0].message.content)
+    result = _parse_llm_output(response.choices[0].message.content)
+
+    logger.info(
+        "📊 Policy evaluation completed",
+        extra={
+            "passed": result.passed,
+            "reason": (
+                result.reason[:100] + "..."
+                if len(result.reason) > 100
+                else result.reason
+            ),
+            "policy": policy[:50] + "..." if len(policy) > 50 else policy,
+        },
+    )
+
+    return result

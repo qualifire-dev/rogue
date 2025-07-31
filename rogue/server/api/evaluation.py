@@ -29,7 +29,7 @@ async def create_evaluation(
     set_request_context(
         request_id=job_id,
         job_id=job_id,
-        agent_url=str(request.agent_config.agent_url),
+        agent_url=str(request.agent_config.evaluated_agent_url),
         scenario_count=len(request.scenarios),
     )
 
@@ -38,9 +38,9 @@ async def create_evaluation(
         extra={
             "endpoint": "/evaluations",
             "method": "POST",
-            "agent_url": str(request.agent_config.agent_url),
+            "agent_url": str(request.agent_config.evaluated_agent_url),
             "scenario_count": len(request.scenarios),
-            "judge_llm": request.agent_config.judge_llm,
+            "judge_llm": request.agent_config.judge_llm_model,
             "deep_test_mode": request.agent_config.deep_test_mode,
             "max_retries": request.max_retries,
             "timeout_seconds": request.timeout_seconds,
@@ -84,6 +84,7 @@ async def list_evaluations(
 @router.get("/evaluations/{job_id}", response_model=EvaluationJob)
 async def get_evaluation(job_id: str):
     job = evaluation_service.get_job(job_id)
+    logger.info(f"Job: {job}")
     if not job:
         raise HTTPException(status_code=404, detail="Evaluation job not found")
     return job

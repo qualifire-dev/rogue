@@ -58,7 +58,8 @@ class EvaluationService:
         try:
             # Set job context for logging
             set_job_context(
-                job_id=job_id, agent_url=str(job.request.agent_config.agent_url)
+                job_id=job_id,
+                agent_url=str(job.request.agent_config.evaluated_agent_url),
             )
 
             self.logger.info(
@@ -66,8 +67,8 @@ class EvaluationService:
                 extra={
                     "job_status": "running",
                     "scenario_count": len(job.request.scenarios),
-                    "agent_url": str(job.request.agent_config.agent_url),
-                    "judge_llm": job.request.agent_config.judge_llm,
+                    "agent_url": str(job.request.agent_config.evaluated_agent_url),
+                    "judge_llm": job.request.agent_config.judge_llm_model,
                 },
             )
 
@@ -75,8 +76,44 @@ class EvaluationService:
             job.started_at = datetime.now(timezone.utc)
             self._notify_job_update(job)
 
-            # Convert request scenarios to Scenarios object
-            scenarios = Scenarios(scenarios=job.request.scenarios)
+            # Convert SDK scenarios to legacy scenarios for the evaluation service
+            from ...models.scenario import (
+                Scenario as LegacyScenario,
+                ScenarioType as LegacyScenarioType,
+            )
+
+            self.logger.info(
+                f"Converting {len(job.request.scenarios)} SDK scenarios to "
+                "legacy format"
+            )
+
+            legacy_scenarios = []
+            for i, sdk_scenario in enumerate(job.request.scenarios):
+                # Convert SDK scenario to legacy scenario
+
+                legacy_scenario_type = (
+                    LegacyScenarioType.POLICY
+                    if sdk_scenario.scenario_type.value == "policy"
+                    else LegacyScenarioType.PROMPT_INJECTION
+                )
+
+                legacy_scenario = LegacyScenario(
+                    scenario=sdk_scenario.scenario,
+                    scenario_type=legacy_scenario_type,
+                    dataset=sdk_scenario.dataset,
+                    dataset_sample_size=sdk_scenario.dataset_sample_size,
+                    expected_outcome=sdk_scenario.expected_outcome,
+                )
+
+                legacy_scenarios.append(legacy_scenario)
+
+            scenarios = Scenarios(scenarios=legacy_scenarios)
+            self.logger.info(
+                (
+                    "Successfully created Scenarios object with "
+                    f"{len(scenarios.scenarios)} scenarios"
+                )
+            )
 
             # Create progress callback for real-time updates
             def progress_callback(update_type: str, data: Any):
@@ -98,20 +135,29 @@ class EvaluationService:
                     self._notify_job_update(job)
                 elif update_type == "chat":
                     # Real-time chat updates via WebSocket
+                    self.logger.info(f"Received chat update for job {job_id}: {data}")
                     self._notify_chat_update(job_id, data)
 
             # Use the library interface directly
             self.logger.info(
                 "Calling evaluation library",
-                extra={"business_context": "The agent provides customer service."},
+                extra={
+                    "business_context": "The agent provides customer service.",
+                    "agent_url": str(job.request.agent_config.evaluated_agent_url),
+                    "judge_llm": job.request.agent_config.judge_llm_model,
+                    "scenario_count": len(scenarios.scenarios),
+                },
             )
 
             evaluation_results = await EvaluationLibrary.evaluate_agent(
                 agent_config=job.request.agent_config,
                 scenarios=scenarios,
-                business_context="The agent provides customer service.",
+                # TODO: FIX THIS!@!!!!!!
+                business_context="",
                 progress_callback=progress_callback,
             )
+
+            self.logger.info("Evaluation library returned results")
 
             # Update job with results
             job.results = evaluation_results.results
@@ -132,15 +178,40 @@ class EvaluationService:
             )
 
         except Exception as e:
+            error_type = type(e).__name__
+            error_msg = str(e)
+
+            # Provide user-friendly error messages
+            if "APIError" in error_type and "Connection error" in error_msg:
+                user_error = (
+                    "LLM API Connection Error: Cannot connect to "
+                    f"{job.request.agent_config.judge_llm_model}. "
+                    "Please check your API key and network connection."
+                )
+            elif "APIError" in error_type and "authentication" in error_msg.lower():
+                user_error = (
+                    "LLM Authentication Error: Invalid API key for "
+                    f"{job.request.agent_config.judge_llm_model}. "
+                    "Please verify your judge_llm_api_key."
+                )
+            elif "timeout" in error_msg.lower():
+                user_error = (
+                    "Timeout Error: The evaluation took too long. "
+                    "The agent under test may not be responding."
+                )
+            else:
+                user_error = f"Evaluation error: {error_msg}"
+
             job.status = EvaluationStatus.FAILED
-            job.error_message = f"Evaluation error: {str(e)}"
+            job.error_message = user_error
 
             self.logger.error(
                 "Evaluation job failed",
                 extra={
                     "job_status": "failed",
-                    "error": str(e),
-                    "error_type": type(e).__name__,
+                    "error": error_msg,
+                    "error_type": error_type,
+                    "user_error": user_error,
                     "duration_seconds": (
                         (datetime.now(timezone.utc) - job.started_at).total_seconds()
                         if job.started_at
@@ -159,8 +230,19 @@ class EvaluationService:
         """Send real-time chat updates via WebSocket"""
         from ..models.api_models import WebSocketMessage
 
+        # Ensure chat_data is in the expected format
+        if isinstance(chat_data, dict):
+            # Chat data is already a dict with role/content
+            data = chat_data
+        else:
+            # Convert string to dict format
+            data = {"role": "assistant", "content": str(chat_data)}
+
         message = WebSocketMessage(
-            type="chat_update", job_id=job_id, data={"message": str(chat_data)}
+            type="chat_update",
+            job_id=job_id,
+            data=data,
         )
 
+        self.logger.debug(f"Sending chat update via WebSocket: {data}")
         asyncio.create_task(websocket_manager.broadcast_to_job(job_id, message))
