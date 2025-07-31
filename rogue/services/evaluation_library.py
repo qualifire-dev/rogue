@@ -138,7 +138,7 @@ class EvaluationLibrary:
     async def evaluate_agent_streaming(
         agent_config: AgentConfig,
         scenarios: Scenarios,
-        business_context: str = "The agent provides customer service.",
+        business_context: str,
     ) -> AsyncGenerator[tuple[str, Any], None]:
         """
         Evaluate an agent with streaming updates.
