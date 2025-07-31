@@ -122,7 +122,7 @@ class RogueSDK:
         request: EvaluationRequest,
         on_update: Optional[Callable[[EvaluationJob], None]] = None,
         on_chat: Optional[Callable[[dict], None]] = None,
-        timeout: float = 300.0,
+        timeout: float = 3000.0,
     ) -> EvaluationJob:
         """Run evaluation with real-time updates."""
         # Create evaluation
@@ -231,7 +231,7 @@ class RogueSDK:
             agent_config=agent_config,
             scenarios=scenario_objects,
             max_retries=3,
-            timeout_seconds=300,
+            timeout_seconds=3000,
         )
 
         response = await self.create_evaluation(request)

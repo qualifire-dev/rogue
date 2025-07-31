@@ -100,7 +100,10 @@ class RogueHttpClient:
         return await self._request("DELETE", f"/api/v1/evaluations/{job_id}")
 
     async def wait_for_evaluation(
-        self, job_id: str, poll_interval: float = 2.0, max_wait_time: float = 300.0
+        self,
+        job_id: str,
+        poll_interval: float = 1.0,
+        max_wait_time: float = 3000.0,
     ) -> EvaluationJob:
         """Wait for evaluation to complete with polling."""
         start_time = asyncio.get_event_loop().time()

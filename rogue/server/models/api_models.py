@@ -15,7 +15,7 @@ class EvaluationRequest(BaseModel):
     agent_config: AgentConfig
     scenarios: List[Scenario]
     max_retries: int = 3
-    timeout_seconds: int = 300
+    timeout_seconds: int = 3000
 
 
 class EvaluationStatus(Enum):

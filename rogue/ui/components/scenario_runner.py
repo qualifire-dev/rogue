@@ -252,7 +252,8 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
             """Worker using SDK with real-time WebSocket updates."""
             logger.info(f"🔌 SDK Worker {worker_id}: Initializing SDK connection")
             sdk_config = RogueClientConfig(
-                base_url="http://localhost:8000", timeout=300.0
+                base_url="http://localhost:8000",
+                timeout=3000.0,
             )
             sdk = RogueSDK(sdk_config)
 
@@ -388,7 +389,7 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                         request=request,
                         on_update=on_status_update,
                         on_chat=on_chat_update,
-                        timeout=300.0,
+                        timeout=3000.0,
                     )
 
                     if final_job is None:
