@@ -1,7 +1,9 @@
 import asyncio
+import os
 from asyncio import Queue
 from typing import AsyncGenerator, Any
 
+import certifi
 from a2a.types import (
     AgentCapabilities,
     AgentCard,
@@ -12,6 +14,10 @@ from google.adk.sessions import InMemorySessionService, Session
 from google.genai import types
 from httpx import AsyncClient
 from loguru import logger
+
+# Set SSL certificate environment variables globally for litellm
+os.environ["SSL_CERT_FILE"] = certifi.where()
+os.environ["REQUESTS_CA_BUNDLE"] = certifi.where()
 
 from .evaluator_agent import EvaluatorAgent
 from ..common.agent_sessions import create_session
