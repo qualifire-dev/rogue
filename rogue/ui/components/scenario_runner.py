@@ -24,24 +24,17 @@ logger.add(
 MAX_PARALLEL_RUNS = 10
 
 
-def _convert_auth_type(auth_type: AuthType) -> SDKAuthType:
-    """Convert legacy AuthType to SDK AuthType."""
-    mapping = {
-        AuthType.NO_AUTH: SDKAuthType.NO_AUTH,
-        AuthType.API_KEY: SDKAuthType.API_KEY,
-        AuthType.BEARER_TOKEN: SDKAuthType.BEARER_TOKEN,
-        AuthType.BASIC_AUTH: SDKAuthType.BASIC_AUTH,
-    }
-    return mapping.get(auth_type, SDKAuthType.NO_AUTH)
+# Conversion utilities for SDK to legacy format compatibility
 
 
-def _convert_sdk_results_to_legacy(sdk_results) -> EvaluationResults:
-    """Convert SDK results to legacy EvaluationResults format."""
+def _convert_sdk_results_to_legacy_format(sdk_results) -> EvaluationResults:
+    """Convert SDK results to legacy EvaluationResults format.
+
+    This is a temporary bridge while we migrate to unified models.
+    """
     try:
-        # SDK returns a list of EvaluationResult objects
-        # Legacy format expects EvaluationResults with a 'results' field
         if isinstance(sdk_results, list):
-            # Convert each SDK EvaluationResult to dict for legacy format
+            # Convert SDK EvaluationResult objects to dicts for legacy format
             results_dicts = []
             for result in sdk_results:
                 if hasattr(result, "model_dump"):
@@ -50,26 +43,17 @@ def _convert_sdk_results_to_legacy(sdk_results) -> EvaluationResults:
                     results_dicts.append(result)
             return EvaluationResults.model_validate({"results": results_dicts})
         elif hasattr(sdk_results, "model_dump"):
-            # Pydantic model - get the dict representation
+            # Single SDK result
             results_dict = sdk_results.model_dump()
-            if "results" in results_dict:
-                # Already in the right format
-                return EvaluationResults.model_validate(results_dict)
-            else:
-                # Single result - wrap in results array
-                return EvaluationResults.model_validate({"results": [results_dict]})
+            return EvaluationResults.model_validate({"results": [results_dict]})
         else:
-            # Raw dict or other format
+            # Already in legacy format or raw dict
             if isinstance(sdk_results, dict) and "results" in sdk_results:
                 return EvaluationResults.model_validate(sdk_results)
             else:
-                # Single result - wrap in results array
                 return EvaluationResults.model_validate({"results": [sdk_results]})
     except Exception as e:
         logger.error(f"Failed to convert SDK results to legacy format: {e}")
-        logger.error(f"SDK results type: {type(sdk_results)}")
-        logger.error(f"SDK results content: {sdk_results}")
-        # Return empty results as fallback
         return EvaluationResults()
 
 
@@ -305,7 +289,17 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                     auth_type_val = AuthType(auth_type_val)
                 elif auth_type_val is None:
                     auth_type_val = AuthType.NO_AUTH
-                sdk_auth_type = _convert_auth_type(auth_type_val)
+                # Convert legacy AuthType to SDK AuthType
+                # (temporary until models are unified)
+                auth_type_mapping = {
+                    AuthType.NO_AUTH: SDKAuthType.NO_AUTH,
+                    AuthType.API_KEY: SDKAuthType.API_KEY,
+                    AuthType.BEARER_TOKEN: SDKAuthType.BEARER_TOKEN,
+                    AuthType.BASIC_AUTH: SDKAuthType.BASIC_AUTH,
+                }
+                sdk_auth_type = auth_type_mapping.get(
+                    auth_type_val, SDKAuthType.NO_AUTH
+                )
 
                 # Convert batch scenarios to list of strings for SDK
                 scenario_strings = [
@@ -462,7 +456,10 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                                 },
                             )
                         )
-                        results = _convert_sdk_results_to_legacy(final_job.results)
+                        # Convert SDK results to legacy format
+                        results = _convert_sdk_results_to_legacy_format(
+                            final_job.results
+                        )
                         await update_queue.put((worker_id, "done", results))
                     elif final_job.status == "failed":
                         error_msg = final_job.error_message or "Unknown error"
