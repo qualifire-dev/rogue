@@ -105,6 +105,25 @@ class EvaluationResults(BaseModel):
     results: List[EvaluationResult] = []
 
 
+# Interview Types
+
+
+class InterviewMessage(BaseModel):
+    """A message in an interview conversation."""
+
+    role: str  # "user" or "assistant"
+    content: str
+
+
+class InterviewSession(BaseModel):
+    """An interview session with conversation state."""
+
+    session_id: str
+    messages: List[InterviewMessage] = []
+    is_complete: bool = False
+    message_count: int = 0
+
+
 # API Request/Response Models
 
 

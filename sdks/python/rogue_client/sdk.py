@@ -21,6 +21,8 @@ from .types import (
     Scenario,
     Scenarios,
     EvaluationResults,
+    InterviewSession,
+    InterviewMessage,
     AuthType,
     ScenarioType,
 )
@@ -272,3 +274,61 @@ class RogueSDK:
         )
 
         return response_data["summary"]
+
+    async def start_interview(
+        self,
+        model: str = "openai/gpt-4o-mini",
+        api_key: Optional[str] = None,
+    ) -> InterviewSession:
+        """Start a new interview session."""
+        response_data = await self.http_client.start_interview(
+            model=model,
+            api_key=api_key,
+        )
+
+        return InterviewSession(
+            session_id=response_data["session_id"],
+            messages=[],
+            is_complete=False,
+            message_count=0,
+        )
+
+    async def send_interview_message(
+        self, session_id: str, message: str
+    ) -> tuple[str, bool, int]:
+        """
+        Send a message in an interview session.
+
+        Returns:
+            tuple: (response, is_complete, message_count)
+        """
+        response_data = await self.http_client.send_interview_message(
+            session_id=session_id,
+            message=message,
+        )
+
+        return (
+            response_data["response"],
+            response_data["is_complete"],
+            response_data["message_count"],
+        )
+
+    async def get_interview_conversation(self, session_id: str) -> InterviewSession:
+        """Get the full conversation for an interview session."""
+        response_data = await self.http_client.get_interview_conversation(session_id)
+
+        messages = [
+            InterviewMessage(role=msg["role"], content=msg["content"])
+            for msg in response_data["messages"]
+        ]
+
+        return InterviewSession(
+            session_id=response_data["session_id"],
+            messages=messages,
+            is_complete=response_data["is_complete"],
+            message_count=response_data["message_count"],
+        )
+
+    async def end_interview(self, session_id: str) -> dict:
+        """End an interview session."""
+        return await self.http_client.end_interview(session_id)

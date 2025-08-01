@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from .api.evaluation import router as evaluation_router
 from .api.health import router as health_router
 from .api.llm import router as llm_router
+from .api.interview import router as interview_router
 from .websocket.manager import websocket_router
 from ..common.logging import get_logger
 
@@ -43,6 +44,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router, prefix="/api/v1")
     app.include_router(evaluation_router, prefix="/api/v1")
     app.include_router(llm_router)
+    app.include_router(interview_router)
     app.include_router(websocket_router)
 
     return app
