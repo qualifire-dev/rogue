@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 from ..models.api_models import EvaluationJob, EvaluationStatus
 from ..websocket.manager import websocket_manager
-from ...services.evaluation_library import EvaluationLibrary
+from ..core.evaluation_orchestrator import EvaluationOrchestrator
 from ...models.scenario import Scenarios
 from ...common.logging import get_logger, set_job_context
 
@@ -115,8 +115,33 @@ class EvaluationService:
                 )
             )
 
-            # Create progress callback for real-time updates
-            def progress_callback(update_type: str, data: Any):
+            # Create evaluation orchestrator (server-native)
+            agent_config = job.request.agent_config
+            orchestrator = EvaluationOrchestrator(
+                evaluated_agent_url=str(agent_config.evaluated_agent_url),
+                evaluated_agent_auth_type=agent_config.evaluated_agent_auth_type,
+                evaluated_agent_auth_credentials=(
+                    agent_config.evaluated_agent_credentials
+                ),
+                judge_llm=agent_config.judge_llm_model,
+                judge_llm_api_key=agent_config.judge_llm_api_key,
+                scenarios=scenarios,
+                business_context="The agent provides customer service.",
+                deep_test_mode=agent_config.deep_test_mode,
+            )
+
+            self.logger.info(
+                "Starting server-native evaluation orchestrator",
+                extra={
+                    "agent_url": str(job.request.agent_config.evaluated_agent_url),
+                    "judge_llm": job.request.agent_config.judge_llm_model,
+                    "scenario_count": len(scenarios.scenarios),
+                },
+            )
+
+            # Process evaluation updates in real-time
+            final_results = None
+            async for update_type, data in orchestrator.run_evaluation():
                 self.logger.debug(
                     "Evaluation progress update",
                     extra={
@@ -137,38 +162,27 @@ class EvaluationService:
                     # Real-time chat updates via WebSocket
                     self.logger.info(f"Received chat update for job {job_id}: {data}")
                     self._notify_chat_update(job_id, data)
+                elif update_type == "results":
+                    # Store final results
+                    final_results = data
 
-            # Use the library interface directly
-            self.logger.info(
-                "Calling evaluation library",
-                extra={
-                    "business_context": "The agent provides customer service.",
-                    "agent_url": str(job.request.agent_config.evaluated_agent_url),
-                    "judge_llm": job.request.agent_config.judge_llm_model,
-                    "scenario_count": len(scenarios.scenarios),
-                },
-            )
-
-            evaluation_results = await EvaluationLibrary.evaluate_agent(
-                agent_config=job.request.agent_config,
-                scenarios=scenarios,
-                # TODO: FIX THIS!@!!!!!!
-                business_context="",
-                progress_callback=progress_callback,
-            )
-
-            self.logger.info("Evaluation library returned results")
+            self.logger.info("Server-native evaluation completed")
 
             # Update job with results
-            job.results = evaluation_results.results
-            job.status = EvaluationStatus.COMPLETED
-            job.progress = 1.0
+            if final_results and final_results.results:
+                job.results = final_results.results
+                job.status = EvaluationStatus.COMPLETED
+                job.progress = 1.0
+            else:
+                # No results - mark as failed
+                job.status = EvaluationStatus.FAILED
+                job.error_message = "Evaluation completed but no results were generated"
 
             self.logger.info(
                 "Evaluation job completed successfully",
                 extra={
-                    "job_status": "completed",
-                    "results_count": len(evaluation_results.results),
+                    "job_status": job.status.value,
+                    "results_count": len(job.results) if job.results else 0,
                     "duration_seconds": (
                         (datetime.now(timezone.utc) - job.started_at).total_seconds()
                         if job.started_at
