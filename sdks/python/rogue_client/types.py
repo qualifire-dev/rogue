@@ -93,6 +93,18 @@ class EvaluationResult(BaseModel):
     passed: bool
 
 
+class Scenarios(BaseModel):
+    """Collection of evaluation scenarios."""
+
+    scenarios: List[Scenario] = []
+
+
+class EvaluationResults(BaseModel):
+    """Collection of evaluation results."""
+
+    results: List[EvaluationResult] = []
+
+
 # API Request/Response Models
 
 

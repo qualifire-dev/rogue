@@ -1,11 +1,12 @@
+import asyncio
 import gradio as gr
 
 from ...common.workdir_utils import dump_scenarios, dump_business_context
 from ...services.llm_service import LLMService
+from sdks.python.rogue_client import RogueSDK, RogueClientConfig
 
 
 def create_scenario_generator_screen(shared_state: gr.State, tabs_component: gr.Tabs):
-    llm_service = LLMService()
 
     with gr.Column():
         gr.Markdown("## Scenario Generation")
@@ -33,12 +34,34 @@ def create_scenario_generator_screen(shared_state: gr.State, tabs_component: gr.
         service_llm = config.get("service_llm")
         api_key = config.get("judge_llm_api_key")
 
+        async def generate_scenarios_async():
+            # Try SDK first (server-based)
+            try:
+                sdk_config = RogueClientConfig(
+                    base_url="http://localhost:8000",
+                    timeout=600.0,
+                )
+                sdk = RogueSDK(sdk_config)
+
+                scenarios = await sdk.generate_scenarios(
+                    business_context=current_context,
+                    model=service_llm,
+                    api_key=api_key,
+                )
+
+                await sdk.close()
+                return scenarios
+            except Exception:
+                # Fallback to legacy LLMService
+                llm_service = LLMService()
+                return llm_service.generate_scenarios(
+                    service_llm,
+                    current_context,
+                    llm_provider_api_key=api_key,
+                )
+
         try:
-            scenarios = llm_service.generate_scenarios(
-                service_llm,
-                current_context,
-                llm_provider_api_key=api_key,
-            )
+            scenarios = asyncio.run(generate_scenarios_async())
             dump_scenarios(state, scenarios)
             state["scenarios"] = scenarios
 

@@ -642,11 +642,31 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
         # )
         # final_output_path.write_text(all_results.model_dump_json(indent=2))
 
-        summary = LLMService().generate_summary_from_results(
-            model=config.get("service_llm"),
-            results=all_results,
-            llm_provider_api_key=config.get("judge_llm_api_key"),
-        )
+        # Generate summary using SDK (server-based)
+        try:
+            sdk_config = RogueClientConfig(
+                base_url="http://localhost:8000",
+                timeout=600.0,
+            )
+            sdk = RogueSDK(sdk_config)
+
+            summary = await sdk.generate_summary(
+                results=all_results,
+                model=config.get("service_llm"),
+                api_key=config.get("judge_llm_api_key"),
+            )
+
+            await sdk.close()
+        except Exception as e:
+            logger.warning(
+                f"SDK summary generation failed, falling back to legacy: {e}"
+            )
+            # Fallback to legacy LLMService
+            summary = LLMService().generate_summary_from_results(
+                model=config.get("service_llm"),
+                results=all_results,
+                llm_provider_api_key=config.get("judge_llm_api_key"),
+            )
 
         state["results"] = all_results
         state["summary"] = summary

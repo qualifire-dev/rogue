@@ -99,6 +99,37 @@ class RogueHttpClient:
         """Cancel evaluation job."""
         return await self._request("DELETE", f"/api/v1/evaluations/{job_id}")
 
+    async def generate_scenarios(
+        self,
+        business_context: str,
+        model: str,
+        api_key: Optional[str] = None,
+        count: int = 10,
+    ) -> dict:
+        """Generate scenarios via API."""
+        data = {
+            "business_context": business_context,
+            "model": model,
+            "count": count,
+        }
+        if api_key:
+            data["api_key"] = api_key
+
+        return await self._request("POST", "/llm/scenarios", json=data)
+
+    async def generate_summary(
+        self, results: dict, model: str, api_key: Optional[str] = None
+    ) -> dict:
+        """Generate summary via API."""
+        data = {
+            "results": results,
+            "model": model,
+        }
+        if api_key:
+            data["api_key"] = api_key
+
+        return await self._request("POST", "/llm/summary", json=data)
+
     async def wait_for_evaluation(
         self,
         job_id: str,

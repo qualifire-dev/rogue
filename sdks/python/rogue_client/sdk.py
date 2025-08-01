@@ -19,6 +19,8 @@ from .types import (
     WebSocketEventType,
     AgentConfig,
     Scenario,
+    Scenarios,
+    EvaluationResults,
     AuthType,
     ScenarioType,
 )
@@ -236,3 +238,37 @@ class RogueSDK:
 
         response = await self.create_evaluation(request)
         return await self.wait_for_evaluation(response.job_id)
+
+    async def generate_scenarios(
+        self,
+        business_context: str,
+        model: str = "openai/gpt-4o-mini",
+        api_key: Optional[str] = None,
+        count: int = 10,
+    ) -> "Scenarios":
+        """Generate test scenarios based on business context."""
+        from .types import Scenarios
+
+        response_data = await self.http_client.generate_scenarios(
+            business_context=business_context,
+            model=model,
+            api_key=api_key,
+            count=count,
+        )
+
+        return Scenarios.model_validate(response_data["scenarios"])
+
+    async def generate_summary(
+        self,
+        results: "EvaluationResults",
+        model: str = "openai/gpt-4o-mini",
+        api_key: Optional[str] = None,
+    ) -> str:
+        """Generate evaluation summary from results."""
+        response_data = await self.http_client.generate_summary(
+            results=results.model_dump(),
+            model=model,
+            api_key=api_key,
+        )
+
+        return response_data["summary"]

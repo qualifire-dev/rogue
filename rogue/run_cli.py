@@ -285,7 +285,7 @@ async def _run_scenarios_legacy(
     return None
 
 
-def create_report(
+async def create_report(
     judge_llm: str,
     results: EvaluationResults,
     output_report_file: Path,
@@ -296,11 +296,30 @@ def create_report(
         if judge_llm_api_key_secret
         else None
     )
-    summary = LLMService().generate_summary_from_results(
-        model=judge_llm,
-        results=results,
-        llm_provider_api_key=judge_llm_api_key,
+
+    # Use SDK for summary generation (server-based)
+    sdk_config = RogueClientConfig(
+        base_url="http://localhost:8000",
+        timeout=600.0,
     )
+    sdk = RogueSDK(sdk_config)
+
+    try:
+        summary = await sdk.generate_summary(
+            results=results,
+            model=judge_llm,
+            api_key=judge_llm_api_key,
+        )
+    except Exception as e:
+        logger.warning(f"SDK summary generation failed, falling back to legacy: {e}")
+        # Fallback to legacy LLMService
+        summary = LLMService().generate_summary_from_results(
+            model=judge_llm,
+            results=results,
+            llm_provider_api_key=judge_llm_api_key,
+        )
+    finally:
+        await sdk.close()
 
     output_report_file.parent.mkdir(parents=True, exist_ok=True)
     output_report_file.write_text(summary)
@@ -433,7 +452,7 @@ async def run_cli(args: Namespace) -> int:
         )
 
     logger.info("Creating report")
-    report_summary = create_report(
+    report_summary = await create_report(
         judge_llm=cli_input.judge_llm_model,
         results=results,
         output_report_file=cli_input.output_report_file,
