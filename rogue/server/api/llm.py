@@ -22,7 +22,7 @@ class ScenarioGenerationRequest(BaseModel):
     """Request to generate test scenarios."""
 
     business_context: str
-    model: str = "openai/gpt-4o-mini"
+    model: str = "openai/gpt-4.1"
     api_key: Optional[str] = None
     count: int = 10
 
@@ -38,7 +38,7 @@ class SummaryGenerationRequest(BaseModel):
     """Request to generate evaluation summary."""
 
     results: EvaluationResults
-    model: str = "openai/gpt-4o-mini"
+    model: str = "openai/gpt-4.1"
     api_key: Optional[str] = None
 
 
