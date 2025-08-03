@@ -21,6 +21,4 @@ async def health_check():
         status="healthy",
         timestamp=datetime.now(timezone.utc),
         version="1.0.0",
-        python_version=sys.version,
-        platform=platform.platform(),
     )
