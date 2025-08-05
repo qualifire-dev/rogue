@@ -5,6 +5,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"
+	"github.com/rogue/tui/internal/components"
+	"github.com/rogue/tui/internal/theme"
 )
 
 // Screen represents different screens in the TUI
@@ -37,6 +39,7 @@ type Model struct {
 	scenarios     []Scenario
 	config        Config
 	version       string
+	commandInput  components.CommandInput
 }
 
 // Evaluation represents an evaluation
@@ -62,6 +65,13 @@ type Config struct {
 
 // NewApp creates a new TUI application
 func NewApp() *App {
+	// Load themes before starting the app
+	if err := theme.LoadThemesFromJSON(); err != nil {
+		fmt.Printf("Warning: Failed to load themes: %v\n", err)
+		// Create a fallback theme if loading fails
+		theme.RegisterTheme("default", theme.NewSystemTheme(nil, true))
+	}
+
 	return &App{}
 }
 
@@ -76,7 +86,8 @@ func (a *App) Run() error {
 			Theme:     "dark",
 			APIKeys:   make(map[string]string),
 		},
-		version: "v0.1.0",
+		version:      "v0.1.0",
+		commandInput: components.NewCommandInput(),
 	}
 
 	p := tea.NewProgram(model, tea.WithAltScreen(), tea.WithMouseCellMotion())
@@ -93,44 +104,84 @@ func (m Model) Init() tea.Cmd {
 
 // Update handles messages and updates the model
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	var cmds []tea.Cmd
+
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		// Update command input width
+		m.commandInput.SetWidth(msg.Width - 8) // Leave some margin
+		return m, nil
+
+	case components.CommandSelectedMsg:
+		// Handle command selection
+		switch msg.Command.Action {
+		case "new_evaluation":
+			m.currentScreen = NewEvaluationScreen
+		case "list_models":
+			m.currentScreen = EvaluationsScreen
+		case "configuration":
+			m.currentScreen = ConfigurationScreen
+		case "help":
+			m.currentScreen = HelpScreen
+		case "quit":
+			return m, tea.Quit
+			// Add more cases as needed
+		}
 		return m, nil
 
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+c", "q":
-			return m, tea.Quit
+		// Let the command input handle its own key events first
+		if m.commandInput.IsFocused() {
+			m.commandInput, cmd = m.commandInput.Update(msg)
+			if cmd != nil {
+				cmds = append(cmds, cmd)
+			}
+			return m, tea.Batch(cmds...)
+		} else {
+			// Handle other key events when command input is not focused
+			switch msg.String() {
+			case "ctrl+c", "q":
+				return m, tea.Quit
 
-		case "ctrl+h", "?":
-			m.currentScreen = HelpScreen
-			return m, nil
+			case "/":
+				// Focus the command input and start with "/"
+				m.commandInput.SetFocus(true)
+				m.commandInput.SetValue("/")
+				return m, nil
 
-		case "ctrl+n":
-			m.currentScreen = NewEvaluationScreen
-			return m, nil
+			case "ctrl+h", "?":
+				m.currentScreen = HelpScreen
+				return m, nil
 
-		case "ctrl+i":
-			m.currentScreen = InterviewScreen
-			return m, nil
+			case "ctrl+n":
+				m.currentScreen = NewEvaluationScreen
+				return m, nil
 
-		case "ctrl+s":
-			m.currentScreen = ConfigurationScreen
-			return m, nil
+			case "ctrl+i":
+				m.currentScreen = InterviewScreen
+				return m, nil
 
-		case "esc":
-			m.currentScreen = DashboardScreen
-			return m, nil
+			case "ctrl+s":
+				m.currentScreen = ConfigurationScreen
+				return m, nil
 
-		case "/":
-			// Handle slash commands
-			return m, nil
+			case "esc":
+				m.currentScreen = DashboardScreen
+				m.commandInput.SetFocus(false)
+				m.commandInput.SetValue("")
+				return m, nil
 
-		case "enter":
-			// Handle enter key based on current screen
-			return m, nil
+			case "enter":
+				// Handle enter key based on current screen
+				if m.currentScreen == DashboardScreen {
+					// Focus the command input on enter
+					m.commandInput.SetFocus(true)
+				}
+				return m, nil
+			}
 		}
 	}
 
@@ -139,24 +190,29 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View renders the current screen
 func (m Model) View() string {
+	t := theme.CurrentTheme()
+	var screen string
 	switch m.currentScreen {
 	case DashboardScreen:
-		return m.RenderMainScreen()
+		screen = m.RenderMainScreen(t)
 	case NewEvaluationScreen:
-		return m.renderEvaluations()
+		screen = m.renderEvaluations()
 	case EvaluationDetailScreen:
-		return m.RenderChat()
+		screen = m.RenderChat()
 	case InterviewScreen:
-		return m.RenderInterview()
+		screen = m.RenderInterview()
 	case ConfigurationScreen:
-		return m.RenderConfiguration()
+		screen = m.RenderConfiguration()
 	case ScenariosScreen:
-		return m.renderScenarios()
+		screen = m.renderScenarios()
 	case HelpScreen:
-		return m.RenderHelp()
+		screen = m.RenderHelp()
 	default:
-		return m.RenderMainScreen()
+		screen = m.RenderMainScreen(t)
 	}
+
+	mainLayout := m.RenderLayout(t, screen)
+	return mainLayout
 }
 
 // renderEvaluations renders the evaluations list
