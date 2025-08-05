@@ -39,10 +39,7 @@ func NewCommandInput() CommandInput {
 	commands := []Command{
 		{Name: "/new", Description: "New evaluation", KeyBinding: "Ctrl+N", Action: "new_evaluation"},
 		{Name: "/models", Description: "List models", KeyBinding: "Ctrl+M", Action: "list_models"},
-		{Name: "/share", Description: "Share session", KeyBinding: "", Action: "share_session"},
-		{Name: "/editor", Description: "Open editor", KeyBinding: "", Action: "open_editor"},
-		{Name: "/redo", Description: "Redo message", KeyBinding: "", Action: "redo_message"},
-		{Name: "/undo", Description: "Undo last message", KeyBinding: "", Action: "undo_message"},
+		{Name: "/editor", Description: "Open scenario editor", KeyBinding: "", Action: "open_editor"},
 		{Name: "/config", Description: "Configuration", KeyBinding: "Ctrl+S", Action: "configuration"},
 		{Name: "/help", Description: "Show help", KeyBinding: "Ctrl+H", Action: "help"},
 		{Name: "/quit", Description: "Quit application", KeyBinding: "Q", Action: "quit"},
@@ -314,7 +311,6 @@ func (c CommandInput) View() string {
 	t := theme.CurrentTheme()
 	suggestions := c.ViewSuggestions()
 	input := c.ViewInput()
-
 	content := lipgloss.JoinVertical(lipgloss.Left, suggestions, input)
 
 	if suggestions != "" {
