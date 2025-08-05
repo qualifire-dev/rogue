@@ -35,6 +35,15 @@ jobs:
           wait-on: http-get://localhost:10001/.well-known/agent.json
           tail: true
 
+      - name: Start Rogue server in background
+        uses: JarvusInnovations/background-action@v1
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        with:
+          run: uv run -m rogue server --host 0.0.0.0 --port 8000 &
+          wait-on: http-get://localhost:8000/api/v1/health
+          tail: true
+
       - name: Run rogue
         uses: ./.github/actions/rogue
         env:
