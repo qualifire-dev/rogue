@@ -9,48 +9,16 @@ from rich.console import Console
 from rich.markdown import Markdown
 
 from .models.cli_input import CLIInput, PartialCLIInput
-from .models.config import AuthType, AgentConfig
-from .models.evaluation_result import EvaluationResults
-from .models.scenario import Scenarios
-from .services.llm_service import LLMService
 
 # Import the Python SDK
 
 from sdks.python.rogue_client import RogueSDK, RogueClientConfig
-from sdks.python.rogue_client.types import AuthType as SDKAuthType
-
-
-# Conversion utilities for SDK to legacy format compatibility
-
-
-def _convert_sdk_results_to_legacy_format(sdk_results) -> EvaluationResults:
-    """Convert SDK results to legacy EvaluationResults format.
-
-    This is a temporary bridge while we migrate to unified models.
-    """
-    try:
-        if isinstance(sdk_results, list):
-            # Convert SDK EvaluationResult objects to dicts for legacy format
-            results_dicts = []
-            for result in sdk_results:
-                if hasattr(result, "model_dump"):
-                    results_dicts.append(result.model_dump())
-                else:
-                    results_dicts.append(result)
-            return EvaluationResults.model_validate({"results": results_dicts})
-        elif hasattr(sdk_results, "model_dump"):
-            # Single SDK result
-            results_dict = sdk_results.model_dump()
-            return EvaluationResults.model_validate({"results": [results_dict]})
-        else:
-            # Already in legacy format or raw dict
-            if isinstance(sdk_results, dict) and "results" in sdk_results:
-                return EvaluationResults.model_validate(sdk_results)
-            else:
-                return EvaluationResults.model_validate({"results": [sdk_results]})
-    except Exception as e:
-        logger.error(f"Failed to convert SDK results to legacy format: {e}")
-        return EvaluationResults()
+from sdks.python.rogue_client.types import (
+    AuthType,
+    AgentConfig,
+    EvaluationResults,
+    Scenarios,
+)
 
 
 def set_cli_args(parser: ArgumentParser) -> None:
@@ -142,32 +110,18 @@ async def run_scenarios(
         else None
     )
 
-    # Try SDK first, fallback to legacy service if server not available
-    try:
-        return await _run_scenarios_with_sdk(
-            evaluated_agent_url=evaluated_agent_url,
-            evaluated_agent_auth_type=evaluated_agent_auth_type,
-            evaluated_agent_auth_credentials=evaluated_agent_auth_credentials,
-            judge_llm=judge_llm,
-            judge_llm_api_key=judge_llm_api_key,
-            scenarios=scenarios,
-            evaluation_results_output_path=evaluation_results_output_path,
-            business_context=business_context,
-            deep_test_mode=deep_test_mode,
-        )
-    except Exception as e:
-        logger.warning(f"SDK evaluation failed, falling back to legacy service: {e}")
-        return await _run_scenarios_legacy(
-            evaluated_agent_url=evaluated_agent_url,
-            evaluated_agent_auth_type=evaluated_agent_auth_type,
-            evaluated_agent_auth_credentials=evaluated_agent_auth_credentials,
-            judge_llm=judge_llm,
-            judge_llm_api_key=judge_llm_api_key,
-            scenarios=scenarios,
-            evaluation_results_output_path=evaluation_results_output_path,
-            business_context=business_context,
-            deep_test_mode=deep_test_mode,
-        )
+    # Use SDK for evaluation
+    return await _run_scenarios_with_sdk(
+        evaluated_agent_url=evaluated_agent_url,
+        evaluated_agent_auth_type=evaluated_agent_auth_type,
+        evaluated_agent_auth_credentials=evaluated_agent_auth_credentials,
+        judge_llm=judge_llm,
+        judge_llm_api_key=judge_llm_api_key,
+        scenarios=scenarios,
+        evaluation_results_output_path=evaluation_results_output_path,
+        business_context=business_context,
+        deep_test_mode=deep_test_mode,
+    )
 
 
 async def _run_scenarios_with_sdk(
@@ -182,16 +136,6 @@ async def _run_scenarios_with_sdk(
     deep_test_mode: bool,
 ) -> EvaluationResults | None:
     """Run scenarios using the new SDK."""
-    # Convert legacy AuthType to SDK AuthType (temporary until models are unified)
-    auth_type_mapping = {
-        AuthType.NO_AUTH: SDKAuthType.NO_AUTH,
-        AuthType.API_KEY: SDKAuthType.API_KEY,
-        AuthType.BEARER_TOKEN: SDKAuthType.BEARER_TOKEN,
-        AuthType.BASIC_AUTH: SDKAuthType.BASIC_AUTH,
-    }
-    sdk_auth_type = auth_type_mapping.get(
-        evaluated_agent_auth_type, SDKAuthType.NO_AUTH
-    )
 
     # Initialize SDK
     sdk_config = RogueClientConfig(
@@ -213,7 +157,7 @@ async def _run_scenarios_with_sdk(
         job = await sdk.quick_evaluate(
             agent_url=evaluated_agent_url,
             scenarios=scenario_strings,
-            auth_type=sdk_auth_type,
+            auth_type=evaluated_agent_auth_type,
             auth_credentials=evaluated_agent_auth_credentials,
             judge_model=judge_llm,
             deep_test=deep_test_mode,
@@ -225,8 +169,8 @@ async def _run_scenarios_with_sdk(
         final_job = await sdk.wait_for_evaluation(job.job_id)
 
         if final_job.results:
-            # Convert SDK results to legacy format
-            results = _convert_sdk_results_to_legacy_format(final_job.results)
+            # Wrap the list of results in EvaluationResults
+            results = EvaluationResults(results=final_job.results)
 
             # Write results to file for CLI compatibility
             evaluation_results_output_path.write_text(
@@ -240,49 +184,6 @@ async def _run_scenarios_with_sdk(
 
     finally:
         await sdk.close()
-
-
-async def _run_scenarios_legacy(
-    evaluated_agent_url: str,
-    evaluated_agent_auth_type: AuthType,
-    evaluated_agent_auth_credentials: str | None,
-    judge_llm: str,
-    judge_llm_api_key: str | None,
-    scenarios: Scenarios,
-    evaluation_results_output_path: Path,
-    business_context: str,
-    deep_test_mode: bool,
-) -> EvaluationResults | None:
-    """Run scenarios using the legacy service (fallback)."""
-    from .services.scenario_evaluation_service import ScenarioEvaluationService
-
-    scenario_evaluation_service = ScenarioEvaluationService(
-        evaluated_agent_url=evaluated_agent_url,
-        evaluated_agent_auth_type=evaluated_agent_auth_type,
-        evaluated_agent_auth_credentials=evaluated_agent_auth_credentials,
-        judge_llm=judge_llm,
-        judge_llm_api_key=judge_llm_api_key,
-        scenarios=scenarios,
-        business_context=business_context,
-        deep_test_mode=deep_test_mode,
-    )
-
-    results = None
-    async for status, data in scenario_evaluation_service.evaluate_scenarios():
-        if status == "done":
-            results = data
-            break
-
-    if results:
-        # Write results to file for CLI compatibility
-        evaluation_results_output_path.write_text(
-            results.model_dump_json(indent=2, exclude_none=True),
-            encoding="utf-8",
-        )
-        return results
-
-    logger.error("Scenario evaluation failed. Results not found.")
-    return None
 
 
 async def create_report(
@@ -309,14 +210,6 @@ async def create_report(
             results=results,
             model=judge_llm,
             api_key=judge_llm_api_key,
-        )
-    except Exception as e:
-        logger.warning(f"SDK summary generation failed, falling back to legacy: {e}")
-        # Fallback to legacy LLMService
-        summary = LLMService().generate_summary_from_results(
-            model=judge_llm,
-            results=results,
-            llm_provider_api_key=judge_llm_api_key,
         )
     finally:
         await sdk.close()

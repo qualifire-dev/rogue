@@ -2,8 +2,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, model_validator, SecretStr, HttpUrl
 
-from .config import AuthType
-from .scenario import Scenarios
+from sdks.python.rogue_client.types import AuthType, Scenarios
 
 
 class CLIInput(BaseModel):

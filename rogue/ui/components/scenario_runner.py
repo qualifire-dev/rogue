@@ -1,10 +1,11 @@
 from ...common.workdir_utils import dump_scenarios
-from ...models.config import AuthType
-from ...models.evaluation_result import EvaluationResults
-from ...models.scenario import Scenarios
 from ...services.llm_service import LLMService
 from sdks.python.rogue_client import RogueSDK, RogueClientConfig
-from sdks.python.rogue_client.types import AuthType as SDKAuthType
+from sdks.python.rogue_client.types import (
+    AuthType,
+    EvaluationResults,
+    Scenarios,
+)
 import asyncio
 import json
 
@@ -22,39 +23,6 @@ logger.add(
 )
 
 MAX_PARALLEL_RUNS = 10
-
-
-# Conversion utilities for SDK to legacy format compatibility
-
-
-def _convert_sdk_results_to_legacy_format(sdk_results) -> EvaluationResults:
-    """Convert SDK results to legacy EvaluationResults format.
-
-    This is a temporary bridge while we migrate to unified models.
-    """
-    try:
-        if isinstance(sdk_results, list):
-            # Convert SDK EvaluationResult objects to dicts for legacy format
-            results_dicts = []
-            for result in sdk_results:
-                if hasattr(result, "model_dump"):
-                    results_dicts.append(result.model_dump())
-                else:
-                    results_dicts.append(result)
-            return EvaluationResults.model_validate({"results": results_dicts})
-        elif hasattr(sdk_results, "model_dump"):
-            # Single SDK result
-            results_dict = sdk_results.model_dump()
-            return EvaluationResults.model_validate({"results": [results_dict]})
-        else:
-            # Already in legacy format or raw dict
-            if isinstance(sdk_results, dict) and "results" in sdk_results:
-                return EvaluationResults.model_validate(sdk_results)
-            else:
-                return EvaluationResults.model_validate({"results": [sdk_results]})
-    except Exception as e:
-        logger.error(f"Failed to convert SDK results to legacy format: {e}")
-        return EvaluationResults()
 
 
 def split_into_batches(scenarios: list, n: int) -> list[list]:
@@ -218,32 +186,14 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                 auth_type_val = AuthType(auth_type_val)
 
             try:
-                # Try SDK first, fallback to legacy service
-                try:
-                    logger.info(f"Worker {worker_id}: Attempting SDK approach")
-                    await _worker_with_sdk(
-                        batch, worker_id, worker_config, worker_state, update_queue
-                    )
-                    logger.info(
-                        f"Worker {worker_id}: SDK approach completed successfully"
-                    )
-                except Exception as sdk_error:
-                    logger.warning(
-                        (
-                            f"SDK worker {worker_id} failed, falling back to legacy: "
-                            f"{sdk_error}"
-                        )
-                    )
-                    logger.info(f"Worker {worker_id}: Attempting legacy approach")
-                    await _worker_legacy(
-                        batch,
-                        worker_id,
-                        worker_config,
-                        worker_state,
-                        update_queue,
-                        auth_type_val,
-                    )
-                    logger.info(f"Worker {worker_id}: Legacy approach completed")
+                # Use SDK for evaluation
+                logger.info(f"Worker {worker_id}: Starting SDK evaluation")
+                await _worker_with_sdk(
+                    batch, worker_id, worker_config, worker_state, update_queue
+                )
+                logger.info(
+                    f"Worker {worker_id}: SDK evaluation completed successfully"
+                )
 
             except Exception as e:
                 logger.error(f"Error in worker {worker_id}: {e}")
@@ -289,17 +239,6 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                     auth_type_val = AuthType(auth_type_val)
                 elif auth_type_val is None:
                     auth_type_val = AuthType.NO_AUTH
-                # Convert legacy AuthType to SDK AuthType
-                # (temporary until models are unified)
-                auth_type_mapping = {
-                    AuthType.NO_AUTH: SDKAuthType.NO_AUTH,
-                    AuthType.API_KEY: SDKAuthType.API_KEY,
-                    AuthType.BEARER_TOKEN: SDKAuthType.BEARER_TOKEN,
-                    AuthType.BASIC_AUTH: SDKAuthType.BASIC_AUTH,
-                }
-                sdk_auth_type = auth_type_mapping.get(
-                    auth_type_val, SDKAuthType.NO_AUTH
-                )
 
                 # Convert batch scenarios to list of strings for SDK
                 scenario_strings = [
@@ -322,18 +261,22 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                     EvaluationRequest,
                     AgentConfig,
                     Scenario as SDKScenario,
+                    ScenarioType,
                 )
+                from pydantic import HttpUrl
 
                 # Convert scenarios to SDK format
                 sdk_scenarios = [
-                    SDKScenario(scenario=scenario_str, scenario_type="policy")
+                    SDKScenario(
+                        scenario=scenario_str, scenario_type=ScenarioType.POLICY
+                    )
                     for scenario_str in scenario_strings
                 ]
 
                 # Create agent config
                 agent_config = AgentConfig(
-                    evaluated_agent_url=agent_url,
-                    evaluated_agent_auth_type=sdk_auth_type,
+                    evaluated_agent_url=HttpUrl(agent_url),
+                    evaluated_agent_auth_type=auth_type_val,
                     evaluated_agent_credentials=auth_credentials,
                     judge_llm_model=judge_model,
                     deep_test_mode=deep_test,
@@ -456,10 +399,8 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                                 },
                             )
                         )
-                        # Convert SDK results to legacy format
-                        results = _convert_sdk_results_to_legacy_format(
-                            final_job.results
-                        )
+                        # Wrap the list of results in EvaluationResults
+                        results = EvaluationResults(results=final_job.results or [])
                         await update_queue.put((worker_id, "done", results))
                     elif final_job.status == "failed":
                         error_msg = final_job.error_message or "Unknown error"
@@ -526,38 +467,6 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
 
             finally:
                 await sdk.close()
-
-        async def _worker_legacy(
-            batch: list,
-            worker_id: int,
-            worker_config: dict,
-            worker_state: dict,
-            update_queue: asyncio.Queue,
-            auth_type_val: AuthType,
-        ):
-            """Worker using legacy service."""
-            from ...services.scenario_evaluation_service import (
-                ScenarioEvaluationService,
-            )
-
-            # Get required config values with defaults
-            agent_url = str(worker_config.get("agent_url", ""))
-            judge_llm = str(worker_config.get("judge_llm", "openai/gpt-4o-mini"))
-            business_context = str(worker_state.get("business_context", ""))
-
-            service = ScenarioEvaluationService(
-                evaluated_agent_url=agent_url,
-                evaluated_agent_auth_type=auth_type_val,
-                evaluated_agent_auth_credentials=worker_config.get("auth_credentials"),
-                judge_llm=judge_llm,
-                judge_llm_api_key=worker_config.get("judge_llm_api_key"),
-                scenarios=Scenarios(scenarios=batch),
-                business_context=business_context,
-                deep_test_mode=worker_config.get("deep_test_mode", False),
-            )
-
-            async for update_type, data in service.evaluate_scenarios():
-                await update_queue.put((worker_id, update_type, data))
 
         # Create and start worker tasks
         logger.info(f"🚀 Creating {len(scenario_batches)} worker tasks")
