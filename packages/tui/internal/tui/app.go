@@ -173,7 +173,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			case "esc":
 				m.currentScreen = DashboardScreen
-				m.commandInput.SetFocus(true)  // Keep focused when returning to dashboard
+				m.commandInput.SetFocus(true) // Keep focused when returning to dashboard
 				m.commandInput.SetValue("")
 				return m, nil
 
