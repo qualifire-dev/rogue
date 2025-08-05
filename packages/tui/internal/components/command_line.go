@@ -312,7 +312,7 @@ func (c CommandInput) HasSuggestions() bool {
 func (c CommandInput) View() string {
 	suggestions := c.ViewSuggestions()
 	input := c.ViewInput()
-	
+
 	if suggestions != "" {
 		return lipgloss.JoinVertical(lipgloss.Left, suggestions, input)
 	}

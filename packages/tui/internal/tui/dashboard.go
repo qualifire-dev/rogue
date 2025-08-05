@@ -54,100 +54,48 @@ func (m Model) RenderMainScreen(t theme.Theme) string {
 		instructions,
 	)
 
-	// Center the main content
-	centeredMainContent := lipgloss.Place(
+	// Get just the input field (no suggestions)
+	inputField := m.commandInput.ViewInput()
+	inputFieldCentered := lipgloss.NewStyle().
+		Width(contentWidth).
+		Align(lipgloss.Center).
+		Render(inputField)
+
+	// Build the base layout with main content and input
+	fullContent := lipgloss.JoinVertical(
+		lipgloss.Center,
+		mainContent,
+		"",
+		inputFieldCentered,
+	)
+
+	// Create the base screen
+	baseScreen := lipgloss.Place(
 		effectiveWidth,
 		m.height-1,
 		lipgloss.Center,
 		lipgloss.Center,
-		baseStyle.Render(mainContent),
+		baseStyle.Render(fullContent),
 		styles.WhitespaceStyle(t.Background()),
 	)
 
-	// Get the command input view
-	commandInputView := m.commandInput.View()
-	commandInputCentered := lipgloss.NewStyle().
-		Width(contentWidth).
-		Align(lipgloss.Center).
-		Render(commandInputView)
-
-	// Check if we should show suggestions overlay
-	if m.commandInput.IsFocused() && len(m.commandInput.Value()) > 0 && m.commandInput.Value()[0] == '/' {
-		// Create base layout with just input at bottom (no suggestions in normal flow)
-		inputOnlyView := ""
-		lines := []rune(commandInputView)
-		for i, r := range lines {
-			if r == '\n' {
-				// Only include the input line (after first newline)
-				inputOnlyView = string(lines[i+1:])
-				break
-			}
-		}
-		if inputOnlyView == "" {
-			inputOnlyView = commandInputView // fallback if no newline found
-		}
-
-		inputOnlyCentered := lipgloss.NewStyle().
+	// If suggestions are showing, create overlay-style layout
+	if m.commandInput.HasSuggestions() {
+		suggestions := m.commandInput.ViewSuggestions()
+		suggestionsCentered := lipgloss.NewStyle().
 			Width(contentWidth).
 			Align(lipgloss.Center).
-			Render(inputOnlyView)
+			Render(suggestions)
 
-		baseLayout := lipgloss.JoinVertical(
+		// Create a layout that visually simulates overlay:
+		// Suggestions at top, minimal gap, input at bottom
+		overlayLayout := lipgloss.JoinVertical(
 			lipgloss.Center,
-			mainContent,
 			"",
-			inputOnlyCentered,
-		)
-
-		// Position base layout
-		baseScreen := lipgloss.Place(
-			effectiveWidth,
-			m.height-1,
-			lipgloss.Center,
-			lipgloss.Center,
-			baseStyle.Render(baseLayout),
-			styles.WhitespaceStyle(t.Background()),
-		)
-
-		// Extract just the suggestions part and overlay it
-		suggestionsOnly := ""
-		lines = []rune(commandInputView)
-		for i, r := range lines {
-			if r == '\n' {
-				// Get everything before the newline (suggestions)
-				suggestionsOnly = string(lines[:i])
-				break
-			}
-		}
-
-		if suggestionsOnly != "" {
-			suggestionsCentered := lipgloss.NewStyle().
-				Width(contentWidth).
-				Align(lipgloss.Center).
-				Render(suggestionsOnly)
-
-			// Position suggestions to overlay the center area
-			suggestionsOverlay := lipgloss.Place(
-				effectiveWidth,
-				m.height-1,
-				lipgloss.Center,
-				lipgloss.Center,
-				suggestionsCentered,
-				styles.WhitespaceStyle(t.Background()),
-			)
-
-			// Combine base and overlay (this is a simple approach)
-			return baseScreen // For now, return just base - we'll improve overlay next
-		}
-
-		return baseScreen
-	} else {
-		// Normal view with input at bottom
-		fullContent := lipgloss.JoinVertical(
-			lipgloss.Center,
-			mainContent,
 			"",
-			commandInputCentered,
+			suggestionsCentered,
+			"", // Small gap between suggestions and input
+			inputFieldCentered,
 		)
 
 		return lipgloss.Place(
@@ -155,8 +103,10 @@ func (m Model) RenderMainScreen(t theme.Theme) string {
 			m.height-1,
 			lipgloss.Center,
 			lipgloss.Center,
-			baseStyle.Render(fullContent),
+			baseStyle.Render(overlayLayout),
 			styles.WhitespaceStyle(t.Background()),
 		)
 	}
+
+	return baseScreen
 }
