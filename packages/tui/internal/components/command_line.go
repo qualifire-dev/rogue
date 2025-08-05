@@ -5,6 +5,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"
+	"github.com/rogue/tui/internal/styles"
 	"github.com/rogue/tui/internal/theme"
 )
 
@@ -274,13 +275,13 @@ func (c CommandInput) ViewSuggestions() string {
 		// Format: /command    description    keybinding
 		var nameStyle, descStyle, keyStyle lipgloss.Style
 		if i == c.selectedSuggestion {
-			nameStyle = itemStyle.Copy().Foreground(t.Background())
-			descStyle = itemStyle.Copy().Foreground(t.Background())
-			keyStyle = itemStyle.Copy().Foreground(t.Background())
+			nameStyle = itemStyle.Foreground(t.Background())
+			descStyle = itemStyle.Foreground(t.Background())
+			keyStyle = itemStyle.Foreground(t.Background())
 		} else {
-			nameStyle = itemStyle.Copy().Foreground(t.Primary())
-			descStyle = itemStyle.Copy().Foreground(t.TextMuted())
-			keyStyle = itemStyle.Copy().Foreground(t.Accent())
+			nameStyle = itemStyle.Background(t.BackgroundPanel()).Foreground(t.Primary())
+			descStyle = itemStyle.Background(t.BackgroundPanel()).Foreground(t.TextMuted())
+			keyStyle = itemStyle.Background(t.BackgroundPanel()).Foreground(t.Accent())
 		}
 
 		var line string
@@ -310,11 +311,21 @@ func (c CommandInput) HasSuggestions() bool {
 
 // View implements tea.Model (for backward compatibility)
 func (c CommandInput) View() string {
+	t := theme.CurrentTheme()
 	suggestions := c.ViewSuggestions()
 	input := c.ViewInput()
 
+	content := lipgloss.JoinVertical(lipgloss.Left, suggestions, input)
+
 	if suggestions != "" {
-		return lipgloss.JoinVertical(lipgloss.Left, suggestions, input)
+
+		return lipgloss.PlaceVertical(
+			c.width,
+			lipgloss.Center,
+			content,
+			styles.WhitespaceStyle(t.Background()),
+		)
+
 	}
 	return input
 }

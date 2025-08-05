@@ -41,7 +41,7 @@ func (m Model) RenderMainScreen(t theme.Theme) string {
 		Align(lipgloss.Center).
 		Padding(1, 0)
 
-	instructions := instructionStyle.Render("Type '/' for commands or press Enter to start")
+	instructions := instructionStyle.Render("Type '/' for commands or type to get started")
 
 	// Build the main content without command input
 	mainContent := lipgloss.JoinVertical(

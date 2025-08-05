@@ -90,6 +90,9 @@ func (a *App) Run() error {
 		commandInput: components.NewCommandInput(),
 	}
 
+	// Set command input as focused by default
+	model.commandInput.SetFocus(true)
+
 	p := tea.NewProgram(model, tea.WithAltScreen(), tea.WithMouseCellMotion())
 	a.program = p
 
@@ -170,7 +173,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			case "esc":
 				m.currentScreen = DashboardScreen
-				m.commandInput.SetFocus(false)
+				m.commandInput.SetFocus(true)  // Keep focused when returning to dashboard
 				m.commandInput.SetValue("")
 				return m, nil
 
