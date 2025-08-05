@@ -7,7 +7,7 @@ These types mirror the FastAPI server models and provide type safety.
 from enum import Enum
 from typing import List, Optional, Dict, Any, Union
 from datetime import datetime
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, HttpUrl, Field, ConfigDict
 
 
 class AuthType(str, Enum):
@@ -42,11 +42,17 @@ class EvaluationStatus(str, Enum):
 class AgentConfig(BaseModel):
     """Configuration for the agent being evaluated."""
 
-    evaluated_agent_url: HttpUrl
-    evaluated_agent_auth_type: AuthType = AuthType.NO_AUTH
-    evaluated_agent_credentials: Optional[str] = None
+    model_config = ConfigDict(populate_by_name=True)
+
+    evaluated_agent_url: HttpUrl = Field(alias="agent_url")
+    evaluated_agent_auth_type: AuthType = Field(
+        alias="auth_type", default=AuthType.NO_AUTH
+    )
+    evaluated_agent_credentials: Optional[str] = Field(
+        alias="auth_credentials", default=None
+    )
     service_llm: str = "openai/gpt-4.1"
-    judge_llm_model: str = "openai/gpt-4o-mini"
+    judge_llm_model: str = "openai/o4-mini"
     interview_mode: bool = True
     deep_test_mode: bool = False
     parallel_runs: int = 1

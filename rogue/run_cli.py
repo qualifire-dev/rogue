@@ -260,6 +260,10 @@ def merge_config_with_cli(
         },
     )
 
+    # Set defaults for required fields that are missing
+    if data.get("judge_llm_model") is None:
+        data["judge_llm_model"] = "openai/o4-mini"
+
     logger.debug(f"Running with parameters: {data}")
 
     # Finally, validate as full input
@@ -272,7 +276,7 @@ def read_config_file(config_file: Path) -> dict:
             return AgentConfig.model_validate_json(
                 config_file.read_text(),
             ).model_dump(
-                by_alias=True,
+                by_alias=False,
                 exclude_none=True,
             )
         except ValidationError:

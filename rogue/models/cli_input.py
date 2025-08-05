@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from pydantic import BaseModel, model_validator, SecretStr, HttpUrl
+from pydantic import BaseModel, model_validator, SecretStr, HttpUrl, Field, ConfigDict
 
 from sdks.python.rogue_client.types import AuthType, Scenarios
 
@@ -51,10 +51,16 @@ class PartialCLIInput(BaseModel):
     This is used to allow the user to provide both a config file and CLI arguments.
     """
 
+    model_config = ConfigDict(populate_by_name=True)
+
     workdir: Path = Path(".") / ".rogue"
-    evaluated_agent_url: HttpUrl | None = None
-    evaluated_agent_auth_type: AuthType = AuthType.NO_AUTH
-    evaluated_agent_credentials: SecretStr | None = None
+    evaluated_agent_url: HttpUrl | None = Field(default=None, alias="agent_url")
+    evaluated_agent_auth_type: AuthType = Field(
+        default=AuthType.NO_AUTH, alias="auth_type"
+    )
+    evaluated_agent_credentials: SecretStr | None = Field(
+        default=None, alias="auth_credentials"
+    )
     judge_llm_model: str | None = None
     judge_llm_api_key: SecretStr | None = None
     business_context: str | None = None

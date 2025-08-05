@@ -1,0 +1,564 @@
+2025-08-05 19:42:08 | INFO | rogue.models.scenario:validate_dataset_for_type:35 - `dataset` is not required for scenario_type 'policy', ignoring.
+2025-08-05 19:42:08 | INFO | rogue.run_cli:read_config_file:288 - Config file not found
+2025-08-05 19:42:08 | INFO | rogue.run_cli:merge_config_with_cli:253 - Using business context str
+2025-08-05 19:42:08 | DEBUG | rogue.run_cli:merge_config_with_cli:263 - Running with parameters: {'workdir': PosixPath('.rogue'), 'evaluated_agent_url': HttpUrl('https://localhost:10001/'), 'evaluated_agent_auth_type': <AuthType.NO_AUTH: 'no_auth'>, 'evaluated_agent_credentials': None, 'judge_llm_model': 'openai/o4-mini', 'judge_llm_api_key': None, 'business_context': 'my business', 'input_scenarios_file': PosixPath('.rogue/scenarios.json'), 'output_report_file': PosixPath('.rogue/report.md'), 'deep_test_mode': False}
+2025-08-05 19:42:08 | ERROR | rogue.run_cli:read_config_file:279 - Failed to parse config as AgentConfig from file
+Traceback (most recent call last):
+
+  File "/Users/drorivry/develop/rogue-private/.venv/bin/pytest", line 10, in <module>
+    sys.exit(console_main())
+    │   │    └ <function console_main at 0x10575aac0>
+    │   └ <built-in function exit>
+    └ <module 'sys' (built-in)>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/_pytest/config/__init__.py", line 201, in console_main
+    code = main()
+           └ <function main at 0x10575aa20>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/_pytest/config/__init__.py", line 175, in main
+    ret: ExitCode | int = config.hook.pytest_cmdline_main(config=config)
+         │                │      │    │                          └ <_pytest.config.Config object at 0x105a57530>
+         │                │      │    └ <HookCaller 'pytest_cmdline_main'>
+         │                │      └ <_pytest.config.compat.PathAwareHookProxy object at 0x104b39820>
+         │                └ <_pytest.config.Config object at 0x105a57530>
+         └ <enum 'ExitCode'>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/pluggy/_hooks.py", line 512, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+           │    │         │    │     │    │                  │       └ True
+           │    │         │    │     │    │                  └ {'config': <_pytest.config.Config object at 0x105a57530>}
+           │    │         │    │     │    └ <member '_hookimpls' of 'HookCaller' objects>
+           │    │         │    │     └ <HookCaller 'pytest_cmdline_main'>
+           │    │         │    └ <member 'name' of 'HookCaller' objects>
+           │    │         └ <HookCaller 'pytest_cmdline_main'>
+           │    └ <member '_hookexec' of 'HookCaller' objects>
+           └ <HookCaller 'pytest_cmdline_main'>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/pluggy/_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+           │    │               │          │        │       └ True
+           │    │               │          │        └ {'config': <_pytest.config.Config object at 0x105a57530>}
+           │    │               │          └ [<HookImpl plugin_name='main', plugin=<module '_pytest.main' from '/Users/drorivry/develop/rogue-private/.venv/lib/python3.12...
+           │    │               └ 'pytest_cmdline_main'
+           │    └ <function _multicall at 0x104b0e2a0>
+           └ <_pytest.config.PytestPluginManager object at 0x104960e00>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 121, in _multicall
+    res = hook_impl.function(*args)
+          │         │         └ [<_pytest.config.Config object at 0x105a57530>]
+          │         └ <member 'function' of 'HookImpl' objects>
+          └ <HookImpl plugin_name='main', plugin=<module '_pytest.main' from '/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/...
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/_pytest/main.py", line 336, in pytest_cmdline_main
+    return wrap_session(config, _main)
+           │            │       └ <function _main at 0x1059547c0>
+           │            └ <_pytest.config.Config object at 0x105a57530>
+           └ <function wrap_session at 0x105954680>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/_pytest/main.py", line 289, in wrap_session
+    session.exitstatus = doit(config, session) or 0
+    │       │            │    │       └ <Session  exitstatus=<ExitCode.OK: 0> testsfailed=0 testscollected=52>
+    │       │            │    └ <_pytest.config.Config object at 0x105a57530>
+    │       │            └ <function _main at 0x1059547c0>
+    │       └ <ExitCode.OK: 0>
+    └ <Session  exitstatus=<ExitCode.OK: 0> testsfailed=0 testscollected=52>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/_pytest/main.py", line 343, in _main
+    config.hook.pytest_runtestloop(session=session)
+    │      │    │                          └ <Session  exitstatus=<ExitCode.OK: 0> testsfailed=0 testscollected=52>
+    │      │    └ <HookCaller 'pytest_runtestloop'>
+    │      └ <_pytest.config.compat.PathAwareHookProxy object at 0x104b39820>
+    └ <_pytest.config.Config object at 0x105a57530>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/pluggy/_hooks.py", line 512, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+           │    │         │    │     │    │                  │       └ True
+           │    │         │    │     │    │                  └ {'session': <Session  exitstatus=<ExitCode.OK: 0> testsfailed=0 testscollected=52>}
+           │    │         │    │     │    └ <member '_hookimpls' of 'HookCaller' objects>
+           │    │         │    │     └ <HookCaller 'pytest_runtestloop'>
+           │    │         │    └ <member 'name' of 'HookCaller' objects>
+           │    │         └ <HookCaller 'pytest_runtestloop'>
+           │    └ <member '_hookexec' of 'HookCaller' objects>
+           └ <HookCaller 'pytest_runtestloop'>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/pluggy/_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+           │    │               │          │        │       └ True
+           │    │               │          │        └ {'session': <Session  exitstatus=<ExitCode.OK: 0> testsfailed=0 testscollected=52>}
+           │    │               │          └ [<HookImpl plugin_name='main', plugin=<module '_pytest.main' from '/Users/drorivry/develop/rogue-private/.venv/lib/python3.12...
+           │    │               └ 'pytest_runtestloop'
+           │    └ <function _multicall at 0x104b0e2a0>
+           └ <_pytest.config.PytestPluginManager object at 0x104960e00>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 121, in _multicall
+    res = hook_impl.function(*args)
+          │         │         └ [<Session  exitstatus=<ExitCode.OK: 0> testsfailed=0 testscollected=52>]
+          │         └ <member 'function' of 'HookImpl' objects>
+          └ <HookImpl plugin_name='main', plugin=<module '_pytest.main' from '/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/...
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/_pytest/main.py", line 367, in pytest_runtestloop
+    item.config.hook.pytest_runtest_protocol(item=item, nextitem=nextitem)
+    │    │                                        │              └ <Function test_get_cli_input[config_file_content2-cli_args2-expected2]>
+    │    │                                        └ <Function test_get_cli_input[config_file_content1-cli_args1-expected1]>
+    │    └ <member 'config' of 'Node' objects>
+    └ <Function test_get_cli_input[config_file_content1-cli_args1-expected1]>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/pluggy/_hooks.py", line 512, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+           │    │         │    │     │    │                  │       └ True
+           │    │         │    │     │    │                  └ {'item': <Function test_get_cli_input[config_file_content1-cli_args1-expected1]>, 'nextitem': <Function test_get_cli_input[co...
+           │    │         │    │     │    └ <member '_hookimpls' of 'HookCaller' objects>
+           │    │         │    │     └ <HookCaller 'pytest_runtest_protocol'>
+           │    │         │    └ <member 'name' of 'HookCaller' objects>
+           │    │         └ <HookCaller 'pytest_runtest_protocol'>
+           │    └ <member '_hookexec' of 'HookCaller' objects>
+           └ <HookCaller 'pytest_runtest_protocol'>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/pluggy/_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+           │    │               │          │        │       └ True
+           │    │               │          │        └ {'item': <Function test_get_cli_input[config_file_content1-cli_args1-expected1]>, 'nextitem': <Function test_get_cli_input[co...
+           │    │               │          └ [<HookImpl plugin_name='runner', plugin=<module '_pytest.runner' from '/Users/drorivry/develop/rogue-private/.venv/lib/python...
+           │    │               └ 'pytest_runtest_protocol'
+           │    └ <function _multicall at 0x104b0e2a0>
+           └ <_pytest.config.PytestPluginManager object at 0x104960e00>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 121, in _multicall
+    res = hook_impl.function(*args)
+          │         │         └ [<Function test_get_cli_input[config_file_content1-cli_args1-expected1]>, <Function test_get_cli_input[config_file_content2-c...
+          │         └ <member 'function' of 'HookImpl' objects>
+          └ <HookImpl plugin_name='runner', plugin=<module '_pytest.runner' from '/Users/drorivry/develop/rogue-private/.venv/lib/python3...
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/_pytest/runner.py", line 117, in pytest_runtest_protocol
+    runtestprotocol(item, nextitem=nextitem)
+    │               │              └ <Function test_get_cli_input[config_file_content2-cli_args2-expected2]>
+    │               └ <Function test_get_cli_input[config_file_content1-cli_args1-expected1]>
+    └ <function runtestprotocol at 0x10594f920>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/_pytest/runner.py", line 136, in runtestprotocol
+    reports.append(call_and_report(item, "call", log))
+    │       │      │               │             └ True
+    │       │      │               └ <Function test_get_cli_input[config_file_content1-cli_args1-expected1]>
+    │       │      └ <function call_and_report at 0x10594fd80>
+    │       └ <method 'append' of 'list' objects>
+    └ [<TestReport 'rogue/tests/test_run_cli.py::test_get_cli_input[config_file_content1-cli_args1-expected1]' when='setup' outcome...
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/_pytest/runner.py", line 245, in call_and_report
+    call = CallInfo.from_call(
+           │        └ <classmethod(<function CallInfo.from_call at 0x1059540e0>)>
+           └ <class '_pytest.runner.CallInfo'>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/_pytest/runner.py", line 344, in from_call
+    result: TResult | None = func()
+            │                └ <function call_and_report.<locals>.<lambda> at 0x13dd80d60>
+            └ +TResult
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/_pytest/runner.py", line 246, in <lambda>
+    lambda: runtest_hook(item=item, **kwds), when=when, reraise=reraise
+            │                 │       └ {}
+            │                 └ <Function test_get_cli_input[config_file_content1-cli_args1-expected1]>
+            └ <HookCaller 'pytest_runtest_call'>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/pluggy/_hooks.py", line 512, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+           │    │         │    │     │    │                  │       └ False
+           │    │         │    │     │    │                  └ {'item': <Function test_get_cli_input[config_file_content1-cli_args1-expected1]>}
+           │    │         │    │     │    └ <member '_hookimpls' of 'HookCaller' objects>
+           │    │         │    │     └ <HookCaller 'pytest_runtest_call'>
+           │    │         │    └ <member 'name' of 'HookCaller' objects>
+           │    │         └ <HookCaller 'pytest_runtest_call'>
+           │    └ <member '_hookexec' of 'HookCaller' objects>
+           └ <HookCaller 'pytest_runtest_call'>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/pluggy/_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+           │    │               │          │        │       └ False
+           │    │               │          │        └ {'item': <Function test_get_cli_input[config_file_content1-cli_args1-expected1]>}
+           │    │               │          └ [<HookImpl plugin_name='threadexception', plugin=<module '_pytest.threadexception' from '/Users/drorivry/develop/rogue-privat...
+           │    │               └ 'pytest_runtest_call'
+           │    └ <function _multicall at 0x104b0e2a0>
+           └ <_pytest.config.PytestPluginManager object at 0x104960e00>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 121, in _multicall
+    res = hook_impl.function(*args)
+          │         │         └ [<Function test_get_cli_input[config_file_content1-cli_args1-expected1]>]
+          │         └ <member 'function' of 'HookImpl' objects>
+          └ <HookImpl plugin_name='runner', plugin=<module '_pytest.runner' from '/Users/drorivry/develop/rogue-private/.venv/lib/python3...
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/_pytest/runner.py", line 178, in pytest_runtest_call
+    item.runtest()
+    │    └ <function Function.runtest at 0x105a744a0>
+    └ <Function test_get_cli_input[config_file_content1-cli_args1-expected1]>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/_pytest/python.py", line 1671, in runtest
+    self.ihook.pytest_pyfunc_call(pyfuncitem=self)
+    │    │                                   └ <Function test_get_cli_input[config_file_content1-cli_args1-expected1]>
+    │    └ <property object at 0x1058bb0b0>
+    └ <Function test_get_cli_input[config_file_content1-cli_args1-expected1]>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/pluggy/_hooks.py", line 512, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+           │    │         │    │     │    │                  │       └ True
+           │    │         │    │     │    │                  └ {'pyfuncitem': <Function test_get_cli_input[config_file_content1-cli_args1-expected1]>}
+           │    │         │    │     │    └ <member '_hookimpls' of 'HookCaller' objects>
+           │    │         │    │     └ <HookCaller 'pytest_pyfunc_call'>
+           │    │         │    └ <member 'name' of 'HookCaller' objects>
+           │    │         └ <HookCaller 'pytest_pyfunc_call'>
+           │    └ <member '_hookexec' of 'HookCaller' objects>
+           └ <HookCaller 'pytest_pyfunc_call'>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/pluggy/_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+           │    │               │          │        │       └ True
+           │    │               │          │        └ {'pyfuncitem': <Function test_get_cli_input[config_file_content1-cli_args1-expected1]>}
+           │    │               │          └ [<HookImpl plugin_name='python', plugin=<module '_pytest.python' from '/Users/drorivry/develop/rogue-private/.venv/lib/python...
+           │    │               └ 'pytest_pyfunc_call'
+           │    └ <function _multicall at 0x104b0e2a0>
+           └ <_pytest.config.PytestPluginManager object at 0x104960e00>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 121, in _multicall
+    res = hook_impl.function(*args)
+          │         │         └ [<Function test_get_cli_input[config_file_content1-cli_args1-expected1]>]
+          │         └ <member 'function' of 'HookImpl' objects>
+          └ <HookImpl plugin_name='python', plugin=<module '_pytest.python' from '/Users/drorivry/develop/rogue-private/.venv/lib/python3...
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/_pytest/python.py", line 157, in pytest_pyfunc_call
+    result = testfunction(**testargs)
+             │              └ {'config_file_content': {'agent_url': 'https://localhost:10001', 'auth_type': 'api_key', 'auth_credentials': 'abc123'}, 'cli_...
+             └ <function test_get_cli_input at 0x13dbe7600>
+
+  File "/Users/drorivry/develop/rogue-private/rogue/tests/test_run_cli.py", line 100, in test_get_cli_input
+    assert get_cli_input(cli_args) == expected
+           │             │            └ CLIInput(workdir=PosixPath('.rogue'), evaluated_agent_url=HttpUrl('https://localhost:10001/'), evaluated_agent_auth_type=<Aut...
+           │             └ Namespace(business_context='my business', config_file=<Mock id='5330687312'>)
+           └ <function get_cli_input at 0x13c08a840>
+
+  File "/Users/drorivry/develop/rogue-private/rogue/run_cli.py", line 294, in get_cli_input
+    config = read_config_file(config_file)
+             │                └ <Mock id='5330687312'>
+             └ <function read_config_file at 0x13c08a7a0>
+
+> File "/Users/drorivry/develop/rogue-private/rogue/run_cli.py", line 272, in read_config_file
+    return AgentConfig.model_validate_json(
+           │           └ <classmethod(<function BaseModel.model_validate_json at 0x10af0ee80>)>
+           └ <class 'sdks.python.rogue_client.types.AgentConfig'>
+
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/pydantic/main.py", line 746, in model_validate_json
+    return cls.__pydantic_validator__.validate_json(
+           │   │                      └ <method 'validate_json' of 'pydantic_core._pydantic_core.SchemaValidator' objects>
+           │   └ SchemaValidator(title="AgentConfig", validator=Model(
+           │         ModelValidator {
+           │             revalidate: Never,
+           │             validator: Mode...
+           └ <class 'sdks.python.rogue_client.types.AgentConfig'>
+
+pydantic_core._pydantic_core.ValidationError: 1 validation error for AgentConfig
+evaluated_agent_url
+  Field required [type=missing, input_value={'agent_url': 'https://lo..._credentials': 'abc123'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+2025-08-05 19:42:08 | INFO | rogue.run_cli:merge_config_with_cli:253 - Using business context str
+2025-08-05 19:42:08 | DEBUG | rogue.run_cli:merge_config_with_cli:263 - Running with parameters: {'workdir': PosixPath('.rogue'), 'evaluated_agent_url': None, 'evaluated_agent_auth_type': <AuthType.NO_AUTH: 'no_auth'>, 'evaluated_agent_credentials': None, 'judge_llm_model': None, 'judge_llm_api_key': None, 'business_context': 'my business', 'input_scenarios_file': PosixPath('.rogue/scenarios.json'), 'output_report_file': PosixPath('.rogue/report.md'), 'deep_test_mode': False}
+2025-08-05 19:42:08 | ERROR | rogue.run_cli:read_config_file:279 - Failed to parse config as AgentConfig from file
+Traceback (most recent call last):
+
+  File "/Users/drorivry/develop/rogue-private/.venv/bin/pytest", line 10, in <module>
+    sys.exit(console_main())
+    │   │    └ <function console_main at 0x10575aac0>
+    │   └ <built-in function exit>
+    └ <module 'sys' (built-in)>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/_pytest/config/__init__.py", line 201, in console_main
+    code = main()
+           └ <function main at 0x10575aa20>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/_pytest/config/__init__.py", line 175, in main
+    ret: ExitCode | int = config.hook.pytest_cmdline_main(config=config)
+         │                │      │    │                          └ <_pytest.config.Config object at 0x105a57530>
+         │                │      │    └ <HookCaller 'pytest_cmdline_main'>
+         │                │      └ <_pytest.config.compat.PathAwareHookProxy object at 0x104b39820>
+         │                └ <_pytest.config.Config object at 0x105a57530>
+         └ <enum 'ExitCode'>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/pluggy/_hooks.py", line 512, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+           │    │         │    │     │    │                  │       └ True
+           │    │         │    │     │    │                  └ {'config': <_pytest.config.Config object at 0x105a57530>}
+           │    │         │    │     │    └ <member '_hookimpls' of 'HookCaller' objects>
+           │    │         │    │     └ <HookCaller 'pytest_cmdline_main'>
+           │    │         │    └ <member 'name' of 'HookCaller' objects>
+           │    │         └ <HookCaller 'pytest_cmdline_main'>
+           │    └ <member '_hookexec' of 'HookCaller' objects>
+           └ <HookCaller 'pytest_cmdline_main'>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/pluggy/_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+           │    │               │          │        │       └ True
+           │    │               │          │        └ {'config': <_pytest.config.Config object at 0x105a57530>}
+           │    │               │          └ [<HookImpl plugin_name='main', plugin=<module '_pytest.main' from '/Users/drorivry/develop/rogue-private/.venv/lib/python3.12...
+           │    │               └ 'pytest_cmdline_main'
+           │    └ <function _multicall at 0x104b0e2a0>
+           └ <_pytest.config.PytestPluginManager object at 0x104960e00>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 121, in _multicall
+    res = hook_impl.function(*args)
+          │         │         └ [<_pytest.config.Config object at 0x105a57530>]
+          │         └ <member 'function' of 'HookImpl' objects>
+          └ <HookImpl plugin_name='main', plugin=<module '_pytest.main' from '/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/...
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/_pytest/main.py", line 336, in pytest_cmdline_main
+    return wrap_session(config, _main)
+           │            │       └ <function _main at 0x1059547c0>
+           │            └ <_pytest.config.Config object at 0x105a57530>
+           └ <function wrap_session at 0x105954680>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/_pytest/main.py", line 289, in wrap_session
+    session.exitstatus = doit(config, session) or 0
+    │       │            │    │       └ <Session  exitstatus=<ExitCode.OK: 0> testsfailed=1 testscollected=52>
+    │       │            │    └ <_pytest.config.Config object at 0x105a57530>
+    │       │            └ <function _main at 0x1059547c0>
+    │       └ <ExitCode.OK: 0>
+    └ <Session  exitstatus=<ExitCode.OK: 0> testsfailed=1 testscollected=52>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/_pytest/main.py", line 343, in _main
+    config.hook.pytest_runtestloop(session=session)
+    │      │    │                          └ <Session  exitstatus=<ExitCode.OK: 0> testsfailed=1 testscollected=52>
+    │      │    └ <HookCaller 'pytest_runtestloop'>
+    │      └ <_pytest.config.compat.PathAwareHookProxy object at 0x104b39820>
+    └ <_pytest.config.Config object at 0x105a57530>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/pluggy/_hooks.py", line 512, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+           │    │         │    │     │    │                  │       └ True
+           │    │         │    │     │    │                  └ {'session': <Session  exitstatus=<ExitCode.OK: 0> testsfailed=1 testscollected=52>}
+           │    │         │    │     │    └ <member '_hookimpls' of 'HookCaller' objects>
+           │    │         │    │     └ <HookCaller 'pytest_runtestloop'>
+           │    │         │    └ <member 'name' of 'HookCaller' objects>
+           │    │         └ <HookCaller 'pytest_runtestloop'>
+           │    └ <member '_hookexec' of 'HookCaller' objects>
+           └ <HookCaller 'pytest_runtestloop'>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/pluggy/_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+           │    │               │          │        │       └ True
+           │    │               │          │        └ {'session': <Session  exitstatus=<ExitCode.OK: 0> testsfailed=1 testscollected=52>}
+           │    │               │          └ [<HookImpl plugin_name='main', plugin=<module '_pytest.main' from '/Users/drorivry/develop/rogue-private/.venv/lib/python3.12...
+           │    │               └ 'pytest_runtestloop'
+           │    └ <function _multicall at 0x104b0e2a0>
+           └ <_pytest.config.PytestPluginManager object at 0x104960e00>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 121, in _multicall
+    res = hook_impl.function(*args)
+          │         │         └ [<Session  exitstatus=<ExitCode.OK: 0> testsfailed=1 testscollected=52>]
+          │         └ <member 'function' of 'HookImpl' objects>
+          └ <HookImpl plugin_name='main', plugin=<module '_pytest.main' from '/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/...
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/_pytest/main.py", line 367, in pytest_runtestloop
+    item.config.hook.pytest_runtest_protocol(item=item, nextitem=nextitem)
+    │    │                                        │              └ None
+    │    │                                        └ <Function test_get_cli_input[config_file_content2-cli_args2-expected2]>
+    │    └ <member 'config' of 'Node' objects>
+    └ <Function test_get_cli_input[config_file_content2-cli_args2-expected2]>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/pluggy/_hooks.py", line 512, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+           │    │         │    │     │    │                  │       └ True
+           │    │         │    │     │    │                  └ {'item': <Function test_get_cli_input[config_file_content2-cli_args2-expected2]>, 'nextitem': None}
+           │    │         │    │     │    └ <member '_hookimpls' of 'HookCaller' objects>
+           │    │         │    │     └ <HookCaller 'pytest_runtest_protocol'>
+           │    │         │    └ <member 'name' of 'HookCaller' objects>
+           │    │         └ <HookCaller 'pytest_runtest_protocol'>
+           │    └ <member '_hookexec' of 'HookCaller' objects>
+           └ <HookCaller 'pytest_runtest_protocol'>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/pluggy/_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+           │    │               │          │        │       └ True
+           │    │               │          │        └ {'item': <Function test_get_cli_input[config_file_content2-cli_args2-expected2]>, 'nextitem': None}
+           │    │               │          └ [<HookImpl plugin_name='runner', plugin=<module '_pytest.runner' from '/Users/drorivry/develop/rogue-private/.venv/lib/python...
+           │    │               └ 'pytest_runtest_protocol'
+           │    └ <function _multicall at 0x104b0e2a0>
+           └ <_pytest.config.PytestPluginManager object at 0x104960e00>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 121, in _multicall
+    res = hook_impl.function(*args)
+          │         │         └ [<Function test_get_cli_input[config_file_content2-cli_args2-expected2]>, None]
+          │         └ <member 'function' of 'HookImpl' objects>
+          └ <HookImpl plugin_name='runner', plugin=<module '_pytest.runner' from '/Users/drorivry/develop/rogue-private/.venv/lib/python3...
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/_pytest/runner.py", line 117, in pytest_runtest_protocol
+    runtestprotocol(item, nextitem=nextitem)
+    │               │              └ None
+    │               └ <Function test_get_cli_input[config_file_content2-cli_args2-expected2]>
+    └ <function runtestprotocol at 0x10594f920>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/_pytest/runner.py", line 136, in runtestprotocol
+    reports.append(call_and_report(item, "call", log))
+    │       │      │               │             └ True
+    │       │      │               └ <Function test_get_cli_input[config_file_content2-cli_args2-expected2]>
+    │       │      └ <function call_and_report at 0x10594fd80>
+    │       └ <method 'append' of 'list' objects>
+    └ [<TestReport 'rogue/tests/test_run_cli.py::test_get_cli_input[config_file_content2-cli_args2-expected2]' when='setup' outcome...
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/_pytest/runner.py", line 245, in call_and_report
+    call = CallInfo.from_call(
+           │        └ <classmethod(<function CallInfo.from_call at 0x1059540e0>)>
+           └ <class '_pytest.runner.CallInfo'>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/_pytest/runner.py", line 344, in from_call
+    result: TResult | None = func()
+            │                └ <function call_and_report.<locals>.<lambda> at 0x13f0d6200>
+            └ +TResult
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/_pytest/runner.py", line 246, in <lambda>
+    lambda: runtest_hook(item=item, **kwds), when=when, reraise=reraise
+            │                 │       └ {}
+            │                 └ <Function test_get_cli_input[config_file_content2-cli_args2-expected2]>
+            └ <HookCaller 'pytest_runtest_call'>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/pluggy/_hooks.py", line 512, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+           │    │         │    │     │    │                  │       └ False
+           │    │         │    │     │    │                  └ {'item': <Function test_get_cli_input[config_file_content2-cli_args2-expected2]>}
+           │    │         │    │     │    └ <member '_hookimpls' of 'HookCaller' objects>
+           │    │         │    │     └ <HookCaller 'pytest_runtest_call'>
+           │    │         │    └ <member 'name' of 'HookCaller' objects>
+           │    │         └ <HookCaller 'pytest_runtest_call'>
+           │    └ <member '_hookexec' of 'HookCaller' objects>
+           └ <HookCaller 'pytest_runtest_call'>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/pluggy/_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+           │    │               │          │        │       └ False
+           │    │               │          │        └ {'item': <Function test_get_cli_input[config_file_content2-cli_args2-expected2]>}
+           │    │               │          └ [<HookImpl plugin_name='threadexception', plugin=<module '_pytest.threadexception' from '/Users/drorivry/develop/rogue-privat...
+           │    │               └ 'pytest_runtest_call'
+           │    └ <function _multicall at 0x104b0e2a0>
+           └ <_pytest.config.PytestPluginManager object at 0x104960e00>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 121, in _multicall
+    res = hook_impl.function(*args)
+          │         │         └ [<Function test_get_cli_input[config_file_content2-cli_args2-expected2]>]
+          │         └ <member 'function' of 'HookImpl' objects>
+          └ <HookImpl plugin_name='runner', plugin=<module '_pytest.runner' from '/Users/drorivry/develop/rogue-private/.venv/lib/python3...
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/_pytest/runner.py", line 178, in pytest_runtest_call
+    item.runtest()
+    │    └ <function Function.runtest at 0x105a744a0>
+    └ <Function test_get_cli_input[config_file_content2-cli_args2-expected2]>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/_pytest/python.py", line 1671, in runtest
+    self.ihook.pytest_pyfunc_call(pyfuncitem=self)
+    │    │                                   └ <Function test_get_cli_input[config_file_content2-cli_args2-expected2]>
+    │    └ <property object at 0x1058bb0b0>
+    └ <Function test_get_cli_input[config_file_content2-cli_args2-expected2]>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/pluggy/_hooks.py", line 512, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+           │    │         │    │     │    │                  │       └ True
+           │    │         │    │     │    │                  └ {'pyfuncitem': <Function test_get_cli_input[config_file_content2-cli_args2-expected2]>}
+           │    │         │    │     │    └ <member '_hookimpls' of 'HookCaller' objects>
+           │    │         │    │     └ <HookCaller 'pytest_pyfunc_call'>
+           │    │         │    └ <member 'name' of 'HookCaller' objects>
+           │    │         └ <HookCaller 'pytest_pyfunc_call'>
+           │    └ <member '_hookexec' of 'HookCaller' objects>
+           └ <HookCaller 'pytest_pyfunc_call'>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/pluggy/_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+           │    │               │          │        │       └ True
+           │    │               │          │        └ {'pyfuncitem': <Function test_get_cli_input[config_file_content2-cli_args2-expected2]>}
+           │    │               │          └ [<HookImpl plugin_name='python', plugin=<module '_pytest.python' from '/Users/drorivry/develop/rogue-private/.venv/lib/python...
+           │    │               └ 'pytest_pyfunc_call'
+           │    └ <function _multicall at 0x104b0e2a0>
+           └ <_pytest.config.PytestPluginManager object at 0x104960e00>
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 121, in _multicall
+    res = hook_impl.function(*args)
+          │         │         └ [<Function test_get_cli_input[config_file_content2-cli_args2-expected2]>]
+          │         └ <member 'function' of 'HookImpl' objects>
+          └ <HookImpl plugin_name='python', plugin=<module '_pytest.python' from '/Users/drorivry/develop/rogue-private/.venv/lib/python3...
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/_pytest/python.py", line 157, in pytest_pyfunc_call
+    result = testfunction(**testargs)
+             │              └ {'config_file_content': {'agent_url': 'https://localhost:10001'}, 'cli_args': Namespace(evaluated_agent_url='https://override...
+             └ <function test_get_cli_input at 0x13dbe7600>
+
+  File "/Users/drorivry/develop/rogue-private/rogue/tests/test_run_cli.py", line 100, in test_get_cli_input
+    assert get_cli_input(cli_args) == expected
+           │             │            └ CLIInput(workdir=PosixPath('.rogue'), evaluated_agent_url=HttpUrl('https://overriden_agent_url:10001/'), evaluated_agent_auth...
+           │             └ Namespace(evaluated_agent_url='https://overriden_agent_url:10001', business_context='my business', config_file=<Mock id='5330...
+           └ <function get_cli_input at 0x13c08a840>
+
+  File "/Users/drorivry/develop/rogue-private/rogue/run_cli.py", line 294, in get_cli_input
+    config = read_config_file(config_file)
+             │                └ <Mock id='5330697584'>
+             └ <function read_config_file at 0x13c08a7a0>
+
+> File "/Users/drorivry/develop/rogue-private/rogue/run_cli.py", line 272, in read_config_file
+    return AgentConfig.model_validate_json(
+           │           └ <classmethod(<function BaseModel.model_validate_json at 0x10af0ee80>)>
+           └ <class 'sdks.python.rogue_client.types.AgentConfig'>
+
+  File "/Users/drorivry/develop/rogue-private/.venv/lib/python3.12/site-packages/pydantic/main.py", line 746, in model_validate_json
+    return cls.__pydantic_validator__.validate_json(
+           │   │                      └ <method 'validate_json' of 'pydantic_core._pydantic_core.SchemaValidator' objects>
+           │   └ SchemaValidator(title="AgentConfig", validator=Model(
+           │         ModelValidator {
+           │             revalidate: Never,
+           │             validator: Mode...
+           └ <class 'sdks.python.rogue_client.types.AgentConfig'>
+
+pydantic_core._pydantic_core.ValidationError: 1 validation error for AgentConfig
+evaluated_agent_url
+  Field required [type=missing, input_value={'agent_url': 'https://localhost:10001'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+2025-08-05 19:42:08 | INFO | rogue.run_cli:merge_config_with_cli:253 - Using business context str
+2025-08-05 19:42:08 | DEBUG | rogue.run_cli:merge_config_with_cli:263 - Running with parameters: {'workdir': PosixPath('.rogue'), 'evaluated_agent_url': HttpUrl('https://overriden_agent_url:10001/'), 'evaluated_agent_auth_type': <AuthType.NO_AUTH: 'no_auth'>, 'evaluated_agent_credentials': None, 'judge_llm_model': None, 'judge_llm_api_key': None, 'business_context': 'my business', 'input_scenarios_file': PosixPath('.rogue/scenarios.json'), 'output_report_file': PosixPath('.rogue/report.md'), 'deep_test_mode': False}
+2025-08-05 19:44:08 | INFO | rogue.run_cli:read_config_file:292 - Config file not found
+2025-08-05 19:44:08 | INFO | rogue.run_cli:merge_config_with_cli:253 - Using business context str
+2025-08-05 19:44:08 | DEBUG | rogue.run_cli:merge_config_with_cli:267 - Running with parameters: {'workdir': PosixPath('.rogue'), 'evaluated_agent_url': HttpUrl('https://localhost:10001/'), 'evaluated_agent_auth_type': <AuthType.NO_AUTH: 'no_auth'>, 'evaluated_agent_credentials': None, 'judge_llm_model': 'openai/o4-mini', 'judge_llm_api_key': None, 'business_context': 'my business', 'input_scenarios_file': PosixPath('.rogue/scenarios.json'), 'output_report_file': PosixPath('.rogue/report.md'), 'deep_test_mode': False}
+2025-08-05 19:44:08 | INFO | rogue.run_cli:merge_config_with_cli:253 - Using business context str
+2025-08-05 19:44:08 | DEBUG | rogue.run_cli:merge_config_with_cli:267 - Running with parameters: {'workdir': PosixPath('.rogue'), 'evaluated_agent_url': None, 'evaluated_agent_auth_type': <AuthType.NO_AUTH: 'no_auth'>, 'evaluated_agent_credentials': None, 'judge_llm_model': 'openai/gpt-4o-mini', 'judge_llm_api_key': None, 'business_context': 'my business', 'input_scenarios_file': PosixPath('.rogue/scenarios.json'), 'output_report_file': PosixPath('.rogue/report.md'), 'deep_test_mode': False}
+2025-08-05 19:44:09 | INFO | rogue.run_cli:merge_config_with_cli:253 - Using business context str
+2025-08-05 19:44:09 | DEBUG | rogue.run_cli:merge_config_with_cli:267 - Running with parameters: {'workdir': PosixPath('.rogue'), 'evaluated_agent_url': HttpUrl('https://overriden_agent_url:10001/'), 'evaluated_agent_auth_type': <AuthType.NO_AUTH: 'no_auth'>, 'evaluated_agent_credentials': None, 'judge_llm_model': 'openai/gpt-4o-mini', 'judge_llm_api_key': None, 'business_context': 'my business', 'input_scenarios_file': PosixPath('.rogue/scenarios.json'), 'output_report_file': PosixPath('.rogue/report.md'), 'deep_test_mode': False}
+2025-08-05 19:44:24 | INFO | rogue.run_cli:read_config_file:292 - Config file not found
+2025-08-05 19:44:24 | INFO | rogue.run_cli:merge_config_with_cli:253 - Using business context str
+2025-08-05 19:44:24 | DEBUG | rogue.run_cli:merge_config_with_cli:267 - Running with parameters: {'workdir': PosixPath('.rogue'), 'evaluated_agent_url': HttpUrl('https://localhost:10001/'), 'evaluated_agent_auth_type': <AuthType.NO_AUTH: 'no_auth'>, 'evaluated_agent_credentials': None, 'judge_llm_model': 'openai/o4-mini', 'judge_llm_api_key': None, 'business_context': 'my business', 'input_scenarios_file': PosixPath('.rogue/scenarios.json'), 'output_report_file': PosixPath('.rogue/report.md'), 'deep_test_mode': False}
+2025-08-05 19:44:24 | INFO | rogue.run_cli:merge_config_with_cli:253 - Using business context str
+2025-08-05 19:44:24 | DEBUG | rogue.run_cli:merge_config_with_cli:267 - Running with parameters: {'workdir': PosixPath('.rogue'), 'evaluated_agent_url': None, 'evaluated_agent_auth_type': <AuthType.NO_AUTH: 'no_auth'>, 'evaluated_agent_credentials': None, 'judge_llm_model': 'openai/gpt-4o-mini', 'judge_llm_api_key': None, 'business_context': 'my business', 'input_scenarios_file': PosixPath('.rogue/scenarios.json'), 'output_report_file': PosixPath('.rogue/report.md'), 'deep_test_mode': False}
+2025-08-05 19:44:24 | INFO | rogue.run_cli:merge_config_with_cli:253 - Using business context str
+2025-08-05 19:44:24 | DEBUG | rogue.run_cli:merge_config_with_cli:267 - Running with parameters: {'workdir': PosixPath('.rogue'), 'evaluated_agent_url': HttpUrl('https://overriden_agent_url:10001/'), 'evaluated_agent_auth_type': <AuthType.NO_AUTH: 'no_auth'>, 'evaluated_agent_credentials': None, 'judge_llm_model': 'openai/gpt-4o-mini', 'judge_llm_api_key': None, 'business_context': 'my business', 'input_scenarios_file': PosixPath('.rogue/scenarios.json'), 'output_report_file': PosixPath('.rogue/report.md'), 'deep_test_mode': False}
+2025-08-05 19:45:01 | DEBUG | rogue.run_cli:read_config_file:277 - Raw config text: {"agent_url": "https://localhost:10001", "auth_type": "api_key", "auth_credentials": "abc123"}
+2025-08-05 19:45:01 | DEBUG | rogue.run_cli:read_config_file:279 - Parsed AgentConfig: evaluated_agent_url=HttpUrl('https://localhost:10001/') evaluated_agent_auth_type=<AuthType.API_KEY: 'api_key'> evaluated_agent_credentials='abc123' service_llm='openai/gpt-4.1' judge_llm_model='openai/gpt-4o-mini' interview_mode=True deep_test_mode=False parallel_runs=1 judge_llm_api_key=None
+2025-08-05 19:45:01 | DEBUG | rogue.run_cli:read_config_file:284 - AgentConfig dumped: {'agent_url': HttpUrl('https://localhost:10001/'), 'auth_type': <AuthType.API_KEY: 'api_key'>, 'auth_credentials': 'abc123', 'service_llm': 'openai/gpt-4.1', 'judge_llm_model': 'openai/gpt-4o-mini', 'interview_mode': True, 'deep_test_mode': False, 'parallel_runs': 1}
+2025-08-05 19:45:01 | INFO | rogue.run_cli:merge_config_with_cli:253 - Using business context str
+2025-08-05 19:45:01 | DEBUG | rogue.run_cli:merge_config_with_cli:267 - Running with parameters: {'workdir': PosixPath('.rogue'), 'evaluated_agent_url': None, 'evaluated_agent_auth_type': <AuthType.NO_AUTH: 'no_auth'>, 'evaluated_agent_credentials': None, 'judge_llm_model': 'openai/gpt-4o-mini', 'judge_llm_api_key': None, 'business_context': 'my business', 'input_scenarios_file': PosixPath('.rogue/scenarios.json'), 'output_report_file': PosixPath('.rogue/report.md'), 'deep_test_mode': False}
+2025-08-05 19:45:40 | DEBUG | rogue.run_cli:read_config_file:277 - Raw config text: {"agent_url": "https://localhost:10001", "auth_type": "api_key", "auth_credentials": "abc123"}
+2025-08-05 19:45:40 | DEBUG | rogue.run_cli:read_config_file:279 - Parsed AgentConfig: evaluated_agent_url=HttpUrl('https://localhost:10001/') evaluated_agent_auth_type=<AuthType.API_KEY: 'api_key'> evaluated_agent_credentials='abc123' service_llm='openai/gpt-4.1' judge_llm_model='openai/gpt-4o-mini' interview_mode=True deep_test_mode=False parallel_runs=1 judge_llm_api_key=None
+2025-08-05 19:45:40 | DEBUG | rogue.run_cli:read_config_file:284 - AgentConfig dumped: {'agent_url': HttpUrl('https://localhost:10001/'), 'auth_type': <AuthType.API_KEY: 'api_key'>, 'auth_credentials': 'abc123', 'service_llm': 'openai/gpt-4.1', 'judge_llm_model': 'openai/gpt-4o-mini', 'interview_mode': True, 'deep_test_mode': False, 'parallel_runs': 1}
+2025-08-05 19:45:40 | INFO | rogue.run_cli:merge_config_with_cli:253 - Using business context str
+2025-08-05 19:45:40 | DEBUG | rogue.run_cli:merge_config_with_cli:267 - Running with parameters: {'workdir': PosixPath('.rogue'), 'evaluated_agent_url': HttpUrl('https://localhost:10001/'), 'evaluated_agent_auth_type': <AuthType.API_KEY: 'api_key'>, 'evaluated_agent_credentials': SecretStr('**********'), 'judge_llm_model': 'openai/gpt-4o-mini', 'judge_llm_api_key': None, 'business_context': 'my business', 'input_scenarios_file': PosixPath('.rogue/scenarios.json'), 'output_report_file': PosixPath('.rogue/report.md'), 'deep_test_mode': False}
+2025-08-05 19:45:54 | DEBUG | rogue.run_cli:read_config_file:277 - Raw config text: {"agent_url": "https://localhost:10001", "auth_type": "api_key", "auth_credentials": "abc123"}
+2025-08-05 19:45:54 | DEBUG | rogue.run_cli:read_config_file:279 - Parsed AgentConfig: evaluated_agent_url=HttpUrl('https://localhost:10001/') evaluated_agent_auth_type=<AuthType.API_KEY: 'api_key'> evaluated_agent_credentials='abc123' service_llm='openai/gpt-4.1' judge_llm_model='openai/gpt-4o-mini' interview_mode=True deep_test_mode=False parallel_runs=1 judge_llm_api_key=None
+2025-08-05 19:45:54 | DEBUG | rogue.run_cli:read_config_file:284 - AgentConfig dumped: {'agent_url': HttpUrl('https://localhost:10001/'), 'auth_type': <AuthType.API_KEY: 'api_key'>, 'auth_credentials': 'abc123', 'service_llm': 'openai/gpt-4.1', 'judge_llm_model': 'openai/gpt-4o-mini', 'interview_mode': True, 'deep_test_mode': False, 'parallel_runs': 1}
+2025-08-05 19:45:54 | INFO | rogue.run_cli:merge_config_with_cli:253 - Using business context str
+2025-08-05 19:45:54 | DEBUG | rogue.run_cli:merge_config_with_cli:267 - Running with parameters: {'workdir': PosixPath('.rogue'), 'evaluated_agent_url': HttpUrl('https://localhost:10001/'), 'evaluated_agent_auth_type': <AuthType.API_KEY: 'api_key'>, 'evaluated_agent_credentials': SecretStr('**********'), 'judge_llm_model': 'openai/gpt-4o-mini', 'judge_llm_api_key': None, 'business_context': 'my business', 'input_scenarios_file': PosixPath('.rogue/scenarios.json'), 'output_report_file': PosixPath('.rogue/report.md'), 'deep_test_mode': False}
+2025-08-05 19:46:15 | INFO | rogue.run_cli:read_config_file:296 - Config file not found
+2025-08-05 19:46:15 | INFO | rogue.run_cli:merge_config_with_cli:253 - Using business context str
+2025-08-05 19:46:15 | DEBUG | rogue.run_cli:merge_config_with_cli:267 - Running with parameters: {'workdir': PosixPath('.rogue'), 'evaluated_agent_url': HttpUrl('https://localhost:10001/'), 'evaluated_agent_auth_type': <AuthType.NO_AUTH: 'no_auth'>, 'evaluated_agent_credentials': None, 'judge_llm_model': 'openai/o4-mini', 'judge_llm_api_key': None, 'business_context': 'my business', 'input_scenarios_file': PosixPath('.rogue/scenarios.json'), 'output_report_file': PosixPath('.rogue/report.md'), 'deep_test_mode': False}
+2025-08-05 19:46:15 | DEBUG | rogue.run_cli:read_config_file:277 - Raw config text: {"agent_url": "https://localhost:10001", "auth_type": "api_key", "auth_credentials": "abc123"}
+2025-08-05 19:46:15 | DEBUG | rogue.run_cli:read_config_file:279 - Parsed AgentConfig: evaluated_agent_url=HttpUrl('https://localhost:10001/') evaluated_agent_auth_type=<AuthType.API_KEY: 'api_key'> evaluated_agent_credentials='abc123' service_llm='openai/gpt-4.1' judge_llm_model='openai/o4-mini' interview_mode=True deep_test_mode=False parallel_runs=1 judge_llm_api_key=None
+2025-08-05 19:46:15 | DEBUG | rogue.run_cli:read_config_file:284 - AgentConfig dumped: {'agent_url': HttpUrl('https://localhost:10001/'), 'auth_type': <AuthType.API_KEY: 'api_key'>, 'auth_credentials': 'abc123', 'service_llm': 'openai/gpt-4.1', 'judge_llm_model': 'openai/o4-mini', 'interview_mode': True, 'deep_test_mode': False, 'parallel_runs': 1}
+2025-08-05 19:46:15 | INFO | rogue.run_cli:merge_config_with_cli:253 - Using business context str
+2025-08-05 19:46:15 | DEBUG | rogue.run_cli:merge_config_with_cli:267 - Running with parameters: {'workdir': PosixPath('.rogue'), 'evaluated_agent_url': HttpUrl('https://localhost:10001/'), 'evaluated_agent_auth_type': <AuthType.API_KEY: 'api_key'>, 'evaluated_agent_credentials': SecretStr('**********'), 'judge_llm_model': 'openai/o4-mini', 'judge_llm_api_key': None, 'business_context': 'my business', 'input_scenarios_file': PosixPath('.rogue/scenarios.json'), 'output_report_file': PosixPath('.rogue/report.md'), 'deep_test_mode': False}
+2025-08-05 19:46:15 | DEBUG | rogue.run_cli:read_config_file:277 - Raw config text: {"agent_url": "https://localhost:10001"}
+2025-08-05 19:46:15 | DEBUG | rogue.run_cli:read_config_file:279 - Parsed AgentConfig: evaluated_agent_url=HttpUrl('https://localhost:10001/') evaluated_agent_auth_type=<AuthType.NO_AUTH: 'no_auth'> evaluated_agent_credentials=None service_llm='openai/gpt-4.1' judge_llm_model='openai/o4-mini' interview_mode=True deep_test_mode=False parallel_runs=1 judge_llm_api_key=None
+2025-08-05 19:46:15 | DEBUG | rogue.run_cli:read_config_file:284 - AgentConfig dumped: {'agent_url': HttpUrl('https://localhost:10001/'), 'auth_type': <AuthType.NO_AUTH: 'no_auth'>, 'service_llm': 'openai/gpt-4.1', 'judge_llm_model': 'openai/o4-mini', 'interview_mode': True, 'deep_test_mode': False, 'parallel_runs': 1}
+2025-08-05 19:46:15 | INFO | rogue.run_cli:merge_config_with_cli:253 - Using business context str
+2025-08-05 19:46:15 | DEBUG | rogue.run_cli:merge_config_with_cli:267 - Running with parameters: {'workdir': PosixPath('.rogue'), 'evaluated_agent_url': HttpUrl('https://localhost:10001/'), 'evaluated_agent_auth_type': <AuthType.NO_AUTH: 'no_auth'>, 'evaluated_agent_credentials': None, 'judge_llm_model': 'openai/o4-mini', 'judge_llm_api_key': None, 'business_context': 'my business', 'input_scenarios_file': PosixPath('.rogue/scenarios.json'), 'output_report_file': PosixPath('.rogue/report.md'), 'deep_test_mode': False}
+2025-08-05 19:46:30 | DEBUG | rogue.run_cli:read_config_file:277 - Raw config text: {"agent_url": "https://localhost:10001"}
+2025-08-05 19:46:30 | DEBUG | rogue.run_cli:read_config_file:279 - Parsed AgentConfig: evaluated_agent_url=HttpUrl('https://localhost:10001/') evaluated_agent_auth_type=<AuthType.NO_AUTH: 'no_auth'> evaluated_agent_credentials=None service_llm='openai/gpt-4.1' judge_llm_model='openai/o4-mini' interview_mode=True deep_test_mode=False parallel_runs=1 judge_llm_api_key=None
+2025-08-05 19:46:30 | DEBUG | rogue.run_cli:read_config_file:284 - AgentConfig dumped: {'agent_url': HttpUrl('https://localhost:10001/'), 'auth_type': <AuthType.NO_AUTH: 'no_auth'>, 'service_llm': 'openai/gpt-4.1', 'judge_llm_model': 'openai/o4-mini', 'interview_mode': True, 'deep_test_mode': False, 'parallel_runs': 1}
+2025-08-05 19:46:30 | INFO | rogue.run_cli:merge_config_with_cli:253 - Using business context str
+2025-08-05 19:46:30 | DEBUG | rogue.run_cli:merge_config_with_cli:267 - Running with parameters: {'workdir': PosixPath('.rogue'), 'evaluated_agent_url': HttpUrl('https://localhost:10001/'), 'evaluated_agent_auth_type': <AuthType.NO_AUTH: 'no_auth'>, 'evaluated_agent_credentials': None, 'judge_llm_model': 'openai/o4-mini', 'judge_llm_api_key': None, 'business_context': 'my business', 'input_scenarios_file': PosixPath('.rogue/scenarios.json'), 'output_report_file': PosixPath('.rogue/report.md'), 'deep_test_mode': False}
+2025-08-05 19:46:47 | DEBUG | rogue.run_cli:read_config_file:277 - Raw config text: {"agent_url": "https://localhost:10001"}
+2025-08-05 19:46:47 | DEBUG | rogue.run_cli:read_config_file:279 - Parsed AgentConfig: evaluated_agent_url=HttpUrl('https://localhost:10001/') evaluated_agent_auth_type=<AuthType.NO_AUTH: 'no_auth'> evaluated_agent_credentials=None service_llm='openai/gpt-4.1' judge_llm_model='openai/o4-mini' interview_mode=True deep_test_mode=False parallel_runs=1 judge_llm_api_key=None
+2025-08-05 19:46:47 | DEBUG | rogue.run_cli:read_config_file:284 - AgentConfig dumped: {'agent_url': HttpUrl('https://localhost:10001/'), 'auth_type': <AuthType.NO_AUTH: 'no_auth'>, 'service_llm': 'openai/gpt-4.1', 'judge_llm_model': 'openai/o4-mini', 'interview_mode': True, 'deep_test_mode': False, 'parallel_runs': 1}
+2025-08-05 19:46:47 | INFO | rogue.run_cli:merge_config_with_cli:253 - Using business context str
+2025-08-05 19:46:47 | DEBUG | rogue.run_cli:merge_config_with_cli:267 - Running with parameters: {'workdir': PosixPath('.rogue'), 'evaluated_agent_url': HttpUrl('https://localhost:10001/'), 'evaluated_agent_auth_type': <AuthType.NO_AUTH: 'no_auth'>, 'evaluated_agent_credentials': None, 'judge_llm_model': 'openai/o4-mini', 'judge_llm_api_key': None, 'business_context': 'my business', 'input_scenarios_file': PosixPath('.rogue/scenarios.json'), 'output_report_file': PosixPath('.rogue/report.md'), 'deep_test_mode': False}
+2025-08-05 19:47:14 | DEBUG | rogue.run_cli:read_config_file:282 - Raw config text: {"agent_url": "https://localhost:10001"}
+2025-08-05 19:47:14 | DEBUG | rogue.run_cli:read_config_file:284 - Parsed AgentConfig: evaluated_agent_url=HttpUrl('https://localhost:10001/') evaluated_agent_auth_type=<AuthType.NO_AUTH: 'no_auth'> evaluated_agent_credentials=None service_llm='openai/gpt-4.1' judge_llm_model='openai/o4-mini' interview_mode=True deep_test_mode=False parallel_runs=1 judge_llm_api_key=None
+2025-08-05 19:47:14 | DEBUG | rogue.run_cli:read_config_file:289 - AgentConfig dumped: {'agent_url': HttpUrl('https://localhost:10001/'), 'auth_type': <AuthType.NO_AUTH: 'no_auth'>, 'service_llm': 'openai/gpt-4.1', 'judge_llm_model': 'openai/o4-mini', 'interview_mode': True, 'deep_test_mode': False, 'parallel_runs': 1}
+2025-08-05 19:47:14 | DEBUG | rogue.run_cli:merge_config_with_cli:236 - Config data: {'agent_url': HttpUrl('https://localhost:10001/'), 'auth_type': <AuthType.NO_AUTH: 'no_auth'>, 'service_llm': 'openai/gpt-4.1', 'judge_llm_model': 'openai/o4-mini', 'interview_mode': True, 'deep_test_mode': False, 'parallel_runs': 1}
+2025-08-05 19:47:14 | DEBUG | rogue.run_cli:merge_config_with_cli:237 - CLI dict: {'evaluated_agent_url': 'https://overriden_agent_url:10001', 'business_context': 'my business', 'config_file': <Mock id='6168808960'>}
+2025-08-05 19:47:14 | DEBUG | rogue.run_cli:merge_config_with_cli:245 - Merged: {'agent_url': HttpUrl('https://localhost:10001/'), 'auth_type': <AuthType.NO_AUTH: 'no_auth'>, 'service_llm': 'openai/gpt-4.1', 'judge_llm_model': 'openai/o4-mini', 'interview_mode': True, 'deep_test_mode': False, 'parallel_runs': 1, 'evaluated_agent_url': 'https://overriden_agent_url:10001', 'business_context': 'my business', 'config_file': <Mock id='6168808960'>}
+2025-08-05 19:47:14 | INFO | rogue.run_cli:merge_config_with_cli:258 - Using business context str
+2025-08-05 19:47:14 | DEBUG | rogue.run_cli:merge_config_with_cli:272 - Running with parameters: {'workdir': PosixPath('.rogue'), 'evaluated_agent_url': HttpUrl('https://localhost:10001/'), 'evaluated_agent_auth_type': <AuthType.NO_AUTH: 'no_auth'>, 'evaluated_agent_credentials': None, 'judge_llm_model': 'openai/o4-mini', 'judge_llm_api_key': None, 'business_context': 'my business', 'input_scenarios_file': PosixPath('.rogue/scenarios.json'), 'output_report_file': PosixPath('.rogue/report.md'), 'deep_test_mode': False}
+2025-08-05 19:47:39 | DEBUG | rogue.run_cli:read_config_file:282 - Raw config text: {"agent_url": "https://localhost:10001"}
+2025-08-05 19:47:39 | DEBUG | rogue.run_cli:read_config_file:284 - Parsed AgentConfig: evaluated_agent_url=HttpUrl('https://localhost:10001/') evaluated_agent_auth_type=<AuthType.NO_AUTH: 'no_auth'> evaluated_agent_credentials=None service_llm='openai/gpt-4.1' judge_llm_model='openai/o4-mini' interview_mode=True deep_test_mode=False parallel_runs=1 judge_llm_api_key=None
+2025-08-05 19:47:39 | DEBUG | rogue.run_cli:read_config_file:289 - AgentConfig dumped: {'evaluated_agent_url': HttpUrl('https://localhost:10001/'), 'evaluated_agent_auth_type': <AuthType.NO_AUTH: 'no_auth'>, 'service_llm': 'openai/gpt-4.1', 'judge_llm_model': 'openai/o4-mini', 'interview_mode': True, 'deep_test_mode': False, 'parallel_runs': 1}
+2025-08-05 19:47:39 | DEBUG | rogue.run_cli:merge_config_with_cli:236 - Config data: {'evaluated_agent_url': HttpUrl('https://localhost:10001/'), 'evaluated_agent_auth_type': <AuthType.NO_AUTH: 'no_auth'>, 'service_llm': 'openai/gpt-4.1', 'judge_llm_model': 'openai/o4-mini', 'interview_mode': True, 'deep_test_mode': False, 'parallel_runs': 1}
+2025-08-05 19:47:39 | DEBUG | rogue.run_cli:merge_config_with_cli:237 - CLI dict: {'evaluated_agent_url': 'https://overriden_agent_url:10001', 'business_context': 'my business', 'config_file': <Mock id='12888784768'>}
+2025-08-05 19:47:39 | DEBUG | rogue.run_cli:merge_config_with_cli:245 - Merged: {'evaluated_agent_url': 'https://overriden_agent_url:10001', 'evaluated_agent_auth_type': <AuthType.NO_AUTH: 'no_auth'>, 'service_llm': 'openai/gpt-4.1', 'judge_llm_model': 'openai/o4-mini', 'interview_mode': True, 'deep_test_mode': False, 'parallel_runs': 1, 'business_context': 'my business', 'config_file': <Mock id='12888784768'>}
+2025-08-05 19:47:39 | INFO | rogue.run_cli:merge_config_with_cli:258 - Using business context str
+2025-08-05 19:47:39 | DEBUG | rogue.run_cli:merge_config_with_cli:272 - Running with parameters: {'workdir': PosixPath('.rogue'), 'evaluated_agent_url': HttpUrl('https://overriden_agent_url:10001/'), 'evaluated_agent_auth_type': <AuthType.NO_AUTH: 'no_auth'>, 'evaluated_agent_credentials': None, 'judge_llm_model': 'openai/o4-mini', 'judge_llm_api_key': None, 'business_context': 'my business', 'input_scenarios_file': PosixPath('.rogue/scenarios.json'), 'output_report_file': PosixPath('.rogue/report.md'), 'deep_test_mode': False}
+2025-08-05 19:47:51 | INFO | rogue.run_cli:read_config_file:301 - Config file not found
+2025-08-05 19:47:51 | DEBUG | rogue.run_cli:merge_config_with_cli:236 - Config data: {}
+2025-08-05 19:47:51 | DEBUG | rogue.run_cli:merge_config_with_cli:237 - CLI dict: {'evaluated_agent_url': 'https://localhost:10001', 'business_context': 'my business', 'judge_llm_model': 'openai/o4-mini', 'config_file': <Mock id='5448064016'>}
+2025-08-05 19:47:51 | DEBUG | rogue.run_cli:merge_config_with_cli:245 - Merged: {'evaluated_agent_url': 'https://localhost:10001', 'business_context': 'my business', 'judge_llm_model': 'openai/o4-mini', 'config_file': <Mock id='5448064016'>}
+2025-08-05 19:47:51 | INFO | rogue.run_cli:merge_config_with_cli:258 - Using business context str
+2025-08-05 19:47:51 | DEBUG | rogue.run_cli:merge_config_with_cli:272 - Running with parameters: {'workdir': PosixPath('.rogue'), 'evaluated_agent_url': HttpUrl('https://localhost:10001/'), 'evaluated_agent_auth_type': <AuthType.NO_AUTH: 'no_auth'>, 'evaluated_agent_credentials': None, 'judge_llm_model': 'openai/o4-mini', 'judge_llm_api_key': None, 'business_context': 'my business', 'input_scenarios_file': PosixPath('.rogue/scenarios.json'), 'output_report_file': PosixPath('.rogue/report.md'), 'deep_test_mode': False}
+2025-08-05 19:47:51 | DEBUG | rogue.run_cli:read_config_file:282 - Raw config text: {"agent_url": "https://localhost:10001", "auth_type": "api_key", "auth_credentials": "abc123"}
+2025-08-05 19:47:51 | DEBUG | rogue.run_cli:read_config_file:284 - Parsed AgentConfig: evaluated_agent_url=HttpUrl('https://localhost:10001/') evaluated_agent_auth_type=<AuthType.API_KEY: 'api_key'> evaluated_agent_credentials='abc123' service_llm='openai/gpt-4.1' judge_llm_model='openai/o4-mini' interview_mode=True deep_test_mode=False parallel_runs=1 judge_llm_api_key=None
+2025-08-05 19:47:51 | DEBUG | rogue.run_cli:read_config_file:289 - AgentConfig dumped: {'evaluated_agent_url': HttpUrl('https://localhost:10001/'), 'evaluated_agent_auth_type': <AuthType.API_KEY: 'api_key'>, 'evaluated_agent_credentials': 'abc123', 'service_llm': 'openai/gpt-4.1', 'judge_llm_model': 'openai/o4-mini', 'interview_mode': True, 'deep_test_mode': False, 'parallel_runs': 1}
+2025-08-05 19:47:51 | DEBUG | rogue.run_cli:merge_config_with_cli:236 - Config data: {'evaluated_agent_url': HttpUrl('https://localhost:10001/'), 'evaluated_agent_auth_type': <AuthType.API_KEY: 'api_key'>, 'evaluated_agent_credentials': 'abc123', 'service_llm': 'openai/gpt-4.1', 'judge_llm_model': 'openai/o4-mini', 'interview_mode': True, 'deep_test_mode': False, 'parallel_runs': 1}
+2025-08-05 19:47:51 | DEBUG | rogue.run_cli:merge_config_with_cli:237 - CLI dict: {'business_context': 'my business', 'config_file': <Mock id='5448406064'>}
+2025-08-05 19:47:51 | DEBUG | rogue.run_cli:merge_config_with_cli:245 - Merged: {'evaluated_agent_url': HttpUrl('https://localhost:10001/'), 'evaluated_agent_auth_type': <AuthType.API_KEY: 'api_key'>, 'evaluated_agent_credentials': 'abc123', 'service_llm': 'openai/gpt-4.1', 'judge_llm_model': 'openai/o4-mini', 'interview_mode': True, 'deep_test_mode': False, 'parallel_runs': 1, 'business_context': 'my business', 'config_file': <Mock id='5448406064'>}
+2025-08-05 19:47:51 | INFO | rogue.run_cli:merge_config_with_cli:258 - Using business context str
+2025-08-05 19:47:51 | DEBUG | rogue.run_cli:merge_config_with_cli:272 - Running with parameters: {'workdir': PosixPath('.rogue'), 'evaluated_agent_url': HttpUrl('https://localhost:10001/'), 'evaluated_agent_auth_type': <AuthType.API_KEY: 'api_key'>, 'evaluated_agent_credentials': SecretStr('**********'), 'judge_llm_model': 'openai/o4-mini', 'judge_llm_api_key': None, 'business_context': 'my business', 'input_scenarios_file': PosixPath('.rogue/scenarios.json'), 'output_report_file': PosixPath('.rogue/report.md'), 'deep_test_mode': False}
+2025-08-05 19:47:51 | DEBUG | rogue.run_cli:read_config_file:282 - Raw config text: {"agent_url": "https://localhost:10001"}
+2025-08-05 19:47:51 | DEBUG | rogue.run_cli:read_config_file:284 - Parsed AgentConfig: evaluated_agent_url=HttpUrl('https://localhost:10001/') evaluated_agent_auth_type=<AuthType.NO_AUTH: 'no_auth'> evaluated_agent_credentials=None service_llm='openai/gpt-4.1' judge_llm_model='openai/o4-mini' interview_mode=True deep_test_mode=False parallel_runs=1 judge_llm_api_key=None
+2025-08-05 19:47:51 | DEBUG | rogue.run_cli:read_config_file:289 - AgentConfig dumped: {'evaluated_agent_url': HttpUrl('https://localhost:10001/'), 'evaluated_agent_auth_type': <AuthType.NO_AUTH: 'no_auth'>, 'service_llm': 'openai/gpt-4.1', 'judge_llm_model': 'openai/o4-mini', 'interview_mode': True, 'deep_test_mode': False, 'parallel_runs': 1}
+2025-08-05 19:47:51 | DEBUG | rogue.run_cli:merge_config_with_cli:236 - Config data: {'evaluated_agent_url': HttpUrl('https://localhost:10001/'), 'evaluated_agent_auth_type': <AuthType.NO_AUTH: 'no_auth'>, 'service_llm': 'openai/gpt-4.1', 'judge_llm_model': 'openai/o4-mini', 'interview_mode': True, 'deep_test_mode': False, 'parallel_runs': 1}
+2025-08-05 19:47:51 | DEBUG | rogue.run_cli:merge_config_with_cli:237 - CLI dict: {'evaluated_agent_url': 'https://overriden_agent_url:10001', 'business_context': 'my business', 'config_file': <Mock id='5448405824'>}
+2025-08-05 19:47:51 | DEBUG | rogue.run_cli:merge_config_with_cli:245 - Merged: {'evaluated_agent_url': 'https://overriden_agent_url:10001', 'evaluated_agent_auth_type': <AuthType.NO_AUTH: 'no_auth'>, 'service_llm': 'openai/gpt-4.1', 'judge_llm_model': 'openai/o4-mini', 'interview_mode': True, 'deep_test_mode': False, 'parallel_runs': 1, 'business_context': 'my business', 'config_file': <Mock id='5448405824'>}
+2025-08-05 19:47:51 | INFO | rogue.run_cli:merge_config_with_cli:258 - Using business context str
+2025-08-05 19:47:51 | DEBUG | rogue.run_cli:merge_config_with_cli:272 - Running with parameters: {'workdir': PosixPath('.rogue'), 'evaluated_agent_url': HttpUrl('https://overriden_agent_url:10001/'), 'evaluated_agent_auth_type': <AuthType.NO_AUTH: 'no_auth'>, 'evaluated_agent_credentials': None, 'judge_llm_model': 'openai/o4-mini', 'judge_llm_api_key': None, 'business_context': 'my business', 'input_scenarios_file': PosixPath('.rogue/scenarios.json'), 'output_report_file': PosixPath('.rogue/report.md'), 'deep_test_mode': False}
+2025-08-05 19:48:19 | INFO | rogue.models.scenario:validate_dataset_for_type:35 - `dataset` is not required for scenario_type 'policy', ignoring.
+2025-08-05 19:48:19 | INFO | rogue.run_cli:read_config_file:292 - Config file not found
+2025-08-05 19:48:19 | INFO | rogue.run_cli:merge_config_with_cli:253 - Using business context str
+2025-08-05 19:48:19 | DEBUG | rogue.run_cli:merge_config_with_cli:267 - Running with parameters: {'workdir': PosixPath('.rogue'), 'evaluated_agent_url': HttpUrl('https://localhost:10001/'), 'evaluated_agent_auth_type': <AuthType.NO_AUTH: 'no_auth'>, 'evaluated_agent_credentials': None, 'judge_llm_model': 'openai/o4-mini', 'judge_llm_api_key': None, 'business_context': 'my business', 'input_scenarios_file': PosixPath('.rogue/scenarios.json'), 'output_report_file': PosixPath('.rogue/report.md'), 'deep_test_mode': False}
+2025-08-05 19:48:19 | INFO | rogue.run_cli:merge_config_with_cli:253 - Using business context str
+2025-08-05 19:48:19 | DEBUG | rogue.run_cli:merge_config_with_cli:267 - Running with parameters: {'workdir': PosixPath('.rogue'), 'evaluated_agent_url': HttpUrl('https://localhost:10001/'), 'evaluated_agent_auth_type': <AuthType.API_KEY: 'api_key'>, 'evaluated_agent_credentials': SecretStr('**********'), 'judge_llm_model': 'openai/o4-mini', 'judge_llm_api_key': None, 'business_context': 'my business', 'input_scenarios_file': PosixPath('.rogue/scenarios.json'), 'output_report_file': PosixPath('.rogue/report.md'), 'deep_test_mode': False}
+2025-08-05 19:48:19 | INFO | rogue.run_cli:merge_config_with_cli:253 - Using business context str
+2025-08-05 19:48:19 | DEBUG | rogue.run_cli:merge_config_with_cli:267 - Running with parameters: {'workdir': PosixPath('.rogue'), 'evaluated_agent_url': HttpUrl('https://overriden_agent_url:10001/'), 'evaluated_agent_auth_type': <AuthType.NO_AUTH: 'no_auth'>, 'evaluated_agent_credentials': None, 'judge_llm_model': 'openai/o4-mini', 'judge_llm_api_key': None, 'business_context': 'my business', 'input_scenarios_file': PosixPath('.rogue/scenarios.json'), 'output_report_file': PosixPath('.rogue/report.md'), 'deep_test_mode': False}
+2025-08-05 19:49:21 | INFO | rogue.models.scenario:validate_dataset_for_type:35 - `dataset` is not required for scenario_type 'policy', ignoring.
+2025-08-05 19:49:21 | INFO | rogue.run_cli:read_config_file:292 - Config file not found
+2025-08-05 19:49:21 | INFO | rogue.run_cli:merge_config_with_cli:253 - Using business context str
+2025-08-05 19:49:21 | DEBUG | rogue.run_cli:merge_config_with_cli:267 - Running with parameters: {'workdir': PosixPath('.rogue'), 'evaluated_agent_url': HttpUrl('https://localhost:10001/'), 'evaluated_agent_auth_type': <AuthType.NO_AUTH: 'no_auth'>, 'evaluated_agent_credentials': None, 'judge_llm_model': 'openai/o4-mini', 'judge_llm_api_key': None, 'business_context': 'my business', 'input_scenarios_file': PosixPath('.rogue/scenarios.json'), 'output_report_file': PosixPath('.rogue/report.md'), 'deep_test_mode': False}
+2025-08-05 19:49:21 | INFO | rogue.run_cli:merge_config_with_cli:253 - Using business context str
+2025-08-05 19:49:21 | DEBUG | rogue.run_cli:merge_config_with_cli:267 - Running with parameters: {'workdir': PosixPath('.rogue'), 'evaluated_agent_url': HttpUrl('https://localhost:10001/'), 'evaluated_agent_auth_type': <AuthType.API_KEY: 'api_key'>, 'evaluated_agent_credentials': SecretStr('**********'), 'judge_llm_model': 'openai/o4-mini', 'judge_llm_api_key': None, 'business_context': 'my business', 'input_scenarios_file': PosixPath('.rogue/scenarios.json'), 'output_report_file': PosixPath('.rogue/report.md'), 'deep_test_mode': False}
+2025-08-05 19:49:21 | INFO | rogue.run_cli:merge_config_with_cli:253 - Using business context str
+2025-08-05 19:49:21 | DEBUG | rogue.run_cli:merge_config_with_cli:267 - Running with parameters: {'workdir': PosixPath('.rogue'), 'evaluated_agent_url': HttpUrl('https://overriden_agent_url:10001/'), 'evaluated_agent_auth_type': <AuthType.NO_AUTH: 'no_auth'>, 'evaluated_agent_credentials': None, 'judge_llm_model': 'openai/o4-mini', 'judge_llm_api_key': None, 'business_context': 'my business', 'input_scenarios_file': PosixPath('.rogue/scenarios.json'), 'output_report_file': PosixPath('.rogue/report.md'), 'deep_test_mode': False}
