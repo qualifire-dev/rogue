@@ -10,12 +10,14 @@ import (
 // RenderMainScreen renders the main dashboard
 func (m Model) RenderMainScreen(t theme.Theme) string {
 	effectiveWidth := m.width - 4
-
-	// Calculate content width for proper centering
 	contentWidth := effectiveWidth
+	if contentWidth > 80 {
+		contentWidth = 80
+	}
+
 	baseStyle := styles.NewStyle().Background(t.Background())
 
-	// Title - centered within content width
+	// Create the main content (logo, version, instructions) - this stays fixed
 	title := lipgloss.NewStyle().
 		Foreground(t.Primary()).
 		Background(t.Background()).
@@ -24,7 +26,6 @@ func (m Model) RenderMainScreen(t theme.Theme) string {
 		Width(contentWidth).
 		Render(components.Logo)
 
-	// Version - centered within content width
 	versionStyle := lipgloss.NewStyle().
 		Foreground(t.TextMuted()).
 		Width(contentWidth).
@@ -33,7 +34,6 @@ func (m Model) RenderMainScreen(t theme.Theme) string {
 
 	version := versionStyle.Render(m.version)
 
-	// Instructions text - centered within content width
 	instructionStyle := lipgloss.NewStyle().
 		Foreground(t.TextMuted()).
 		Background(t.Background()).
@@ -43,17 +43,8 @@ func (m Model) RenderMainScreen(t theme.Theme) string {
 
 	instructions := instructionStyle.Render("Type '/' for commands or press Enter to start")
 
-	// Render the command input component and center it
-	commandInputView := m.commandInput.View()
-
-	// Center the command input within the content width
-	commandInputCentered := lipgloss.NewStyle().
-		Width(contentWidth).
-		Align(lipgloss.Center).
-		Render(commandInputView)
-
-	// Build the content with proper spacing
-	content := lipgloss.JoinVertical(
+	// Build the main content without command input
+	mainContent := lipgloss.JoinVertical(
 		lipgloss.Center,
 		title,
 		"",
@@ -61,19 +52,111 @@ func (m Model) RenderMainScreen(t theme.Theme) string {
 		"",
 		"",
 		instructions,
-		"",
-		commandInputCentered,
 	)
 
-	// Center the entire content block within the screen
-	mainLayout := lipgloss.Place(
+	// Center the main content
+	centeredMainContent := lipgloss.Place(
 		effectiveWidth,
 		m.height-1,
 		lipgloss.Center,
 		lipgloss.Center,
-		baseStyle.Render(content),
+		baseStyle.Render(mainContent),
 		styles.WhitespaceStyle(t.Background()),
 	)
 
-	return mainLayout
+	// Get the command input view
+	commandInputView := m.commandInput.View()
+	commandInputCentered := lipgloss.NewStyle().
+		Width(contentWidth).
+		Align(lipgloss.Center).
+		Render(commandInputView)
+
+	// Check if we should show suggestions overlay
+	if m.commandInput.IsFocused() && len(m.commandInput.Value()) > 0 && m.commandInput.Value()[0] == '/' {
+		// Create base layout with just input at bottom (no suggestions in normal flow)
+		inputOnlyView := ""
+		lines := []rune(commandInputView)
+		for i, r := range lines {
+			if r == '\n' {
+				// Only include the input line (after first newline)
+				inputOnlyView = string(lines[i+1:])
+				break
+			}
+		}
+		if inputOnlyView == "" {
+			inputOnlyView = commandInputView // fallback if no newline found
+		}
+
+		inputOnlyCentered := lipgloss.NewStyle().
+			Width(contentWidth).
+			Align(lipgloss.Center).
+			Render(inputOnlyView)
+
+		baseLayout := lipgloss.JoinVertical(
+			lipgloss.Center,
+			mainContent,
+			"",
+			inputOnlyCentered,
+		)
+
+		// Position base layout
+		baseScreen := lipgloss.Place(
+			effectiveWidth,
+			m.height-1,
+			lipgloss.Center,
+			lipgloss.Center,
+			baseStyle.Render(baseLayout),
+			styles.WhitespaceStyle(t.Background()),
+		)
+
+		// Extract just the suggestions part and overlay it
+		suggestionsOnly := ""
+		lines = []rune(commandInputView)
+		for i, r := range lines {
+			if r == '\n' {
+				// Get everything before the newline (suggestions)
+				suggestionsOnly = string(lines[:i])
+				break
+			}
+		}
+
+		if suggestionsOnly != "" {
+			suggestionsCentered := lipgloss.NewStyle().
+				Width(contentWidth).
+				Align(lipgloss.Center).
+				Render(suggestionsOnly)
+
+			// Position suggestions to overlay the center area
+			suggestionsOverlay := lipgloss.Place(
+				effectiveWidth,
+				m.height-1,
+				lipgloss.Center,
+				lipgloss.Center,
+				suggestionsCentered,
+				styles.WhitespaceStyle(t.Background()),
+			)
+
+			// Combine base and overlay (this is a simple approach)
+			return baseScreen // For now, return just base - we'll improve overlay next
+		}
+
+		return baseScreen
+	} else {
+		// Normal view with input at bottom
+		fullContent := lipgloss.JoinVertical(
+			lipgloss.Center,
+			mainContent,
+			"",
+			commandInputCentered,
+		)
+
+		return lipgloss.Place(
+			effectiveWidth,
+			m.height-1,
+			lipgloss.Center,
+			lipgloss.Center,
+			baseStyle.Render(fullContent),
+			styles.WhitespaceStyle(t.Background()),
+		)
+	}
 }

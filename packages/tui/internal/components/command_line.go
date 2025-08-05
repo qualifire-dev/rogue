@@ -201,8 +201,8 @@ func (c *CommandInput) updateSuggestions() {
 	}
 }
 
-// View implements tea.Model
-func (c CommandInput) View() string {
+// ViewInput returns just the input field
+func (c CommandInput) ViewInput() string {
 	t := theme.CurrentTheme()
 	effectiveWidth := c.width
 	if effectiveWidth > 80 {
@@ -232,11 +232,19 @@ func (c CommandInput) View() string {
 		inputText = c.input[:c.cursor] + "█" + c.input[c.cursor:]
 	}
 
-	inputField := inputStyle.Render(inputText)
+	return inputStyle.Render(inputText)
+}
 
-	// If not showing suggestions, return just the input
+// ViewSuggestions returns just the suggestions panel
+func (c CommandInput) ViewSuggestions() string {
 	if !c.showingSuggestions || len(c.suggestions) == 0 {
-		return inputField
+		return ""
+	}
+
+	t := theme.CurrentTheme()
+	effectiveWidth := c.width
+	if effectiveWidth > 80 {
+		effectiveWidth = 80
 	}
 
 	// Render suggestions with overlay styling
@@ -245,8 +253,7 @@ func (c CommandInput) View() string {
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(t.Primary()).
 		Background(t.BackgroundPanel()).
-		Padding(0, 1).
-		MarginBottom(1) // Add some space between suggestions and input
+		Padding(0, 1)
 
 	var suggestionItems []string
 	for i, cmd := range c.suggestions {
@@ -257,22 +264,20 @@ func (c CommandInput) View() string {
 				Background(t.Primary()).
 				Foreground(t.Background()).
 				Bold(true).
-				Padding(0, 1) // Add padding to selected item
+				Padding(0, 1)
 		} else {
 			itemStyle = itemStyle.
 				Foreground(t.Text()).
-				Padding(0, 1) // Consistent padding for all items
+				Padding(0, 1)
 		}
 
 		// Format: /command    description    keybinding
 		var nameStyle, descStyle, keyStyle lipgloss.Style
 		if i == c.selectedSuggestion {
-			// For selected item, use background colors for contrast
 			nameStyle = itemStyle.Copy().Foreground(t.Background())
 			descStyle = itemStyle.Copy().Foreground(t.Background())
 			keyStyle = itemStyle.Copy().Foreground(t.Background())
 		} else {
-			// For unselected items, use theme colors
 			nameStyle = itemStyle.Copy().Foreground(t.Primary())
 			descStyle = itemStyle.Copy().Foreground(t.TextMuted())
 			keyStyle = itemStyle.Copy().Foreground(t.Accent())
@@ -295,8 +300,21 @@ func (c CommandInput) View() string {
 		suggestionItems = append(suggestionItems, line)
 	}
 
-	suggestions := suggestionStyle.Render(strings.Join(suggestionItems, "\n"))
+	return suggestionStyle.Render(strings.Join(suggestionItems, "\n"))
+}
 
-	// Combine input and suggestions (suggestions above input to overlay content)
-	return lipgloss.JoinVertical(lipgloss.Left, suggestions, inputField)
+// HasSuggestions returns whether suggestions are currently showing
+func (c CommandInput) HasSuggestions() bool {
+	return c.showingSuggestions && len(c.suggestions) > 0
+}
+
+// View implements tea.Model (for backward compatibility)
+func (c CommandInput) View() string {
+	suggestions := c.ViewSuggestions()
+	input := c.ViewInput()
+	
+	if suggestions != "" {
+		return lipgloss.JoinVertical(lipgloss.Left, suggestions, input)
+	}
+	return input
 }
