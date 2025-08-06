@@ -24,7 +24,8 @@ func (m Model) RenderHelp() string {
 
 Keyboard Shortcuts:
 • Ctrl+N - New evaluation
-• Ctrl+E - Evaluations list
+• Ctrl+L - Configure LLMs
+• Ctrl+E - Scenario editor
 • Ctrl+I - Interview mode
 • Ctrl+S - Configuration
 • Ctrl+H - Help
@@ -33,9 +34,9 @@ Keyboard Shortcuts:
 
 Slash Commands:
 • /new - Start new evaluation wizard
-• /eval - List evaluations
-• /interview - Start interview mode
-• /configure - Open configuration settings
+• /models - Configure LLM providers
+• /editor - Open scenario editor
+• /config - Configuration settings
 • /help - Show help
 • /quit - Exit application
 

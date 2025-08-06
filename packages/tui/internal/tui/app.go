@@ -142,6 +142,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			llmDialog := components.NewLLMConfigDialog(m.config.APIKeys, m.config.SelectedProvider, m.config.SelectedModel)
 			m.llmDialog = &llmDialog
 			return m, nil
+		case "open_editor":
+			m.currentScreen = ScenariosScreen
 		case "configuration":
 			m.currentScreen = ConfigurationScreen
 		case "help":
@@ -297,69 +299,82 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Batch(cmds...)
 		}
 
-		// Let the command input handle its own key events first
-		if m.commandInput.IsFocused() {
-			m.commandInput, cmd = m.commandInput.Update(msg)
-			if cmd != nil {
-				cmds = append(cmds, cmd)
-			}
-			return m, tea.Batch(cmds...)
-		} else {
-			// Handle other key events when command input is not focused
-			switch msg.String() {
-			case "ctrl+c", "q":
-				return m, tea.Quit
+		// Handle global keyboard shortcuts first (regardless of focus state)
+		switch msg.String() {
+		case "ctrl+n":
+			m.currentScreen = NewEvaluationScreen
+			return m, nil
 
-			case "/":
-				// Focus the command input and start with "/"
-				m.commandInput.SetFocus(true)
-				m.commandInput.SetValue("/")
-				return m, nil
+		case "ctrl+l":
+			// Open LLM configuration dialog
+			llmDialog := components.NewLLMConfigDialog(m.config.APIKeys, m.config.SelectedProvider, m.config.SelectedModel)
+			m.llmDialog = &llmDialog
+			return m, nil
 
-			case "ctrl+h", "?":
-				m.currentScreen = HelpScreen
-				return m, nil
+		case "ctrl+e":
+			m.currentScreen = ScenariosScreen
+			return m, nil
 
-			case "ctrl+n":
-				m.currentScreen = NewEvaluationScreen
-				return m, nil
+		case "ctrl+s":
+			m.currentScreen = ConfigurationScreen
+			return m, nil
 
-			case "ctrl+i":
-				m.currentScreen = InterviewScreen
-				return m, nil
+		case "ctrl+h", "?":
+			m.currentScreen = HelpScreen
+			return m, nil
 
-			case "ctrl+s":
-				m.currentScreen = ConfigurationScreen
-				return m, nil
+		case "ctrl+i":
+			m.currentScreen = InterviewScreen
+			return m, nil
 
-			case "ctrl+d":
-				// Show example info dialog
-				dialog := components.NewInfoDialog(
-					"Dialog Demo",
-					"This dialog was opened with Ctrl+D. You can navigate with Tab/Shift+Tab and close with Escape or Enter.",
-				)
-				m.dialog = &dialog
-				return m, nil
+		case "ctrl+d":
+			// Show example info dialog
+			dialog := components.NewInfoDialog(
+				"Dialog Demo",
+				"This dialog was opened with Ctrl+D. You can navigate with Tab/Shift+Tab and close with Escape or Enter.",
+			)
+			m.dialog = &dialog
+			return m, nil
 
-			case "ctrl+m":
-				// Open LLM configuration dialog
-				llmDialog := components.NewLLMConfigDialog(m.config.APIKeys, m.config.SelectedProvider, m.config.SelectedModel)
-				m.llmDialog = &llmDialog
-				return m, nil
+		case "q":
+			return m, tea.Quit
 
-			case "esc":
-				m.currentScreen = DashboardScreen
-				m.commandInput.SetFocus(true) // Keep focused when returning to dashboard
-				m.commandInput.SetValue("")
-				return m, nil
+		case "/":
+			// Focus the command input and start with "/"
+			m.commandInput.SetFocus(true)
+			m.commandInput.SetValue("/")
+			return m, nil
 
-			case "enter":
-				// Handle enter key based on current screen
-				if m.currentScreen == DashboardScreen {
-					// Focus the command input on enter
-					m.commandInput.SetFocus(true)
+		case "esc":
+			m.currentScreen = DashboardScreen
+			m.commandInput.SetFocus(true) // Keep focused when returning to dashboard
+			m.commandInput.SetValue("")
+			return m, nil
+
+		case "enter":
+			// If command input has suggestions, let it handle the enter key
+			if m.commandInput.IsFocused() && m.commandInput.HasSuggestions() {
+				m.commandInput, cmd = m.commandInput.Update(msg)
+				if cmd != nil {
+					cmds = append(cmds, cmd)
 				}
-				return m, nil
+				return m, tea.Batch(cmds...)
+			}
+			// Handle enter key based on current screen
+			if m.currentScreen == DashboardScreen {
+				// Focus the command input on enter
+				m.commandInput.SetFocus(true)
+			}
+			return m, nil
+
+		default:
+			// Let the command input handle non-shortcut keys if it's focused
+			if m.commandInput.IsFocused() {
+				m.commandInput, cmd = m.commandInput.Update(msg)
+				if cmd != nil {
+					cmds = append(cmds, cmd)
+				}
+				return m, tea.Batch(cmds...)
 			}
 		}
 	}

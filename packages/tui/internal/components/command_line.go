@@ -38,14 +38,10 @@ type CommandSelectedMsg struct {
 func NewCommandInput() CommandInput {
 	commands := []Command{
 		{Name: "/new", Description: "New evaluation", KeyBinding: "Ctrl+N", Action: "new_evaluation"},
-		{Name: "/models", Description: "Configure LLM providers", KeyBinding: "Ctrl+M", Action: "configure_models"},
-		{Name: "/editor", Description: "Open scenario editor", KeyBinding: "", Action: "open_editor"},
+		{Name: "/models", Description: "Configure LLMs", KeyBinding: "Ctrl+L", Action: "configure_models"},
+		{Name: "/editor", Description: "Scenario editor", KeyBinding: "Ctrl+E", Action: "open_editor"},
 		{Name: "/config", Description: "Configuration", KeyBinding: "Ctrl+S", Action: "configuration"},
 		{Name: "/help", Description: "Show help", KeyBinding: "Ctrl+H", Action: "help"},
-		{Name: "/dialog-info", Description: "Show info dialog", KeyBinding: "", Action: "dialog_info"},
-		{Name: "/dialog-input", Description: "Show input dialog", KeyBinding: "", Action: "dialog_input"},
-		{Name: "/dialog-error", Description: "Show error dialog", KeyBinding: "", Action: "dialog_error"},
-		{Name: "/dialog-about", Description: "Show about dialog", KeyBinding: "", Action: "dialog_about"},
 		{Name: "/quit", Description: "Quit application", KeyBinding: "Q", Action: "quit"},
 	}
 
@@ -155,7 +151,6 @@ func (c CommandInput) Update(msg tea.Msg) (CommandInput, tea.Cmd) {
 				c.updateSuggestions()
 			}
 			return c, nil
-
 		case "delete":
 			if c.cursor < len(c.input) {
 				c.input = c.input[:c.cursor] + c.input[c.cursor+1:]
