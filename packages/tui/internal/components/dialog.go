@@ -291,12 +291,13 @@ func (d Dialog) View() string {
 
 // ViewWithBackdrop renders the dialog with a backdrop overlay
 func (d Dialog) ViewWithBackdrop(screenWidth, screenHeight int) string {
+	t := theme.CurrentTheme()
 	dialogView := d.View()
 
-	// Create a semi-transparent backdrop character
+	// Create backdrop character with theme background
 	backdropChar := " "
 
-	// Position dialog in center of screen with backdrop
+	// Position dialog in center of screen with backdrop using theme background
 	return lipgloss.Place(
 		screenWidth,
 		screenHeight,
@@ -304,6 +305,7 @@ func (d Dialog) ViewWithBackdrop(screenWidth, screenHeight int) string {
 		lipgloss.Center,
 		dialogView,
 		lipgloss.WithWhitespaceChars(backdropChar),
+		lipgloss.WithWhitespaceStyle(lipgloss.NewStyle().Background(t.Background())),
 	)
 }
 
