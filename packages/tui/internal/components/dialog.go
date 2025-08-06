@@ -294,7 +294,7 @@ func (d Dialog) ViewWithBackdrop(screenWidth, screenHeight int) string {
 	dialogView := d.View()
 
 	// Create a semi-transparent backdrop character
-	backdropChar := "░"
+	backdropChar := " "
 
 	// Position dialog in center of screen with backdrop
 	return lipgloss.Place(
