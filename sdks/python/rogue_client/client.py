@@ -115,7 +115,7 @@ class RogueHttpClient:
         if api_key:
             data["api_key"] = api_key
 
-        return await self._request("POST", "/llm/scenarios", json=data)
+        return await self._request("POST", "/api/v1/llm/scenarios", json=data)
 
     async def generate_summary(
         self, results: dict, model: str, api_key: Optional[str] = None
@@ -128,7 +128,7 @@ class RogueHttpClient:
         if api_key:
             data["api_key"] = api_key
 
-        return await self._request("POST", "/llm/summary", json=data)
+        return await self._request("POST", "/api/v1/llm/summary", json=data)
 
     async def start_interview(
         self, model: str = "openai/gpt-4o-mini", api_key: Optional[str] = None
@@ -138,16 +138,18 @@ class RogueHttpClient:
         if api_key:
             data["api_key"] = api_key
 
-        return await self._request("POST", "/interview/start", json=data)
+        return await self._request("POST", "/api/v1/interview/start", json=data)
 
     async def send_interview_message(self, session_id: str, message: str) -> dict:
         """Send a message in an interview session."""
         data = {"session_id": session_id, "message": message}
-        return await self._request("POST", "/interview/message", json=data)
+        return await self._request("POST", "/api/v1/interview/message", json=data)
 
     async def get_interview_conversation(self, session_id: str) -> dict:
         """Get the full conversation for an interview session."""
-        return await self._request("GET", f"/interview/conversation/{session_id}")
+        return await self._request(
+            "GET", f"/api/v1/interview/conversation/{session_id}"
+        )
 
     async def end_interview(self, session_id: str) -> dict:
         """End an interview session."""

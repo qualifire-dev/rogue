@@ -10,8 +10,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from ...services.llm_service import LLMService
-from ...models.evaluation_result import EvaluationResults
-from ...models.scenario import Scenarios
+from sdks.python.rogue_client.types import EvaluationResults, Scenarios
 from ...common.logging import get_logger
 
 router = APIRouter(prefix="/api/v1/llm", tags=["llm"])
