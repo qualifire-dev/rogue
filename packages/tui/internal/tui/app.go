@@ -2,9 +2,12 @@ package tui
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"
+	"github.com/pelletier/go-toml/v2"
 	"github.com/rogue/tui/internal/components"
 	"github.com/rogue/tui/internal/theme"
 )
@@ -61,9 +64,11 @@ type Scenario struct {
 
 // Config represents application configuration
 type Config struct {
-	ServerURL string            `toml:"server_url"`
-	Theme     string            `toml:"theme"`
-	APIKeys   map[string]string `toml:"api_keys"`
+	ServerURL        string            `toml:"server_url"`
+	Theme            string            `toml:"theme"`
+	APIKeys          map[string]string `toml:"api_keys"`
+	SelectedModel    string            `toml:"selected_model"`
+	SelectedProvider string            `toml:"selected_provider"`
 }
 
 // NewApp creates a new TUI application
@@ -91,6 +96,12 @@ func (a *App) Run() error {
 		},
 		version:      "v0.1.0",
 		commandInput: components.NewCommandInput(),
+	}
+
+	// Load existing configuration
+	if err := model.loadConfig(); err != nil {
+		// If config loading fails, continue with defaults
+		fmt.Printf("Warning: Failed to load config: %v\n", err)
 	}
 
 	// Set command input as focused by default
@@ -128,7 +139,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.currentScreen = NewEvaluationScreen
 		case "configure_models":
 			// Open LLM configuration dialog
-			llmDialog := components.NewLLMConfigDialog(m.config.APIKeys)
+			llmDialog := components.NewLLMConfigDialog(m.config.APIKeys, m.config.SelectedProvider, m.config.SelectedModel)
 			m.llmDialog = &llmDialog
 			return m, nil
 		case "configuration":
@@ -191,24 +202,36 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.llmDialog != nil {
 			switch msg.Action {
 			case "configure":
-				// Save the API key to config
+				// Save the API key and selected model to config
 				if m.config.APIKeys == nil {
 					m.config.APIKeys = make(map[string]string)
 				}
 				m.config.APIKeys[msg.Provider] = msg.APIKey
+				m.config.SelectedProvider = msg.Provider
+				m.config.SelectedModel = msg.Model
 
-				// Show success dialog
-				dialog := components.NewInfoDialog(
-					"Configuration Saved",
-					fmt.Sprintf("Successfully configured %s with model %s", msg.Provider, msg.Model),
-				)
-				m.dialog = &dialog
+				// Save config to file
+				err := m.saveConfig()
+				if err != nil {
+					// Show error dialog
+					dialog := components.ShowErrorDialog(
+						"Configuration Error",
+						fmt.Sprintf("Failed to save configuration: %v", err),
+					)
+					m.dialog = &dialog
+				} else {
+					// Show success dialog
+					dialog := components.NewInfoDialog(
+						"Configuration Saved",
+						fmt.Sprintf("Successfully configured %s with model %s", msg.Provider, msg.Model),
+					)
+					m.dialog = &dialog
+				}
 				m.llmDialog = nil
 				return m, nil
 			}
 		}
 		return m, nil
-
 	case components.LLMDialogClosedMsg:
 		// Handle LLM dialog closure with specific message
 		if m.llmDialog != nil {
@@ -315,7 +338,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			case "ctrl+m":
 				// Open LLM configuration dialog
-				llmDialog := components.NewLLMConfigDialog(m.config.APIKeys)
+				llmDialog := components.NewLLMConfigDialog(m.config.APIKeys, m.config.SelectedProvider, m.config.SelectedModel)
 				m.llmDialog = &llmDialog
 				return m, nil
 
@@ -408,4 +431,66 @@ func getKeyStatus(key string) string {
 		return "Not set"
 	}
 	return "Set"
+}
+
+// saveConfig saves the current configuration to file
+func (m *Model) saveConfig() error {
+	// Get user config directory
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		return fmt.Errorf("failed to get config directory: %w", err)
+	}
+
+	// Create rogue config directory if it doesn't exist
+	rogueConfigDir := filepath.Join(configDir, "rogue")
+	if err := os.MkdirAll(rogueConfigDir, 0755); err != nil {
+		return fmt.Errorf("failed to create config directory: %w", err)
+	}
+
+	// Config file path
+	configFile := filepath.Join(rogueConfigDir, "config.toml")
+
+	// Marshal config to TOML
+	data, err := toml.Marshal(m.config)
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %w", err)
+	}
+
+	// Write to file
+	if err := os.WriteFile(configFile, data, 0644); err != nil {
+		return fmt.Errorf("failed to write config file: %w", err)
+	}
+
+	return nil
+}
+
+// loadConfig loads configuration from file
+func (m *Model) loadConfig() error {
+	// Get user config directory
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		return fmt.Errorf("failed to get config directory: %w", err)
+	}
+
+	// Config file path
+	configFile := filepath.Join(configDir, "rogue", "config.toml")
+
+	// Check if config file exists
+	if _, err := os.Stat(configFile); os.IsNotExist(err) {
+		// Config file doesn't exist, use defaults
+		return nil
+	}
+
+	// Read config file
+	data, err := os.ReadFile(configFile)
+	if err != nil {
+		return fmt.Errorf("failed to read config file: %w", err)
+	}
+
+	// Unmarshal TOML
+	if err := toml.Unmarshal(data, &m.config); err != nil {
+		return fmt.Errorf("failed to unmarshal config: %w", err)
+	}
+
+	return nil
 }

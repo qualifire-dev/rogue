@@ -76,8 +76,8 @@ Press **Ctrl+M** to quickly open the configuration dialog.
 
 #### List Navigation
 - **Up/Down Arrows**: Navigate through providers and models
-- **Page Up/Ctrl+U**: Jump up by one page (15 items)
-- **Page Down/Ctrl+D**: Jump down by one page (15 items)
+- **Page Up/Ctrl+U**: Jump up by one page (10 items)
+- **Page Down/Ctrl+D**: Jump down by one page (10 items)
 - **Home/Ctrl+A**: Go to first selectable item
 - **End/Ctrl+E**: Go to last selectable item
 
@@ -93,15 +93,27 @@ Press **Ctrl+M** to quickly open the configuration dialog.
 
 ## Configuration Storage
 
-API keys are stored in the application's configuration system:
+Configuration is automatically saved to `~/.config/rogue/config.toml` and includes:
 
 ```toml
+server_url = "http://localhost:8000"
+theme = "dark"
+selected_provider = "openai"
+selected_model = "gpt-4"
+
 [api_keys]
 openai = "sk-..."
 anthropic = "sk-ant-..."
 google = "AIza..."
 cohere = "..."
 ```
+
+### Persistence Features
+
+- **Automatic Saving**: Configuration is saved immediately when you select a model
+- **Session Restore**: Previously selected model is highlighted with ● indicator
+- **Cross-Session**: Settings persist between application restarts
+- **Secure Storage**: API keys are stored in user's config directory with appropriate permissions
 
 ## Security Features
 

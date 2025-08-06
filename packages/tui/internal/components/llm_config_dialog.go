@@ -136,20 +136,22 @@ const (
 // LLMConfigDialog represents the LLM configuration dialog
 type LLMConfigDialog struct {
 	Dialog
-	CurrentStep       LLMConfigStep
-	Providers         []LLMProvider
-	SelectedProvider  int
-	SelectedModelIdx  int // Index within the flattened provider+model list
-	ScrollOffset      int // Current scroll position
-	VisibleItems      int // Number of items that can be displayed
-	APIKeyInput       string
-	APIKeyCursor      int
-	AvailableModels   []string
-	SelectedModel     int
-	ConfiguredKeys    map[string]string
-	Loading           bool
-	ErrorMessage      string
-	ExpandedProviders map[int]bool // Track which providers are expanded
+	CurrentStep        LLMConfigStep
+	Providers          []LLMProvider
+	SelectedProvider   int
+	SelectedModelIdx   int // Index within the flattened provider+model list
+	ScrollOffset       int // Current scroll position
+	VisibleItems       int // Number of items that can be displayed
+	APIKeyInput        string
+	APIKeyCursor       int
+	AvailableModels    []string
+	SelectedModel      int
+	ConfiguredKeys     map[string]string
+	ConfiguredProvider string // Currently configured provider
+	ConfiguredModel    string // Currently configured model
+	Loading            bool
+	ErrorMessage       string
+	ExpandedProviders  map[int]bool // Track which providers are expanded
 }
 
 // LLMConfigResultMsg is sent when LLM configuration is complete
@@ -176,7 +178,7 @@ type SelectableItem struct {
 }
 
 // NewLLMConfigDialog creates a new LLM configuration dialog
-func NewLLMConfigDialog(configuredKeys map[string]string) LLMConfigDialog {
+func NewLLMConfigDialog(configuredKeys map[string]string, selectedProvider, selectedModel string) LLMConfigDialog {
 	providers := []LLMProvider{
 		{
 			Name:        "openai",
@@ -221,25 +223,46 @@ func NewLLMConfigDialog(configuredKeys map[string]string) LLMConfigDialog {
 			},
 			SelectedBtn: 1,
 		},
-		CurrentStep:       ProviderSelectionStep,
-		Providers:         providers,
-		SelectedProvider:  0,
-		SelectedModelIdx:  0,
-		ScrollOffset:      0,
-		VisibleItems:      10, // Show up to 10 items at once
-		ConfiguredKeys:    configuredKeys,
-		AvailableModels:   []string{},
-		ExpandedProviders: make(map[int]bool),
+		CurrentStep:        ProviderSelectionStep,
+		Providers:          providers,
+		SelectedProvider:   0,
+		SelectedModelIdx:   0,
+		ScrollOffset:       0,
+		VisibleItems:       10, // Show up to 10 items at once
+		ConfiguredKeys:     configuredKeys,
+		ConfiguredProvider: selectedProvider,
+		ConfiguredModel:    selectedModel,
+		AvailableModels:    []string{},
+		ExpandedProviders:  make(map[int]bool),
 	}
 
-	// Find first selectable item
+	// Find the previously selected model or first selectable item
 	items := dialog.buildSelectableItems()
-	for i, item := range items {
-		if item.IsSelectable {
-			dialog.SelectedModelIdx = i
-			break
+	selectedIdx := 0
+
+	// Look for previously selected model first
+	if selectedProvider != "" && selectedModel != "" {
+		for i, item := range items {
+			if item.Type == "model" &&
+				dialog.Providers[item.ProviderIdx].Name == selectedProvider &&
+				dialog.Providers[item.ProviderIdx].Models[item.ModelIdx] == selectedModel {
+				selectedIdx = i
+				break
+			}
 		}
 	}
+
+	// If not found or no previous selection, find first selectable item
+	if selectedIdx == 0 {
+		for i, item := range items {
+			if item.IsSelectable {
+				selectedIdx = i
+				break
+			}
+		}
+	}
+
+	dialog.SelectedModelIdx = selectedIdx
 
 	// Initialize scroll position
 	dialog.updateScroll()
@@ -677,6 +700,7 @@ func (d LLMConfigDialog) renderProviderSelection(t theme.Theme) []string {
 		Align(lipgloss.Left)
 
 	content = append(content, instructionStyle.Render("Select a provider to configure or choose a model from configured providers:"))
+	content = append(content, instructionStyle.Render("✓ = configured provider, ● = currently selected model"))
 
 	// Show scroll indicators if needed
 	allItems := d.buildSelectableItems()
@@ -734,6 +758,11 @@ func (d LLMConfigDialog) renderProviderSelection(t theme.Theme) []string {
 		} else if item.Type == "model" {
 			// Render model
 			var modelLine string
+			provider := d.Providers[item.ProviderIdx]
+			modelName := provider.Models[item.ModelIdx]
+
+			// Check if this is the currently configured model
+			isConfiguredModel := (provider.Name == d.ConfiguredProvider && modelName == d.ConfiguredModel)
 
 			if isSelected {
 				// Selected model
@@ -748,9 +777,16 @@ func (d LLMConfigDialog) renderProviderSelection(t theme.Theme) []string {
 				modelLine = modelStyle.Render("      " + item.DisplayText)
 			}
 
+			// Add indicator for currently configured model
+			if isConfiguredModel {
+				configIndicatorStyle := lipgloss.NewStyle().
+					Foreground(t.Success()).
+					Bold(true)
+				modelLine += configIndicatorStyle.Render(" ●")
+			}
+
 			line = modelLine
 		}
-
 		content = append(content, line)
 	}
 
