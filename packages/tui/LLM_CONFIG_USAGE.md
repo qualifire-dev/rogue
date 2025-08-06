@@ -47,8 +47,10 @@ Press **Ctrl+M** to quickly open the configuration dialog.
 
 #### Step 1: Provider Selection
 - Use **Up/Down arrows** to navigate between providers
-- Providers with existing configuration show a **●** (configured) indicator
-- Unconfigured providers show a **○** indicator
+- Providers with existing configuration show a **✓** indicator and display available models
+- Configured providers skip directly to model selection for quick access
+- Unconfigured providers proceed to API key input
+- Clean, sleek design with primary color highlighting for selected provider
 - Press **Enter** or click **Next** to proceed
 
 #### Step 2: API Key Input

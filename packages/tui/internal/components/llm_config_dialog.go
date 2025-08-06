@@ -9,6 +9,14 @@ import (
 	"github.com/rogue/tui/internal/theme"
 )
 
+// min returns the minimum of two integers
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 // LLMProvider represents an LLM provider
 type LLMProvider struct {
 	Name        string
@@ -63,28 +71,28 @@ func NewLLMConfigDialog(configuredKeys map[string]string) LLMConfigDialog {
 			Name:        "openai",
 			DisplayName: "OpenAI",
 			APIKeyName:  "OPENAI_API_KEY",
-			Models:      []string{"gpt-4", "gpt-4-turbo", "gpt-3.5-turbo"},
+			Models:      []string{"gpt-4", "gpt-4-turbo", "gpt-3.5-turbo", "gpt-4o", "gpt-4o-mini"},
 			Configured:  configuredKeys["openai"] != "",
 		},
 		{
 			Name:        "anthropic",
 			DisplayName: "Anthropic",
 			APIKeyName:  "ANTHROPIC_API_KEY",
-			Models:      []string{"claude-3-opus", "claude-3-sonnet", "claude-3-haiku"},
+			Models:      []string{"claude-3-5-sonnet", "claude-3-opus", "claude-3-sonnet", "claude-3-haiku"},
 			Configured:  configuredKeys["anthropic"] != "",
 		},
 		{
 			Name:        "google",
 			DisplayName: "Google AI",
 			APIKeyName:  "GOOGLE_API_KEY",
-			Models:      []string{"gemini-pro", "gemini-pro-vision"},
+			Models:      []string{"gemini-1.5-pro", "gemini-1.5-flash", "gemini-pro", "gemini-pro-vision"},
 			Configured:  configuredKeys["google"] != "",
 		},
 		{
 			Name:        "cohere",
 			DisplayName: "Cohere",
 			APIKeyName:  "COHERE_API_KEY",
-			Models:      []string{"command", "command-light", "command-nightly"},
+			Models:      []string{"command-r-plus", "command-r", "command", "command-light", "command-nightly"},
 			Configured:  configuredKeys["cohere"] != "",
 		},
 	}
@@ -93,8 +101,8 @@ func NewLLMConfigDialog(configuredKeys map[string]string) LLMConfigDialog {
 		Dialog: Dialog{
 			Type:    CustomDialog,
 			Title:   "LLM Provider Configuration",
-			Width:   80,
-			Height:  20,
+			Width:   85,
+			Height:  25,
 			Focused: true,
 			Buttons: []DialogButton{
 				{Label: "Cancel", Action: "cancel", Style: SecondaryButton},
@@ -218,21 +226,32 @@ func (d LLMConfigDialog) handleEnter() (LLMConfigDialog, tea.Cmd) {
 				return LLMDialogClosedMsg{Action: "cancel"}
 			}
 		}
-		// Move to API key input step
-		d.CurrentStep = APIKeyInputStep
-		d.Buttons = []DialogButton{
-			{Label: "Back", Action: "back", Style: SecondaryButton},
-			{Label: "Validate", Action: "validate", Style: PrimaryButton},
-		}
-		d.SelectedBtn = 1
-
-		// Pre-fill API key if already configured
 		provider := d.Providers[d.SelectedProvider]
-		if existingKey, exists := d.ConfiguredKeys[provider.Name]; exists {
-			d.APIKeyInput = existingKey
-			d.APIKeyCursor = len(existingKey)
-		}
 
+		// If provider is already configured, skip to model selection
+		if provider.Configured {
+			d.CurrentStep = ModelSelectionStep
+			d.AvailableModels = provider.Models
+			d.Buttons = []DialogButton{
+				{Label: "Back", Action: "back", Style: SecondaryButton},
+				{Label: "Configure", Action: "configure", Style: PrimaryButton},
+			}
+			d.SelectedBtn = 1
+		} else {
+			// Move to API key input step for unconfigured providers
+			d.CurrentStep = APIKeyInputStep
+			d.Buttons = []DialogButton{
+				{Label: "Back", Action: "back", Style: SecondaryButton},
+				{Label: "Validate", Action: "validate", Style: PrimaryButton},
+			}
+			d.SelectedBtn = 1
+
+			// Pre-fill API key if already configured
+			if existingKey, exists := d.ConfiguredKeys[provider.Name]; exists {
+				d.APIKeyInput = existingKey
+				d.APIKeyCursor = len(existingKey)
+			}
+		}
 		return d, nil
 
 	case APIKeyInputStep:
@@ -405,53 +424,52 @@ func (d LLMConfigDialog) renderProviderSelection(t theme.Theme) []string {
 		Align(lipgloss.Left)
 
 	content = append(content, instructionStyle.Render("Select an LLM provider to configure:"))
+	content = append(content, instructionStyle.Render("Providers with ✓ are already configured and show available models."))
 	content = append(content, "")
 
-	// Render provider list
+	// Render provider list with sleek design
 	for i, provider := range d.Providers {
-		itemStyle := lipgloss.NewStyle().
-			Width(d.Width-6).
-			Padding(0, 1).
-			Border(lipgloss.RoundedBorder())
+		var providerLine string
+		var modelsLine string
 
-		statusIcon := "○"
-		statusColor := t.TextMuted()
-
-		if provider.Configured {
-			statusIcon = "●"
-			statusColor = t.Success()
-		}
-
+		// Provider name styling
 		if i == d.SelectedProvider {
-			itemStyle = itemStyle.
-				Background(t.Primary()).
-				Foreground(t.Background()).
-				BorderForeground(t.Primary()).
+			// Selected provider - highlight in primary color
+			nameStyle := lipgloss.NewStyle().
+				Foreground(t.Primary()).
 				Bold(true)
-			statusColor = t.Background()
+			providerLine = nameStyle.Render("▶ " + provider.DisplayName)
 		} else {
-			itemStyle = itemStyle.
-				Background(t.BackgroundElement()).
-				Foreground(t.Text()).
-				BorderForeground(t.Border())
+			// Unselected provider - normal text
+			nameStyle := lipgloss.NewStyle().
+				Foreground(t.Text())
+			providerLine = nameStyle.Render("  " + provider.DisplayName)
 		}
 
-		statusStyle := lipgloss.NewStyle().Foreground(statusColor)
-		nameStyle := lipgloss.NewStyle().Foreground(itemStyle.GetForeground())
-
-		line := lipgloss.JoinHorizontal(lipgloss.Left,
-			statusStyle.Render(statusIcon+" "),
-			nameStyle.Render(provider.DisplayName),
-		)
-
+		// Add configured status
 		if provider.Configured {
-			configuredStyle := lipgloss.NewStyle().
-				Foreground(itemStyle.GetForeground()).
+			statusStyle := lipgloss.NewStyle().
+				Foreground(t.Success()).
 				Italic(true)
-			line += configuredStyle.Render(" (configured)")
+			providerLine += statusStyle.Render(" ✓")
+
+			// Show available models for configured providers
+			modelStyle := lipgloss.NewStyle().
+				Foreground(t.TextMuted()).
+				Italic(true)
+
+			modelList := strings.Join(provider.Models[:min(3, len(provider.Models))], ", ")
+			if len(provider.Models) > 3 {
+				modelList += fmt.Sprintf(" (+%d more)", len(provider.Models)-3)
+			}
+			modelsLine = modelStyle.Render("    " + modelList)
 		}
 
-		content = append(content, itemStyle.Render(line))
+		content = append(content, providerLine)
+		if modelsLine != "" {
+			content = append(content, modelsLine)
+		}
+		content = append(content, "") // Add spacing between providers
 	}
 
 	return content
@@ -518,27 +536,24 @@ func (d LLMConfigDialog) renderModelSelection(t theme.Theme) []string {
 	content = append(content, instructionStyle.Render(fmt.Sprintf("Select a %s model:", provider.DisplayName)))
 	content = append(content, "")
 
-	// Render model list
+	// Render model list with sleek design
 	for i, model := range d.AvailableModels {
-		itemStyle := lipgloss.NewStyle().
-			Width(d.Width-6).
-			Padding(0, 1).
-			Border(lipgloss.RoundedBorder())
+		var modelLine string
 
 		if i == d.SelectedModel {
-			itemStyle = itemStyle.
-				Background(t.Primary()).
-				Foreground(t.Background()).
-				BorderForeground(t.Primary()).
+			// Selected model - highlight in primary color
+			modelStyle := lipgloss.NewStyle().
+				Foreground(t.Primary()).
 				Bold(true)
+			modelLine = modelStyle.Render("▶ " + model)
 		} else {
-			itemStyle = itemStyle.
-				Background(t.BackgroundElement()).
-				Foreground(t.Text()).
-				BorderForeground(t.Border())
+			// Unselected model - normal text
+			modelStyle := lipgloss.NewStyle().
+				Foreground(t.Text())
+			modelLine = modelStyle.Render("  " + model)
 		}
 
-		content = append(content, itemStyle.Render("○ "+model))
+		content = append(content, modelLine)
 	}
 
 	return content
