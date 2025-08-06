@@ -176,9 +176,6 @@ class HealthResponse(BaseModel):
 
     status: str
     timestamp: datetime
-    version: str
-    python_version: str
-    platform: str
 
 
 # WebSocket Messages
