@@ -5,10 +5,11 @@ The TUI now includes a comprehensive LLM provider configuration dialog that allo
 ## Features
 
 - **Multi-Provider Support**: Configure OpenAI, Anthropic, Google AI, and Cohere
+- **Direct Model Selection**: Choose models directly from configured providers
 - **Secure API Key Input**: Masked input for security
-- **Model Selection**: Browse and select available models for each provider
+- **Smart Scrolling**: Handles long lists with smooth scrolling and indicators
 - **Configuration Status**: Visual indicators for configured providers
-- **Step-by-Step Wizard**: Guided configuration process
+- **Streamlined Workflow**: Skip steps for already configured providers
 - **Integration**: Seamlessly integrates with existing config system
 
 ## Supported Providers
@@ -73,11 +74,22 @@ Press **Ctrl+M** to quickly open the configuration dialog.
 
 ### Navigation Controls
 
-- **Up/Down Arrows**: Navigate lists (providers, models)
+#### List Navigation
+- **Up/Down Arrows**: Navigate through providers and models
+- **Page Up/Ctrl+U**: Jump up by one page (15 items)
+- **Page Down/Ctrl+D**: Jump down by one page (15 items)
+- **Home/Ctrl+A**: Go to first selectable item
+- **End/Ctrl+E**: Go to last selectable item
+
+#### Dialog Controls
 - **Tab/Shift+Tab**: Navigate buttons
 - **Enter**: Confirm selection or proceed to next step
 - **Escape**: Cancel configuration and close dialog
-- **Ctrl+A/Ctrl+E**: Navigate to start/end of API key input
+
+#### API Key Input
+- **Ctrl+A**: Move cursor to beginning of input
+- **Ctrl+E**: Move cursor to end of input
+- **Backspace/Delete**: Edit API key input
 
 ## Configuration Storage
 

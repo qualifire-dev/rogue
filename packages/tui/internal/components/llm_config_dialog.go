@@ -17,6 +17,103 @@ func min(a, b int) int {
 	return b
 }
 
+// buildSelectableItems creates a flattened list of providers and their models
+func (d LLMConfigDialog) buildSelectableItems() []SelectableItem {
+	var items []SelectableItem
+
+	for i, provider := range d.Providers {
+		// Add provider item
+		items = append(items, SelectableItem{
+			Type:         "provider",
+			ProviderIdx:  i,
+			ModelIdx:     -1,
+			DisplayText:  provider.DisplayName,
+			IsConfigured: provider.Configured,
+			IsSelectable: !provider.Configured, // Only unconfigured providers are selectable for setup
+		})
+
+		// Add model items if provider is configured
+		if provider.Configured {
+			for j, model := range provider.Models {
+				items = append(items, SelectableItem{
+					Type:         "model",
+					ProviderIdx:  i,
+					ModelIdx:     j,
+					DisplayText:  model,
+					IsConfigured: true,
+					IsSelectable: true,
+				})
+			}
+		}
+	}
+
+	return items
+}
+
+// getSelectedItem returns the currently selected item
+func (d LLMConfigDialog) getSelectedItem() SelectableItem {
+	items := d.buildSelectableItems()
+	if d.SelectedModelIdx >= 0 && d.SelectedModelIdx < len(items) {
+		return items[d.SelectedModelIdx]
+	}
+	return SelectableItem{}
+}
+
+// getButtonText returns the appropriate button text based on current selection
+func (d LLMConfigDialog) getButtonText() string {
+	if d.CurrentStep != ProviderSelectionStep {
+		return "Next"
+	}
+
+	selectedItem := d.getSelectedItem()
+
+	if selectedItem.Type == "model" {
+		return "Use Model"
+	} else if selectedItem.Type == "provider" && !selectedItem.IsConfigured {
+		return "Configure"
+	}
+	return "Select"
+}
+
+// updateScroll adjusts the scroll offset to keep the selected item visible
+func (d *LLMConfigDialog) updateScroll() {
+	if d.CurrentStep != ProviderSelectionStep {
+		return
+	}
+
+	// Ensure selected item is visible
+	if d.SelectedModelIdx < d.ScrollOffset {
+		// Selected item is above visible area - scroll up
+		d.ScrollOffset = d.SelectedModelIdx
+	} else if d.SelectedModelIdx >= d.ScrollOffset+d.VisibleItems {
+		// Selected item is below visible area - scroll down
+		d.ScrollOffset = d.SelectedModelIdx - d.VisibleItems + 1
+	}
+
+	// Ensure scroll offset is not negative
+	if d.ScrollOffset < 0 {
+		d.ScrollOffset = 0
+	}
+}
+
+// getVisibleItems returns the items that should be displayed based on scroll position
+func (d LLMConfigDialog) getVisibleItems() []SelectableItem {
+	items := d.buildSelectableItems()
+
+	start := d.ScrollOffset
+	end := start + d.VisibleItems
+
+	if start >= len(items) {
+		return []SelectableItem{}
+	}
+
+	if end > len(items) {
+		end = len(items)
+	}
+
+	return items[start:end]
+}
+
 // LLMProvider represents an LLM provider
 type LLMProvider struct {
 	Name        string
@@ -39,16 +136,20 @@ const (
 // LLMConfigDialog represents the LLM configuration dialog
 type LLMConfigDialog struct {
 	Dialog
-	CurrentStep      LLMConfigStep
-	Providers        []LLMProvider
-	SelectedProvider int
-	APIKeyInput      string
-	APIKeyCursor     int
-	AvailableModels  []string
-	SelectedModel    int
-	ConfiguredKeys   map[string]string
-	Loading          bool
-	ErrorMessage     string
+	CurrentStep       LLMConfigStep
+	Providers         []LLMProvider
+	SelectedProvider  int
+	SelectedModelIdx  int // Index within the flattened provider+model list
+	ScrollOffset      int // Current scroll position
+	VisibleItems      int // Number of items that can be displayed
+	APIKeyInput       string
+	APIKeyCursor      int
+	AvailableModels   []string
+	SelectedModel     int
+	ConfiguredKeys    map[string]string
+	Loading           bool
+	ErrorMessage      string
+	ExpandedProviders map[int]bool // Track which providers are expanded
 }
 
 // LLMConfigResultMsg is sent when LLM configuration is complete
@@ -62,6 +163,16 @@ type LLMConfigResultMsg struct {
 // LLMDialogClosedMsg is sent when LLM dialog is closed
 type LLMDialogClosedMsg struct {
 	Action string
+}
+
+// SelectableItem represents an item in the provider/model list
+type SelectableItem struct {
+	Type         string // "provider" or "model"
+	ProviderIdx  int
+	ModelIdx     int
+	DisplayText  string
+	IsConfigured bool
+	IsSelectable bool
 }
 
 // NewLLMConfigDialog creates a new LLM configuration dialog
@@ -97,25 +208,43 @@ func NewLLMConfigDialog(configuredKeys map[string]string) LLMConfigDialog {
 		},
 	}
 
-	return LLMConfigDialog{
+	dialog := LLMConfigDialog{
 		Dialog: Dialog{
 			Type:    CustomDialog,
 			Title:   "LLM Provider Configuration",
 			Width:   85,
-			Height:  25,
+			Height:  25, // Reduced height to fit better in terminals
 			Focused: true,
 			Buttons: []DialogButton{
 				{Label: "Cancel", Action: "cancel", Style: SecondaryButton},
-				{Label: "Next", Action: "next", Style: PrimaryButton},
+				{Label: "Select", Action: "select", Style: PrimaryButton},
 			},
 			SelectedBtn: 1,
 		},
-		CurrentStep:      ProviderSelectionStep,
-		Providers:        providers,
-		SelectedProvider: 0,
-		ConfiguredKeys:   configuredKeys,
-		AvailableModels:  []string{},
+		CurrentStep:       ProviderSelectionStep,
+		Providers:         providers,
+		SelectedProvider:  0,
+		SelectedModelIdx:  0,
+		ScrollOffset:      0,
+		VisibleItems:      10, // Show up to 10 items at once
+		ConfiguredKeys:    configuredKeys,
+		AvailableModels:   []string{},
+		ExpandedProviders: make(map[int]bool),
 	}
+
+	// Find first selectable item
+	items := dialog.buildSelectableItems()
+	for i, item := range items {
+		if item.IsSelectable {
+			dialog.SelectedModelIdx = i
+			break
+		}
+	}
+
+	// Initialize scroll position
+	dialog.updateScroll()
+
+	return dialog
 }
 
 // Update handles LLM config dialog input
@@ -155,8 +284,14 @@ func (d LLMConfigDialog) Update(msg tea.Msg) (LLMConfigDialog, tea.Cmd) {
 		case "up":
 			switch d.CurrentStep {
 			case ProviderSelectionStep:
-				if d.SelectedProvider > 0 {
-					d.SelectedProvider--
+				items := d.buildSelectableItems()
+				// Find previous selectable item
+				for i := d.SelectedModelIdx - 1; i >= 0; i-- {
+					if items[i].IsSelectable {
+						d.SelectedModelIdx = i
+						d.updateScroll()
+						break
+					}
 				}
 			case ModelSelectionStep:
 				if d.SelectedModel > 0 {
@@ -168,12 +303,102 @@ func (d LLMConfigDialog) Update(msg tea.Msg) (LLMConfigDialog, tea.Cmd) {
 		case "down":
 			switch d.CurrentStep {
 			case ProviderSelectionStep:
-				if d.SelectedProvider < len(d.Providers)-1 {
-					d.SelectedProvider++
+				items := d.buildSelectableItems()
+				// Find next selectable item
+				for i := d.SelectedModelIdx + 1; i < len(items); i++ {
+					if items[i].IsSelectable {
+						d.SelectedModelIdx = i
+						d.updateScroll()
+						break
+					}
 				}
 			case ModelSelectionStep:
 				if d.SelectedModel < len(d.AvailableModels)-1 {
 					d.SelectedModel++
+				}
+			}
+			return d, nil
+
+		case "pgup", "ctrl+u":
+			// Page up - jump up by visible items count
+			if d.CurrentStep == ProviderSelectionStep {
+				items := d.buildSelectableItems()
+				targetIdx := d.SelectedModelIdx - d.VisibleItems
+
+				// Find the nearest selectable item going backwards
+				for i := targetIdx; i >= 0; i-- {
+					if items[i].IsSelectable {
+						d.SelectedModelIdx = i
+						d.updateScroll()
+						break
+					}
+				}
+
+				// If no selectable item found, go to first selectable item
+				if targetIdx < 0 {
+					for i := 0; i < len(items); i++ {
+						if items[i].IsSelectable {
+							d.SelectedModelIdx = i
+							d.updateScroll()
+							break
+						}
+					}
+				}
+			}
+			return d, nil
+
+		case "pgdown", "ctrl+d":
+			// Page down - jump down by visible items count
+			if d.CurrentStep == ProviderSelectionStep {
+				items := d.buildSelectableItems()
+				targetIdx := d.SelectedModelIdx + d.VisibleItems
+
+				// Find the nearest selectable item going forwards
+				for i := targetIdx; i < len(items); i++ {
+					if items[i].IsSelectable {
+						d.SelectedModelIdx = i
+						d.updateScroll()
+						break
+					}
+				}
+
+				// If no selectable item found, go to last selectable item
+				if targetIdx >= len(items) {
+					for i := len(items) - 1; i >= 0; i-- {
+						if items[i].IsSelectable {
+							d.SelectedModelIdx = i
+							d.updateScroll()
+							break
+						}
+					}
+				}
+			}
+			return d, nil
+
+		case "home":
+			// Go to first selectable item
+			if d.CurrentStep == ProviderSelectionStep {
+				items := d.buildSelectableItems()
+				for i := 0; i < len(items); i++ {
+					if items[i].IsSelectable {
+						d.SelectedModelIdx = i
+						d.updateScroll()
+						break
+					}
+				}
+			}
+			return d, nil
+
+		case "end":
+			// Go to last selectable item
+			if d.CurrentStep == ProviderSelectionStep {
+				items := d.buildSelectableItems()
+				for i := len(items) - 1; i >= 0; i-- {
+					if items[i].IsSelectable {
+						d.SelectedModelIdx = i
+						d.updateScroll()
+						break
+					}
 				}
 			}
 			return d, nil
@@ -194,12 +419,32 @@ func (d LLMConfigDialog) Update(msg tea.Msg) (LLMConfigDialog, tea.Cmd) {
 		case "ctrl+a":
 			if d.CurrentStep == APIKeyInputStep {
 				d.APIKeyCursor = 0
+			} else if d.CurrentStep == ProviderSelectionStep {
+				// Go to first selectable item
+				items := d.buildSelectableItems()
+				for i := 0; i < len(items); i++ {
+					if items[i].IsSelectable {
+						d.SelectedModelIdx = i
+						d.updateScroll()
+						break
+					}
+				}
 			}
 			return d, nil
 
 		case "ctrl+e":
 			if d.CurrentStep == APIKeyInputStep {
 				d.APIKeyCursor = len(d.APIKeyInput)
+			} else if d.CurrentStep == ProviderSelectionStep {
+				// Go to last selectable item
+				items := d.buildSelectableItems()
+				for i := len(items) - 1; i >= 0; i-- {
+					if items[i].IsSelectable {
+						d.SelectedModelIdx = i
+						d.updateScroll()
+						break
+					}
+				}
 			}
 			return d, nil
 
@@ -226,19 +471,25 @@ func (d LLMConfigDialog) handleEnter() (LLMConfigDialog, tea.Cmd) {
 				return LLMDialogClosedMsg{Action: "cancel"}
 			}
 		}
-		provider := d.Providers[d.SelectedProvider]
 
-		// If provider is already configured, skip to model selection
-		if provider.Configured {
-			d.CurrentStep = ModelSelectionStep
-			d.AvailableModels = provider.Models
-			d.Buttons = []DialogButton{
-				{Label: "Back", Action: "back", Style: SecondaryButton},
-				{Label: "Configure", Action: "configure", Style: PrimaryButton},
+		selectedItem := d.getSelectedItem()
+
+		if selectedItem.Type == "model" {
+			// User selected a model directly - configure it
+			provider := d.Providers[selectedItem.ProviderIdx]
+			selectedModel := provider.Models[selectedItem.ModelIdx]
+
+			return d, func() tea.Msg {
+				return LLMConfigResultMsg{
+					Provider: provider.Name,
+					APIKey:   d.ConfiguredKeys[provider.Name], // Use existing API key
+					Model:    selectedModel,
+					Action:   "configure",
+				}
 			}
-			d.SelectedBtn = 1
-		} else {
-			// Move to API key input step for unconfigured providers
+		} else if selectedItem.Type == "provider" && !selectedItem.IsConfigured {
+			// User selected an unconfigured provider - go to API key input
+			d.SelectedProvider = selectedItem.ProviderIdx
 			d.CurrentStep = APIKeyInputStep
 			d.Buttons = []DialogButton{
 				{Label: "Back", Action: "back", Style: SecondaryButton},
@@ -247,11 +498,13 @@ func (d LLMConfigDialog) handleEnter() (LLMConfigDialog, tea.Cmd) {
 			d.SelectedBtn = 1
 
 			// Pre-fill API key if already configured
+			provider := d.Providers[selectedItem.ProviderIdx]
 			if existingKey, exists := d.ConfiguredKeys[provider.Name]; exists {
 				d.APIKeyInput = existingKey
 				d.APIKeyCursor = len(existingKey)
 			}
 		}
+
 		return d, nil
 
 	case APIKeyInputStep:
@@ -423,53 +676,105 @@ func (d LLMConfigDialog) renderProviderSelection(t theme.Theme) []string {
 		Width(d.Width - 4).
 		Align(lipgloss.Left)
 
-	content = append(content, instructionStyle.Render("Select an LLM provider to configure:"))
-	content = append(content, instructionStyle.Render("Providers with ✓ are already configured and show available models."))
-	content = append(content, "")
+	content = append(content, instructionStyle.Render("Select a provider to configure or choose a model from configured providers:"))
 
-	// Render provider list with sleek design
-	for i, provider := range d.Providers {
-		var providerLine string
-		var modelsLine string
+	// Show scroll indicators if needed
+	allItems := d.buildSelectableItems()
+	if len(allItems) > d.VisibleItems {
+		scrollInfo := fmt.Sprintf("Showing %d-%d of %d items",
+			d.ScrollOffset+1,
+			min(d.ScrollOffset+d.VisibleItems, len(allItems)),
+			len(allItems))
 
-		// Provider name styling
-		if i == d.SelectedProvider {
-			// Selected provider - highlight in primary color
-			nameStyle := lipgloss.NewStyle().
-				Foreground(t.Primary()).
-				Bold(true)
-			providerLine = nameStyle.Render("▶ " + provider.DisplayName)
-		} else {
-			// Unselected provider - normal text
-			nameStyle := lipgloss.NewStyle().
-				Foreground(t.Text())
-			providerLine = nameStyle.Render("  " + provider.DisplayName)
-		}
+		scrollStyle := lipgloss.NewStyle().
+			Foreground(t.TextMuted()).
+			Italic(true).
+			Width(d.Width - 4).
+			Align(lipgloss.Right)
 
-		// Add configured status
-		if provider.Configured {
-			statusStyle := lipgloss.NewStyle().
-				Foreground(t.Success()).
-				Italic(true)
-			providerLine += statusStyle.Render(" ✓")
+		content = append(content, scrollStyle.Render(scrollInfo))
+	} else {
+		content = append(content, "")
+	}
 
-			// Show available models for configured providers
-			modelStyle := lipgloss.NewStyle().
-				Foreground(t.TextMuted()).
-				Italic(true)
+	visibleItems := d.getVisibleItems()
 
-			modelList := strings.Join(provider.Models[:min(3, len(provider.Models))], ", ")
-			if len(provider.Models) > 3 {
-				modelList += fmt.Sprintf(" (+%d more)", len(provider.Models)-3)
+	for i, item := range visibleItems {
+		actualIndex := d.ScrollOffset + i
+		var line string
+		var isSelected = (actualIndex == d.SelectedModelIdx)
+
+		if item.Type == "provider" {
+			// Render provider
+			var providerLine string
+
+			if isSelected && item.IsSelectable {
+				// Selected unconfigured provider
+				nameStyle := lipgloss.NewStyle().
+					Foreground(t.Primary()).
+					Bold(true)
+				providerLine = nameStyle.Render("▶ " + item.DisplayText)
+			} else {
+				// Unselected or configured provider
+				nameStyle := lipgloss.NewStyle().
+					Foreground(t.Text())
+				providerLine = nameStyle.Render("  " + item.DisplayText)
 			}
-			modelsLine = modelStyle.Render("    " + modelList)
+
+			// Add configured status
+			if item.IsConfigured {
+				statusStyle := lipgloss.NewStyle().
+					Foreground(t.Success()).
+					Italic(true)
+				providerLine += statusStyle.Render(" ✓")
+			}
+
+			line = providerLine
+
+		} else if item.Type == "model" {
+			// Render model
+			var modelLine string
+
+			if isSelected {
+				// Selected model
+				modelStyle := lipgloss.NewStyle().
+					Foreground(t.Primary()).
+					Bold(true)
+				modelLine = modelStyle.Render("    ▶ " + item.DisplayText)
+			} else {
+				// Unselected model
+				modelStyle := lipgloss.NewStyle().
+					Foreground(t.TextMuted())
+				modelLine = modelStyle.Render("      " + item.DisplayText)
+			}
+
+			line = modelLine
 		}
 
-		content = append(content, providerLine)
-		if modelsLine != "" {
-			content = append(content, modelsLine)
+		content = append(content, line)
+	}
+
+	// Add scroll indicators at the bottom
+	if len(allItems) > d.VisibleItems {
+		var scrollIndicators []string
+
+		if d.ScrollOffset > 0 {
+			scrollIndicators = append(scrollIndicators, "↑ More above")
 		}
-		content = append(content, "") // Add spacing between providers
+
+		if d.ScrollOffset+d.VisibleItems < len(allItems) {
+			scrollIndicators = append(scrollIndicators, "↓ More below")
+		}
+
+		if len(scrollIndicators) > 0 {
+			content = append(content, "")
+			indicatorStyle := lipgloss.NewStyle().
+				Foreground(t.Accent()).
+				Width(d.Width - 4).
+				Align(lipgloss.Center)
+
+			content = append(content, indicatorStyle.Render(strings.Join(scrollIndicators, "  •  ")))
+		}
 	}
 
 	return content
@@ -597,6 +902,11 @@ func (d LLMConfigDialog) renderButtons(t theme.Theme) string {
 
 	var buttons []string
 	for i, btn := range d.Buttons {
+		// Use dynamic button text for the primary button
+		buttonText := btn.Label
+		if i == 1 && d.CurrentStep == ProviderSelectionStep {
+			buttonText = d.getButtonText()
+		}
 		buttonStyle := lipgloss.NewStyle().
 			Padding(0, 2).
 			Border(lipgloss.RoundedBorder()).
@@ -647,7 +957,7 @@ func (d LLMConfigDialog) renderButtons(t theme.Theme) string {
 			}
 		}
 
-		buttons = append(buttons, buttonStyle.Render(btn.Label))
+		buttons = append(buttons, buttonStyle.Render(buttonText))
 	}
 
 	// Join buttons horizontally with spacing
