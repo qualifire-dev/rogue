@@ -39,8 +39,10 @@ jobs:
         uses: JarvusInnovations/background-action@v1
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          HOST: 0.0.0.0
+          PORT: 8000
         with:
-          run: uv run -m rogue server --host 0.0.0.0 --port 8000 &
+          run: uv run -m rogue.server &
           wait-on: http-get://localhost:8000/api/v1/health
           tail: true
 
