@@ -346,6 +346,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "esc":
+			// Don't handle esc globally if dialogs are open - they should handle it
+			if m.llmDialog != nil || m.dialog != nil {
+				// Let dialogs handle escape - this shouldn't be reached due to order, but just in case
+				return m, nil
+			}
 			m.currentScreen = DashboardScreen
 			m.commandInput.SetFocus(true) // Keep focused when returning to dashboard
 			m.commandInput.SetValue("")
