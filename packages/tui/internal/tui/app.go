@@ -42,6 +42,7 @@ type Model struct {
 	commandInput  components.CommandInput
 	dialog        *components.Dialog
 	dialogStack   []components.Dialog
+	llmDialog     *components.LLMConfigDialog
 }
 
 // Evaluation represents an evaluation
@@ -125,8 +126,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.Command.Action {
 		case "new_evaluation":
 			m.currentScreen = NewEvaluationScreen
-		case "list_models":
-			m.currentScreen = EvaluationsScreen
+		case "configure_models":
+			// Open LLM configuration dialog
+			llmDialog := components.NewLLMConfigDialog(m.config.APIKeys)
+			m.llmDialog = &llmDialog
+			return m, nil
 		case "configuration":
 			m.currentScreen = ConfigurationScreen
 		case "help":
@@ -182,6 +186,36 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.dialog = &msg.Dialog
 		return m, nil
 
+	case components.LLMConfigResultMsg:
+		// Handle LLM configuration result
+		if m.llmDialog != nil {
+			switch msg.Action {
+			case "configure":
+				// Save the API key to config
+				if m.config.APIKeys == nil {
+					m.config.APIKeys = make(map[string]string)
+				}
+				m.config.APIKeys[msg.Provider] = msg.APIKey
+
+				// Show success dialog
+				dialog := components.NewInfoDialog(
+					"Configuration Saved",
+					fmt.Sprintf("Successfully configured %s with model %s", msg.Provider, msg.Model),
+				)
+				m.dialog = &dialog
+				m.llmDialog = nil
+				return m, nil
+			}
+		}
+		return m, nil
+
+	case components.LLMDialogClosedMsg:
+		// Handle LLM dialog closure with specific message
+		if m.llmDialog != nil {
+			m.llmDialog = nil
+		}
+		return m, nil
+
 	case components.DialogClosedMsg:
 		// Handle dialog closure
 		if m.dialog != nil {
@@ -201,12 +235,31 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			case "cancel":
 				// Handle cancel action
+				// Close LLM dialog if it was cancelled
+				if m.llmDialog != nil {
+					m.llmDialog = nil
+				}
 			}
 			m.dialog = nil
 		}
+
+		// Handle LLM dialog closure - this should close the LLM dialog
+		if m.llmDialog != nil {
+			m.llmDialog = nil
+		}
+
 		return m, nil
 
 	case tea.KeyMsg:
+		// Handle LLM dialog input first if LLM dialog is open
+		if m.llmDialog != nil {
+			*m.llmDialog, cmd = m.llmDialog.Update(msg)
+			if cmd != nil {
+				cmds = append(cmds, cmd)
+			}
+			return m, tea.Batch(cmds...)
+		}
+
 		// Handle dialog input first if dialog is open
 		if m.dialog != nil {
 			*m.dialog, cmd = m.dialog.Update(msg)
@@ -260,6 +313,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.dialog = &dialog
 				return m, nil
 
+			case "ctrl+m":
+				// Open LLM configuration dialog
+				llmDialog := components.NewLLMConfigDialog(m.config.APIKeys)
+				m.llmDialog = &llmDialog
+				return m, nil
+
 			case "esc":
 				m.currentScreen = DashboardScreen
 				m.commandInput.SetFocus(true) // Keep focused when returning to dashboard
@@ -304,6 +363,11 @@ func (m Model) View() string {
 	}
 
 	mainLayout := m.RenderLayout(t, screen)
+
+	// If LLM dialog is open, render it as an overlay
+	if m.llmDialog != nil {
+		return m.llmDialog.ViewWithBackdrop(m.width, m.height)
+	}
 
 	// If dialog is open, render it as an overlay
 	if m.dialog != nil {

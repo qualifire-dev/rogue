@@ -38,7 +38,7 @@ type CommandSelectedMsg struct {
 func NewCommandInput() CommandInput {
 	commands := []Command{
 		{Name: "/new", Description: "New evaluation", KeyBinding: "Ctrl+N", Action: "new_evaluation"},
-		{Name: "/models", Description: "List models", KeyBinding: "Ctrl+M", Action: "list_models"},
+		{Name: "/models", Description: "Configure LLM providers", KeyBinding: "Ctrl+M", Action: "configure_models"},
 		{Name: "/editor", Description: "Open scenario editor", KeyBinding: "", Action: "open_editor"},
 		{Name: "/config", Description: "Configuration", KeyBinding: "Ctrl+S", Action: "configuration"},
 		{Name: "/help", Description: "Show help", KeyBinding: "Ctrl+H", Action: "help"},
@@ -97,9 +97,6 @@ func (c CommandInput) Update(msg tea.Msg) (CommandInput, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "ctrl+c":
-			return c, tea.Quit
-
 		case "enter":
 			if c.showingSuggestions && len(c.suggestions) > 0 {
 				selected := c.suggestions[c.selectedSuggestion]
