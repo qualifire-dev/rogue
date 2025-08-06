@@ -279,9 +279,6 @@ func (d LLMConfigDialog) Update(msg tea.Msg) (LLMConfigDialog, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "ctrl+c":
-			return d, tea.Quit
-
 		case "escape":
 			return d, func() tea.Msg {
 				return LLMDialogClosedMsg{Action: "cancel"}

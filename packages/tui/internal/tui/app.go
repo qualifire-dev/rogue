@@ -274,6 +274,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
+		// Handle ctrl+c globally - always quit regardless of dialog state
+		if msg.String() == "ctrl+c" {
+			return m, tea.Quit
+		}
+
 		// Handle LLM dialog input first if LLM dialog is open
 		if m.llmDialog != nil {
 			*m.llmDialog, cmd = m.llmDialog.Update(msg)

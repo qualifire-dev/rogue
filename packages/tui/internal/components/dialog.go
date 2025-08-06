@@ -135,9 +135,6 @@ func (d Dialog) Update(msg tea.Msg) (Dialog, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "ctrl+c":
-			return d, tea.Quit
-
 		case "escape":
 			return d, func() tea.Msg {
 				return DialogClosedMsg{Action: "cancel", Input: d.Input}
