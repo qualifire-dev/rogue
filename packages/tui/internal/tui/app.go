@@ -40,6 +40,8 @@ type Model struct {
 	config        Config
 	version       string
 	commandInput  components.CommandInput
+	dialog        *components.Dialog
+	dialogStack   []components.Dialog
 }
 
 // Evaluation represents an evaluation
@@ -129,13 +131,91 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.currentScreen = ConfigurationScreen
 		case "help":
 			m.currentScreen = HelpScreen
+		case "dialog_info":
+			// Show example info dialog
+			dialog := components.NewInfoDialog(
+				"Information",
+				"This is an example information dialog. It demonstrates how modal dialogs can overlay existing content using lipgloss v2.",
+			)
+			m.dialog = &dialog
+			return m, nil
+		case "dialog_input":
+			// Show example input dialog
+			dialog := components.NewInputDialog(
+				"Input Required",
+				"Please enter your name:",
+				"",
+			)
+			m.dialog = &dialog
+			return m, nil
+		case "dialog_error":
+			// Show example error dialog
+			dialog := components.ShowErrorDialog(
+				"Error",
+				"This is an example error dialog with a danger-styled button.",
+			)
+			m.dialog = &dialog
+			return m, nil
+		case "dialog_about":
+			// Show about dialog
+			dialog := components.ShowAboutDialog(
+				"Rogue TUI",
+				m.version,
+				"A terminal user interface for the Rogue agent evaluation system. Built with Bubble Tea and Lipgloss v2.",
+			)
+			m.dialog = &dialog
+			return m, nil
 		case "quit":
-			return m, tea.Quit
+			// Show confirmation dialog before quitting
+			dialog := components.NewConfirmationDialog(
+				"Quit Application",
+				"Are you sure you want to quit?",
+			)
+			m.dialog = &dialog
+			return m, nil
 			// Add more cases as needed
 		}
 		return m, nil
 
+	case components.DialogOpenMsg:
+		// Open a new dialog
+		m.dialog = &msg.Dialog
+		return m, nil
+
+	case components.DialogClosedMsg:
+		// Handle dialog closure
+		if m.dialog != nil {
+			switch msg.Action {
+			case "ok":
+				// Handle OK action based on dialog context
+				if m.dialog.Title == "Quit Application" {
+					return m, tea.Quit
+				} else if m.dialog.Title == "Input Required" && msg.Input != "" {
+					// Show a confirmation with the entered input
+					dialog := components.NewInfoDialog(
+						"Input Received",
+						"Hello, "+msg.Input+"! Your input was successfully captured.",
+					)
+					m.dialog = &dialog
+					return m, nil
+				}
+			case "cancel":
+				// Handle cancel action
+			}
+			m.dialog = nil
+		}
+		return m, nil
+
 	case tea.KeyMsg:
+		// Handle dialog input first if dialog is open
+		if m.dialog != nil {
+			*m.dialog, cmd = m.dialog.Update(msg)
+			if cmd != nil {
+				cmds = append(cmds, cmd)
+			}
+			return m, tea.Batch(cmds...)
+		}
+
 		// Let the command input handle its own key events first
 		if m.commandInput.IsFocused() {
 			m.commandInput, cmd = m.commandInput.Update(msg)
@@ -169,6 +249,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			case "ctrl+s":
 				m.currentScreen = ConfigurationScreen
+				return m, nil
+
+			case "ctrl+d":
+				// Show example info dialog
+				dialog := components.NewInfoDialog(
+					"Dialog Demo",
+					"This dialog was opened with Ctrl+D. You can navigate with Tab/Shift+Tab and close with Escape or Enter.",
+				)
+				m.dialog = &dialog
 				return m, nil
 
 			case "esc":
@@ -215,6 +304,12 @@ func (m Model) View() string {
 	}
 
 	mainLayout := m.RenderLayout(t, screen)
+
+	// If dialog is open, render it as an overlay
+	if m.dialog != nil {
+		return m.dialog.ViewWithBackdrop(m.width, m.height)
+	}
+
 	return mainLayout
 }
 
