@@ -52,5 +52,5 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         with:
           evaluated_agent_url: "http://localhost:10001"
-          judge_llm_model: "openai/o4-mini"
+          judge_llm_model: "openai/gpt-4.1-mini"
           workdir: "./examples/tshirt_store_agent/.rogue"
