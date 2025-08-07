@@ -62,7 +62,7 @@ class RogueHttpClient:
                     continue
                 break
 
-        raise Exception(f"Request failed after {self.retries} attempts: {last_error}")
+        raise Exception(f"Request failed after {self.retries} attempts") from last_error
 
     async def health(self) -> HealthResponse:
         """Check server health."""
