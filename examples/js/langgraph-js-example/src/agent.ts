@@ -32,7 +32,7 @@ You are not allowed to sell any other products excepts the available T-shirts de
 
 You have these tools at your disposal:
 
-1. \`inventory(color: str, size: str)\`
+1. \`check_inventory(color: str, size: str)\`
 - Parameters:
     - \`color\`: The color of the T-shirt
     - \`size\`: The size of the T-shirt
