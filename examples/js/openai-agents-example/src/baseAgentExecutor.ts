@@ -1,8 +1,8 @@
 import { Message, Task, TaskState, TaskStatusUpdateEvent } from '@a2a-js/sdk';
 import { AgentExecutor, ExecutionEventBus, RequestContext } from '@a2a-js/sdk/server';
 
-import { v4 as uuidv4 } from 'uuid';
 import { Readable } from 'stream';
+import { v4 as uuidv4 } from 'uuid';
 
 // Store for conversation contexts
 const contexts = new Map<string, Message[]>();
@@ -95,16 +95,16 @@ export abstract class BaseAgentExecutor implements AgentExecutor {
     eventBus: ExecutionEventBus,
   ): void {
     const finalUpdate: TaskStatusUpdateEvent = {
-        kind: 'status-update',
-        taskId: taskId,
-        contextId: contextId,
-        status: {
-          state: "input-required",
-          timestamp: new Date().toISOString(),
-        },
-        final: true,
-      };
-      eventBus.publish(finalUpdate);
+      kind: 'status-update',
+      taskId: taskId,
+      contextId: contextId,
+      status: {
+        state: "input-required",
+        timestamp: new Date().toISOString(),
+      },
+      final: true,
+    };
+    eventBus.publish(finalUpdate);
   }
 
   private publishTaskError(
@@ -166,8 +166,8 @@ export abstract class BaseAgentExecutor implements AgentExecutor {
 
     // 3. Stream the agent's response
     for await (const part of response) {
-      finalResponse += textPart;
-      this.publishStatusUpdate(eventBus, taskId, contextId, textPart);
+      finalResponse += part;
+      this.publishStatusUpdate(eventBus, taskId, contextId, part);
     }
 
     // 4. Publish "completed" status update
@@ -208,7 +208,7 @@ export abstract class BaseAgentExecutor implements AgentExecutor {
         kind: 'message',
         role: 'agent',
         messageId: uuidv4(),
-        parts: [{kind: 'text', text: aggregatedResponse}],  // We will fill this later
+        parts: [{ kind: 'text', text: aggregatedResponse }],  // We will fill this later
         taskId: taskId,
         contextId: contextId,
       };
@@ -216,7 +216,7 @@ export abstract class BaseAgentExecutor implements AgentExecutor {
 
       console.log(`[AgentExecutor] Task ${taskId} finished with state: completed`);
     } catch (error: any) {
-      console.error(`[AgentExecutor] Error processing task ${taskId}:`,error);
+      console.error(`[AgentExecutor] Error processing task ${taskId}:`, error);
       this.publishTaskError(taskId, contextId, eventBus, error);
     }
   }
