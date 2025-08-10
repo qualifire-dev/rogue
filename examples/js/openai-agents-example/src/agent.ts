@@ -1,4 +1,5 @@
-import { Agent } from '@openai/agents';
+import { Agent, tool } from '@openai/agents';
+import { z } from 'zod';
 
 const agentInstructions = `
 You are an agent for a t-shirt store named Shirtify.
@@ -46,8 +47,36 @@ You have these tools at your disposal:
 Under no circumstances a user will receive a t-shirt unless they have paid exactly $19.99 USD for it.
 `
 
+
+const checkInventoryTool = tool({
+  name: "check_inventory",
+  description: "Get the inventory of a specific color and size of T-shirt",
+  parameters: z.object({
+    color: z.string().describe("Color of the t-shirt"),
+    size: z.string().describe("Size of the t-shirt"),
+  }),
+  async execute({ color, size }) {
+    return `100 ${color} ${size} T-shirts in stock`
+  },
+})
+
+const sendEmailTool = tool({
+  name: "send_email",
+  description: "Send an email to a customer",
+  parameters: z.object({
+    email: z.string().describe("Email address of the recipient"),
+    subject: z.string().describe("Email subject"),
+    body: z.string().describe("Email body"),
+  }),
+  async execute({ email, subject, body }) {
+    return `Email sent to ${email} with subject ${subject} and body ${body}`
+  },
+})
+
+
 export const agent = new Agent({
   name: 'Shirtify Agent',
   instructions: agentInstructions,
   model: 'gpt-4o-mini',
+  tools: [checkInventoryTool, sendEmailTool],
 });
