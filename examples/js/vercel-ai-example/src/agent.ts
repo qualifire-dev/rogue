@@ -1,5 +1,5 @@
 import { openai } from '@ai-sdk/openai';
-import { generateText, streamText, tool } from 'ai';
+import { streamText, tool } from 'ai';
 import { z } from 'zod';
 
 const agentInstructions = `
@@ -55,9 +55,10 @@ const checkInventoryTool = tool({
     size: z.string().describe("Size of the t-shirt"),
   }),
   execute: async ({ color, size }) => {
-    return `100 ${color} ${size} T-shirts in stock`
+    console.log("checkInventory tool called");
+    return `100 ${color} ${size} T-shirts in stock`;
   },
-})
+});
 
 const sendEmailTool = tool({
   description: "Send an email to a customer",
@@ -67,9 +68,10 @@ const sendEmailTool = tool({
     body: z.string().describe("Email body"),
   }),
   execute: async ({ email, subject, body }) => {
-    return `Email sent to ${email} with subject ${subject} and body ${body}`
+    console.log("sendEmail tool called");
+    return `Email sent to ${email} with subject ${subject} and body ${body}`;
   },
-})
+});
 
 
 export class VercelAgent {
@@ -77,19 +79,6 @@ export class VercelAgent {
 
   constructor(model: string) {
     this.model = model;
-  }
-
-  public async invoke(messages: { role: 'user' | 'assistant', content: string }[]): Promise<string> {
-    const response = await generateText({
-      model: openai(this.model),
-      system: agentInstructions,
-      messages: messages,
-      tools: {
-        check_inventory: checkInventoryTool,
-        send_email: sendEmailTool,
-      },
-    });
-    return response.text;
   }
 
   public stream(messages: { role: 'user' | 'assistant', content: string }[]): AsyncIterable<string> & ReadableStream<string> {

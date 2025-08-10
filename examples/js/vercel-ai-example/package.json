@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc",
     "start": "tsc && dotenv run node dist/index.js",
-    "dev": "npx tsx src/index.ts",
+    "dev": "dotenv run npx tsx src/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

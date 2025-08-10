@@ -92,16 +92,16 @@ export abstract class BaseAgentExecutor implements AgentExecutor {
     eventBus: ExecutionEventBus,
   ): void {
     const finalUpdate: TaskStatusUpdateEvent = {
-        kind: 'status-update',
-        taskId: taskId,
-        contextId: contextId,
-        status: {
-          state: "completed",
-          timestamp: new Date().toISOString(),
-        },
-        final: true,
-      };
-      eventBus.publish(finalUpdate);
+      kind: 'status-update',
+      taskId: taskId,
+      contextId: contextId,
+      status: {
+        state: "completed",
+        timestamp: new Date().toISOString(),
+      },
+      final: true,
+    };
+    eventBus.publish(finalUpdate);
   }
 
   private publishTaskError(
@@ -171,7 +171,7 @@ export abstract class BaseAgentExecutor implements AgentExecutor {
     return finalResponse;
   }
 
-  protected abstract runAgent(messages: Message[]): Promise<string | ReadableStream<string>>;
+  protected abstract runAgent(messages: Message[]): Promise<ReadableStream<string>>;
 
   async execute(
     requestContext: RequestContext,
@@ -198,7 +198,7 @@ export abstract class BaseAgentExecutor implements AgentExecutor {
 
     try {
       // Run the agent - Can return a stream or a string.
-      const response: string | ReadableStream<string> = await this.runAgent(historyForAgent);
+      const response: ReadableStream<string> = await this.runAgent(historyForAgent);
 
       // Create the agent's final message for the history - we will fill the parts later
       const agentMessage: Message = {
@@ -210,19 +210,15 @@ export abstract class BaseAgentExecutor implements AgentExecutor {
         contextId: contextId,
       };
 
-      if (response instanceof ReadableStream) {
-        const aggregatedResponse: string = await this.handleStreamResponse(eventBus, taskId, contextId, existingTask, userMessage, response);
-        agentMessage.parts.push({kind: 'text', text: aggregatedResponse});
-      } else { // response is a string
-        // TODO
-      }
+      const aggregatedResponse: string = await this.handleStreamResponse(eventBus, taskId, contextId, existingTask, userMessage, response);
+      agentMessage.parts.push({ kind: 'text', text: aggregatedResponse });
 
       // Adding the message to the history
       this.addMessageToHistory(contextId, agentMessage);
 
       console.log(`[AgentExecutor] Task ${taskId} finished with state: completed`);
     } catch (error: any) {
-      console.error(`[AgentExecutor] Error processing task ${taskId}:`,error);
+      console.error(`[AgentExecutor] Error processing task ${taskId}:`, error);
       this.publishTaskError(taskId, contextId, eventBus, error);
     }
   }
