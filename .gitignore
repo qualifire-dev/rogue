@@ -89,3 +89,4 @@ tasks/
 # adk
 .adk/
 **/.rogue
+bin/

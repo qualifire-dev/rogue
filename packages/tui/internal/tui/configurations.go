@@ -39,5 +39,5 @@ Press Esc to return to dashboard.
 
 // renderScenarios renders the scenarios screen
 func (m Model) renderScenarios() string {
-	return "Scenarios Screen (Not implemented)"
+	return m.scenarioEditor.View()
 }

@@ -33,19 +33,20 @@ type App struct {
 
 // Model represents the main application state
 type Model struct {
-	currentScreen Screen
-	width         int
-	height        int
-	input         string
-	cursor        int
-	evaluations   []Evaluation
-	scenarios     []Scenario
-	config        Config
-	version       string
-	commandInput  components.CommandInput
-	dialog        *components.Dialog
-	dialogStack   []components.Dialog
-	llmDialog     *components.LLMConfigDialog
+	currentScreen  Screen
+	width          int
+	height         int
+	input          string
+	cursor         int
+	evaluations    []Evaluation
+	scenarios      []Scenario
+	config         Config
+	version        string
+	commandInput   components.CommandInput
+	dialog         *components.Dialog
+	dialogStack    []components.Dialog
+	llmDialog      *components.LLMConfigDialog
+	scenarioEditor components.ScenarioEditor
 }
 
 // Evaluation represents an evaluation
@@ -94,8 +95,9 @@ func (a *App) Run() error {
 			Theme:     "dark",
 			APIKeys:   make(map[string]string),
 		},
-		version:      "v0.1.0",
-		commandInput: components.NewCommandInput(),
+		version:        "v0.1.0",
+		commandInput:   components.NewCommandInput(),
+		scenarioEditor: components.NewScenarioEditor(),
 	}
 
 	// Load existing configuration
@@ -130,6 +132,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		// Update command input width
 		m.commandInput.SetWidth(msg.Width - 8) // Leave some margin
+		// Update scenario editor size
+		m.scenarioEditor.SetSize(msg.Width, msg.Height)
 		return m, nil
 
 	case components.CommandSelectedMsg:
@@ -275,6 +279,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return m, nil
 
+	case components.ScenarioEditorMsg:
+		// Handle scenario editor messages
+		switch msg.Action {
+		case "saved":
+			// Show success message
+			dialog := components.NewInfoDialog(
+				"Scenarios Saved",
+				"Scenarios have been successfully saved to scenarios.json",
+			)
+			m.dialog = &dialog
+		}
+		return m, nil
+
 	case tea.KeyMsg:
 		// Handle ctrl+c globally - always quit regardless of dialog state
 		if msg.String() == "ctrl+c" {
@@ -373,6 +390,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		default:
+			// Handle scenario editor input when on scenarios screen
+			if m.currentScreen == ScenariosScreen {
+				m.scenarioEditor, cmd = m.scenarioEditor.Update(msg)
+				if cmd != nil {
+					cmds = append(cmds, cmd)
+				}
+				return m, tea.Batch(cmds...)
+			}
+
 			// Let the command input handle non-shortcut keys if it's focused
 			if m.commandInput.IsFocused() {
 				m.commandInput, cmd = m.commandInput.Update(msg)
