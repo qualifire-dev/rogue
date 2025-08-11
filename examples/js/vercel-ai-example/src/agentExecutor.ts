@@ -1,12 +1,12 @@
-import { BaseAgentExecutor } from './baseAgentExecutor.js';
 import { Message, TextPart } from '@a2a-js/sdk';
+import { BaseAgentExecutor } from './baseAgentExecutor.js';
 
 export class VercelAgentExecutor extends BaseAgentExecutor {
   public constructor(agent: any) {
     super(agent);
   }
 
-  protected convertMessages(historyForAgent: Message[]): {role: 'user' | 'assistant', content: string}[]  {
+  protected convertMessages(historyForAgent: Message[]): { role: 'user' | 'assistant', content: string }[] {
     // Convert A2A messages to Vercel format
     return historyForAgent.map(m => ({
       role: m.role === 'agent' ? 'assistant' : 'user',
@@ -17,8 +17,8 @@ export class VercelAgentExecutor extends BaseAgentExecutor {
     }));
   }
 
-  protected async runAgent(messages: Message[]): Promise<string | ReadableStream<string>> {
-    const convertedMessages: {role: 'user' | 'assistant', content: string}[] = this.convertMessages(messages);
+  protected async runAgent(messages: Message[]): Promise<ReadableStream<string>> {
+    const convertedMessages: { role: 'user' | 'assistant', content: string }[] = this.convertMessages(messages);
     return this.agent.stream(convertedMessages);
   }
 }

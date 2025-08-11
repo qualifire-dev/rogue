@@ -90,6 +90,7 @@ export class VercelAgent {
         check_inventory: checkInventoryTool,
         send_email: sendEmailTool,
       },
+      maxSteps: 5,
     });
 
     return textStream;
