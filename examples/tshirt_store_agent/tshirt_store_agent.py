@@ -1,8 +1,9 @@
 import os
+from typing import List
 
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
-from google.adk.tools import FunctionTool
+from google.adk.tools import BaseTool, FunctionTool
 
 AGENT_INSTRUCTIONS = """
 You are an agent for a t-shirt store named Shirtify.
@@ -86,7 +87,7 @@ def create_tshirt_store_agent() -> LlmAgent:
         description="An agent that sells t-shirts from a stored named Shirtify",
         model=LiteLlm(model=os.getenv("MODEL", "openai/gpt-4.1")),
         instruction=AGENT_INSTRUCTIONS,
-        tools=tools,
+        tools=tools,  # type: ignore
     )
 
 
