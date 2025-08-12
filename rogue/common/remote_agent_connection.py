@@ -103,6 +103,7 @@ class RemoteAgentConnections:
                     task = task_callback(event, self.card)
                 if hasattr(event, "final") and event.final:
                     break
+
             return task
         else:  # Non-streaming
             response = await self.agent_client.send_message(

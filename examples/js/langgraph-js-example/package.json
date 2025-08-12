@@ -1,0 +1,31 @@
+{
+  "name": "langgraph-js-example",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "tsc && dotenv run node dist/index.js",
+    "dev": "dotenv run npx tsx src/index.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@9.6.0+sha512.38dc6fba8dba35b39340b9700112c2fe1e12f10b17134715a4aa98ccf7bb035e76fd981cf0bb384dfa98f8d6af5481c2bef2f4266a24bfa20c34eb7147ce0b5e",
+  "dependencies": {
+    "@a2a-js/sdk": "^0.2.4",
+    "@langchain/core": "^0.3.65",
+    "@langchain/langgraph": "^0.3.10",
+    "@langchain/openai": "^0.6.2",
+    "express": "^5.1.0",
+    "uuid": "^11.1.0",
+    "zod": "^4.0.5"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
+}

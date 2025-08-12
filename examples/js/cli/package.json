@@ -1,0 +1,23 @@
+{
+  "name": "example-agents-cli",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "tsc && node dist/cli.js",
+    "dev": "npx tsx src/cli.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@9.6.0+sha512.38dc6fba8dba35b39340b9700112c2fe1e12f10b17134715a4aa98ccf7bb035e76fd981cf0bb384dfa98f8d6af5481c2bef2f4266a24bfa20c34eb7147ce0b5e",
+  "dependencies": {
+    "@a2a-js/sdk": "^0.2.4",
+    "@types/node": "^24.2.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
+}
