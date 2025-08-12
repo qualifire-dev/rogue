@@ -2,10 +2,11 @@ import asyncio
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+from rogue_client.types import EvaluationJob, EvaluationStatus, WebSocketMessage
+
 from ...common.logging import get_logger, set_job_context
 from ...models.scenario import Scenarios
 from ..core.evaluation_orchestrator import EvaluationOrchestrator
-from ..models.api_models import EvaluationJob, EvaluationStatus
 from ..websocket.manager import websocket_manager
 
 logger = get_logger(__name__)
@@ -242,8 +243,6 @@ class EvaluationService:
 
     def _notify_chat_update(self, job_id: str, chat_data: Any):
         """Send real-time chat updates via WebSocket"""
-        from ..models.api_models import WebSocketMessage
-
         # Ensure chat_data is in the expected format
         if isinstance(chat_data, dict):
             # Chat data is already a dict with role/content

@@ -1,10 +1,11 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from typing import Dict, List, Optional
-import logging
 
-from ..models.api_models import EvaluationJob, WebSocketMessage
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from rogue_client.types import EvaluationJob, WebSocketMessage
 
-logger = logging.getLogger(__name__)
+from ...common.logging.config import get_logger
+
+logger = get_logger(__name__)
 
 websocket_router = APIRouter()
 

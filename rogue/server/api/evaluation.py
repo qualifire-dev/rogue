@@ -4,17 +4,16 @@ from functools import lru_cache
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
-
-from rogue.server.services.evaluation_service import EvaluationService
-
-from ...common.logging import get_logger, set_request_context
-from ..models.api_models import (
+from rogue_client.types import (
     EvaluationJob,
     EvaluationRequest,
     EvaluationResponse,
     EvaluationStatus,
     JobListResponse,
 )
+
+from ...common.logging import get_logger, set_request_context
+from ..services.evaluation_service import EvaluationService
 
 router = APIRouter()
 logger = get_logger(__name__)
