@@ -95,7 +95,7 @@ async def _run_agent(
                 f"✅ _run_agent completed. Total output length: {len(agent_output)}"
             )
     except Exception as e:
-        logger.exception(f"💥 _run_agent failed: {e}")
+        logger.exception("💥 agent run failed")
         raise
 
     return agent_output
