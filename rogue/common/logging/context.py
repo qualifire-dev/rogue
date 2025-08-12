@@ -8,7 +8,6 @@ import contextvars
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
-
 # Context variables for structured logging
 request_id_var: contextvars.ContextVar[str] = contextvars.ContextVar(
     "request_id", default=""

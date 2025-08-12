@@ -5,15 +5,16 @@ This module provides REST API endpoints for interview operations that were
 previously handled by the legacy InterviewerService.
 """
 
-from typing import List, Dict, Optional
+import uuid
+from typing import Dict, List, Optional
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-import uuid
 
-from ...services.interviewer_service import InterviewerService
 from ...common.logging import get_logger
+from ...services.interviewer_service import InterviewerService
 
-router = APIRouter(prefix="/api/v1/interview", tags=["interview"])
+router = APIRouter(prefix="/interview", tags=["interview"])
 logger = get_logger(__name__)
 
 # In-memory storage for interview sessions
@@ -151,9 +152,7 @@ async def send_message(request: SendMessageRequest):
         response = interviewer.send_message(request.message)
 
         # Count user messages to determine if interview is complete
-        user_message_count = sum(
-            1 for msg in interviewer._messages if msg["role"] == "user"
-        )
+        user_message_count = interviewer.count_user_messages()
         is_complete = user_message_count >= 3
 
         logger.info(
@@ -198,16 +197,16 @@ async def get_conversation(session_id: str):
 
         # Convert messages to response format (skip system message)
         messages = []
-        for msg in interviewer._messages:
-            if msg["role"] != "system":  # Skip system prompt
-                messages.append(
-                    InterviewMessage(role=msg["role"], content=msg["content"])
-                )
+        for msg in interviewer.iter_messages(include_system=False):
+            messages.append(
+                InterviewMessage(
+                    role=msg["role"],
+                    content=msg["content"],
+                ),
+            )
 
         # Count user messages
-        user_message_count = sum(
-            1 for msg in interviewer._messages if msg["role"] == "user"
-        )
+        user_message_count = interviewer.count_user_messages()
         is_complete = user_message_count >= 3
 
         return GetConversationResponse(
@@ -220,11 +219,13 @@ async def get_conversation(session_id: str):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(
-            f"Failed to get conversation for session {session_id}: {e}", exc_info=True
+        logger.exception(
+            "Failed to get conversation for session",
+            extra={"session_id": session_id},
         )
         raise HTTPException(
-            status_code=500, detail=f"Failed to get conversation: {str(e)}"
+            status_code=500,
+            detail=f"Failed to get conversation: {str(e)}",
         )
 
 
@@ -248,9 +249,11 @@ async def end_interview(session_id: str):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(
-            f"Failed to end interview session {session_id}: {e}", exc_info=True
+        logger.exception(
+            "Failed to end interview session",
+            extra={"session_id": session_id},
         )
         raise HTTPException(
-            status_code=500, detail=f"Failed to end interview session: {str(e)}"
+            status_code=500,
+            detail=f"Failed to end interview session: {str(e)}",
         )

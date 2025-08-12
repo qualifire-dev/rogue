@@ -7,11 +7,11 @@ from ...common.logging.config import get_logger
 
 logger = get_logger(__name__)
 
-websocket_router = APIRouter()
+websocket_router = APIRouter(prefix="/ws", tags=["ws"])
 
 
 class WebSocketManager:
-    def __init__(self):
+    def __init__(self) -> None:
         self.active_connections: Dict[str, List[WebSocket]] = {}
 
     async def connect(self, websocket: WebSocket, job_id: Optional[str] = None):

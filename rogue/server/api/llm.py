@@ -6,14 +6,16 @@ previously handled by the legacy LLMService.
 """
 
 from typing import Optional
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from ...services.llm_service import LLMService
 from sdks.python.rogue_client.types import EvaluationResults, Scenarios
-from ...common.logging import get_logger
 
-router = APIRouter(prefix="/api/v1/llm", tags=["llm"])
+from ...common.logging import get_logger
+from ...services.llm_service import LLMService
+
+router = APIRouter(prefix="/llm", tags=["llm"])
 logger = get_logger(__name__)
 
 

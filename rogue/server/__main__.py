@@ -63,9 +63,9 @@ def create_app() -> FastAPI:
 
     app.include_router(health_router, prefix="/api/v1")
     app.include_router(evaluation_router, prefix="/api/v1")
-    app.include_router(llm_router)
-    app.include_router(interview_router)
-    app.include_router(websocket_router)
+    app.include_router(llm_router, prefix="/api/v1")
+    app.include_router(interview_router, prefix="/api/v1")
+    app.include_router(websocket_router, prefix="/api/v1")
 
     return app
 
