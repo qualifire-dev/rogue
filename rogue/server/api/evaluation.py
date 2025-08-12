@@ -1,27 +1,35 @@
-from fastapi import APIRouter, HTTPException, BackgroundTasks
-from typing import Optional
 import uuid
 from datetime import datetime, timezone
+from functools import lru_cache
+from typing import Optional
 
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+
+from rogue.server.services.evaluation_service import EvaluationService
+
+from ...common.logging import get_logger, set_request_context
 from ..models.api_models import (
+    EvaluationJob,
     EvaluationRequest,
     EvaluationResponse,
-    EvaluationJob,
     EvaluationStatus,
     JobListResponse,
 )
-from ..services.evaluation_service import EvaluationService
-from ...common.logging import get_logger, set_request_context
 
 router = APIRouter()
-evaluation_service = EvaluationService()
 logger = get_logger(__name__)
+
+
+@lru_cache(1)
+def get_evaluation_agent():
+    return EvaluationService()
 
 
 @router.post("/evaluations", response_model=EvaluationResponse)
 async def create_evaluation(
     request: EvaluationRequest,
     background_tasks: BackgroundTasks,
+    evaluation_service: EvaluationService = Depends(get_evaluation_agent),
 ):
     job_id = str(uuid.uuid4())
 
@@ -74,6 +82,7 @@ async def list_evaluations(
     status: Optional[EvaluationStatus] = None,
     limit: int = 50,
     offset: int = 0,
+    evaluation_service: EvaluationService = Depends(get_evaluation_agent),
 ):
     jobs = evaluation_service.get_jobs(status=status, limit=limit, offset=offset)
     total = evaluation_service.get_job_count(status=status)
@@ -82,7 +91,10 @@ async def list_evaluations(
 
 
 @router.get("/evaluations/{job_id}", response_model=EvaluationJob)
-async def get_evaluation(job_id: str):
+async def get_evaluation(
+    job_id: str,
+    evaluation_service: EvaluationService = Depends(get_evaluation_agent),
+):
     job = evaluation_service.get_job(job_id)
     logger.info(f"Job: {job}")
     if not job:
@@ -91,7 +103,10 @@ async def get_evaluation(job_id: str):
 
 
 @router.delete("/evaluations/{job_id}")
-async def cancel_evaluation(job_id: str):
+async def cancel_evaluation(
+    job_id: str,
+    evaluation_service: EvaluationService = Depends(get_evaluation_agent),
+):
     success = evaluation_service.cancel_job(job_id)
     if not success:
         raise HTTPException(status_code=404, detail="Evaluation job not found")

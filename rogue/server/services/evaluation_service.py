@@ -1,16 +1,18 @@
 import asyncio
-from typing import Dict, List, Optional, Any
 from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
 
+from ...common.logging import get_logger, set_job_context
+from ...models.scenario import Scenarios
+from ..core.evaluation_orchestrator import EvaluationOrchestrator
 from ..models.api_models import EvaluationJob, EvaluationStatus
 from ..websocket.manager import websocket_manager
-from ..core.evaluation_orchestrator import EvaluationOrchestrator
-from ...models.scenario import Scenarios
-from ...common.logging import get_logger, set_job_context
+
+logger = get_logger(__name__)
 
 
 class EvaluationService:
-    def __init__(self):
+    def __init__(self) -> None:
         self.jobs: Dict[str, EvaluationJob] = {}
         self.logger = get_logger(__name__)
 
@@ -62,7 +64,7 @@ class EvaluationService:
                 agent_url=str(job.request.agent_config.evaluated_agent_url),
             )
 
-            self.logger.info(
+            logger.info(
                 "Starting evaluation job",
                 extra={
                     "job_status": "running",
@@ -77,12 +79,10 @@ class EvaluationService:
             self._notify_job_update(job)
 
             # Convert SDK scenarios to legacy scenarios for the evaluation service
-            from ...models.scenario import (
-                Scenario as LegacyScenario,
-                ScenarioType as LegacyScenarioType,
-            )
+            from ...models.scenario import Scenario as LegacyScenario
+            from ...models.scenario import ScenarioType as LegacyScenarioType
 
-            self.logger.info(
+            logger.info(
                 f"Converting {len(job.request.scenarios)} SDK scenarios to "
                 "legacy format"
             )
@@ -108,7 +108,7 @@ class EvaluationService:
                 legacy_scenarios.append(legacy_scenario)
 
             scenarios = Scenarios(scenarios=legacy_scenarios)
-            self.logger.info(
+            logger.info(
                 (
                     "Successfully created Scenarios object with "
                     f"{len(scenarios.scenarios)} scenarios"
@@ -130,7 +130,7 @@ class EvaluationService:
                 deep_test_mode=agent_config.deep_test_mode,
             )
 
-            self.logger.info(
+            logger.info(
                 "Starting server-native evaluation orchestrator",
                 extra={
                     "agent_url": str(job.request.agent_config.evaluated_agent_url),
@@ -142,7 +142,7 @@ class EvaluationService:
             # Process evaluation updates in real-time
             final_results = None
             async for update_type, data in orchestrator.run_evaluation():
-                self.logger.debug(
+                logger.debug(
                     "Evaluation progress update",
                     extra={
                         "update_type": update_type,
@@ -160,13 +160,13 @@ class EvaluationService:
                     self._notify_job_update(job)
                 elif update_type == "chat":
                     # Real-time chat updates via WebSocket
-                    self.logger.info(f"Received chat update for job {job_id}: {data}")
+                    logger.info(f"Received chat update for job {job_id}: {data}")
                     self._notify_chat_update(job_id, data)
                 elif update_type == "results":
                     # Store final results
                     final_results = data
 
-            self.logger.info("Server-native evaluation completed")
+            logger.info("Server-native evaluation completed")
 
             # Update job with results
             if final_results and final_results.results:
@@ -178,7 +178,7 @@ class EvaluationService:
                 job.status = EvaluationStatus.FAILED
                 job.error_message = "Evaluation completed but no results were generated"
 
-            self.logger.info(
+            logger.info(
                 "Evaluation job completed successfully",
                 extra={
                     "job_status": job.status.value,
@@ -219,7 +219,7 @@ class EvaluationService:
             job.status = EvaluationStatus.FAILED
             job.error_message = user_error
 
-            self.logger.error(
+            logger.error(
                 "Evaluation job failed",
                 extra={
                     "job_status": "failed",
@@ -258,5 +258,5 @@ class EvaluationService:
             data=data,
         )
 
-        self.logger.debug(f"Sending chat update via WebSocket: {data}")
+        logger.debug(f"Sending chat update via WebSocket: {data}")
         asyncio.create_task(websocket_manager.broadcast_to_job(job_id, message))

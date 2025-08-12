@@ -302,4 +302,4 @@ python -m flake8 rogue_client/
 
 ## License
 
-MIT License - see LICENSE file for details.
+Elastic License 2.0 - see LICENSE file for details.
