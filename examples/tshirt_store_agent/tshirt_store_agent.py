@@ -1,9 +1,8 @@
 import os
-from typing import List
 
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
-from google.adk.tools import BaseTool, FunctionTool
+from google.adk.tools import FunctionTool
 
 AGENT_INSTRUCTIONS = """
 You are an agent for a t-shirt store named Shirtify.
