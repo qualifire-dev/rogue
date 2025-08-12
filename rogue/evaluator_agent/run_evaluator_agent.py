@@ -91,7 +91,7 @@ async def _run_agent(
                 logger.info(f"🏁 Agent completed after {event_count} events")
                 break  # Without this, this loop will be infinite
 
-            logger.info(
+            logger.debug(
                 f"✅ _run_agent completed. Total output length: {len(agent_output)}"
             )
     except Exception as e:
