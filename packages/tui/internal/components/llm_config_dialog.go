@@ -613,6 +613,7 @@ func (d LLMConfigDialog) View() string {
 	titleStyle := lipgloss.NewStyle().
 		Foreground(t.Primary()).
 		Bold(true).
+		Background(t.BackgroundPanel()).
 		Align(lipgloss.Center).
 		Width(d.Width - 4)
 
@@ -733,12 +734,14 @@ func (d LLMConfigDialog) renderProviderSelection(t theme.Theme) []string {
 				// Selected unconfigured provider
 				nameStyle := lipgloss.NewStyle().
 					Foreground(t.Primary()).
+					Background(t.BackgroundPanel()).
 					Bold(true)
 				providerLine = nameStyle.Render("▶ " + item.DisplayText)
 			} else {
 				// Unselected or configured provider
 				nameStyle := lipgloss.NewStyle().
-					Foreground(t.Text())
+					Foreground(t.Text()).
+					Background(t.BackgroundPanel())
 				providerLine = nameStyle.Render("  " + item.DisplayText)
 			}
 
@@ -746,6 +749,7 @@ func (d LLMConfigDialog) renderProviderSelection(t theme.Theme) []string {
 			if item.IsConfigured {
 				statusStyle := lipgloss.NewStyle().
 					Foreground(t.Success()).
+					Background(t.BackgroundPanel()).
 					Italic(true)
 				providerLine += statusStyle.Render(" ✓")
 			}
@@ -770,7 +774,8 @@ func (d LLMConfigDialog) renderProviderSelection(t theme.Theme) []string {
 			} else {
 				// Unselected model
 				modelStyle := lipgloss.NewStyle().
-					Foreground(t.TextMuted())
+					Foreground(t.TextMuted()).
+					Background(t.BackgroundPanel())
 				modelLine = modelStyle.Render("      " + item.DisplayText)
 			}
 
@@ -778,6 +783,7 @@ func (d LLMConfigDialog) renderProviderSelection(t theme.Theme) []string {
 			if isConfiguredModel {
 				configIndicatorStyle := lipgloss.NewStyle().
 					Foreground(t.Success()).
+					Background(t.BackgroundPanel()).
 					Bold(true)
 				modelLine += configIndicatorStyle.Render(" ●")
 			}
@@ -942,6 +948,7 @@ func (d LLMConfigDialog) renderButtons(t theme.Theme) string {
 		}
 		buttonStyle := lipgloss.NewStyle().
 			Padding(0, 2).
+			Background(t.BackgroundPanel()).
 			Border(lipgloss.RoundedBorder()).
 			Align(lipgloss.Center)
 
@@ -965,7 +972,7 @@ func (d LLMConfigDialog) renderButtons(t theme.Theme) string {
 			if i == d.SelectedBtn {
 				buttonStyle = buttonStyle.
 					Background(t.Border()).
-					Foreground(t.Background()).
+					Foreground(t.Text()).
 					BorderForeground(t.Border()).
 					Bold(true)
 			} else {
@@ -1005,7 +1012,9 @@ func (d LLMConfigDialog) renderButtons(t theme.Theme) string {
 
 	// Center the button row
 	return lipgloss.NewStyle().
-		Width(d.Width - 4).
+		Width(d.Width - 8).
+		Background(t.BackgroundPanel()).
 		Align(lipgloss.Center).
 		Render(buttonRow)
+
 }
