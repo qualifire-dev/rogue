@@ -3,10 +3,8 @@ package tui
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 )
 
@@ -104,7 +102,7 @@ func (m *Model) startEval(ctx context.Context, st *EvaluationViewState) {
 	}()
 }
 
-// triggerSummaryGeneration generates summary for completed evaluation
+// triggerSummaryGeneration triggers automatic summary generation for completed evaluation
 func (m *Model) triggerSummaryGeneration() {
 	if m.evalState == nil || m.evalState.JobID == "" || !m.evalState.Completed {
 		return
@@ -115,33 +113,8 @@ func (m *Model) triggerSummaryGeneration() {
 		return
 	}
 
-	go func() {
-		sdk := NewRogueSDK(m.config.ServerURL)
-
-		// Use the judge model and API key from config
-		judgeModel := m.evalState.JudgeModel
-		var apiKey string
-
-		// Extract provider from judge model (e.g. "openai/gpt-4" -> "openai")
-		if parts := strings.Split(judgeModel, "/"); len(parts) >= 2 {
-			provider := parts[0]
-			if key, ok := m.config.APIKeys[provider]; ok {
-				apiKey = key
-			}
-		}
-
-		// Create a context with longer timeout for summary generation
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-		defer cancel()
-
-		summary, err := sdk.GenerateSummary(ctx, m.evalState.JobID, judgeModel, apiKey)
-		if err != nil {
-			// Set error message as summary
-			m.evalState.Summary = fmt.Sprintf("# Summary Generation Failed\n\nError: %v", err)
-		} else {
-			m.evalState.Summary = summary
-		}
-	}()
+	// Start spinner for automatic summary generation
+	m.summarySpinner.SetActive(true)
 }
 
 // placeholder tick for periodic UI updates while running

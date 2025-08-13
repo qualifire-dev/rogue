@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -98,7 +97,13 @@ func (m Model) renderNewEvaluation() string {
 	// Helper function to render the start button
 	renderStartButton := func() string {
 		active := m.evalState.currentField == 4
-		buttonText := "[ Start Evaluation ]"
+		var buttonText string
+
+		if m.evalSpinner.IsActive() {
+			buttonText = fmt.Sprintf("%s Starting Evaluation...", m.evalSpinner.View())
+		} else {
+			buttonText = "[ Start Evaluation ]"
+		}
 
 		buttonStyle := lipgloss.NewStyle().
 			Foreground(t.Background()).
@@ -107,13 +112,18 @@ func (m Model) renderNewEvaluation() string {
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(t.Primary())
 
-		if active {
-			// Highlight when focused
+		if active && !m.evalSpinner.IsActive() {
+			// Highlight when focused (but not when spinning)
 			buttonStyle = buttonStyle.
 				Background(t.Accent()).
 				BorderForeground(t.Accent()).
 				Bold(true)
 			buttonText = "▶ [ Start Evaluation ] ◀"
+		} else if m.evalSpinner.IsActive() {
+			// Different style when loading
+			buttonStyle = buttonStyle.
+				Background(t.TextMuted()).
+				BorderForeground(t.TextMuted())
 		}
 
 		// Center the button in a full-width container
@@ -150,10 +160,15 @@ func (m Model) renderNewEvaluation() string {
 		renderField(3, "Deep Test:", deep),
 	)
 
-	infoSection := lipgloss.JoinVertical(lipgloss.Center,
-		infoStyle.Render(fmt.Sprintf("Server: %s", m.evalState.ServerURL)),
-		infoStyle.Render(fmt.Sprintf("Scenarios: %d", len(m.evalState.Scenarios))),
-	)
+	var infoLines []string
+	if m.healthSpinner.IsActive() {
+		infoLines = append(infoLines, infoStyle.Render(fmt.Sprintf("Server: %s %s", m.evalState.ServerURL, m.healthSpinner.View())))
+	} else {
+		infoLines = append(infoLines, infoStyle.Render(fmt.Sprintf("Server: %s", m.evalState.ServerURL)))
+	}
+	infoLines = append(infoLines, infoStyle.Render(fmt.Sprintf("Scenarios: %d", len(m.evalState.Scenarios))))
+
+	infoSection := lipgloss.JoinVertical(lipgloss.Center, infoLines...)
 
 	buttonSection := renderStartButton()
 
@@ -208,10 +223,9 @@ func (m *Model) handleNewEvalEnter() {
 	if m.evalState == nil || m.evalState.Running {
 		return
 	}
-	ctx := context.Background()
-	m.startEval(ctx, m.evalState)
-	// move to detail screen
-	m.currentScreen = EvaluationDetailScreen
+
+	// Show spinner - the actual evaluation will start after a delay
+	m.evalSpinner.SetActive(true)
 }
 
 func (m Model) renderEvaluationDetail() string {
@@ -255,17 +269,24 @@ func (m Model) renderEvaluationDetail() string {
 
 	status := statusStyle.Render(fmt.Sprintf("Status: %s", m.evalState.Status))
 
-	// Calculate available height for events (and summary if present)
-	availableHeight := m.height - 12 // Leave space for header, status, help
-	var summaryHeight int
+	// Calculate available height for content area (excluding header, status, help)
+	totalContentHeight := m.height - 10 // header(3) + status(2) + help(1) + margins(4)
 
-	// If evaluation completed and we have a summary, reserve space for it
-	if m.evalState.Completed && m.evalState.Summary != "" {
-		summaryHeight = 8                    // Reserve space for summary
-		availableHeight -= summaryHeight + 2 // +2 for spacing
+	var eventsHeight, summaryHeight int
+	var showSummary bool
+
+	// If evaluation completed and we have a summary OR are generating one, split 50/50
+	if m.evalState.Completed && (m.evalState.Summary != "" || m.summarySpinner.IsActive()) {
+		showSummary = true
+		eventsHeight = (totalContentHeight / 2) - 4
+		summaryHeight = totalContentHeight - eventsHeight - 1 // -1 for spacer between them
+	} else {
+		// No summary, events take full height
+		eventsHeight = totalContentHeight
+		summaryHeight = 0
 	}
 
-	// Events container
+	// Events container (scrollable)
 	eventsStyle := lipgloss.NewStyle().
 		Foreground(t.Text()).
 		Background(t.BackgroundPanel()).
@@ -273,21 +294,20 @@ func (m Model) renderEvaluationDetail() string {
 		BorderForeground(t.Border()).
 		Padding(1, 2).
 		Width(m.width - 4).
-		Height(availableHeight)
+		Height(eventsHeight)
 
-	// Show last few events
-	max := 20
-	start := 0
-	if len(m.evalState.Events) > max {
-		start = len(m.evalState.Events) - max
-	}
-	lines := []string{}
-	for _, ev := range m.evalState.Events[start:] {
+	// Show events (scrollable - show last N events that fit in the height)
+	maxVisibleLines := eventsHeight - 4 // -4 for padding and border
+	var lines []string
+
+	for _, ev := range m.evalState.Events {
 		switch ev.Type {
 		case "status":
 			lines = append(lines, lipgloss.NewStyle().Foreground(t.Success()).Render(fmt.Sprintf("✓ %s", ev.Status)))
 		case "chat":
-			lines = append(lines, renderChatMessage(t, ev.Role, ev.Content))
+			// Split multi-line chat messages
+			chatLines := strings.Split(renderChatMessage(t, ev.Role, ev.Content), "\n")
+			lines = append(lines, chatLines...)
 		case "error":
 			lines = append(lines, lipgloss.NewStyle().Foreground(t.Error()).Render(fmt.Sprintf("⚠ ERROR: %s", ev.Message)))
 		}
@@ -297,7 +317,15 @@ func (m Model) renderEvaluationDetail() string {
 		lines = append(lines, lipgloss.NewStyle().Foreground(t.TextMuted()).Italic(true).Render("Waiting for evaluation events..."))
 	}
 
-	eventsContent := eventsStyle.Render(strings.Join(lines, "\n"))
+	// Show last N lines that fit in the visible area (scrolling effect)
+	var visibleLines []string
+	if len(lines) > maxVisibleLines {
+		visibleLines = lines[len(lines)-maxVisibleLines:]
+	} else {
+		visibleLines = lines
+	}
+
+	eventsContent := eventsStyle.Render(strings.Join(visibleLines, "\n"))
 
 	// Help text style (for bottom of screen)
 	helpStyle := lipgloss.NewStyle().
@@ -329,7 +357,7 @@ func (m Model) renderEvaluationDetail() string {
 
 	// Create summary section if available
 	var summaryContent string
-	if m.evalState.Completed && m.evalState.Summary != "" {
+	if showSummary {
 		summaryStyle := lipgloss.NewStyle().
 			Foreground(t.Text()).
 			Background(t.BackgroundPanel()).
@@ -339,47 +367,85 @@ func (m Model) renderEvaluationDetail() string {
 			Width(m.width - 4).
 			Height(summaryHeight)
 
+		var summaryTitleText string
+		if m.summarySpinner.IsActive() {
+			summaryTitleText = fmt.Sprintf("📊 Evaluation Summary %s", m.summarySpinner.View())
+		} else {
+			summaryTitleText = "📊 Evaluation Summary"
+		}
+
 		summaryTitle := lipgloss.NewStyle().
 			Foreground(t.Primary()).
 			Bold(true).
-			Render("📊 Evaluation Summary")
+			Render(summaryTitleText)
 
-		// Show first few lines of summary
-		summaryLines := strings.Split(m.evalState.Summary, "\n")
-		var displayLines []string
-		for i, line := range summaryLines {
-			if i >= summaryHeight-3 { // -3 for title, padding, border
-				break
+		var summaryText string
+		if m.evalState.Summary == "" && m.summarySpinner.IsActive() {
+			// Show loading message when generating summary
+			summaryText = lipgloss.NewStyle().
+				Foreground(t.TextMuted()).
+				Italic(true).
+				Render("Generating summary with LLM...")
+		} else {
+			// Render the markdown summary with styling
+			styledSummary := renderMarkdownSummary(t, m.evalState.Summary)
+
+			// Split into lines and show what fits in the available height
+			summaryLines := strings.Split(styledSummary, "\n")
+			maxSummaryLines := summaryHeight - 8 // -4 for title, padding, border
+
+			var displayLines []string
+			if len(summaryLines) > maxSummaryLines {
+				// Show first N lines that fit, add "..." if truncated
+				displayLines = summaryLines[:maxSummaryLines-1]
+				displayLines = append(displayLines, lipgloss.NewStyle().Foreground(t.TextMuted()).Italic(true).Render("... (press 'r' for full report)"))
+			} else {
+				displayLines = summaryLines
 			}
-			displayLines = append(displayLines, line)
+
+			summaryText = strings.Join(displayLines, "\n")
 		}
 
-		summaryText := strings.Join(displayLines, "\n")
 		summaryBody := summaryTitle + "\n" + summaryText
 		summaryContent = summaryStyle.Render(summaryBody)
 	}
 
-	// Arrange content with proper spacing
-	var contentParts []string
-	contentParts = append(contentParts, spacer, status, spacer, eventsContent)
+	// Arrange content based on whether we have a summary or not
+	var mainContent string
 
-	if summaryContent != "" {
-		contentParts = append(contentParts, spacer, summaryContent)
+	if showSummary {
+		// Split layout: events on top, summary on bottom
+		upperSection := lipgloss.JoinVertical(lipgloss.Center, spacer, status, spacer, eventsContent)
+		lowerSection := summaryContent
+
+		// Create split layout
+		content := lipgloss.JoinVertical(lipgloss.Center, upperSection, spacer, lowerSection)
+
+		mainContent = contentArea.Render(
+			lipgloss.Place(
+				m.width,
+				contentHeight,
+				lipgloss.Center,
+				lipgloss.Top,
+				content,
+				lipgloss.WithWhitespaceStyle(lipgloss.NewStyle().Background(t.Background())),
+			),
+		)
+	} else {
+		// Single layout: events take full space
+		content := lipgloss.JoinVertical(lipgloss.Center, spacer, status, spacer, eventsContent)
+
+		mainContent = contentArea.Render(
+			lipgloss.Place(
+				m.width,
+				contentHeight,
+				lipgloss.Center,
+				lipgloss.Top,
+				content,
+				lipgloss.WithWhitespaceStyle(lipgloss.NewStyle().Background(t.Background())),
+			),
+		)
 	}
-
-	content := lipgloss.JoinVertical(lipgloss.Center, contentParts...)
-
-	// Place content in the content area
-	mainContent := contentArea.Render(
-		lipgloss.Place(
-			m.width,
-			contentHeight,
-			lipgloss.Center,
-			lipgloss.Top,
-			content,
-			lipgloss.WithWhitespaceStyle(lipgloss.NewStyle().Background(t.Background())),
-		),
-	)
 
 	// Combine all sections
 	fullLayout := lipgloss.JoinVertical(lipgloss.Left,
@@ -458,4 +524,68 @@ func renderChatMessage(t theme.Theme, role, content string) string {
 		Render("─────")
 
 	return fmt.Sprintf("%s\n%s\n%s", roleText, contentText, separator)
+}
+
+// renderMarkdownSummary renders the markdown summary with basic styling
+func renderMarkdownSummary(t theme.Theme, summary string) string {
+	lines := strings.Split(summary, "\n")
+	var styledLines []string
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			styledLines = append(styledLines, "")
+			continue
+		}
+
+		// Basic markdown styling
+		if strings.HasPrefix(line, "# ") {
+			// H1 - Main title
+			title := strings.TrimPrefix(line, "# ")
+			styledLines = append(styledLines, lipgloss.NewStyle().
+				Foreground(t.Primary()).
+				Bold(true).
+				Render("🔷 "+title))
+		} else if strings.HasPrefix(line, "## ") {
+			// H2 - Section headers
+			title := strings.TrimPrefix(line, "## ")
+			styledLines = append(styledLines, lipgloss.NewStyle().
+				Foreground(t.Accent()).
+				Bold(true).
+				Render("▪ "+title))
+		} else if strings.HasPrefix(line, "### ") {
+			// H3 - Subsection headers
+			title := strings.TrimPrefix(line, "### ")
+			styledLines = append(styledLines, lipgloss.NewStyle().
+				Foreground(t.Text()).
+				Bold(true).
+				Render("  • "+title))
+		} else if strings.HasPrefix(line, "- ") || strings.HasPrefix(line, "* ") {
+			// Bullet points
+			content := strings.TrimPrefix(strings.TrimPrefix(line, "- "), "* ")
+			styledLines = append(styledLines, lipgloss.NewStyle().
+				Foreground(t.Text()).
+				Render("    • "+content))
+		} else if strings.HasPrefix(line, "**") && strings.HasSuffix(line, "**") {
+			// Bold text
+			content := strings.TrimSuffix(strings.TrimPrefix(line, "**"), "**")
+			styledLines = append(styledLines, lipgloss.NewStyle().
+				Foreground(t.Text()).
+				Bold(true).
+				Render(content))
+		} else if strings.Contains(line, "`") {
+			// Inline code (basic support)
+			styled := strings.ReplaceAll(line, "`", "")
+			styledLines = append(styledLines, lipgloss.NewStyle().
+				Foreground(t.Success()).
+				Render(styled))
+		} else {
+			// Regular text
+			styledLines = append(styledLines, lipgloss.NewStyle().
+				Foreground(t.Text()).
+				Render(line))
+		}
+	}
+
+	return strings.Join(styledLines, "\n")
 }

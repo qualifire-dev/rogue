@@ -18,10 +18,79 @@ import (
 // AutoRefreshMsg is sent periodically to refresh the evaluation screen
 type AutoRefreshMsg struct{}
 
+// HealthCheckResultMsg contains the result of a health check
+type HealthCheckResultMsg struct {
+	Status string
+	Err    error
+}
+
+// StartEvaluationMsg signals to start the evaluation
+type StartEvaluationMsg struct{}
+
+// SummaryGeneratedMsg contains the result of summary generation
+type SummaryGeneratedMsg struct {
+	Summary string
+	Err     error
+}
+
 // autoRefreshCmd creates a command that sends AutoRefreshMsg after a delay
 func autoRefreshCmd() tea.Cmd {
 	return tea.Tick(500*time.Millisecond, func(time.Time) tea.Msg {
 		return AutoRefreshMsg{}
+	})
+}
+
+// healthCheckCmd performs a health check in the background
+func (m *Model) healthCheckCmd() tea.Cmd {
+	return tea.Cmd(func() tea.Msg {
+		status, err := m.CheckServerHealth(context.Background(), m.config.ServerURL)
+		return HealthCheckResultMsg{
+			Status: status,
+			Err:    err,
+		}
+	})
+}
+
+// startEvaluationCmd delays then starts the evaluation
+func startEvaluationCmd() tea.Cmd {
+	return tea.Tick(800*time.Millisecond, func(time.Time) tea.Msg {
+		return StartEvaluationMsg{}
+	})
+}
+
+// summaryGenerationCmd performs summary generation in the background
+func (m *Model) summaryGenerationCmd() tea.Cmd {
+	return tea.Cmd(func() tea.Msg {
+		if m.evalState == nil || m.evalState.JobID == "" {
+			return SummaryGeneratedMsg{
+				Summary: "",
+				Err:     fmt.Errorf("no evaluation job available"),
+			}
+		}
+
+		sdk := NewRogueSDK(m.config.ServerURL)
+
+		// Use the judge model and API key from config
+		judgeModel := m.evalState.JudgeModel
+		var apiKey string
+
+		// Extract provider from judge model (e.g. "openai/gpt-4" -> "openai")
+		if parts := strings.Split(judgeModel, "/"); len(parts) >= 2 {
+			provider := parts[0]
+			if key, ok := m.config.APIKeys[provider]; ok {
+				apiKey = key
+			}
+		}
+
+		// Create a context with longer timeout for summary generation
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+
+		summary, err := sdk.GenerateSummary(ctx, m.evalState.JobID, judgeModel, apiKey)
+		return SummaryGeneratedMsg{
+			Summary: summary,
+			Err:     err,
+		}
 	})
 }
 
@@ -78,6 +147,11 @@ type Model struct {
 	llmDialog      *components.LLMConfigDialog
 	scenarioEditor components.ScenarioEditor
 
+	// Spinners for loading states
+	healthSpinner  components.Spinner
+	summarySpinner components.Spinner
+	evalSpinner    components.Spinner
+
 	// /eval state
 	evalState *EvaluationViewState
 }
@@ -131,6 +205,11 @@ func (a *App) Run() error {
 		version:        "v0.1.0",
 		commandInput:   components.NewCommandInput(),
 		scenarioEditor: components.NewScenarioEditor(),
+
+		// Initialize spinners
+		healthSpinner:  components.NewSpinner(1),
+		summarySpinner: components.NewSpinner(2),
+		evalSpinner:    components.NewSpinner(3),
 	}
 
 	// Load existing configuration
@@ -151,7 +230,12 @@ func (a *App) Run() error {
 
 // Init initializes the model
 func (m Model) Init() tea.Cmd {
-	return nil
+	// Start all spinners (they'll only animate when active)
+	return tea.Batch(
+		m.healthSpinner.Start(),
+		m.summarySpinner.Start(),
+		m.evalSpinner.Start(),
+	)
 }
 
 // Update handles messages and updates the model
@@ -160,6 +244,54 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
+	case components.SpinnerTickMsg:
+		// Update spinners
+		m.healthSpinner, cmd = m.healthSpinner.Update(msg)
+		cmds = append(cmds, cmd)
+		m.summarySpinner, cmd = m.summarySpinner.Update(msg)
+		cmds = append(cmds, cmd)
+		m.evalSpinner, cmd = m.evalSpinner.Update(msg)
+		cmds = append(cmds, cmd)
+		return m, tea.Batch(cmds...)
+
+	case HealthCheckResultMsg:
+		// Stop health spinner and show result
+		m.healthSpinner.SetActive(false)
+		if msg.Err != nil {
+			d := components.ShowErrorDialog("Server Health", fmt.Sprintf("%v", msg.Err))
+			m.dialog = &d
+		} else {
+			d := components.NewInfoDialog("Server Health", fmt.Sprintf("%s", msg.Status))
+			m.dialog = &d
+		}
+		return m, nil
+
+	case StartEvaluationMsg:
+		// Stop eval spinner and actually start the evaluation
+		m.evalSpinner.SetActive(false)
+		if m.evalState != nil && !m.evalState.Running {
+			ctx := context.Background()
+			m.startEval(ctx, m.evalState)
+			// move to detail screen
+			m.currentScreen = EvaluationDetailScreen
+			return m, autoRefreshCmd()
+		}
+		return m, nil
+
+	case SummaryGeneratedMsg:
+		// Stop summary spinner and update summary
+		m.summarySpinner.SetActive(false)
+		if msg.Err != nil {
+			if m.evalState != nil {
+				m.evalState.Summary = fmt.Sprintf("# Summary Generation Failed\n\nError: %v", msg.Err)
+			}
+		} else {
+			if m.evalState != nil {
+				m.evalState.Summary = msg.Summary
+			}
+		}
+		return m, nil
+
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -174,10 +306,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.currentScreen == EvaluationDetailScreen && m.evalState != nil {
 			if m.evalState.Running {
 				return m, autoRefreshCmd()
-			} else if m.evalState.Completed {
-				// Trigger summary generation for completed evaluations
+			} else if m.evalState.Completed && m.evalState.Summary == "" && !m.summarySpinner.IsActive() {
+				// Trigger summary generation for completed evaluations (only if we don't have one yet and not already generating)
 				m.triggerSummaryGeneration()
-				return m, autoRefreshCmd() // Continue refreshing to show summary when ready
+				return m, m.summaryGenerationCmd()
 			}
 		}
 		return m, nil
@@ -496,8 +628,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.currentScreen == NewEvaluationScreen && m.evalState != nil {
 				if m.evalState.currentField == 4 { // Start button field
 					m.handleNewEvalEnter()
-					// Start auto-refresh for evaluation detail screen
-					return m, autoRefreshCmd()
+					// Return command to start evaluation after showing spinner
+					return m, startEvaluationCmd()
 				} else if m.evalState.currentField == 1 { // Judge LLM field
 					// Open LLM config dialog when Enter is pressed on Judge LLM field
 					llmDialog := components.NewLLMConfigDialog(m.config.APIKeys, m.config.SelectedProvider, m.config.SelectedModel)
@@ -527,15 +659,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.currentScreen == NewEvaluationScreen && m.evalState != nil {
 				switch msg.String() {
 				case "t":
-					status, err := m.CheckServerHealth(context.Background(), m.config.ServerURL)
-					if err != nil {
-						d := components.ShowErrorDialog("Server Health", fmt.Sprintf("%v", err))
-						m.dialog = &d
-					} else {
-						d := components.NewInfoDialog("Server Health", fmt.Sprintf("%s", status))
-						m.dialog = &d
-					}
-					return m, nil
+					// Start health check spinner and background health check
+					m.healthSpinner.SetActive(true)
+					return m, m.healthCheckCmd()
 				case "up":
 					if m.evalState.currentField > 0 {
 						m.evalState.currentField--
@@ -665,7 +791,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "r":
 				// Refresh summary if we have job ID
 				if m.evalState.JobID != "" {
-					go m.generateSummaryAsync()
+					m.summarySpinner.SetActive(true)
+					return m, m.summaryGenerationCmd()
 				}
 				return m, nil
 			}

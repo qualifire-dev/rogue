@@ -3,6 +3,7 @@ package components
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"
@@ -152,6 +153,7 @@ type LLMConfigDialog struct {
 	Loading            bool
 	ErrorMessage       string
 	ExpandedProviders  map[int]bool // Track which providers are expanded
+	loadingSpinner     Spinner      // Spinner for loading states
 }
 
 // LLMConfigResultMsg is sent when LLM configuration is complete
@@ -165,6 +167,13 @@ type LLMConfigResultMsg struct {
 // LLMDialogClosedMsg is sent when LLM dialog is closed
 type LLMDialogClosedMsg struct {
 	Action string
+}
+
+// APIValidationCompleteMsg is sent when API validation is complete
+type APIValidationCompleteMsg struct {
+	Success  bool
+	Models   []string
+	ErrorMsg string
 }
 
 // SelectableItem represents an item in the provider/model list
@@ -264,6 +273,9 @@ func NewLLMConfigDialog(configuredKeys map[string]string, selectedProvider, sele
 
 	dialog.SelectedModelIdx = selectedIdx
 
+	// Initialize spinner
+	dialog.loadingSpinner = NewSpinner(4) // ID 4 for LLM config spinner
+
 	// Initialize scroll position
 	dialog.updateScroll()
 
@@ -277,6 +289,32 @@ func (d LLMConfigDialog) Update(msg tea.Msg) (LLMConfigDialog, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
+	case SpinnerTickMsg:
+		// Update spinner if loading
+		if d.Loading {
+			var cmd tea.Cmd
+			d.loadingSpinner, cmd = d.loadingSpinner.Update(msg)
+			return d, cmd
+		}
+		return d, nil
+
+	case APIValidationCompleteMsg:
+		// Stop loading and process validation result
+		d.Loading = false
+		d.loadingSpinner.SetActive(false)
+		if msg.Success {
+			d.AvailableModels = msg.Models
+			d.CurrentStep = ModelSelectionStep
+			d.Buttons = []DialogButton{
+				{Label: "Back", Action: "back", Style: SecondaryButton},
+				{Label: "Configure", Action: "configure", Style: PrimaryButton},
+			}
+			d.SelectedBtn = 1
+		} else {
+			d.ErrorMessage = msg.ErrorMsg
+		}
+		return d, nil
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "escape":
@@ -546,18 +584,21 @@ func (d LLMConfigDialog) handleEnter() (LLMConfigDialog, tea.Cmd) {
 
 		d.Loading = true
 		d.ErrorMessage = ""
+		d.loadingSpinner.SetActive(true)
 
-		// Simulate API key validation and model fetching
-		provider := d.Providers[d.SelectedProvider]
-		d.AvailableModels = provider.Models // In real implementation, fetch from API
-		d.CurrentStep = ModelSelectionStep
-		d.Loading = false
-
-		d.Buttons = []DialogButton{
-			{Label: "Back", Action: "back", Style: SecondaryButton},
-			{Label: "Configure", Action: "configure", Style: PrimaryButton},
-		}
-		d.SelectedBtn = 1
+		// Return command to start spinner and simulate API validation
+		return d, tea.Batch(
+			d.loadingSpinner.Start(),
+			tea.Tick(1500*time.Millisecond, func(time.Time) tea.Msg {
+				// Simulate API key validation and model fetching
+				provider := d.Providers[d.SelectedProvider]
+				return APIValidationCompleteMsg{
+					Success:  true,
+					Models:   provider.Models, // In real implementation, fetch from API
+					ErrorMsg: "",
+				}
+			}),
+		)
 
 		return d, nil
 
@@ -650,7 +691,7 @@ func (d LLMConfigDialog) View() string {
 			Width(d.Width - 4).
 			Align(lipgloss.Center)
 		content = append(content, "")
-		content = append(content, loadingStyle.Render("⏳ Validating API key and fetching models..."))
+		content = append(content, loadingStyle.Render(fmt.Sprintf("%s Validating API key and fetching models...", d.loadingSpinner.View())))
 	}
 
 	// Add spacing before buttons
