@@ -10,7 +10,7 @@ keywords = ["rogue", "agent", "evaluator", "sdk", "python"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: Elastic License 2.0",
+    "License :: Free To Use But Restricted",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
