@@ -72,7 +72,7 @@ class ShirtifyAgentExecutor(AgentExecutor):
                     await updater.complete()
                     break
 
-        except Exception:
+        except Exception as e:
             logger.exception("An error occurred while streaming the response")
             raise ServerError(error=InternalError()) from e
 
