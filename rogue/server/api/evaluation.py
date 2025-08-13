@@ -62,7 +62,7 @@ async def create_evaluation(
     )
 
     evaluation_service.add_job(job)
-    background_tasks.add_task(evaluation_service.run_evaluation, job_id)
+    background_tasks.add_task(evaluation_service.run_job, job_id)
 
     logger.info(
         "Evaluation job created successfully",

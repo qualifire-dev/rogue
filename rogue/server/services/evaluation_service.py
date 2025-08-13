@@ -53,7 +53,7 @@ class EvaluationService:
 
         return True
 
-    async def run_evaluation(self, job_id: str):
+    async def run_job(self, job_id: str):
         job = self.jobs.get(job_id)
         if not job:
             return
@@ -92,7 +92,7 @@ class EvaluationService:
                 judge_llm=agent_config.judge_llm_model,
                 judge_llm_api_key=agent_config.judge_llm_api_key,
                 scenarios=scenarios,
-                business_context="The agent provides customer service.",
+                business_context=agent_config.business_context,
                 deep_test_mode=agent_config.deep_test_mode,
             )
 
