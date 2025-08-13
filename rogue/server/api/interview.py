@@ -18,7 +18,7 @@ from rogue_client.types import (
 )
 
 from ...common.logging import get_logger
-from ...services.interviewer_service import InterviewerService
+from ..services.interviewer_service import InterviewerService
 
 router = APIRouter(prefix="/interview", tags=["interview"])
 logger = get_logger(__name__)

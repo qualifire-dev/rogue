@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from rogue_client.types import EvaluationResults, Scenarios
 
 from ...common.logging import get_logger
-from ...services.llm_service import LLMService
+from ..services.llm_service import LLMService
 
 router = APIRouter(prefix="/llm", tags=["llm"])
 logger = get_logger(__name__)
