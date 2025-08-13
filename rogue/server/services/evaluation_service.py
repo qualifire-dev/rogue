@@ -7,7 +7,7 @@ from rogue_client.types import EvaluationJob, EvaluationStatus, WebSocketMessage
 from ...common.logging import get_logger, set_job_context
 from ...models.scenario import Scenarios
 from ..core.evaluation_orchestrator import EvaluationOrchestrator
-from ..websocket.manager import websocket_manager
+from ..websocket.manager import get_websocket_manager
 
 logger = get_logger(__name__)
 
@@ -16,6 +16,7 @@ class EvaluationService:
     def __init__(self) -> None:
         self.jobs: Dict[str, EvaluationJob] = {}
         self.logger = get_logger(__name__)
+        self.websocket_manager = get_websocket_manager()
 
     def add_job(self, job: EvaluationJob):
         self.jobs[job.job_id] = job
@@ -200,7 +201,7 @@ class EvaluationService:
             self._notify_job_update(job)
 
     def _notify_job_update(self, job: EvaluationJob):
-        asyncio.create_task(websocket_manager.broadcast_job_update(job))
+        asyncio.create_task(self.websocket_manager.broadcast_job_update(job))
 
     def _notify_chat_update(self, job_id: str, chat_data: Any):
         """Send real-time chat updates via WebSocket"""
@@ -219,4 +220,4 @@ class EvaluationService:
         )
 
         logger.debug(f"Sending chat update via WebSocket: {data}")
-        asyncio.create_task(websocket_manager.broadcast_to_job(job_id, message))
+        asyncio.create_task(self.websocket_manager.broadcast_to_job(job_id, message))

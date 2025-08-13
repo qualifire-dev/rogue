@@ -1,3 +1,4 @@
+from functools import lru_cache
 from typing import Dict, List
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
@@ -10,7 +11,7 @@ logger = get_logger(__name__)
 websocket_router = APIRouter(prefix="/ws", tags=["ws"])
 
 
-class WebSocketManager:
+class _WebSocketManager:
     def __init__(self) -> None:
         self.active_connections: Dict[str, List[WebSocket]] = {}
 
@@ -69,12 +70,14 @@ class WebSocketManager:
         await self.broadcast_to_job(job.job_id, message)
 
 
-# Global instance
-websocket_manager = WebSocketManager()
+@lru_cache(1)
+def get_websocket_manager() -> _WebSocketManager:
+    return _WebSocketManager()
 
 
 @websocket_router.websocket("/{job_id}")
 async def websocket_job_endpoint(websocket: WebSocket, job_id: str):
+    websocket_manager = get_websocket_manager()
     await websocket_manager.connect(websocket, job_id)
     try:
         while True:
