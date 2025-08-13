@@ -148,13 +148,11 @@ async def _run_scenarios_with_sdk(
         # Check if server is available
         await sdk.health()
 
-        # Convert scenarios to list of strings for SDK
-        scenario_strings = [scenario.scenario for scenario in scenarios.scenarios]
-
-        # Use SDK's quick_evaluate method
-        job = await sdk.quick_evaluate(
+        # Run evaluation
+        job = await sdk.run_evaluation(
             agent_url=evaluated_agent_url,
-            scenarios=scenario_strings,
+            scenarios=scenarios,
+            business_context=business_context,
             auth_type=evaluated_agent_auth_type,
             auth_credentials=evaluated_agent_auth_credentials,
             judge_model=judge_llm,

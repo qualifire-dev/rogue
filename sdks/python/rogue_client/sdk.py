@@ -5,7 +5,7 @@ Combines HTTP client and WebSocket client for complete functionality.
 """
 
 import asyncio
-from typing import Callable, List, Optional
+from typing import Callable, Optional
 
 from loguru import logger
 from pydantic import HttpUrl
@@ -23,9 +23,7 @@ from .types import (
     InterviewSession,
     JobListResponse,
     RogueClientConfig,
-    Scenario,
     Scenarios,
-    ScenarioType,
     SendMessageResponse,
     WebSocketEventType,
 )
@@ -216,14 +214,16 @@ class RogueSDK:
         finally:
             await self.disconnect_websocket()
 
-    async def quick_evaluate(
+    async def run_evaluation(
         self,
         agent_url: str,
-        scenarios: List[str],
+        scenarios: Scenarios,
+        business_context: str,
         judge_model: str = "openai/gpt-4o-mini",
         auth_type: AuthType = AuthType.NO_AUTH,
         auth_credentials: Optional[str] = None,
         deep_test: bool = False,
+        timeout: float = 600.0,
     ) -> EvaluationJob:
         """Quick evaluation helper."""
         agent_config = AgentConfig(
@@ -234,18 +234,14 @@ class RogueSDK:
             deep_test_mode=deep_test,
             interview_mode=True,
             parallel_runs=1,
+            business_context=business_context,
         )
-
-        scenario_objects = [
-            Scenario(scenario=scenario, scenario_type=ScenarioType.POLICY)
-            for scenario in scenarios
-        ]
 
         request = EvaluationRequest(
             agent_config=agent_config,
-            scenarios=scenario_objects,
+            scenarios=scenarios.scenarios,
             max_retries=3,
-            timeout_seconds=600,
+            timeout_seconds=int(timeout),
         )
 
         response = await self.create_evaluation(request)
