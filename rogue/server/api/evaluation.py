@@ -15,7 +15,7 @@ from rogue_client.types import (
 from ...common.logging import get_logger, set_request_context
 from ..services.evaluation_service import EvaluationService
 
-router = APIRouter()
+router = APIRouter(prefix="/evaluations", tags=["evaluations"])
 logger = get_logger(__name__)
 
 
@@ -24,7 +24,7 @@ def get_evaluation_agent():
     return EvaluationService()
 
 
-@router.post("/evaluations", response_model=EvaluationResponse)
+@router.post("", response_model=EvaluationResponse)
 async def create_evaluation(
     request: EvaluationRequest,
     background_tasks: BackgroundTasks,
@@ -76,7 +76,7 @@ async def create_evaluation(
     )
 
 
-@router.get("/evaluations", response_model=JobListResponse)
+@router.get("", response_model=JobListResponse)
 async def list_evaluations(
     status: Optional[EvaluationStatus] = None,
     limit: int = 50,
@@ -89,7 +89,7 @@ async def list_evaluations(
     return JobListResponse(jobs=jobs, total=total)
 
 
-@router.get("/evaluations/{job_id}", response_model=EvaluationJob)
+@router.get("/{job_id}", response_model=EvaluationJob)
 async def get_evaluation(
     job_id: str,
     evaluation_service: EvaluationService = Depends(get_evaluation_agent),
@@ -101,7 +101,7 @@ async def get_evaluation(
     return job
 
 
-@router.delete("/evaluations/{job_id}")
+@router.delete("/{job_id}")
 async def cancel_evaluation(
     job_id: str,
     evaluation_service: EvaluationService = Depends(get_evaluation_agent),

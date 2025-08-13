@@ -1,8 +1,9 @@
-from fastapi import APIRouter
-from pydantic import BaseModel
 from datetime import datetime, timezone
 
-router = APIRouter()
+from fastapi import APIRouter
+from pydantic import BaseModel
+
+router = APIRouter(prefix="/health", tags=["health"])
 
 
 class HealthResponse(BaseModel):
@@ -10,7 +11,7 @@ class HealthResponse(BaseModel):
     timestamp: datetime
 
 
-@router.get("/health", response_model=HealthResponse)
+@router.get("", response_model=HealthResponse)
 async def health_check():
     return HealthResponse(
         status="healthy",
