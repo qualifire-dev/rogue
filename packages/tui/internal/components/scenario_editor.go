@@ -172,15 +172,14 @@ func (e ScenarioEditor) handleListMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 		if len(e.filteredIdx) == 0 {
 			return e, nil
 		}
+		// Ask for confirmation using a modal dialog
 		idx := e.filteredIdx[e.selectedIndex]
-		e.scenarios = append(e.scenarios[:idx], e.scenarios[idx+1:]...)
-		if e.selectedIndex >= len(e.filteredIdx)-1 && e.selectedIndex > 0 {
-			e.selectedIndex--
+		name := e.scenarios[idx].Scenario
+		if len(name) > 60 {
+			name = name[:57] + "..."
 		}
-		e.rebuildFilter()
-		_ = e.saveScenarios()
-		e.infoMsg = "Deleted scenario"
-		return e, nil
+		dialog := ShowDeleteConfirmationDialog(name)
+		return e, func() tea.Msg { return DialogOpenMsg{Dialog: dialog} }
 
 	case "s", "ctrl+s":
 		// Save all scenarios to file
@@ -447,7 +446,14 @@ func (e ScenarioEditor) View() string {
 			styles.WhitespaceStyle(t.Background()),
 		)
 	case EditMode, AddMode:
-		return e.renderEditView(t)
+		return lipgloss.Place(
+			e.width,
+			e.height-1,
+			lipgloss.Left,
+			lipgloss.Top,
+			e.renderEditView(t),
+			styles.WhitespaceStyle(t.Background()),
+		)
 	default:
 		return ""
 	}
@@ -491,7 +497,8 @@ func (e ScenarioEditor) renderListView(t theme.Theme) string {
 		// table header (no dataset column)
 		typeCol := lipgloss.NewStyle().Background(t.Background()).Foreground(t.Accent()).Width(typeWidth).Render("Type")
 		scenCol := lipgloss.NewStyle().Background(t.Background()).Foreground(t.Accent()).Width(scenWidth).Render("Scenario")
-		rows := []string{lipgloss.JoinHorizontal(lipgloss.Left, typeCol, scenCol)}
+		outcomeCol := lipgloss.NewStyle().Background(t.Background()).Foreground(t.Accent()).Width(scenWidth).Render("Expected Outcome")
+		rows := []string{lipgloss.JoinHorizontal(lipgloss.Left, typeCol, scenCol, outcomeCol)}
 
 		for i := start; i < end; i++ {
 			idx := e.filteredIdx[i]
@@ -501,10 +508,11 @@ func (e ScenarioEditor) renderListView(t theme.Theme) string {
 			typeStyle := lipgloss.NewStyle().Background(t.Background()).Foreground(t.Text())
 			scenStyle := lipgloss.NewStyle().Background(t.Background()).Foreground(t.Text())
 
-			scenText := ellipsis(s.Scenario, scenWidth-2)
+			scenText := ellipsis(strings.ReplaceAll(s.Scenario, "\n", " "), scenWidth-2)
 			scenOutcome := ""
 			if s.ExpectedOutcome != nil {
 				scenOutcome = *s.ExpectedOutcome
+				scenOutcome = strings.ReplaceAll(scenOutcome, "\n", " ")
 			}
 			scenOutcome = ellipsis(scenOutcome, scenWidth-2)
 
@@ -586,19 +594,19 @@ func (e ScenarioEditor) renderEditView(t theme.Theme) string {
 	if e.mode == AddMode {
 		modeTitle = "Add New Scenario"
 	}
-	title := lipgloss.NewStyle().Foreground(t.Primary()).Bold(true).Render("📝 " + modeTitle)
+	title := lipgloss.NewStyle().Background(t.Background()).Foreground(t.Primary()).Bold(true).Render("\n" + modeTitle)
 
 	// Field 0: scenario (multiline, subtle style)
 	scenLabel := "Scenario"
 	if e.currentField == 0 {
-		scenLabel = lipgloss.NewStyle().Foreground(t.Primary()).Bold(true).Render("▶ Scenario")
+		scenLabel = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Primary()).Bold(true).Render("▶ Scenario")
 	}
 	scenText := renderTextArea(t, e.width-4, e.currentField == 0, e.editing.Scenario, e.cursorPos)
 
 	// Field 1: expected_outcome (multiline, subtle style)
 	outLabel := "Expected Outcome"
 	if e.currentField == 1 {
-		outLabel = lipgloss.NewStyle().Foreground(t.Primary()).Bold(true).Render("▶ Expected Outcome")
+		outLabel = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Primary()).Bold(true).Render("▶ Expected Outcome")
 	}
 	outVal := ""
 	if e.editing.ExpectedOutcome != nil {
@@ -609,13 +617,13 @@ func (e ScenarioEditor) renderEditView(t theme.Theme) string {
 	// Simple Save button hint: third focus index (2)
 	saveLabel := "Save"
 	if e.currentField >= 2 {
-		saveLabel = lipgloss.NewStyle().Foreground(t.Primary()).Bold(true).Render("▶ Save")
+		saveLabel = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Primary()).Bold(true).Render("▶ Save")
 	}
 
-	help := lipgloss.NewStyle().Foreground(t.TextMuted()).Render("↑/↓ switch fields  ←/→ move cursor  Enter newline/Save  Ctrl+S save  Esc cancel")
+	help := lipgloss.NewStyle().Background(t.Background()).Foreground(t.TextMuted()).Render("↑/↓ switch fields  ←/→ move cursor  Enter newline/Save  Ctrl+S save  Esc cancel")
 	errorLine := ""
 	if e.errorMsg != "" {
-		errorLine = lipgloss.NewStyle().Foreground(t.Error()).Render("⚠ " + e.errorMsg)
+		errorLine = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Error()).Render("⚠ " + e.errorMsg)
 	}
 
 	var parts []string
@@ -635,8 +643,8 @@ func (e ScenarioEditor) renderEditView(t theme.Theme) string {
 func renderTextArea(t theme.Theme, width int, focused bool, text string, cursor int) string {
 	// subtle box with background only
 	boxStyle := lipgloss.NewStyle().
-		Background(t.Background()).
-		Padding(0, 0).
+		Background(t.BackgroundPanel()).
+		Padding(2, 2).
 		Width(width)
 
 	// Wrap text visually
@@ -763,6 +771,24 @@ func insertAtRune(s string, idx int, insert string) string {
 	out = append(out, []rune(insert)...)
 	out = append(out, r[idx:]...)
 	return string(out)
+}
+
+// ConfirmDelete deletes the currently selected scenario (after a confirmation dialog)
+func (e *ScenarioEditor) ConfirmDelete() {
+	if len(e.filteredIdx) == 0 {
+		return
+	}
+	idx := e.filteredIdx[e.selectedIndex]
+	if idx < 0 || idx >= len(e.scenarios) {
+		return
+	}
+	e.scenarios = append(e.scenarios[:idx], e.scenarios[idx+1:]...)
+	if e.selectedIndex >= len(e.filteredIdx)-1 && e.selectedIndex > 0 {
+		e.selectedIndex--
+	}
+	e.rebuildFilter()
+	_ = e.saveScenarios()
+	e.infoMsg = "Deleted scenario"
 }
 
 func ellipsis(s string, max int) string {

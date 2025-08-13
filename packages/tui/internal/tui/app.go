@@ -266,6 +266,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.scenarioEditor.SetSearchQuery(msg.Input)
 					m.dialog = nil
 					return m, nil
+				} else if m.dialog.Title == "Confirm Delete" {
+					// If OK was pressed and the button was labeled Delete (handled below), fall through
+					return m, nil
+				}
+			case "delete":
+				if m.dialog.Title == "Confirm Delete" {
+					m.scenarioEditor.ConfirmDelete()
+					m.dialog = nil
+					return m, nil
 				}
 			case "cancel":
 				// Handle cancel action
@@ -273,6 +282,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.llmDialog != nil {
 					m.llmDialog = nil
 				}
+				// No further action for other dialogs
 			}
 			m.dialog = nil
 		}
