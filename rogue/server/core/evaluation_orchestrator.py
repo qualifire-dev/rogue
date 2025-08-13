@@ -5,13 +5,13 @@ This replaces the legacy ScenarioEvaluationService by moving the logic
 directly into the server architecture.
 """
 
-from typing import AsyncGenerator, Any, Tuple
+from typing import Any, AsyncGenerator, Tuple
 
+from ...common.logging import get_logger
 from ...evaluator_agent.run_evaluator_agent import arun_evaluator_agent
 from ...models.config import AuthType
 from ...models.evaluation_result import EvaluationResults
 from ...models.scenario import Scenarios
-from ...common.logging import get_logger
 
 
 class EvaluationOrchestrator:
@@ -128,8 +128,9 @@ class EvaluationOrchestrator:
             self.logger.info(f"🏁 Evaluation completed. Total updates: {update_count}")
 
         except Exception as e:
+            self.logger.exception("❌ Evaluation failed")
+
             error_msg = f"Evaluation failed: {str(e)}"
-            self.logger.error(f"❌ {error_msg}", exc_info=True)
 
             # Check for specific error types
             if "timeout" in error_msg.lower():

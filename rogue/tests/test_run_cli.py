@@ -5,9 +5,9 @@ from pathlib import Path
 import pytest
 from pydantic import HttpUrl, SecretStr
 from pytest_mock import MockerFixture
+from rogue_client.types import AuthType
 
 from rogue.models.cli_input import CLIInput
-from sdks.python.rogue_client.types import AuthType
 from rogue.run_cli import get_cli_input
 
 

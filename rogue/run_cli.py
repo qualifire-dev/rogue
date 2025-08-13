@@ -146,9 +146,7 @@ async def _run_scenarios_with_sdk(
 
     try:
         # Check if server is available
-        health = await sdk.health()
-        if health.status != "healthy":
-            raise Exception("Server not healthy")
+        await sdk.health()
 
         # Convert scenarios to list of strings for SDK
         scenario_strings = [scenario.scenario for scenario in scenarios.scenarios]

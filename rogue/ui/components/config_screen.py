@@ -228,7 +228,7 @@ def create_config_screen(
                         value=f"**Error:** {msg}", visible=True
                     )
                 else:
-                    logger.error(f"Unhandled validation error: {error}")
+                    logger.exception("Unhandled validation error")
                     error_updates[general_error_label] = gr.update(
                         value=f"**An unexpected error occurred:** {msg}",
                         visible=True,

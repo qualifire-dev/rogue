@@ -86,7 +86,7 @@ def _try_parse_raw_json(output: str) -> PolicyEvaluationResult | None:
         return PolicyEvaluationResult.model_validate_json(cleaned_output)
     except ValidationError:
         # We don't need the traceback here, so I'm not using logger.exception
-        logger.error(
+        logger.exception(
             "Failed to parse response as raw",
             extra={
                 "output": output,

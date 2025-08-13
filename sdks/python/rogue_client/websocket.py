@@ -5,15 +5,15 @@ WebSocket Client for Rogue Agent Evaluator real-time updates.
 import asyncio
 import json
 import logging
-from typing import Optional, Callable, Dict, List, Any
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
+
 import websockets
 from websockets.exceptions import ConnectionClosed, WebSocketException
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from websockets.client import ClientConnection
 
-from .types import WebSocketMessage, WebSocketEventType
+from .types import WebSocketEventType, WebSocketMessage
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +21,15 @@ logger = logging.getLogger(__name__)
 class RogueWebSocketClient:
     """WebSocket client for real-time updates."""
 
-    def __init__(self, base_url: str, job_id: Optional[str] = None):
-        self.base_url = base_url.replace("http", "ws").rstrip("/")
+    def __init__(self, base_url: str, job_id: str):
+        parsed_url = base_url.rstrip("/")
+        if parsed_url.startswith("https://"):
+            self.base_url = parsed_url.replace("https://", "wss://", 1)
+        elif parsed_url.startswith("http://"):
+            self.base_url = parsed_url.replace("http://", "ws://", 1)
+        else:
+            self.base_url = parsed_url
+
         self.job_id = job_id
         self.websocket: Optional["ClientConnection"] = None
         self.event_handlers: Dict[WebSocketEventType, List[Callable]] = {}
@@ -31,15 +38,14 @@ class RogueWebSocketClient:
         self.max_reconnect_attempts = 5
         self.reconnect_delay = 1.0
         self._stop_event = asyncio.Event()
+        self._message_handler_task: Optional[asyncio.Task] = None
 
     async def connect(self) -> None:
         """Connect to WebSocket."""
         if self.is_connected:
             return
 
-        ws_url = f"{self.base_url}/ws"
-        if self.job_id:
-            ws_url = f"{self.base_url}/ws/{self.job_id}"
+        ws_url = f"{self.base_url}/ws/{self.job_id}"
 
         try:
             self.websocket = await websockets.connect(
@@ -50,7 +56,7 @@ class RogueWebSocketClient:
             self._emit("connected", {"url": ws_url})
 
             # Start message handling task
-            asyncio.create_task(self._handle_messages())
+            self._message_handler_task = asyncio.create_task(self._handle_messages())
 
         except Exception as e:
             self._emit("error", {"error": str(e)})
@@ -60,6 +66,13 @@ class RogueWebSocketClient:
         """Disconnect from WebSocket."""
         self._stop_event.set()
         self.is_connected = False
+
+        if self._message_handler_task:
+            self._message_handler_task.cancel()
+            try:
+                await self._message_handler_task  # type: ignore[attr-defined]
+            except asyncio.CancelledError:
+                pass
 
         if self.websocket:
             await self.websocket.close()  # type: ignore[attr-defined]
@@ -78,7 +91,7 @@ class RogueWebSocketClient:
         if event in self.event_handlers:
             try:
                 self.event_handlers[event].remove(handler)
-            except ValueError:
+            except (ValueError, KeyError):
                 pass
 
     def remove_all_listeners(self, event: Optional[WebSocketEventType] = None) -> None:
@@ -101,8 +114,8 @@ class RogueWebSocketClient:
                         message_dict = json.loads(message_data)
                         message = WebSocketMessage(**message_dict)
                         await self._handle_message(message)
-                    except (json.JSONDecodeError, ValueError) as e:
-                        logger.error(f"Failed to parse WebSocket message: {e}")
+                    except (json.JSONDecodeError, ValueError):
+                        logger.exception("Failed to parse WebSocket message")
 
                 except asyncio.TimeoutError:
                     # Timeout is expected, continue loop
@@ -110,14 +123,15 @@ class RogueWebSocketClient:
                 except ConnectionClosed:
                     logger.info("WebSocket connection closed")
                     break
-                except WebSocketException as e:
-                    logger.error(f"WebSocket error: {e}")
+                except WebSocketException:
+                    logger.exception("WebSocket error")
                     break
 
-        except Exception as e:
-            logger.error(f"Error in message handler: {e}")
+        except Exception:
+            logger.exception("Error in message handler")
         finally:
             self.is_connected = False
+            self._message_handler_task = None
             if self.reconnect_attempts < self.max_reconnect_attempts:
                 await self._schedule_reconnect()
 
@@ -139,8 +153,8 @@ class RogueWebSocketClient:
                     asyncio.create_task(handler(event, data))
                 else:
                     handler(event, data)
-            except Exception as e:
-                logger.error(f"Error in event handler: {e}")
+            except Exception:
+                logger.exception("Error in event handler")
 
     async def _schedule_reconnect(self) -> None:
         """Schedule reconnection attempt."""
@@ -158,7 +172,7 @@ class RogueWebSocketClient:
         if not self._stop_event.is_set():
             try:
                 await self.connect()
-            except Exception as e:
-                logger.error(f"Reconnection failed: {e}")
+            except Exception:
+                logger.exception("Reconnection failed")
                 if self.reconnect_attempts < self.max_reconnect_attempts:
                     await self._schedule_reconnect()

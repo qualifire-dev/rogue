@@ -6,10 +6,17 @@ previously handled by the legacy InterviewerService.
 """
 
 import uuid
-from typing import Dict, List, Optional
+from typing import Dict
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from rogue_client.types import (
+    GetConversationResponse,
+    InterviewMessage,
+    SendMessageRequest,
+    SendMessageResponse,
+    StartInterviewRequest,
+    StartInterviewResponse,
+)
 
 from ...common.logging import get_logger
 from ...services.interviewer_service import InterviewerService
@@ -20,53 +27,6 @@ logger = get_logger(__name__)
 # In-memory storage for interview sessions
 # In production, this would be replaced with a proper database
 interview_sessions: Dict[str, InterviewerService] = {}
-
-
-class InterviewMessage(BaseModel):
-    """A message in an interview conversation."""
-
-    role: str  # "user" or "assistant"
-    content: str
-
-
-class StartInterviewRequest(BaseModel):
-    """Request to start a new interview session."""
-
-    model: str = "openai/gpt-4o-mini"
-    api_key: Optional[str] = None
-
-
-class StartInterviewResponse(BaseModel):
-    """Response when starting a new interview."""
-
-    session_id: str
-    initial_message: str
-    message: str
-
-
-class SendMessageRequest(BaseModel):
-    """Request to send a message in an interview."""
-
-    session_id: str
-    message: str
-
-
-class SendMessageResponse(BaseModel):
-    """Response after sending a message."""
-
-    session_id: str
-    response: str
-    is_complete: bool
-    message_count: int
-
-
-class GetConversationResponse(BaseModel):
-    """Response containing the full conversation."""
-
-    session_id: str
-    messages: List[InterviewMessage]
-    is_complete: bool
-    message_count: int
 
 
 @router.post("/start", response_model=StartInterviewResponse)
@@ -112,11 +72,9 @@ async def start_interview(request: StartInterviewRequest):
             message="Interview session started successfully",
         )
 
-    except Exception as e:
-        logger.error(f"Failed to start interview session: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail=f"Failed to start interview session: {str(e)}"
-        )
+    except Exception:
+        logger.exception("Failed to start interview session")
+        raise HTTPException(status_code=500, detail="Failed to start interview session")
 
 
 @router.post("/message", response_model=SendMessageResponse)
@@ -172,12 +130,12 @@ async def send_message(request: SendMessageRequest):
 
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(
-            f"Failed to send message to interview session {request.session_id}: {e}",
-            exc_info=True,
+    except Exception:
+        logger.exception(
+            f"Failed to send message to interview session {request.session_id}",
+            extra={"session_id": request.session_id},
         )
-        raise HTTPException(status_code=500, detail=f"Failed to send message: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to send message")
 
 
 @router.get("/conversation/{session_id}", response_model=GetConversationResponse)
@@ -218,14 +176,14 @@ async def get_conversation(session_id: str):
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         logger.exception(
             "Failed to get conversation for session",
             extra={"session_id": session_id},
         )
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to get conversation: {str(e)}",
+            detail="Failed to get conversation",
         )
 
 

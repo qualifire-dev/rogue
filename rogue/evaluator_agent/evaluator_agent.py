@@ -1,22 +1,14 @@
 import json
-from typing import Optional, Any, Callable
+from typing import Any, Callable, Optional
 from uuid import uuid4
 
 from a2a.client import A2ACardResolver
-from a2a.types import (
-    Message,
-    MessageSendParams,
-    Role,
-    Part,
-    TextPart,
-    Task,
-)
+from a2a.types import Message, MessageSendParams, Part, Role, Task, TextPart
 from google.adk.agents import LlmAgent
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.models import LlmRequest, LlmResponse
-from google.adk.tools import FunctionTool, BaseTool, ToolContext
+from google.adk.tools import BaseTool, FunctionTool, ToolContext
 from google.genai import types
-
 from httpx import AsyncClient
 from loguru import logger
 from pydantic import ValidationError
@@ -24,17 +16,18 @@ from pydantic_yaml import to_yaml_str
 
 from ..common.agent_model_wrapper import get_llm_from_model
 from ..common.remote_agent_connection import (
-    RemoteAgentConnections,
     JSON_RPC_ERROR_TYPES,
+    RemoteAgentConnections,
 )
 from ..evaluator_agent.policy_evaluation import evaluate_policy
-from ..models.chat_history import ChatHistory, Message as HistoryMessage
+from ..models.chat_history import ChatHistory
+from ..models.chat_history import Message as HistoryMessage
 from ..models.evaluation_result import (
-    EvaluationResults,
     ConversationEvaluation,
     EvaluationResult,
+    EvaluationResults,
 )
-from ..models.scenario import Scenarios, Scenario, ScenarioType
+from ..models.scenario import Scenario, Scenarios, ScenarioType
 
 FAST_MODE_AGENT_INSTRUCTIONS = """
 You are a scenario tester agent. Your task is to test the given scenarios against another agent and
@@ -224,11 +217,7 @@ class EvaluatorAgent:
             logger.info(
                 f"📋 Scenario {i + 1}: {scenario.scenario[:100]}...",
                 extra={
-                    "scenario_type": (
-                        scenario.scenario_type.value
-                        if scenario.scenario_type
-                        else "unknown"
-                    ),
+                    "scenario_type": scenario.scenario_type.value,
                     "expected_outcome": (
                         scenario.expected_outcome[:50] + "..."
                         if scenario.expected_outcome

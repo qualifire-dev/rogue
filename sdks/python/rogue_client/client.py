@@ -4,15 +4,21 @@ HTTP Client for Rogue Agent Evaluator API.
 
 import asyncio
 from typing import Optional
+
+import backoff
 import httpx
+
 from .types import (
-    RogueClientConfig,
+    EvaluationJob,
     EvaluationRequest,
     EvaluationResponse,
-    EvaluationJob,
-    JobListResponse,
-    HealthResponse,
     EvaluationStatus,
+    GetConversationResponse,
+    HealthResponse,
+    JobListResponse,
+    RogueClientConfig,
+    SendMessageResponse,
+    StartInterviewResponse,
 )
 
 
@@ -20,7 +26,7 @@ class RogueHttpClient:
     """HTTP client for Rogue Agent Evaluator API."""
 
     def __init__(self, config: RogueClientConfig):
-        self.base_url = config.base_url.rstrip("/")
+        self.base_url = str(config.base_url).rstrip("/")
         self.api_key = config.api_key
         self.timeout = config.timeout
         self.retries = config.retries
@@ -47,22 +53,19 @@ class RogueHttpClient:
     async def _request(self, method: str, endpoint: str, **kwargs) -> dict:
         """Make HTTP request with retry logic."""
 
-        last_error = None
-        for attempt in range(self.retries):
-            try:
-                response = await self._client.request(method, endpoint, **kwargs)
-                response.raise_for_status()
-                return response.json()
-            except Exception as e:
-                last_error = e
-                if attempt < self.retries - 1:
-                    # Exponential backoff
-                    delay = 2**attempt
-                    await asyncio.sleep(delay)
-                    continue
-                break
+        @backoff.on_exception(
+            backoff.expo,
+            Exception,
+            max_time=self.timeout,
+            max_retries=self.retries,
+        )
+        async def request():
+            """Make HTTP request."""
+            response = await self._client.request(method, endpoint, **kwargs)
+            response.raise_for_status()
+            return response.json()
 
-        raise Exception(f"Request failed after {self.retries} attempts") from last_error
+        return await request()
 
     async def health(self) -> HealthResponse:
         """Check server health."""
@@ -70,9 +73,11 @@ class RogueHttpClient:
         return HealthResponse(**data)
 
     async def create_evaluation(self, request: EvaluationRequest) -> EvaluationResponse:
-        """Create a new evaluation job."""
+        """Create and start a new evaluation job."""
         data = await self._request(
-            "POST", "/api/v1/evaluations", json=request.model_dump(mode="json")
+            "POST",
+            "/api/v1/evaluations",
+            json=request.model_dump(mode="json"),
         )
         return EvaluationResponse(**data)
 
@@ -118,7 +123,10 @@ class RogueHttpClient:
         return await self._request("POST", "/api/v1/llm/scenarios", json=data)
 
     async def generate_summary(
-        self, results: dict, model: str, api_key: Optional[str] = None
+        self,
+        results: dict,
+        model: str,
+        api_key: Optional[str] = None,
     ) -> dict:
         """Generate summary via API."""
         data = {
@@ -131,29 +139,49 @@ class RogueHttpClient:
         return await self._request("POST", "/api/v1/llm/summary", json=data)
 
     async def start_interview(
-        self, model: str = "openai/gpt-4o-mini", api_key: Optional[str] = None
-    ) -> dict:
+        self,
+        model: str = "openai/gpt-4o-mini",
+        api_key: Optional[str] = None,
+    ) -> StartInterviewResponse:
         """Start a new interview session."""
         data = {"model": model}
         if api_key:
             data["api_key"] = api_key
 
-        return await self._request("POST", "/api/v1/interview/start", json=data)
-
-    async def send_interview_message(self, session_id: str, message: str) -> dict:
-        """Send a message in an interview session."""
-        data = {"session_id": session_id, "message": message}
-        return await self._request("POST", "/api/v1/interview/message", json=data)
-
-    async def get_interview_conversation(self, session_id: str) -> dict:
-        """Get the full conversation for an interview session."""
-        return await self._request(
-            "GET", f"/api/v1/interview/conversation/{session_id}"
+        response = await self._request(
+            "POST",
+            "/api/v1/interview/start",
+            json=data,
         )
 
-    async def end_interview(self, session_id: str) -> dict:
+        return StartInterviewResponse(**response)
+
+    async def send_interview_message(
+        self,
+        session_id: str,
+        message: str,
+    ) -> SendMessageResponse:
+        """Send a message in an interview session."""
+        data = {"session_id": session_id, "message": message}
+        response = await self._request(
+            "POST",
+            "/api/v1/interview/message",
+            json=data,
+        )
+        return SendMessageResponse(**response)
+
+    async def get_interview_conversation(
+        self, session_id: str
+    ) -> GetConversationResponse:
+        """Get the full conversation for an interview session."""
+        response = await self._request(
+            "GET", f"/api/v1/interview/conversation/{session_id}"
+        )
+        return GetConversationResponse(**response)
+
+    async def end_interview(self, session_id: str) -> None:
         """End an interview session."""
-        return await self._request("DELETE", f"/interview/session/{session_id}")
+        await self._request("DELETE", f"/api/v1/interview/session/{session_id}")
 
     async def wait_for_evaluation(
         self,

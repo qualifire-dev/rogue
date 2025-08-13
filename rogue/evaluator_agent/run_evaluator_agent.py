@@ -42,7 +42,10 @@ async def _run_agent(
     input_text: str,
     session: Session,
 ) -> str:
-    logger.info(f"🎯 _run_agent starting with input: '{input_text}'")
+    input_text_preview = (
+        input_text[:100] + "..." if len(input_text) > 100 else input_text
+    )
+    logger.info(f"🎯 running agent with input: '{input_text_preview}'")
 
     # Create content from user input
     content = types.Content(
@@ -105,7 +108,7 @@ async def arun_evaluator_agent(
         "🤖 arun_evaluator_agent starting",
         extra={
             "evaluated_agent_url": evaluated_agent_url,
-            "auth_type": auth_type.value if auth_type else "None",
+            "auth_type": auth_type.value,
             "judge_llm": judge_llm,
             "scenario_count": len(scenarios.scenarios),
             "deep_test_mode": deep_test_mode,
@@ -166,8 +169,8 @@ async def arun_evaluator_agent(
                         )
                     )
                     await results_queue.put(results)
-                except Exception as e:
-                    logger.error(f"💥 Agent runner task failed: {e}")
+                except Exception:
+                    logger.exception("💥 Agent runner task failed")
                     # Put empty results so the evaluation can complete gracefully
                     empty_results = EvaluationResults()
                     await results_queue.put(empty_results)
@@ -217,11 +220,10 @@ async def arun_evaluator_agent(
                 )
                 # Don't re-raise - we already yielded results
 
-    except Exception as e:
-        logger.error(
-            f"💥 arun_evaluator_agent failed: {e}",
+    except Exception:
+        logger.exception(
+            "💥 arun_evaluator_agent failed",
             extra={
-                "error_type": type(e).__name__,
                 "evaluated_agent_url": evaluated_agent_url,
                 "judge_llm": judge_llm,
             },

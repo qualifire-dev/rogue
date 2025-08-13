@@ -4,10 +4,11 @@ Type definitions for Rogue Agent Evaluator Python SDK.
 These types mirror the FastAPI server models and provide type safety.
 """
 
-from enum import Enum
-from typing import List, Optional, Dict, Any, Union
 from datetime import datetime
-from pydantic import BaseModel, HttpUrl, Field, ConfigDict
+from enum import Enum
+from typing import Any, Dict, List, Optional, Union
+
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
 
 class AuthType(str, Enum):
@@ -110,6 +111,19 @@ class EvaluationResults(BaseModel):
 
     results: List[EvaluationResult] = []
 
+    def add_result(self, new_result: EvaluationResult):
+        for result in self.results:
+            if result.scenario.scenario == new_result.scenario.scenario:
+                result.conversations.extend(new_result.conversations)
+                result.passed = result.passed and new_result.passed
+                return
+        self.results.append(new_result)
+
+    def combine(self, other: "EvaluationResults"):
+        if other and other.results:
+            for result in other.results:
+                self.add_result(result)
+
 
 # Interview Types
 
@@ -128,6 +142,46 @@ class InterviewSession(BaseModel):
     messages: List[InterviewMessage] = []
     is_complete: bool = False
     message_count: int = 0
+
+
+class StartInterviewRequest(BaseModel):
+    """Request to start a new interview session."""
+
+    model: str = "openai/gpt-4o-mini"
+    api_key: Optional[str] = None
+
+
+class StartInterviewResponse(BaseModel):
+    """Response when starting a new interview."""
+
+    session_id: str
+    initial_message: str
+    message: str
+
+
+class SendMessageRequest(BaseModel):
+    """Request to send a message in an interview."""
+
+    session_id: str
+    message: str
+
+
+class SendMessageResponse(BaseModel):
+    """Response after sending a message."""
+
+    session_id: str
+    response: str
+    is_complete: bool
+    message_count: int
+
+
+class GetConversationResponse(BaseModel):
+    """Response containing the full conversation."""
+
+    session_id: str
+    messages: List[InterviewMessage]
+    is_complete: bool
+    message_count: int
 
 
 # API Request/Response Models
@@ -195,7 +249,7 @@ class WebSocketMessage(BaseModel):
 class RogueClientConfig(BaseModel):
     """Configuration for the Rogue client."""
 
-    base_url: str
+    base_url: HttpUrl
     api_key: Optional[str] = None
     timeout: float = 30.0
     retries: int = 3

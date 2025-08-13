@@ -5,29 +5,31 @@ Combines HTTP client and WebSocket client for complete functionality.
 """
 
 import asyncio
-from typing import Optional, Callable, List
-from .client import RogueHttpClient
-from .websocket import RogueWebSocketClient
-from .types import (
-    RogueClientConfig,
-    EvaluationRequest,
-    EvaluationResponse,
-    EvaluationJob,
-    JobListResponse,
-    HealthResponse,
-    EvaluationStatus,
-    WebSocketEventType,
-    AgentConfig,
-    Scenario,
-    Scenarios,
-    EvaluationResults,
-    InterviewSession,
-    InterviewMessage,
-    AuthType,
-    ScenarioType,
-)
+from typing import Callable, List, Optional
+
 from loguru import logger
 from pydantic import HttpUrl
+
+from .client import RogueHttpClient
+from .types import (
+    AgentConfig,
+    AuthType,
+    EvaluationJob,
+    EvaluationRequest,
+    EvaluationResponse,
+    EvaluationResults,
+    EvaluationStatus,
+    HealthResponse,
+    InterviewSession,
+    JobListResponse,
+    RogueClientConfig,
+    Scenario,
+    Scenarios,
+    ScenarioType,
+    SendMessageResponse,
+    WebSocketEventType,
+)
+from .websocket import RogueWebSocketClient
 
 
 class RogueSDK:
@@ -87,12 +89,12 @@ class RogueSDK:
 
     # WebSocket Methods
 
-    async def connect_websocket(self, job_id: Optional[str] = None) -> None:
+    async def connect_websocket(self, job_id: str) -> None:
         """Connect to WebSocket for real-time updates."""
         if self.ws_client:
             await self.ws_client.disconnect()
 
-        self.ws_client = RogueWebSocketClient(self.config.base_url, job_id)
+        self.ws_client = RogueWebSocketClient(str(self.config.base_url), job_id)
         await self.ws_client.connect()
 
     async def disconnect_websocket(self) -> None:
@@ -133,9 +135,6 @@ class RogueSDK:
         response = await self.create_evaluation(request)
         job_id = response.job_id
 
-        # Connect WebSocket for updates
-        await self.connect_websocket(job_id)
-
         # Set up completion tracking
         result_future: asyncio.Future[EvaluationJob] = asyncio.Future()
 
@@ -165,19 +164,27 @@ class RogueSDK:
                     async def get_final_job():
                         try:
                             return await self.get_evaluation(job_id)
-                        except Exception as e:
-                            logger.error(f"Failed to get final job: {e}")
+                        except Exception:
+                            logger.exception("Failed to get final job")
                             # Return None to indicate failure
                             return None
 
+                    def handle_final_job_result(task):
+                        if result_future.done():
+                            return
+                        try:
+                            result = task.result()
+                            if result:
+                                result_future.set_result(result)
+                            else:
+                                result_future.set_exception(
+                                    Exception("Failed to retrieve final job result")
+                                )
+                        except Exception as e:
+                            result_future.set_exception(e)
+
                     task = asyncio.create_task(get_final_job())
-                    task.add_done_callback(
-                        lambda t: (
-                            result_future.set_result(t.result())
-                            if not result_future.done() and t.result()
-                            else None
-                        )
-                    )
+                    task.add_done_callback(handle_final_job_result)
 
         def handle_chat_update(event, data):
             if on_chat:
@@ -189,11 +196,14 @@ class RogueSDK:
                     Exception(f"WebSocket error: {data.get('error')}")
                 )
 
+        # Connect WebSocket for updates
+        await self.connect_websocket(job_id)
+
         # Set up event handlers
         self.on_websocket_event("job_update", handle_job_update)
+        self.on_websocket_event("error", handle_error)
         if on_chat:
             self.on_websocket_event("chat_update", handle_chat_update)
-        self.on_websocket_event("error", handle_error)
 
         try:
             # Wait for completion or timeout
@@ -287,48 +297,39 @@ class RogueSDK:
         )
 
         return InterviewSession(
-            session_id=response_data["session_id"],
+            session_id=response_data.session_id,
             messages=[],
             is_complete=False,
             message_count=0,
         )
 
     async def send_interview_message(
-        self, session_id: str, message: str
-    ) -> tuple[str, bool, int]:
+        self,
+        session_id: str,
+        message: str,
+    ) -> SendMessageResponse:
         """
         Send a message in an interview session.
 
         Returns:
             tuple: (response, is_complete, message_count)
         """
-        response_data = await self.http_client.send_interview_message(
+        return await self.http_client.send_interview_message(
             session_id=session_id,
             message=message,
-        )
-
-        return (
-            response_data["response"],
-            response_data["is_complete"],
-            response_data["message_count"],
         )
 
     async def get_interview_conversation(self, session_id: str) -> InterviewSession:
         """Get the full conversation for an interview session."""
         response_data = await self.http_client.get_interview_conversation(session_id)
 
-        messages = [
-            InterviewMessage(role=msg["role"], content=msg["content"])
-            for msg in response_data["messages"]
-        ]
-
         return InterviewSession(
-            session_id=response_data["session_id"],
-            messages=messages,
-            is_complete=response_data["is_complete"],
-            message_count=response_data["message_count"],
+            session_id=response_data.session_id,
+            messages=response_data.messages,
+            is_complete=response_data.is_complete,
+            message_count=response_data.message_count,
         )
 
-    async def end_interview(self, session_id: str) -> dict:
+    async def end_interview(self, session_id: str) -> None:
         """End an interview session."""
-        return await self.http_client.end_interview(session_id)
+        await self.http_client.end_interview(session_id)

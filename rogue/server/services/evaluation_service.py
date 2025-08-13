@@ -79,36 +79,12 @@ class EvaluationService:
             job.started_at = datetime.now(timezone.utc)
             self._notify_job_update(job)
 
-            # Convert SDK scenarios to legacy scenarios for the evaluation service
-            from ...models.scenario import Scenario as LegacyScenario
-            from ...models.scenario import ScenarioType as LegacyScenarioType
-
             logger.info(
                 f"Converting {len(job.request.scenarios)} SDK scenarios to "
                 "legacy format"
             )
 
-            legacy_scenarios = []
-            for i, sdk_scenario in enumerate(job.request.scenarios):
-                # Convert SDK scenario to legacy scenario
-
-                legacy_scenario_type = (
-                    LegacyScenarioType.POLICY
-                    if sdk_scenario.scenario_type.value == "policy"
-                    else LegacyScenarioType.PROMPT_INJECTION
-                )
-
-                legacy_scenario = LegacyScenario(
-                    scenario=sdk_scenario.scenario,
-                    scenario_type=legacy_scenario_type,
-                    dataset=sdk_scenario.dataset,
-                    dataset_sample_size=sdk_scenario.dataset_sample_size,
-                    expected_outcome=sdk_scenario.expected_outcome,
-                )
-
-                legacy_scenarios.append(legacy_scenario)
-
-            scenarios = Scenarios(scenarios=legacy_scenarios)
+            scenarios = Scenarios(scenarios=job.request.scenarios)
             logger.info(
                 (
                     "Successfully created Scenarios object with "
@@ -155,14 +131,13 @@ class EvaluationService:
                     # Update progress based on status messages
                     if "Running scenarios" in str(data):
                         job.progress = 0.1
-                    elif "conversation" in str(data).lower():
-                        # Estimate progress based on conversations
-                        job.progress = min(0.9, job.progress + 0.1)
-                    self._notify_job_update(job)
+                        self._notify_job_update(job)
                 elif update_type == "chat":
                     # Real-time chat updates via WebSocket
                     logger.info(f"Received chat update for job {job_id}: {data}")
                     self._notify_chat_update(job_id, data)
+                    job.progress = min(0.9, job.progress + 0.1)
+                    self._notify_job_update(job)
                 elif update_type == "results":
                     # Store final results
                     final_results = data
@@ -220,13 +195,10 @@ class EvaluationService:
             job.status = EvaluationStatus.FAILED
             job.error_message = user_error
 
-            logger.error(
+            logger.exception(
                 "Evaluation job failed",
                 extra={
                     "job_status": "failed",
-                    "error": error_msg,
-                    "error_type": error_type,
-                    "user_error": user_error,
                     "duration_seconds": (
                         (datetime.now(timezone.utc) - job.started_at).total_seconds()
                         if job.started_at

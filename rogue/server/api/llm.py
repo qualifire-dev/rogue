@@ -9,8 +9,7 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-
-from sdks.python.rogue_client.types import EvaluationResults, Scenarios
+from rogue_client.types import EvaluationResults, Scenarios
 
 from ...common.logging import get_logger
 from ...services.llm_service import LLMService
@@ -81,9 +80,10 @@ async def generate_scenarios(request: ScenarioGenerationRequest):
         )
 
     except Exception as e:
-        logger.error(f"Failed to generate scenarios: {e}", exc_info=True)
+        logger.exception("Failed to generate scenarios")
         raise HTTPException(
-            status_code=500, detail=f"Failed to generate scenarios: {str(e)}"
+            status_code=500,
+            detail=f"Failed to generate scenarios: {str(e)}",
         )
 
 
@@ -116,7 +116,8 @@ async def generate_summary(request: SummaryGenerationRequest):
         )
 
     except Exception as e:
-        logger.error(f"Failed to generate summary: {e}", exc_info=True)
+        logger.exception("Failed to generate summary")
         raise HTTPException(
-            status_code=500, detail=f"Failed to generate summary: {str(e)}"
+            status_code=500,
+            detail=f"Failed to generate summary: {str(e)}",
         )

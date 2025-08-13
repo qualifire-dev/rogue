@@ -3,17 +3,16 @@ Core evaluation library - Clean API for agent evaluation
 """
 
 import asyncio
-from typing import AsyncGenerator, Callable, Optional, Any
+from typing import Any, AsyncGenerator, Callable, Optional
+
 from loguru import logger
-
-from ..common.sdk_utils import setup_sdk_path
+from pydantic import HttpUrl
 from rogue_client.types import AgentConfig
-from ..models.scenario import Scenarios
-from ..models.evaluation_result import EvaluationResults
-from .scenario_evaluation_service import ScenarioEvaluationService
 
-# Ensure SDK path is set up
-setup_sdk_path()
+from ..models.config import AuthType
+from ..models.evaluation_result import EvaluationResults
+from ..models.scenario import Scenario, Scenarios, ScenarioType
+from .scenario_evaluation_service import ScenarioEvaluationService
 
 
 class EvaluationLibrary:
@@ -97,8 +96,8 @@ class EvaluationLibrary:
                     try:
                         progress_callback(update_type, data)
                         logger.debug("✅ progress_callback completed successfully")
-                    except Exception as callback_error:
-                        logger.error(f"❌ progress_callback failed: {callback_error}")
+                    except Exception:
+                        logger.exception("❌ progress_callback failed")
 
                 if update_type == "done":
                     results = data
@@ -123,11 +122,10 @@ class EvaluationLibrary:
             logger.info("🎉 EvaluationLibrary.evaluate_agent completed successfully")
             return results
 
-        except Exception as e:
-            logger.error(
-                f"💥 EvaluationLibrary.evaluate_agent failed with exception: {e}",
+        except Exception:
+            logger.exception(
+                "💥 EvaluationLibrary.evaluate_agent failed",
                 extra={
-                    "error_type": type(e).__name__,
                     "agent_url": str(agent_config.evaluated_agent_url),
                     "scenario_count": len(scenarios.scenarios),
                 },
@@ -217,8 +215,6 @@ async def quick_evaluate(
     Returns:
         EvaluationResults
     """
-    from ..models.config import AuthType
-    from ..models.scenario import Scenario, ScenarioType
 
     # Convert string scenarios to Scenario objects
     scenario_objects = [
@@ -227,8 +223,6 @@ async def quick_evaluate(
     scenarios_obj = Scenarios(scenarios=scenario_objects)
 
     # Create agent config
-    from pydantic import HttpUrl
-
     agent_config = AgentConfig(
         evaluated_agent_url=HttpUrl(agent_url),
         evaluated_agent_auth_type=AuthType(auth_type),

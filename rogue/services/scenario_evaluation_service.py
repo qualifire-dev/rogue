@@ -1,12 +1,10 @@
-from typing import AsyncGenerator, Any
+from typing import Any, AsyncGenerator
 
 from loguru import logger
 
 from ..evaluator_agent.run_evaluator_agent import arun_evaluator_agent
 from ..models.config import AuthType
-from ..models.evaluation_result import (
-    EvaluationResults,
-)
+from ..models.evaluation_result import EvaluationResults
 from ..models.scenario import Scenarios
 
 
@@ -102,10 +100,9 @@ class ScenarioEvaluationService:
             error_type = type(e).__name__
             error_msg = str(e)
 
-            logger.error(
-                f"💥 Error evaluating scenarios: {e}",
+            logger.exception(
+                "💥 Error evaluating scenarios",
                 extra={
-                    "error_type": error_type,
                     "agent_url": self._evaluated_agent_url,
                     "scenario_count": len(self._scenarios.scenarios),
                 },

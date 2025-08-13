@@ -1,26 +1,21 @@
-from ...common.workdir_utils import dump_scenarios
-from ...services.llm_service import LLMService
-from sdks.python.rogue_client import RogueSDK, RogueClientConfig
-from sdks.python.rogue_client.types import (
-    AuthType,
-    EvaluationResults,
-    Scenarios,
-)
 import asyncio
 import json
 
 import gradio as gr
 from loguru import logger
-
-# Enable debug logging for this component
-logger.add(
-    "gradio_ui_debug.log",
-    level="DEBUG",
-    format=(
-        "{time:YYYY-MM-DD HH:mm:ss} | {level} | " "{name}:{function}:{line} - {message}"
-    ),
-    rotation="1 MB",
+from pydantic import HttpUrl
+from rogue_client import RogueClientConfig, RogueSDK
+from rogue_client.types import (
+    AgentConfig,
+    AuthType,
+    EvaluationRequest,
+    EvaluationResults,
+    Scenario,
+    Scenarios,
 )
+
+from ...common.workdir_utils import dump_scenarios
+from ...services.llm_service import LLMService
 
 MAX_PARALLEL_RUNS = 10
 
@@ -92,7 +87,7 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
             state["scenarios"] = Scenarios.model_validate(scenarios_json)
             logger.info("Updated scenarios in state from editable code block.")
         except json.JSONDecodeError:
-            logger.error("Invalid JSON in scenarios input.")
+            logger.exception("Invalid JSON in scenarios input.")
             gr.Warning("Could not save, invalid JSON format.")
         return state
 
@@ -103,8 +98,7 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
     )
 
     async def run_and_evaluate_scenarios(state):
-        logger.info("🚀 Starting run_and_evaluate_scenarios")
-        logger.debug(f"State keys: {list(state.keys())}")
+        logger.info("🚀 Starting to evaluate scenarios")
 
         # --- Create a list of "no-op" updates for all components ---
         def get_blank_updates():
@@ -113,10 +107,6 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
         # 1. --- Configuration and Validation ---
         config = state.get("config", {})
         scenarios = state.get("scenarios")
-
-        logger.info(f"Config found: {bool(config)}")
-        logger.info(f"Scenarios found: {bool(scenarios)}")
-        logger.debug(f"Config: {config}")
 
         if scenarios is None:
             logger.warning("No scenarios found in state")
@@ -129,13 +119,11 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
         logger.info(f"Number of scenarios to run: {len(scenarios)}")
 
         # Hide all runners and clear values
-        logger.info("Hiding all runners and clearing values")
         initial_updates = get_blank_updates()
         for i in range(MAX_PARALLEL_RUNS):
             initial_updates[i * 3] = gr.update(visible=False)  # Group
             initial_updates[i * 3 + 1] = gr.update(value="", visible=True)  # Status
             initial_updates[i * 3 + 2] = gr.update(value=None, visible=True)  # Chat
-        logger.debug(f"Yielding initial updates: {len(initial_updates)} components")
         yield tuple(initial_updates)
 
         if not config or not scenarios:
@@ -154,7 +142,6 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
         update_queue = asyncio.Queue()
 
         # Make the required number of runners visible
-        logger.info(f"Making {num_runners} runners visible")
         visibility_updates = get_blank_updates()
         for i in range(num_runners):
             visibility_updates[i * 3] = gr.update(visible=True)
@@ -162,22 +149,19 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
             visibility_updates[i * 3 + 1] = gr.update(
                 value=f"🔧 Initializing worker {i + 1}..."
             )
-        logger.debug("Yielding visibility updates")
         yield tuple(visibility_updates)
 
         # Add a small delay and test update to verify the UI update mechanism works
-        logger.info("Testing UI update mechanism...")
         await asyncio.sleep(1)
         test_updates = get_blank_updates()
         for i in range(num_runners):
             test_updates[i * 3 + 1] = gr.update(
                 value=f"✅ Worker {i + 1} ready, starting evaluation..."
             )
-        logger.debug("Yielding test updates")
         yield tuple(test_updates)
 
         # 3. --- Define and Run Worker Tasks ---
-        async def worker(batch: list, worker_id: int):
+        async def worker(batch: list[Scenario], worker_id: int):
             logger.info(f"🔧 Starting worker {worker_id} with {len(batch)} scenarios")
             worker_state = state.copy()
             worker_config = worker_state.get("config", {})
@@ -196,34 +180,29 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                 )
 
             except Exception as e:
-                logger.error(f"Error in worker {worker_id}: {e}")
+                logger.exception(f"Error in worker {worker_id}")
                 await update_queue.put((worker_id, "status", f"Error: {e}"))
                 await update_queue.put((worker_id, "done", None))
 
         async def _worker_with_sdk(
-            batch: list,
+            batch: list[Scenario],
             worker_id: int,
             worker_config: dict,
             worker_state: dict,
             update_queue: asyncio.Queue,
         ):
             """Worker using SDK with real-time WebSocket updates."""
-            logger.info(f"🔌 SDK Worker {worker_id}: Initializing SDK connection")
+            logger.info(f"🔌 Worker {worker_id}: Initializing SDK connection")
             sdk_config = RogueClientConfig(
-                base_url="http://localhost:8000",
+                base_url=HttpUrl("http://localhost:8000"),
                 timeout=600.0,
             )
             sdk = RogueSDK(sdk_config)
 
             try:
                 # Check server health
-                logger.debug(f"SDK Worker {worker_id}: Checking server health")
-                health = await sdk.health()
-                logger.info(
-                    f"SDK Worker {worker_id}: Server health status: {health.status}"
-                )
-                if health.status != "healthy":
-                    raise Exception("Server not healthy")
+                logger.debug(f"Worker {worker_id}: Checking server health")
+                await sdk.health()
 
                 await update_queue.put(
                     (
@@ -240,38 +219,11 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                 elif auth_type_val is None:
                     auth_type_val = AuthType.NO_AUTH
 
-                # Convert batch scenarios to list of strings for SDK
-                scenario_strings = [
-                    (
-                        scenario.scenario
-                        if hasattr(scenario, "scenario")
-                        else str(scenario)
-                    )
-                    for scenario in batch
-                ]
-
                 # Get required config values with defaults
                 agent_url = str(worker_config.get("agent_url", ""))
                 judge_model = str(worker_config.get("judge_llm", "openai/gpt-4o-mini"))
                 auth_credentials = worker_config.get("auth_credentials")
                 deep_test = bool(worker_config.get("deep_test_mode", False))
-
-                # Create evaluation request
-                from sdks.python.rogue_client.types import (
-                    EvaluationRequest,
-                    AgentConfig,
-                    Scenario as SDKScenario,
-                    ScenarioType,
-                )
-                from pydantic import HttpUrl
-
-                # Convert scenarios to SDK format
-                sdk_scenarios = [
-                    SDKScenario(
-                        scenario=scenario_str, scenario_type=ScenarioType.POLICY
-                    )
-                    for scenario_str in scenario_strings
-                ]
 
                 # Create agent config
                 agent_config = AgentConfig(
@@ -284,23 +236,16 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
 
                 # Create evaluation request
                 request = EvaluationRequest(
-                    agent_config=agent_config, scenarios=sdk_scenarios
+                    agent_config=agent_config,
+                    scenarios=scenarios,
                 )
 
-                logger.info(
-                    (
-                        f"SDK Worker {worker_id}: Starting evaluation with "
-                        "real-time updates"
-                    )
-                )
+                logger.info(f"Worker {worker_id}: Starting evaluation")
                 await update_queue.put(
                     (
                         worker_id,
                         "status",
-                        (
-                            "Starting evaluation with SDK (batch size: "
-                            f"{len(scenario_strings)})"
-                        ),
+                        f"Starting evaluation (batch size: {len(scenarios)})",
                     )
                 )
 
@@ -308,7 +253,7 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                 def on_chat_update(chat_data):
                     """Handle real-time chat updates from SDK"""
                     logger.info(
-                        f"SDK Worker {worker_id}: Received chat update: {chat_data}"
+                        f"Worker {worker_id}: Received chat update: {chat_data}",
                     )
                     # Use asyncio.create_task to schedule the async operation
                     asyncio.create_task(
@@ -332,7 +277,7 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                     progress = status_data.get("progress", 0.0)
                     error_msg = status_data.get("error_message")
 
-                    logger.debug(f"SDK Worker {worker_id}: Job status update: {status}")
+                    logger.debug(f"Worker {worker_id}: Job status update: {status}")
 
                     if error_msg:
                         status_msg = f"Status: {status} - {error_msg}"
@@ -356,7 +301,7 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                     if final_job is None:
                         # Handle case where final job retrieval failed
                         logger.error(
-                            f"SDK Worker {worker_id}: Failed to get final job results"
+                            f"Worker {worker_id}: Failed to get final job results",
                         )
                         await update_queue.put(
                             (
@@ -380,8 +325,8 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
 
                     logger.info(
                         (
-                            f"SDK Worker {worker_id}: Evaluation completed with "
-                            f"status: {final_job.status}"
+                            f"Worker {worker_id}: Evaluation completed with "
+                            f"status: {final_job.status}",
                         )
                     )
 
@@ -428,9 +373,7 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                         await update_queue.put((worker_id, "done", None))
 
                 except Exception as eval_error:
-                    logger.error(
-                        f"SDK evaluation failed for worker {worker_id}: {eval_error}"
-                    )
+                    logger.exception(f"evaluation failed for worker {worker_id}")
                     error_msg = str(eval_error)
 
                     # Provide user-friendly error messages
