@@ -19,10 +19,6 @@ from .main import app
 from ..common.logging import configure_logger, get_logger
 
 
-import litellm
-
-litellm._turn_on_debug()
-
 # Configure logging first
 configure_logger()
 logger = get_logger(__name__)

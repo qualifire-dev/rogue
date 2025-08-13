@@ -184,14 +184,14 @@ func NewLLMConfigDialog(configuredKeys map[string]string, selectedProvider, sele
 			Name:        "openai",
 			DisplayName: "OpenAI",
 			APIKeyName:  "OPENAI_API_KEY",
-			Models:      []string{"gpt-4", "gpt-4-turbo", "gpt-3.5-turbo", "gpt-4o", "gpt-4o-mini"},
+			Models:      []string{"gpt-4", "gpt-4-turbo", "gpt-3.5-turbo", "gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini", "gpt-5", "gpt-5-mini"},
 			Configured:  configuredKeys["openai"] != "",
 		},
 		{
 			Name:        "anthropic",
 			DisplayName: "Anthropic",
 			APIKeyName:  "ANTHROPIC_API_KEY",
-			Models:      []string{"claude-3-5-sonnet", "claude-3-opus", "claude-3-sonnet", "claude-3-haiku"},
+			Models:      []string{"claude-3-5-sonnet", "claude-3-7-opus", "claude-3-7-sonnet", "claude-4-sonnet", "claude-4-opus"},
 			Configured:  configuredKeys["anthropic"] != "",
 		},
 		{

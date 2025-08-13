@@ -519,7 +519,7 @@ class EvaluatorAgent:
 
             if self._chat_update_callback:
                 self._chat_update_callback(
-                    {"role": "Evaluator Agent", "content": message},
+                    {"role": "Rogue", "content": message},
                 )
 
             if context_id not in self._context_id_to_chat_history:

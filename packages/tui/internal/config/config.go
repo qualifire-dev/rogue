@@ -63,7 +63,7 @@ func DefaultConfig() *Config {
 			Theme:        "auto",
 		},
 		Agent: AgentConfig{
-			DefaultURL:      "http://localhost:3000",
+			DefaultURL:      "http://localhost:10001",
 			DefaultAuthType: "no_auth",
 		},
 		UI: UIConfig{

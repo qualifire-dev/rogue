@@ -154,7 +154,7 @@ async def arun_prompt_injection_evaluator(
 
             yield "status", f"Running sample {i + 1}/{len(sampled_dataset)}"
             yield "chat", {
-                "role": "Evaluator Agent",
+                "role": "Rogue",
                 "content": payload.payload,
             }
 

@@ -1,9 +1,12 @@
 package tui
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"
@@ -11,6 +14,32 @@ import (
 	"github.com/rogue/tui/internal/components"
 	"github.com/rogue/tui/internal/theme"
 )
+
+// AutoRefreshMsg is sent periodically to refresh the evaluation screen
+type AutoRefreshMsg struct{}
+
+// autoRefreshCmd creates a command that sends AutoRefreshMsg after a delay
+func autoRefreshCmd() tea.Cmd {
+	return tea.Tick(500*time.Millisecond, func(time.Time) tea.Msg {
+		return AutoRefreshMsg{}
+	})
+}
+
+// clampToInt parses a string of digits appended to an int and returns a safe int (falls back on 0 on error)
+func clampToInt(s string) int {
+	var n int
+	_, err := fmt.Sscanf(s, "%d", &n)
+	if err != nil {
+		return 0
+	}
+	if n < 0 {
+		n = 0
+	}
+	if n > 9999 {
+		n = 9999
+	}
+	return n
+}
 
 // Screen represents different screens in the TUI
 type Screen int
@@ -20,6 +49,7 @@ const (
 	EvaluationsScreen
 	EvaluationDetailScreen
 	NewEvaluationScreen
+	ReportScreen
 	InterviewScreen
 	ConfigurationScreen
 	ScenariosScreen
@@ -47,6 +77,9 @@ type Model struct {
 	dialogStack    []components.Dialog
 	llmDialog      *components.LLMConfigDialog
 	scenarioEditor components.ScenarioEditor
+
+	// /eval state
+	evalState *EvaluationViewState
 }
 
 // Evaluation represents an evaluation
@@ -136,11 +169,38 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.scenarioEditor.SetSize(msg.Width, msg.Height)
 		return m, nil
 
+	case AutoRefreshMsg:
+		// Auto-refresh evaluation screen while running
+		if m.currentScreen == EvaluationDetailScreen && m.evalState != nil {
+			if m.evalState.Running {
+				return m, autoRefreshCmd()
+			} else if m.evalState.Completed {
+				// Trigger summary generation for completed evaluations
+				m.triggerSummaryGeneration()
+				return m, autoRefreshCmd() // Continue refreshing to show summary when ready
+			}
+		}
+		return m, nil
+
 	case components.CommandSelectedMsg:
 		// Handle command selection
 		switch msg.Command.Action {
 		case "new_evaluation":
 			m.currentScreen = NewEvaluationScreen
+			// initialize eval state with values from config
+			judgeModel := "openai/gpt-4.1" // fallback default
+			if m.config.SelectedModel != "" && m.config.SelectedProvider != "" {
+				// Use the configured model in provider/model format
+				judgeModel = m.config.SelectedProvider + "/" + m.config.SelectedModel
+			}
+			m.evalState = &EvaluationViewState{
+				ServerURL:    m.config.ServerURL,
+				AgentURL:     "http://localhost:10001",
+				JudgeModel:   judgeModel,
+				ParallelRuns: 1,
+				DeepTest:     false,
+				Scenarios:    loadScenariosFromWorkdir(),
+			}
 		case "configure_models":
 			// Open LLM configuration dialog
 			llmDialog := components.NewLLMConfigDialog(m.config.APIKeys, m.config.SelectedProvider, m.config.SelectedModel)
@@ -215,6 +275,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.config.APIKeys[msg.Provider] = msg.APIKey
 				m.config.SelectedProvider = msg.Provider
 				m.config.SelectedModel = msg.Model
+
+				// If we're on the evaluation screen, update the judge model
+				if m.currentScreen == NewEvaluationScreen && m.evalState != nil {
+					m.evalState.JudgeModel = msg.Provider + "/" + msg.Model
+				}
 
 				// Save config to file
 				err := m.saveConfig()
@@ -427,6 +492,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, tea.Batch(cmds...)
 			}
+			// Handle NewEvaluationScreen enter for start button and LLM config
+			if m.currentScreen == NewEvaluationScreen && m.evalState != nil {
+				if m.evalState.currentField == 4 { // Start button field
+					m.handleNewEvalEnter()
+					// Start auto-refresh for evaluation detail screen
+					return m, autoRefreshCmd()
+				} else if m.evalState.currentField == 1 { // Judge LLM field
+					// Open LLM config dialog when Enter is pressed on Judge LLM field
+					llmDialog := components.NewLLMConfigDialog(m.config.APIKeys, m.config.SelectedProvider, m.config.SelectedModel)
+					m.llmDialog = &llmDialog
+					return m, nil
+				}
+				return m, nil // Don't process enter on other fields
+			}
 			// Handle enter key based on current screen
 			if m.currentScreen == DashboardScreen {
 				// Focus the command input on enter
@@ -444,18 +523,201 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Batch(cmds...)
 			}
 
-			// Let the command input handle non-shortcut keys if it's focused
-			if m.commandInput.IsFocused() {
-				m.commandInput, cmd = m.commandInput.Update(msg)
-				if cmd != nil {
-					cmds = append(cmds, cmd)
+			// New evaluation keys
+			if m.currentScreen == NewEvaluationScreen && m.evalState != nil {
+				switch msg.String() {
+				case "t":
+					status, err := m.CheckServerHealth(context.Background(), m.config.ServerURL)
+					if err != nil {
+						d := components.ShowErrorDialog("Server Health", fmt.Sprintf("%v", err))
+						m.dialog = &d
+					} else {
+						d := components.NewInfoDialog("Server Health", fmt.Sprintf("%s", status))
+						m.dialog = &d
+					}
+					return m, nil
+				case "up":
+					if m.evalState.currentField > 0 {
+						m.evalState.currentField--
+						m.evalState.cursorPos = 0 // Reset cursor when switching fields
+					}
+					return m, nil
+				case "down":
+					if m.evalState.currentField < 4 { // Now includes start button (0-4)
+						m.evalState.currentField++
+						m.evalState.cursorPos = 0 // Reset cursor when switching fields
+					}
+					return m, nil
+				case "left":
+					if m.evalState.currentField <= 2 && m.evalState.cursorPos > 0 { // Text fields 0-2
+						m.evalState.cursorPos--
+					}
+					return m, nil
+				case "right":
+					if m.evalState.currentField <= 2 { // Text fields 0-2
+						// Get current field length to limit cursor
+						var fieldLen int
+						switch m.evalState.currentField {
+						case 0:
+							fieldLen = len(m.evalState.AgentURL)
+						case 1:
+							fieldLen = len(m.evalState.JudgeModel)
+						case 2:
+							fieldLen = len(fmt.Sprintf("%d", m.evalState.ParallelRuns))
+						}
+						if m.evalState.cursorPos < fieldLen {
+							m.evalState.cursorPos++
+						}
+					}
+					return m, nil
+				case "space":
+					if m.evalState.currentField == 3 { // DeepTest field is now index 3
+						m.evalState.DeepTest = !m.evalState.DeepTest
+						return m, nil
+					}
+				case "tab":
+					// Open LLM config dialog when on Judge Model field
+					if m.evalState.currentField == 1 { // JudgeModel field
+						llmDialog := components.NewLLMConfigDialog(m.config.APIKeys, m.config.SelectedProvider, m.config.SelectedModel)
+						m.llmDialog = &llmDialog
+						return m, nil
+					}
+				case "backspace":
+					// Handle backspace for text fields
+					if m.evalState.currentField <= 2 && m.evalState.cursorPos > 0 {
+						switch m.evalState.currentField {
+						case 0: // AgentURL
+							runes := []rune(m.evalState.AgentURL)
+							if m.evalState.cursorPos <= len(runes) {
+								m.evalState.AgentURL = string(runes[:m.evalState.cursorPos-1]) + string(runes[m.evalState.cursorPos:])
+								m.evalState.cursorPos--
+							}
+						case 1: // JudgeModel
+							runes := []rune(m.evalState.JudgeModel)
+							if m.evalState.cursorPos <= len(runes) {
+								m.evalState.JudgeModel = string(runes[:m.evalState.cursorPos-1]) + string(runes[m.evalState.cursorPos:])
+								m.evalState.cursorPos--
+							}
+						case 2: // ParallelRuns (special handling for numbers)
+							if m.evalState.ParallelRuns >= 10 {
+								m.evalState.ParallelRuns /= 10
+								m.evalState.cursorPos--
+							} else if m.evalState.ParallelRuns > 0 {
+								m.evalState.ParallelRuns = 1 // Don't allow 0
+								m.evalState.cursorPos = 0
+							}
+						}
+						return m, nil
+					}
 				}
-				return m, tea.Batch(cmds...)
+				// insert character into text fields
+				s := msg.String()
+				if len(s) == 1 && m.evalState.currentField <= 2 { // Text fields 0-2
+					switch m.evalState.currentField {
+					case 0: // AgentURL
+						runes := []rune(m.evalState.AgentURL)
+						m.evalState.AgentURL = string(runes[:m.evalState.cursorPos]) + s + string(runes[m.evalState.cursorPos:])
+						m.evalState.cursorPos++
+					case 1: // JudgeModel
+						runes := []rune(m.evalState.JudgeModel)
+						m.evalState.JudgeModel = string(runes[:m.evalState.cursorPos]) + s + string(runes[m.evalState.cursorPos:])
+						m.evalState.cursorPos++
+					case 2: // ParallelRuns (numeric only)
+						if s[0] >= '0' && s[0] <= '9' {
+							numStr := fmt.Sprintf("%d", m.evalState.ParallelRuns)
+							runes := []rune(numStr)
+							newNumStr := string(runes[:m.evalState.cursorPos]) + s + string(runes[m.evalState.cursorPos:])
+							m.evalState.ParallelRuns = clampToInt(newNumStr)
+							m.evalState.cursorPos++
+						}
+					}
+					return m, nil
+				}
 			}
 		}
+
+		// Evaluation detail keys
+		if m.currentScreen == EvaluationDetailScreen && m.evalState != nil {
+			switch msg.String() {
+			case "b":
+				m.currentScreen = DashboardScreen
+				return m, nil
+			case "s":
+				if m.evalState.cancelFn != nil {
+					_ = m.evalState.cancelFn()
+				}
+				return m, nil
+			case "r":
+				// Navigate to report if evaluation completed
+				if m.evalState.Completed {
+					m.currentScreen = ReportScreen
+				}
+				return m, nil
+			}
+		}
+
+		// Report screen keys
+		if m.currentScreen == ReportScreen && m.evalState != nil {
+			switch msg.String() {
+			case "b":
+				m.currentScreen = DashboardScreen
+				return m, nil
+			case "r":
+				// Refresh summary if we have job ID
+				if m.evalState.JobID != "" {
+					go m.generateSummaryAsync()
+				}
+				return m, nil
+			}
+		}
+
+		// Let the command input handle non-shortcut keys if it's focused
+		if m.commandInput.IsFocused() {
+			m.commandInput, cmd = m.commandInput.Update(msg)
+			if cmd != nil {
+				cmds = append(cmds, cmd)
+			}
+			return m, tea.Batch(cmds...)
+		}
+
 	}
 
 	return m, nil
+}
+
+// generateSummaryAsync generates a summary in the background
+func (m *Model) generateSummaryAsync() {
+	if m.evalState == nil || m.evalState.JobID == "" {
+		return
+	}
+
+	go func() {
+		sdk := NewRogueSDK(m.config.ServerURL)
+
+		// Use the judge model and API key from config
+		judgeModel := m.evalState.JudgeModel
+		var apiKey string
+
+		// Extract provider from judge model (e.g. "openai/gpt-4" -> "openai")
+		if parts := strings.Split(judgeModel, "/"); len(parts) >= 2 {
+			provider := parts[0]
+			if key, ok := m.config.APIKeys[provider]; ok {
+				apiKey = key
+			}
+		}
+
+		// Create a context with longer timeout for summary generation
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+
+		summary, err := sdk.GenerateSummary(ctx, m.evalState.JobID, judgeModel, apiKey)
+		if err != nil {
+			// Set error message as summary
+			m.evalState.Summary = fmt.Sprintf("# Summary Generation Failed\n\nError: %v", err)
+		} else {
+			m.evalState.Summary = summary
+		}
+	}()
 }
 
 // exitRequested inspects batched cmds for a ScenarioEditorMsg with Action=="exit"
@@ -473,9 +735,11 @@ func (m Model) View() string {
 	case DashboardScreen:
 		screen = m.RenderMainScreen(t)
 	case NewEvaluationScreen:
-		screen = m.renderEvaluations()
+		screen = m.renderNewEvaluation()
 	case EvaluationDetailScreen:
-		screen = m.RenderChat()
+		screen = m.renderEvaluationDetail()
+	case ReportScreen:
+		screen = m.renderReport()
 	case InterviewScreen:
 		screen = m.RenderInterview()
 	case ConfigurationScreen:
