@@ -2,10 +2,10 @@ import asyncio
 from typing import List
 
 import gradio as gr
+from loguru import logger
 from rogue_client import RogueClientConfig, RogueSDK
 
 from ...common.workdir_utils import dump_business_context
-from ...services.interviewer_service import InterviewerService
 
 
 def create_interviewer_screen(
@@ -63,14 +63,7 @@ def create_interviewer_screen(
                         response.message_count,
                     )
                 except Exception:
-                    # Fallback to legacy InterviewerService
-                    if "interviewer_service" not in state:
-                        state["interviewer_service"] = InterviewerService(
-                            model=service_llm,
-                            llm_provider_api_key=api_key,
-                        )
-                    interviewer_service = state["interviewer_service"]
-                    return interviewer_service.send_message(message)
+                    logger.exception("Failed to send interview message")
                 finally:
                     await sdk.close()
 

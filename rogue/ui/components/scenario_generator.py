@@ -1,14 +1,13 @@
 import asyncio
 
 import gradio as gr
+from loguru import logger
 from rogue_client import RogueClientConfig, RogueSDK
 
 from ...common.workdir_utils import dump_business_context, dump_scenarios
-from ...services.llm_service import LLMService
 
 
 def create_scenario_generator_screen(shared_state: gr.State, tabs_component: gr.Tabs):
-
     with gr.Column():
         gr.Markdown("## Scenario Generation")
         business_context_display = gr.Textbox(
@@ -43,20 +42,13 @@ def create_scenario_generator_screen(shared_state: gr.State, tabs_component: gr.
             )
             sdk = RogueSDK(sdk_config)
             try:
-
                 return await sdk.generate_scenarios(
                     business_context=current_context,
                     model=service_llm,
                     api_key=api_key,
                 )
             except Exception:
-                # Fallback to legacy LLMService
-                llm_service = LLMService()
-                return llm_service.generate_scenarios(
-                    service_llm,
-                    current_context,
-                    llm_provider_api_key=api_key,
-                )
+                logger.exception("Failed to generate scenarios from LLM response.")
             finally:
                 await sdk.close()
 

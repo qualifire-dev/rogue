@@ -79,18 +79,7 @@ class EvaluationService:
             job.started_at = datetime.now(timezone.utc)
             self._notify_job_update(job)
 
-            logger.info(
-                f"Converting {len(job.request.scenarios)} SDK scenarios to "
-                "legacy format"
-            )
-
             scenarios = Scenarios(scenarios=job.request.scenarios)
-            logger.info(
-                (
-                    "Successfully created Scenarios object with "
-                    f"{len(scenarios.scenarios)} scenarios"
-                )
-            )
 
             # Create evaluation orchestrator (server-native)
             agent_config = job.request.agent_config

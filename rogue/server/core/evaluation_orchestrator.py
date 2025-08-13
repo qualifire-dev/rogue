@@ -1,8 +1,5 @@
 """
 Evaluation orchestrator - Server-native evaluation logic.
-
-This replaces the legacy ScenarioEvaluationService by moving the logic
-directly into the server architecture.
 """
 
 from typing import Any, AsyncGenerator, Tuple

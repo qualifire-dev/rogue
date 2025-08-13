@@ -15,7 +15,6 @@ from rogue_client.types import (
 )
 
 from ...common.workdir_utils import dump_scenarios
-from ...services.llm_service import LLMService
 
 MAX_PARALLEL_RUNS = 10
 
@@ -509,16 +508,8 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
             )
 
             await sdk.close()
-        except Exception as e:
-            logger.warning(
-                f"SDK summary generation failed, falling back to legacy: {e}"
-            )
-            # Fallback to legacy LLMService
-            summary = LLMService().generate_summary_from_results(
-                model=config.get("service_llm"),
-                results=all_results,
-                llm_provider_api_key=config.get("judge_llm_api_key"),
-            )
+        except Exception:
+            logger.exception("Summary generation failed")
 
         state["results"] = all_results
         state["summary"] = summary

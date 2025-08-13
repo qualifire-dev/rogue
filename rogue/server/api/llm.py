@@ -1,8 +1,7 @@
 """
 LLM API endpoints - Server-native LLM operations.
 
-This module provides REST API endpoints for LLM operations that were
-previously handled by the legacy LLMService.
+This module provides REST API endpoints for LLM operations.
 """
 
 from typing import Optional

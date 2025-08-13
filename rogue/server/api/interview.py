@@ -1,8 +1,7 @@
 """
 Interview API endpoints - Server-native interview operations.
 
-This module provides REST API endpoints for interview operations that were
-previously handled by the legacy InterviewerService.
+This module provides REST API endpoints for interview operations.
 """
 
 import uuid
