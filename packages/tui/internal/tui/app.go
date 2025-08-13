@@ -261,6 +261,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					)
 					m.dialog = &dialog
 					return m, nil
+				} else if m.dialog.Title == "Search Scenarios" {
+					// Apply search query to scenario editor
+					m.scenarioEditor.SetSearchQuery(msg.Input)
+					m.dialog = nil
+					return m, nil
 				}
 			case "cancel":
 				// Handle cancel action
@@ -289,6 +294,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				"Scenarios have been successfully saved to scenarios.json",
 			)
 			m.dialog = &dialog
+		case "exit":
+			// Exit scenarios screen back to dashboard
+			m.currentScreen = DashboardScreen
+			m.commandInput.SetFocus(true)
+			m.commandInput.SetValue("")
 		}
 		return m, nil
 
@@ -332,7 +342,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.currentScreen = ScenariosScreen
 			return m, nil
 
-		case "ctrl+s":
+		case "ctrl+g":
 			m.currentScreen = ConfigurationScreen
 			return m, nil
 
@@ -357,7 +367,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case "/":
-			// Focus the command input and start with "/"
+			// If on scenarios screen, forward to editor for search
+			if m.currentScreen == ScenariosScreen {
+				m.scenarioEditor, cmd = m.scenarioEditor.Update(msg)
+				if cmd != nil {
+					cmds = append(cmds, cmd)
+				}
+				return m, tea.Batch(cmds...)
+			}
+			// Otherwise focus the global command input
 			m.commandInput.SetFocus(true)
 			m.commandInput.SetValue("/")
 			return m, nil
@@ -368,6 +386,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Let dialogs handle escape - this shouldn't be reached due to order, but just in case
 				return m, nil
 			}
+			if m.currentScreen == ScenariosScreen {
+				// Let the editor consume ESC first
+				m.scenarioEditor, cmd = m.scenarioEditor.Update(msg)
+				if cmd != nil {
+					cmds = append(cmds, cmd)
+				}
+				return m, tea.Batch(cmds...)
+			}
+			// Default ESC behavior: back to dashboard
 			m.currentScreen = DashboardScreen
 			m.commandInput.SetFocus(true) // Keep focused when returning to dashboard
 			m.commandInput.SetValue("")
@@ -377,6 +404,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// If command input has suggestions, let it handle the enter key
 			if m.commandInput.IsFocused() && m.commandInput.HasSuggestions() {
 				m.commandInput, cmd = m.commandInput.Update(msg)
+				if cmd != nil {
+					cmds = append(cmds, cmd)
+				}
+				return m, tea.Batch(cmds...)
+			}
+			// Forward enter to the active screen if needed
+			if m.currentScreen == ScenariosScreen {
+				m.scenarioEditor, cmd = m.scenarioEditor.Update(msg)
 				if cmd != nil {
 					cmds = append(cmds, cmd)
 				}
@@ -411,6 +446,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+// exitRequested inspects batched cmds for a ScenarioEditorMsg with Action=="exit"
+func exitRequested(cmds []tea.Cmd) bool {
+	// We cannot introspect tea.Cmd directly; rely on state changes via messages instead.
+	// This helper is a placeholder to keep structure; editor already switches its own mode on ESC.
+	return false
 }
 
 // View renders the current screen

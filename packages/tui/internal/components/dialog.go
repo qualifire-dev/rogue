@@ -135,7 +135,7 @@ func (d Dialog) Update(msg tea.Msg) (Dialog, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "escape":
+		case "escape", "esc":
 			return d, func() tea.Msg {
 				return DialogClosedMsg{Action: "cancel", Input: d.Input}
 			}
@@ -150,12 +150,26 @@ func (d Dialog) Update(msg tea.Msg) (Dialog, tea.Cmd) {
 			}
 
 		case "tab", "right":
+			// In input dialogs, use left/right to move the text cursor
+			if d.Type == InputDialog {
+				if d.InputCursor < len(d.Input) {
+					d.InputCursor++
+				}
+				return d, nil
+			}
 			if len(d.Buttons) > 1 {
 				d.SelectedBtn = (d.SelectedBtn + 1) % len(d.Buttons)
 			}
 			return d, nil
 
 		case "shift+tab", "left":
+			// In input dialogs, use left/right to move the text cursor
+			if d.Type == InputDialog {
+				if d.InputCursor > 0 {
+					d.InputCursor--
+				}
+				return d, nil
+			}
 			if len(d.Buttons) > 1 {
 				d.SelectedBtn = (d.SelectedBtn - 1 + len(d.Buttons)) % len(d.Buttons)
 			}

@@ -3,8 +3,11 @@ from ...services.llm_service import LLMService
 from sdks.python.rogue_client import RogueSDK, RogueClientConfig
 from sdks.python.rogue_client.types import (
     AuthType,
-    EvaluationResults,
     Scenarios,
+)
+from ...models.evaluation_result import (
+    EvaluationResults,
+    EvaluationResult as InternalEvaluationResult,
 )
 import asyncio
 import json
@@ -386,21 +389,12 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                     )
 
                     if final_job.status == "completed" and final_job.results:
-                        await update_queue.put(
-                            (
-                                worker_id,
-                                "chat",
-                                {
-                                    "role": "assistant",
-                                    "content": (
-                                        "✅ Evaluation completed for worker "
-                                        f"{worker_id + 1}!"
-                                    ),
-                                },
-                            )
-                        )
-                        # Wrap the list of results in EvaluationResults
-                        results = EvaluationResults(results=final_job.results or [])
+                        # Convert SDK results to internal models
+                        internal_results = [
+                            InternalEvaluationResult.model_validate(r.model_dump())
+                            for r in (final_job.results or [])
+                        ]
+                        results = EvaluationResults(results=internal_results)
                         await update_queue.put((worker_id, "done", results))
                     elif final_job.status == "failed":
                         error_msg = final_job.error_message or "Unknown error"

@@ -2,22 +2,25 @@ package components
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"
+	"github.com/rogue/tui/internal/styles"
 	"github.com/rogue/tui/internal/theme"
 )
 
-// ScenarioData represents a single scenario
+// ScenarioData represents a single scenario aligned with Python schema
 type ScenarioData struct {
-	Scenario          string      `json:"scenario"`
-	ScenarioType      string      `json:"scenario_type"`
-	Dataset           interface{} `json:"dataset"`
-	ExpectedOutcome   string      `json:"expected_outcome"`
-	DatasetSampleSize interface{} `json:"dataset_sample_size"`
+	Scenario          string  `json:"scenario"`
+	ScenarioType      string  `json:"scenario_type"`
+	Dataset           *string `json:"dataset"`
+	ExpectedOutcome   *string `json:"expected_outcome"`
+	DatasetSampleSize *int    `json:"dataset_sample_size"`
 }
 
 // ScenariosFile represents the JSON file structure
@@ -27,21 +30,33 @@ type ScenariosFile struct {
 
 // ScenarioEditor represents the scenario editor component
 type ScenarioEditor struct {
-	scenarios       []ScenarioData
-	selectedIndex   int
-	mode            ScenarioEditorMode
-	editingScenario ScenarioData
-	currentField    int
-	width           int
-	height          int
-	scrollOffset    int
-	visibleItems    int
+	// Data
+	scenarios   []ScenarioData
+	filteredIdx []int
+	searchMode  bool
+	searchQuery string
 
-	// Form fields for editing
-	scenarioText    string
-	expectedOutcome string
-	scenarioCursor  int
-	outcomeCursor   int
+	// Selection and mode
+	selectedIndex int
+	mode          ScenarioEditorMode
+	currentField  int
+
+	// Editing buffer
+	editing   ScenarioData
+	cursorPos int // for current text field
+
+	// Layout
+	width        int
+	height       int
+	scrollOffset int
+	visibleItems int
+
+	// File management
+	filePath string // path to .rogue/scenarios.json
+
+	// UX
+	errorMsg string
+	infoMsg  string
 }
 
 // ScenarioEditorMode represents the current mode of the editor
@@ -56,7 +71,7 @@ const (
 // ScenarioEditorMsg represents messages from the scenario editor
 type ScenarioEditorMsg struct {
 	Action string
-	Data   interface{}
+	Data   any
 }
 
 // NewScenarioEditor creates a new scenario editor
@@ -66,12 +81,13 @@ func NewScenarioEditor() ScenarioEditor {
 		selectedIndex: 0,
 		mode:          ListMode,
 		currentField:  0,
-		visibleItems:  8,
+		visibleItems:  10,
 	}
 
-	// Load existing scenarios
-	editor.loadScenarios()
-
+	// Discover scenarios.json location and load
+	editor.filePath = discoverScenariosFile()
+	_ = editor.loadScenarios()
+	editor.rebuildFilter()
 	return editor
 }
 
@@ -79,17 +95,25 @@ func NewScenarioEditor() ScenarioEditor {
 func (e *ScenarioEditor) SetSize(width, height int) {
 	e.width = width
 	e.height = height
+	// Compute a reasonable number of visible list items based on height
+	// Reserve rows for borders, header, subline, table header, spacing, help and messages
+	// Rough overhead: ~12 rows on small terminals
+	maxItems := height - 12
+	if maxItems < 5 {
+		maxItems = 5
+	}
+	e.visibleItems = maxItems
 }
 
 // Update handles input for the scenario editor
 func (e ScenarioEditor) Update(msg tea.Msg) (ScenarioEditor, tea.Cmd) {
-	switch msg := msg.(type) {
+	switch m := msg.(type) {
 	case tea.KeyMsg:
 		switch e.mode {
 		case ListMode:
-			return e.handleListMode(msg)
+			return e.handleListMode(m)
 		case EditMode, AddMode:
-			return e.handleEditMode(msg)
+			return e.handleEditMode(m)
 		}
 	}
 	return e, nil
@@ -98,6 +122,9 @@ func (e ScenarioEditor) Update(msg tea.Msg) (ScenarioEditor, tea.Cmd) {
 // handleListMode handles input in list mode
 func (e ScenarioEditor) handleListMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd) {
 	switch msg.String() {
+	case "escape", "esc":
+		// Request parent to exit the scenarios screen
+		return e, func() tea.Msg { return ScenarioEditorMsg{Action: "exit"} }
 	case "up", "k":
 		if e.selectedIndex > 0 {
 			e.selectedIndex--
@@ -106,152 +133,258 @@ func (e ScenarioEditor) handleListMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 		return e, nil
 
 	case "down", "j":
-		if e.selectedIndex < len(e.scenarios)-1 {
+		if e.selectedIndex < len(e.filteredIdx)-1 {
 			e.selectedIndex++
 			e.updateScroll()
 		}
 		return e, nil
 
+	case "/":
+		// Open a dialog to enter search query (single OK button, no Cancel)
+		dialog := NewInputDialog("Search Scenarios", "Type to filter scenarios:", e.searchQuery)
+		dialog.Buttons = []DialogButton{{Label: "OK", Action: "ok", Style: PrimaryButton}}
+		return e, func() tea.Msg { return DialogOpenMsg{Dialog: dialog} }
+
 	case "enter":
-		if len(e.scenarios) > 0 {
-			// Edit selected scenario
-			e.mode = EditMode
-			e.editingScenario = e.scenarios[e.selectedIndex]
-			e.scenarioText = e.editingScenario.Scenario
-			e.expectedOutcome = e.editingScenario.ExpectedOutcome
-			e.currentField = 0
-			e.scenarioCursor = len(e.scenarioText)
-			e.outcomeCursor = len(e.expectedOutcome)
+		if len(e.filteredIdx) == 0 {
+			return e, nil
 		}
+		idx := e.filteredIdx[e.selectedIndex]
+		e.mode = EditMode
+		e.editing = e.scenarios[idx]
+		e.currentField = 0
+		e.cursorPos = len(e.editing.Scenario)
+		e.errorMsg = ""
+		e.infoMsg = ""
 		return e, nil
 
 	case "n", "a":
 		// Add new scenario
 		e.mode = AddMode
-		e.editingScenario = ScenarioData{
-			ScenarioType:      "policy",
-			Dataset:           nil,
-			DatasetSampleSize: nil,
-		}
-		e.scenarioText = ""
-		e.expectedOutcome = ""
+		e.editing = ScenarioData{ScenarioType: "policy"}
 		e.currentField = 0
-		e.scenarioCursor = 0
-		e.outcomeCursor = 0
+		e.cursorPos = 0
+		e.errorMsg = ""
+		e.infoMsg = ""
 		return e, nil
 
 	case "d", "delete":
-		if len(e.scenarios) > 0 {
-			// Delete selected scenario
-			e.scenarios = append(e.scenarios[:e.selectedIndex], e.scenarios[e.selectedIndex+1:]...)
-			if e.selectedIndex >= len(e.scenarios) && len(e.scenarios) > 0 {
-				e.selectedIndex = len(e.scenarios) - 1
-			}
-			e.updateScroll()
-			e.saveScenarios()
+		if len(e.filteredIdx) == 0 {
+			return e, nil
 		}
+		idx := e.filteredIdx[e.selectedIndex]
+		e.scenarios = append(e.scenarios[:idx], e.scenarios[idx+1:]...)
+		if e.selectedIndex >= len(e.filteredIdx)-1 && e.selectedIndex > 0 {
+			e.selectedIndex--
+		}
+		e.rebuildFilter()
+		_ = e.saveScenarios()
+		e.infoMsg = "Deleted scenario"
 		return e, nil
 
 	case "s", "ctrl+s":
-		// Save scenarios
-		e.saveScenarios()
-		return e, func() tea.Msg {
-			return ScenarioEditorMsg{Action: "saved"}
+		// Save all scenarios to file
+		if err := e.saveScenarios(); err != nil {
+			e.errorMsg = fmt.Sprintf("Save error: %v", err)
+		} else {
+			e.infoMsg = "Scenarios saved"
 		}
+		return e, func() tea.Msg { return ScenarioEditorMsg{Action: "saved"} }
+	default:
+		return e, nil
 	}
-	return e, nil
 }
 
-// handleEditMode handles input in edit mode
+// handleEditMode handles input in edit/add mode
 func (e ScenarioEditor) handleEditMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd) {
 	switch msg.String() {
-	case "escape":
+	case "escape", "esc":
 		// Cancel editing
 		e.mode = ListMode
+		e.errorMsg = ""
+		e.infoMsg = ""
 		return e, nil
 
-	case "tab":
-		// Switch between fields
-		e.currentField = (e.currentField + 1) % 2
+	case "down":
+		e.currentField = (e.currentField + 1) % e.numFields()
+		e.resetCursorForField()
 		return e, nil
 
-	case "shift+tab":
-		// Switch between fields (reverse)
-		e.currentField = (e.currentField - 1 + 2) % 2
-		return e, nil
-
-	case "ctrl+s", "enter":
-		// Save scenario
-		e.editingScenario.Scenario = e.scenarioText
-		e.editingScenario.ExpectedOutcome = e.expectedOutcome
-
-		if e.mode == AddMode {
-			e.scenarios = append(e.scenarios, e.editingScenario)
-		} else {
-			e.scenarios[e.selectedIndex] = e.editingScenario
-		}
-
-		e.mode = ListMode
-		e.saveScenarios()
-		return e, func() tea.Msg {
-			return ScenarioEditorMsg{Action: "saved"}
-		}
-
-	case "backspace":
-		if e.currentField == 0 {
-			// Edit scenario text
-			if e.scenarioCursor > 0 && len(e.scenarioText) > 0 {
-				e.scenarioText = e.scenarioText[:e.scenarioCursor-1] + e.scenarioText[e.scenarioCursor:]
-				e.scenarioCursor--
-			}
-		} else {
-			// Edit expected outcome
-			if e.outcomeCursor > 0 && len(e.expectedOutcome) > 0 {
-				e.expectedOutcome = e.expectedOutcome[:e.outcomeCursor-1] + e.expectedOutcome[e.outcomeCursor:]
-				e.outcomeCursor--
-			}
-		}
+	case "up":
+		e.currentField = (e.currentField - 1 + e.numFields()) % e.numFields()
+		e.resetCursorForField()
 		return e, nil
 
 	case "left":
-		if e.currentField == 0 {
-			if e.scenarioCursor > 0 {
-				e.scenarioCursor--
+		if e.currentField == 0 { // scenario_type toggle
+			if e.editing.ScenarioType == "prompt_injection" {
+				e.editing.ScenarioType = "policy"
+				// Clear dataset fields for policy
+				e.editing.Dataset = nil
+				e.editing.DatasetSampleSize = nil
 			}
-		} else {
-			if e.outcomeCursor > 0 {
-				e.outcomeCursor--
-			}
+			return e, nil
+		}
+		if e.cursorPos > 0 && e.isTextField(e.currentField) {
+			e.cursorPos--
 		}
 		return e, nil
 
 	case "right":
-		if e.currentField == 0 {
-			if e.scenarioCursor < len(e.scenarioText) {
-				e.scenarioCursor++
+		if e.currentField == 0 { // scenario_type toggle
+			if e.editing.ScenarioType == "policy" {
+				e.editing.ScenarioType = "prompt_injection"
 			}
-		} else {
-			if e.outcomeCursor < len(e.expectedOutcome) {
-				e.outcomeCursor++
+			return e, nil
+		}
+		if e.isTextField(e.currentField) {
+			fieldLen := len(e.currentFieldText())
+			if e.cursorPos < fieldLen {
+				e.cursorPos++
 			}
 		}
 		return e, nil
 
-	default:
-		// Handle regular character input
-		if len(msg.String()) == 1 {
-			char := msg.String()
-			if e.currentField == 0 {
-				// Edit scenario text
-				e.scenarioText = e.scenarioText[:e.scenarioCursor] + char + e.scenarioText[e.scenarioCursor:]
-				e.scenarioCursor++
-			} else {
-				// Edit expected outcome
-				e.expectedOutcome = e.expectedOutcome[:e.outcomeCursor] + char + e.expectedOutcome[e.outcomeCursor:]
-				e.outcomeCursor++
-			}
+	case "backspace":
+		if !e.isTextField(e.currentField) {
+			return e, nil
+		}
+		txt := e.currentFieldText()
+		if e.cursorPos > 0 && len(txt) > 0 {
+			newTxt := txt[:e.cursorPos-1] + txt[e.cursorPos:]
+			e.setCurrentFieldText(newTxt)
+			e.cursorPos--
 		}
 		return e, nil
+
+	case "delete":
+		if !e.isTextField(e.currentField) {
+			return e, nil
+		}
+		txt := e.currentFieldText()
+		if e.cursorPos < len(txt) {
+			newTxt := txt[:e.cursorPos] + txt[e.cursorPos+1:]
+			e.setCurrentFieldText(newTxt)
+		}
+		return e, nil
+
+	case "enter":
+		// If Save button is focused, save; otherwise insert newline at cursor
+		if e.currentField >= 2 {
+			if err := e.validateEditing(); err != nil {
+				e.errorMsg = err.Error()
+				return e, nil
+			}
+			e.applyEditing()
+			if err := e.saveScenarios(); err != nil {
+				e.errorMsg = fmt.Sprintf("Save error: %v", err)
+				return e, nil
+			}
+			e.mode = ListMode
+			e.rebuildFilter()
+			e.infoMsg = "Scenario saved"
+			return e, func() tea.Msg { return ScenarioEditorMsg{Action: "saved"} }
+		}
+		// Insert newline into current text field
+		txt := e.currentFieldText()
+		newTxt := txt[:e.cursorPos] + "\n" + txt[e.cursorPos:]
+		e.setCurrentFieldText(newTxt)
+		e.cursorPos++
+		return e, nil
+
+	case "ctrl+s":
+		// Save via shortcut
+		if err := e.validateEditing(); err != nil {
+			e.errorMsg = err.Error()
+			return e, nil
+		}
+		e.applyEditing()
+		if err := e.saveScenarios(); err != nil {
+			e.errorMsg = fmt.Sprintf("Save error: %v", err)
+			return e, nil
+		}
+		e.mode = ListMode
+		e.rebuildFilter()
+		e.infoMsg = "Scenario saved"
+		return e, func() tea.Msg { return ScenarioEditorMsg{Action: "saved"} }
+
+	default:
+		// Character input for text fields
+		if !e.isTextField(e.currentField) {
+			return e, nil
+		}
+		s := msg.String()
+		if len(s) == 1 {
+			txt := e.currentFieldText()
+			newTxt := txt[:e.cursorPos] + s + txt[e.cursorPos:]
+			e.setCurrentFieldText(newTxt)
+			e.cursorPos++
+		}
+		return e, nil
+	}
+}
+
+func (e *ScenarioEditor) numFields() int {
+	// Two text areas + Save button focus
+	return 3
+}
+
+func (e *ScenarioEditor) isTextField(field int) bool {
+	// Both fields are text inputs
+	return true
+}
+
+func (e *ScenarioEditor) currentFieldText() string {
+	switch e.currentField {
+	case 0:
+		return e.editing.Scenario
+	case 1:
+		if e.editing.ExpectedOutcome == nil {
+			return ""
+		}
+		return *e.editing.ExpectedOutcome
+	default:
+		return ""
+	}
+}
+
+func (e *ScenarioEditor) setCurrentFieldText(val string) {
+	switch e.currentField {
+	case 0:
+		e.editing.Scenario = val
+	case 1:
+		if val == "" {
+			e.editing.ExpectedOutcome = nil
+		} else {
+			v := val
+			e.editing.ExpectedOutcome = &v
+		}
+	}
+}
+
+func (e *ScenarioEditor) resetCursorForField() {
+	e.cursorPos = len(e.currentFieldText())
+}
+
+// Validation based on Python model rules (policy-only editing)
+func (e *ScenarioEditor) validateEditing() error {
+	if strings.TrimSpace(e.editing.Scenario) == "" {
+		return errors.New("scenario cannot be empty")
+	}
+	// Force policy-only for this version
+	e.editing.ScenarioType = "policy"
+	// Ensure dataset fields are cleared
+	e.editing.Dataset = nil
+	e.editing.DatasetSampleSize = nil
+	return nil
+}
+
+func (e *ScenarioEditor) applyEditing() {
+	if e.mode == AddMode {
+		e.scenarios = append(e.scenarios, e.editing)
+	} else if e.mode == EditMode && len(e.filteredIdx) > 0 {
+		idx := e.filteredIdx[e.selectedIndex]
+		e.scenarios[idx] = e.editing
 	}
 }
 
@@ -264,102 +397,187 @@ func (e *ScenarioEditor) updateScroll() {
 	}
 }
 
+// rebuildFilter recalculates filtered indices based on fuzzy text search in scenario
+func (e *ScenarioEditor) rebuildFilter() {
+	e.filteredIdx = e.filteredIdx[:0]
+	query := strings.ToLower(strings.TrimSpace(e.searchQuery))
+	for i, s := range e.scenarios {
+		if query == "" || strings.Contains(strings.ToLower(s.Scenario), query) {
+			e.filteredIdx = append(e.filteredIdx, i)
+		}
+	}
+	if e.selectedIndex >= len(e.filteredIdx) {
+		e.selectedIndex = 0
+	}
+	if e.selectedIndex < 0 {
+		e.selectedIndex = 0
+	}
+}
+
+// rebuildFilterResetSelection resets selection and scroll when search changes
+func (e *ScenarioEditor) rebuildFilterResetSelection() {
+	e.rebuildFilter()
+	e.selectedIndex = 0
+	e.scrollOffset = 0
+}
+
+// SetSearchQuery updates the search query and rebuilds the filtered list
+func (e *ScenarioEditor) SetSearchQuery(query string) {
+	e.searchQuery = strings.TrimSpace(query)
+	e.rebuildFilterResetSelection()
+}
+
+// ClearSearchQuery clears the search query and rebuilds the filtered list
+func (e *ScenarioEditor) ClearSearchQuery() {
+	e.searchQuery = ""
+	e.rebuildFilterResetSelection()
+}
+
 // View renders the scenario editor
 func (e ScenarioEditor) View() string {
 	t := theme.CurrentTheme()
-
 	switch e.mode {
 	case ListMode:
-		return e.renderListView(t)
+		return lipgloss.Place(
+			e.width,
+			e.height-1,
+			lipgloss.Center,
+			lipgloss.Top,
+			e.renderListView(t),
+			styles.WhitespaceStyle(t.Background()),
+		)
 	case EditMode, AddMode:
 		return e.renderEditView(t)
+	default:
+		return ""
 	}
-
-	return ""
 }
 
 // renderListView renders the list of scenarios
 func (e ScenarioEditor) renderListView(t theme.Theme) string {
-	title := lipgloss.NewStyle().
-		Foreground(t.Primary()).
-		Bold(true).
-		Render("📝 Scenario Editor")
-
-	if len(e.scenarios) == 0 {
-		content := fmt.Sprintf(`%s
-
-No scenarios found.
-
-Press 'n' or 'a' to add a new scenario.
-Press 'Esc' to return to dashboard.
-`, title)
-
-		return lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(t.Border()).
-			Padding(1, 2).
-			Width(e.width - 4).
-			Height(e.height - 4).
-			Render(content)
+	// file path and search status
+	searchDisplay := e.searchQuery
+	if searchDisplay == "" {
+		searchDisplay = "(none)"
 	}
+	sub := lipgloss.NewStyle().Background(t.Background()).Foreground(t.TextMuted()).Render(
+		fmt.Sprintf("File: %s  |  Search: %s  |  Matches: %d/%d", e.displayPath(), searchDisplay, len(e.filteredIdx), len(e.scenarios)),
+	)
 
-	// Render scenario list
-	var items []string
-	start := e.scrollOffset
-	end := start + e.visibleItems
-	if end > len(e.scenarios) {
-		end = len(e.scenarios)
-	}
-
-	for i := start; i < end; i++ {
-		scenario := e.scenarios[i]
-		prefix := "  "
-		if i == e.selectedIndex {
-			prefix = "▶ "
+	var body string
+	rowCount := 0
+	if len(e.filteredIdx) == 0 {
+		body = lipgloss.NewStyle().Background(t.Background()).Foreground(t.TextMuted()).Render("No scenarios. Press 'n' to add.")
+		rowCount = 1
+	} else {
+		start := e.scrollOffset
+		end := start + e.visibleItems
+		if end > len(e.filteredIdx) {
+			end = len(e.filteredIdx)
 		}
 
-		// Truncate long text
-		scenarioText := scenario.Scenario
-		if len(scenarioText) > 50 {
-			scenarioText = scenarioText[:47] + "..."
+		// use near-full panel width (account for outer layout padding)
+		contentWidth := e.width - 4
+		if contentWidth < 40 {
+			contentWidth = 40
+		}
+		typeWidth := 12
+		scenWidth := (contentWidth - typeWidth) / 2
+		if scenWidth < 24 {
+			scenWidth = 24
+			typeWidth = contentWidth - scenWidth
 		}
 
-		itemStyle := lipgloss.NewStyle()
-		if i == e.selectedIndex {
-			itemStyle = itemStyle.Background(t.Primary()).Foreground(t.Background())
-		} else {
-			itemStyle = itemStyle.Foreground(t.Text())
+		// table header (no dataset column)
+		typeCol := lipgloss.NewStyle().Background(t.Background()).Foreground(t.Accent()).Width(typeWidth).Render("Type")
+		scenCol := lipgloss.NewStyle().Background(t.Background()).Foreground(t.Accent()).Width(scenWidth).Render("Scenario")
+		rows := []string{lipgloss.JoinHorizontal(lipgloss.Left, typeCol, scenCol)}
+
+		for i := start; i < end; i++ {
+			idx := e.filteredIdx[i]
+			s := e.scenarios[idx]
+			// Less intrusive selection: change type cell style only and use a subtle pointer
+			pointer := "  "
+			typeStyle := lipgloss.NewStyle().Background(t.Background()).Foreground(t.Text())
+			scenStyle := lipgloss.NewStyle().Background(t.Background()).Foreground(t.Text())
+
+			scenText := ellipsis(s.Scenario, scenWidth-2)
+			scenOutcome := ""
+			if s.ExpectedOutcome != nil {
+				scenOutcome = *s.ExpectedOutcome
+			}
+			scenOutcome = ellipsis(scenOutcome, scenWidth-2)
+
+			if i == e.selectedIndex {
+				pointer = "› "
+				typeStyle = typeStyle.Background(t.Background()).Foreground(t.Primary()).Bold(true)
+				scenStyle = scenStyle.Background(t.Background()).Foreground(t.Primary()).Bold(true)
+			}
+
+			line := lipgloss.JoinHorizontal(
+				lipgloss.Left,
+				typeStyle.Width(typeWidth).Render(pointer+s.ScenarioType),
+				scenStyle.Width(scenWidth).Render(scenText),
+				scenStyle.Width(scenWidth).Render(scenOutcome),
+			)
+			rows = append(rows, line)
 		}
-
-		items = append(items, itemStyle.Render(fmt.Sprintf("%s%s", prefix, scenarioText)))
+		// Render table within a compact width and keep it left-aligned inside the panel
+		body = lipgloss.NewStyle().Width(contentWidth).Background(t.Background()).Render(strings.Join(rows, "\n"))
+		body = lipgloss.Place(
+			e.width,
+			e.height-10,
+			lipgloss.Left,
+			lipgloss.Top,
+			body,
+			styles.WhitespaceStyle(t.Background()),
+		)
+		rowCount = len(rows)
 	}
 
-	// Show scroll indicators
-	scrollInfo := ""
-	if len(e.scenarios) > e.visibleItems {
-		scrollInfo = fmt.Sprintf(" (%d/%d)", e.selectedIndex+1, len(e.scenarios))
+	// Build lines and push help to bottom (above footer)
+	help := lipgloss.NewStyle().Background(t.Background()).Foreground(t.TextMuted()).Render(
+		"↑/↓ navigate  Enter edit  n new  d delete  / search (type to filter, Enter to exit)  Esc back",
+	)
+
+	errorLine := ""
+	if e.errorMsg != "" {
+		errorLine = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Error()).Render("⚠ " + e.errorMsg)
+	}
+	infoLine := ""
+	if e.infoMsg != "" {
+		infoLine = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Success()).Render("✓ " + e.infoMsg)
 	}
 
-	content := fmt.Sprintf(`%s%s
+	// Calculate spacer lines to pin help near the bottom (leave 1 line for footer)
+	totalWithoutSpacer := 0
+	totalWithoutSpacer += 1 // header
+	totalWithoutSpacer += 1 // sub
+	totalWithoutSpacer += 1 // blank
+	totalWithoutSpacer += rowCount
+	totalWithoutSpacer += 1 // blank before error/info
+	if errorLine != "" {
+		totalWithoutSpacer += 1
+	}
+	if infoLine != "" {
+		totalWithoutSpacer += 1
+	}
+	totalWithoutSpacer += 1 // help
 
-%s
+	content := strings.Join([]string{
+		"",
+		sub,
+		"",
+		body,
+		"",
+		errorLine,
+		infoLine,
+		"",
+		help,
+	}, "\n")
 
-Controls:
-• ↑/↓ or j/k - Navigate
-• Enter - Edit scenario
-• n/a - Add new scenario
-• d/Delete - Delete scenario
-• s/Ctrl+S - Save scenarios
-• Esc - Return to dashboard
-`, title, scrollInfo, strings.Join(items, "\n"))
-
-	return lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(t.Border()).
-		Padding(1, 2).
-		Width(e.width - 4).
-		Height(e.height - 4).
-		Render(content)
+	// No outer border/background; return plain content to fill full height under layout
+	return content
 }
 
 // renderEditView renders the edit form
@@ -368,124 +586,270 @@ func (e ScenarioEditor) renderEditView(t theme.Theme) string {
 	if e.mode == AddMode {
 		modeTitle = "Add New Scenario"
 	}
+	title := lipgloss.NewStyle().Foreground(t.Primary()).Bold(true).Render("📝 " + modeTitle)
 
-	title := lipgloss.NewStyle().
-		Foreground(t.Primary()).
-		Bold(true).
-		Render("📝 " + modeTitle)
-
-	// Render scenario text field
-	scenarioLabel := "Scenario:"
+	// Field 0: scenario (multiline, subtle style)
+	scenLabel := "Scenario"
 	if e.currentField == 0 {
-		scenarioLabel = lipgloss.NewStyle().Foreground(t.Primary()).Bold(true).Render("▶ Scenario:")
+		scenLabel = lipgloss.NewStyle().Foreground(t.Primary()).Bold(true).Render("▶ Scenario")
 	}
+	scenText := renderTextArea(t, e.width-4, e.currentField == 0, e.editing.Scenario, e.cursorPos)
 
-	scenarioText := e.scenarioText
-	if e.currentField == 0 {
-		// Add cursor
-		if e.scenarioCursor == len(scenarioText) {
-			scenarioText += "█"
-		} else {
-			scenarioText = scenarioText[:e.scenarioCursor] + "█" + scenarioText[e.scenarioCursor:]
-		}
-	}
-
-	scenarioFieldStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		Padding(0, 1).
-		Width(e.width - 8)
-
-	if e.currentField == 0 {
-		scenarioFieldStyle = scenarioFieldStyle.BorderForeground(t.Primary())
-	} else {
-		scenarioFieldStyle = scenarioFieldStyle.BorderForeground(t.Border())
-	}
-
-	scenarioField := scenarioFieldStyle.Render(scenarioText)
-
-	// Render expected outcome field
-	outcomeLabel := "Expected Outcome:"
+	// Field 1: expected_outcome (multiline, subtle style)
+	outLabel := "Expected Outcome"
 	if e.currentField == 1 {
-		outcomeLabel = lipgloss.NewStyle().Foreground(t.Primary()).Bold(true).Render("▶ Expected Outcome:")
+		outLabel = lipgloss.NewStyle().Foreground(t.Primary()).Bold(true).Render("▶ Expected Outcome")
+	}
+	outVal := ""
+	if e.editing.ExpectedOutcome != nil {
+		outVal = *e.editing.ExpectedOutcome
+	}
+	outText := renderTextArea(t, e.width-4, e.currentField == 1, outVal, e.cursorPos)
+
+	// Simple Save button hint: third focus index (2)
+	saveLabel := "Save"
+	if e.currentField >= 2 {
+		saveLabel = lipgloss.NewStyle().Foreground(t.Primary()).Bold(true).Render("▶ Save")
 	}
 
-	outcomeText := e.expectedOutcome
-	if e.currentField == 1 {
-		// Add cursor
-		if e.outcomeCursor == len(outcomeText) {
-			outcomeText += "█"
-		} else {
-			outcomeText = outcomeText[:e.outcomeCursor] + "█" + outcomeText[e.outcomeCursor:]
-		}
+	help := lipgloss.NewStyle().Foreground(t.TextMuted()).Render("↑/↓ switch fields  ←/→ move cursor  Enter newline/Save  Ctrl+S save  Esc cancel")
+	errorLine := ""
+	if e.errorMsg != "" {
+		errorLine = lipgloss.NewStyle().Foreground(t.Error()).Render("⚠ " + e.errorMsg)
 	}
 
-	outcomeFieldStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		Padding(0, 1).
-		Width(e.width - 8)
+	var parts []string
+	parts = append(parts, title, "")
+	parts = append(parts, scenLabel, scenText)
+	parts = append(parts, "")
+	parts = append(parts, outLabel, outText)
+	parts = append(parts, "", saveLabel)
+	parts = append(parts, "", help, errorLine)
 
-	if e.currentField == 1 {
-		outcomeFieldStyle = outcomeFieldStyle.BorderForeground(t.Primary())
-	} else {
-		outcomeFieldStyle = outcomeFieldStyle.BorderForeground(t.Border())
-	}
-
-	outcomeField := outcomeFieldStyle.Render(outcomeText)
-
-	content := fmt.Sprintf(`%s
-
-%s
-%s
-
-%s
-%s
-
-Controls:
-• Tab/Shift+Tab - Switch fields
-• Enter/Ctrl+S - Save scenario
-• Esc - Cancel editing
-`, title, scenarioLabel, scenarioField, outcomeLabel, outcomeField)
-
-	return lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(t.Border()).
-		Padding(1, 2).
-		Width(e.width - 4).
-		Height(e.height - 4).
-		Render(content)
+	content := strings.Join(parts, "\n\n")
+	// Less intrusive: no border/background; fill width
+	return content
 }
 
-// loadScenarios loads scenarios from scenarios.json
+// Helper rendering
+func renderTextArea(t theme.Theme, width int, focused bool, text string, cursor int) string {
+	// subtle box with background only
+	boxStyle := lipgloss.NewStyle().
+		Background(t.Background()).
+		Padding(0, 0).
+		Width(width)
+
+	// Wrap text visually
+	lines, lineStarts := wrapTextWithStarts(text, width)
+
+	// Draw cursor if focused
+	if focused {
+		if cursor < 0 {
+			cursor = 0
+		}
+		if cursor > len([]rune(text)) {
+			cursor = len([]rune(text))
+		}
+		row, col := rowColForIndex(lineStarts, text, width, cursor)
+		// Insert cursor into the appropriate line
+		// Rebuild lines with cursor
+		rlines := make([]string, len(lines))
+		copy(rlines, lines)
+		if row >= 0 && row < len(rlines) {
+			line := rlines[row]
+			if col > len([]rune(line)) {
+				col = len([]rune(line))
+			}
+			rlines[row] = insertAtRune(line, col, "█")
+		}
+		return boxStyle.Render(strings.Join(rlines, "\n"))
+	}
+	return boxStyle.Render(strings.Join(lines, "\n"))
+}
+
+// wrapTextWithStarts wraps text to the given width and returns lines and rune index starts for each line
+func wrapTextWithStarts(text string, width int) ([]string, []int) {
+	runes := []rune(text)
+	var lines []string
+	var starts []int
+	start := 0
+	col := 0
+	for i := 0; i <= len(runes); i++ {
+		atEnd := i == len(runes)
+		if !atEnd && runes[i] == '\n' {
+			lines = append(lines, string(runes[start:i]))
+			starts = append(starts, start)
+			start = i + 1
+			col = 0
+			continue
+		}
+		if !atEnd {
+			col++
+		}
+		if atEnd || col >= width {
+			lines = append(lines, string(runes[start:i]))
+			starts = append(starts, start)
+			start = i
+			col = 0
+		}
+	}
+	if len(lines) == 0 {
+		lines = []string{""}
+		starts = []int{0}
+	}
+	return lines, starts
+}
+
+func rowColForIndex(lineStarts []int, text string, width int, index int) (int, int) {
+	runes := []rune(text)
+	if index < 0 {
+		index = 0
+	}
+	if index > len(runes) {
+		index = len(runes)
+	}
+	// Find the line where index falls
+	row := 0
+	for i := 0; i < len(lineStarts); i++ {
+		if index >= lineStarts[i] {
+			row = i
+		} else {
+			break
+		}
+	}
+	col := index - lineStarts[row]
+	// Clamp col to wrapped width
+	if col > width {
+		col = width
+	}
+	return row, col
+}
+
+func indexForRowCol(lineStarts []int, text string, width int, row, col int) int {
+	if row < 0 {
+		row = 0
+	}
+	if row >= len(lineStarts) {
+		row = len(lineStarts) - 1
+	}
+	lineStart := lineStarts[row]
+	lineLen := 0
+	runes := []rune(text)
+	// Determine line length by next start or end
+	if row+1 < len(lineStarts) {
+		lineLen = lineStarts[row+1] - lineStart
+	} else {
+		lineLen = len(runes) - lineStart
+	}
+	if col > lineLen {
+		col = lineLen
+	}
+	if col < 0 {
+		col = 0
+	}
+	return lineStart + col
+}
+
+func insertAtRune(s string, idx int, insert string) string {
+	r := []rune(s)
+	if idx < 0 {
+		idx = 0
+	}
+	if idx > len(r) {
+		idx = len(r)
+	}
+	out := make([]rune, 0, len(r)+len([]rune(insert)))
+	out = append(out, r[:idx]...)
+	out = append(out, []rune(insert)...)
+	out = append(out, r[idx:]...)
+	return string(out)
+}
+
+func ellipsis(s string, max int) string {
+	if max <= 0 {
+		return ""
+	}
+	if len(s) <= max {
+		return s
+	}
+	if max <= 3 {
+		return s[:max]
+	}
+	return s[:max-3] + "..."
+}
+
+// File discovery and IO
+func discoverScenariosFile() string {
+	// Walk up from CWD to root to find .rogue/scenarios.json
+	wd, err := os.Getwd()
+	if err == nil {
+		dir := wd
+		for {
+			p := filepath.Join(dir, ".rogue", "scenarios.json")
+			if _, err := os.Stat(p); err == nil {
+				return p
+			}
+			parent := filepath.Dir(dir)
+			if parent == dir {
+				break
+			}
+			dir = parent
+		}
+	}
+	// Fallback to CWD/.rogue/scenarios.json (may not exist yet)
+	if err == nil {
+		return filepath.Join(wd, ".rogue", "scenarios.json")
+	}
+	return ".rogue/scenarios.json"
+}
+
+// loadScenarios loads scenarios from filePath
 func (e *ScenarioEditor) loadScenarios() error {
-	data, err := os.ReadFile("scenarios.json")
+	if e.filePath == "" {
+		e.filePath = discoverScenariosFile()
+	}
+	data, err := os.ReadFile(e.filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			// File doesn't exist, start with empty list
 			e.scenarios = []ScenarioData{}
 			return nil
 		}
 		return err
 	}
-
 	var file ScenariosFile
 	if err := json.Unmarshal(data, &file); err != nil {
 		return err
 	}
-
 	e.scenarios = file.Scenarios
 	return nil
 }
 
-// saveScenarios saves scenarios to scenarios.json
+// saveScenarios saves scenarios to filePath, creating .rogue directory if needed
 func (e *ScenarioEditor) saveScenarios() error {
-	file := ScenariosFile{
-		Scenarios: e.scenarios,
+	if e.filePath == "" {
+		e.filePath = discoverScenariosFile()
 	}
-
+	dir := filepath.Dir(e.filePath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+	file := ScenariosFile{Scenarios: e.scenarios}
 	data, err := json.MarshalIndent(file, "", "  ")
 	if err != nil {
 		return err
 	}
+	return os.WriteFile(e.filePath, data, 0644)
+}
 
-	return os.WriteFile("scenarios.json", data, 0644)
+func (e ScenarioEditor) displayPath() string {
+	if e.filePath == "" {
+		return ".rogue/scenarios.json"
+	}
+	// Compact path for display
+	home, _ := os.UserHomeDir()
+	p := e.filePath
+	if home != "" && strings.HasPrefix(p, home) {
+		p = "~" + strings.TrimPrefix(p, home)
+	}
+	return p
 }
