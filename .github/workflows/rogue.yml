@@ -28,7 +28,7 @@ jobs:
         run: uv pip install -e . --system
 
       - name: Install rogue server
-        run: uv pip install -e .
+        run: uv pip install -e . --system
 
       - name: Run shirtify agent in background
         uses: JarvusInnovations/background-action@v1
