@@ -72,7 +72,7 @@ class AgentConfig(BaseModel):
     deep_test_mode: bool = False
     parallel_runs: int = 1
     judge_llm_api_key: Optional[str] = None
-    business_context: str
+    business_context: str = ""
 
     @model_validator(mode="after")
     def check_auth_credentials(self) -> "AgentConfig":
