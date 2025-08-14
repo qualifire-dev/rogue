@@ -1,13 +1,10 @@
 from typing import Any
 
 import pytest
-from pydantic import ValidationError, SecretStr, HttpUrl
+from pydantic import HttpUrl, SecretStr, ValidationError
 from pytest_mock import MockerFixture
 
-from rogue.models.cli_input import (
-    CLIInput,
-    AuthType,
-)
+from rogue.models.cli_input import AuthType, CLIInput
 
 
 class TestCLIInput:
@@ -29,7 +26,7 @@ class TestCLIInput:
             "evaluated_agent_url": "https://example.com",
             "evaluated_agent_auth_type": auth_type,
             "evaluated_agent_credentials": credentials,
-            "judge_llm_model": "openai/o4-mini",
+            "judge_llm": "openai/o4-mini",
             "business_context": "Test",
         }
 
@@ -83,7 +80,7 @@ class TestCLIInput:
 
         cli_input = CLIInputWithMockScenarios(
             evaluated_agent_url=HttpUrl("https://example.com"),
-            judge_llm_model="example-model",
+            judge_llm="example-model",
             business_context="example-context",
             input_scenarios_file=input_scenarios_file_mock,
         )

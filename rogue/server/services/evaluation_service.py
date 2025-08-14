@@ -71,7 +71,7 @@ class EvaluationService:
                     "job_status": "running",
                     "scenario_count": len(job.request.scenarios),
                     "agent_url": str(job.request.agent_config.evaluated_agent_url),
-                    "judge_llm": job.request.agent_config.judge_llm_model,
+                    "judge_llm": job.request.agent_config.judge_llm,
                 },
             )
 
@@ -89,7 +89,7 @@ class EvaluationService:
                 evaluated_agent_auth_credentials=(
                     agent_config.evaluated_agent_credentials
                 ),
-                judge_llm=agent_config.judge_llm_model,
+                judge_llm=agent_config.judge_llm,
                 judge_llm_api_key=agent_config.judge_llm_api_key,
                 scenarios=scenarios,
                 business_context=agent_config.business_context,
@@ -100,7 +100,7 @@ class EvaluationService:
                 "Starting server-native evaluation orchestrator",
                 extra={
                     "agent_url": str(job.request.agent_config.evaluated_agent_url),
-                    "judge_llm": job.request.agent_config.judge_llm_model,
+                    "judge_llm": job.request.agent_config.judge_llm,
                     "scenario_count": len(scenarios.scenarios),
                 },
             )
@@ -164,13 +164,13 @@ class EvaluationService:
             if "APIError" in error_type and "Connection error" in error_msg:
                 user_error = (
                     "LLM API Connection Error: Cannot connect to "
-                    f"{job.request.agent_config.judge_llm_model}. "
+                    f"{job.request.agent_config.judge_llm}. "
                     "Please check your API key and network connection."
                 )
             elif "APIError" in error_type and "authentication" in error_msg.lower():
                 user_error = (
                     "LLM Authentication Error: Invalid API key for "
-                    f"{job.request.agent_config.judge_llm_model}. "
+                    f"{job.request.agent_config.judge_llm}. "
                     "Please verify your judge_llm_api_key."
                 )
             elif "timeout" in error_msg.lower():

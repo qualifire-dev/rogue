@@ -47,7 +47,7 @@ async def create_evaluation(
             "method": "POST",
             "agent_url": str(request.agent_config.evaluated_agent_url),
             "scenario_count": len(request.scenarios),
-            "judge_llm": request.agent_config.judge_llm_model,
+            "judge_llm": request.agent_config.judge_llm,
             "deep_test_mode": request.agent_config.deep_test_mode,
             "max_retries": request.max_retries,
             "timeout_seconds": request.timeout_seconds,

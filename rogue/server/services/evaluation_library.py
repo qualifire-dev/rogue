@@ -54,7 +54,7 @@ class EvaluationLibrary:
             extra={
                 "agent_url": str(agent_config.evaluated_agent_url),
                 "scenario_count": len(scenarios.scenarios),
-                "judge_llm": agent_config.judge_llm_model,
+                "judge_llm": agent_config.judge_llm,
                 "deep_test_mode": agent_config.deep_test_mode,
                 "business_context_length": len(business_context),
                 "has_progress_callback": progress_callback is not None,
@@ -68,7 +68,7 @@ class EvaluationLibrary:
                 evaluated_agent_auth_credentials=(
                     agent_config.evaluated_agent_credentials
                 ),
-                judge_llm=agent_config.judge_llm_model,
+                judge_llm=agent_config.judge_llm,
                 judge_llm_api_key=agent_config.judge_llm_api_key,
                 scenarios=scenarios,
                 business_context=business_context,
@@ -157,7 +157,7 @@ class EvaluationLibrary:
             evaluated_agent_url=str(agent_config.evaluated_agent_url),
             evaluated_agent_auth_type=agent_config.evaluated_agent_auth_type,
             evaluated_agent_auth_credentials=agent_config.evaluated_agent_credentials,
-            judge_llm=agent_config.judge_llm_model,
+            judge_llm=agent_config.judge_llm,
             judge_llm_api_key=agent_config.judge_llm_api_key,
             scenarios=scenarios,
             business_context=business_context,
@@ -231,7 +231,7 @@ async def quick_evaluate(
         evaluated_agent_url=HttpUrl(agent_url),
         evaluated_agent_auth_type=AuthType(auth_type),
         evaluated_agent_credentials=auth_credentials,
-        judge_llm_model=judge_llm,
+        judge_llm=judge_llm,
         judge_llm_api_key=judge_llm_api_key,
     )
 

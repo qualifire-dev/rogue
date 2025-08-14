@@ -230,7 +230,7 @@ class RogueSDK:
             agent_url=HttpUrl(agent_url),
             auth_type=auth_type,
             auth_credentials=auth_credentials,
-            judge_llm_model=judge_model,
+            judge_llm=judge_model,
             deep_test_mode=deep_test,
             interview_mode=True,
             parallel_runs=1,

@@ -13,7 +13,7 @@ class CLIInput(BaseModel):
     evaluated_agent_url: HttpUrl
     evaluated_agent_auth_type: AuthType = AuthType.NO_AUTH
     evaluated_agent_credentials: SecretStr | None = None
-    judge_llm_model: str
+    judge_llm: str
     judge_llm_api_key: SecretStr | None = None
     input_scenarios_file: Path = workdir / "scenarios.json"
     output_report_file: Path = workdir / "report.md"
@@ -54,7 +54,7 @@ class PartialCLIInput(BaseModel):
     evaluated_agent_url: HttpUrl | None = Field(default=None)
     evaluated_agent_auth_type: AuthType = Field(default=AuthType.NO_AUTH)
     evaluated_agent_credentials: SecretStr | None = Field(default=None)
-    judge_llm_model: str | None = None
+    judge_llm: str | None = None
     judge_llm_api_key: SecretStr | None = None
     business_context: str | None = None
     business_context_file: Path = None  # type: ignore # fixed in model_post_init

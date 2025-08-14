@@ -258,8 +258,8 @@ def merge_config_with_cli(
     )
 
     # Set defaults for required fields that are missing
-    if data.get("judge_llm_model") is None:
-        data["judge_llm_model"] = "openai/o4-mini"
+    if data.get("judge_llm") is None:
+        data["judge_llm"] = "openai/o4-mini"
 
     logger.debug(f"Running with parameters: {data}")
 
@@ -334,7 +334,7 @@ async def run_cli(args: Namespace) -> int:
         evaluated_agent_url=cli_input.evaluated_agent_url.encoded_string(),
         evaluated_agent_auth_type=cli_input.evaluated_agent_auth_type,
         evaluated_agent_auth_credentials_secret=cli_input.evaluated_agent_credentials,
-        judge_llm=cli_input.judge_llm_model,
+        judge_llm=cli_input.judge_llm,
         judge_llm_api_key_secret=cli_input.judge_llm_api_key,
         scenarios=scenarios,
         evaluation_results_output_path=args.workdir / "evaluation_results.json",
@@ -349,7 +349,7 @@ async def run_cli(args: Namespace) -> int:
     logger.info("Creating report")
     report_summary = await create_report(
         rogue_server_url=args.rogue_server_url,
-        judge_llm=cli_input.judge_llm_model,
+        judge_llm=cli_input.judge_llm,
         results=results,
         output_report_file=cli_input.output_report_file,
         judge_llm_api_key_secret=cli_input.judge_llm_api_key,
