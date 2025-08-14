@@ -4,48 +4,19 @@ LLM API endpoints - Server-native LLM operations.
 This module provides REST API endpoints for LLM operations.
 """
 
-from typing import Optional
-
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from rogue_sdk.types import EvaluationResults, Scenarios
+from rogue_sdk.types import (
+    ScenarioGenerationRequest,
+    ScenarioGenerationResponse,
+    SummaryGenerationRequest,
+    SummaryGenerationResponse,
+)
 
 from ...common.logging import get_logger
 from ..services.llm_service import LLMService
 
 router = APIRouter(prefix="/llm", tags=["llm"])
 logger = get_logger(__name__)
-
-
-class ScenarioGenerationRequest(BaseModel):
-    """Request to generate test scenarios."""
-
-    business_context: str
-    model: str = "openai/gpt-4.1"
-    api_key: Optional[str] = None
-    count: int = 10
-
-
-class ScenarioGenerationResponse(BaseModel):
-    """Response containing generated scenarios."""
-
-    scenarios: Scenarios
-    message: str
-
-
-class SummaryGenerationRequest(BaseModel):
-    """Request to generate evaluation summary."""
-
-    results: EvaluationResults
-    model: str = "openai/gpt-4.1"
-    api_key: Optional[str] = None
-
-
-class SummaryGenerationResponse(BaseModel):
-    """Response containing generated summary."""
-
-    summary: str
-    message: str
 
 
 @router.post("/scenarios", response_model=ScenarioGenerationResponse)

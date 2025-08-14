@@ -70,9 +70,15 @@ class _WebSocketManager:
         await self.broadcast_to_job(job.job_id, message)
 
 
+_websocket_manager: _WebSocketManager = None  # type: ignore
+
+
 @lru_cache(1)
 def get_websocket_manager() -> _WebSocketManager:
-    return _WebSocketManager()
+    global _websocket_manager
+    if _websocket_manager is None:
+        _websocket_manager = _WebSocketManager()
+    return _websocket_manager
 
 
 @websocket_router.websocket("/{job_id}")

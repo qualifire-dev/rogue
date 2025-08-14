@@ -12,13 +12,20 @@ from .types import (
     EvaluationJob,
     EvaluationRequest,
     EvaluationResponse,
+    EvaluationResults,
     EvaluationStatus,
     GetConversationResponse,
     HealthResponse,
     JobListResponse,
     RogueClientConfig,
+    ScenarioGenerationRequest,
+    ScenarioGenerationResponse,
+    SendMessageRequest,
     SendMessageResponse,
+    StartInterviewRequest,
     StartInterviewResponse,
+    SummaryGenerationRequest,
+    SummaryGenerationResponse,
 )
 
 
@@ -37,7 +44,9 @@ class RogueHttpClient:
             headers["Authorization"] = f"Bearer {self.api_key}"
 
         self._client = httpx.AsyncClient(
-            base_url=self.base_url, headers=headers, timeout=self.timeout
+            base_url=self.base_url,
+            headers=headers,
+            timeout=self.timeout,
         )
 
     async def __aenter__(self):
@@ -50,7 +59,12 @@ class RogueHttpClient:
         """Close the HTTP client."""
         await self._client.aclose()
 
-    async def _request(self, method: str, endpoint: str, **kwargs) -> dict:
+    async def _request(
+        self,
+        method: str,
+        endpoint: str,
+        **kwargs,
+    ) -> dict:
         """Make HTTP request with retry logic."""
 
         @backoff.on_exception(
@@ -110,33 +124,43 @@ class RogueHttpClient:
         model: str,
         api_key: Optional[str] = None,
         count: int = 10,
-    ) -> dict:
+    ) -> ScenarioGenerationResponse:
         """Generate scenarios via API."""
-        data = {
-            "business_context": business_context,
-            "model": model,
-            "count": count,
-        }
+        data = ScenarioGenerationRequest(
+            business_context=business_context,
+            model=model,
+            count=count,
+        )
         if api_key:
-            data["api_key"] = api_key
+            data.api_key = api_key
 
-        return await self._request("POST", "/api/v1/llm/scenarios", json=data)
+        response = await self._request(
+            "POST",
+            "/api/v1/llm/scenarios",
+            json=data.model_dump(mode="json"),
+        )
+        return ScenarioGenerationResponse(**response)
 
     async def generate_summary(
         self,
-        results: dict,
+        results: EvaluationResults,
         model: str,
         api_key: Optional[str] = None,
-    ) -> dict:
+    ) -> SummaryGenerationResponse:
         """Generate summary via API."""
-        data = {
-            "results": results,
-            "model": model,
-        }
+        data = SummaryGenerationRequest(
+            results=results,
+            model=model,
+        )
         if api_key:
-            data["api_key"] = api_key
+            data.api_key = api_key
 
-        return await self._request("POST", "/api/v1/llm/summary", json=data)
+        response = await self._request(
+            "POST",
+            "/api/v1/llm/summary",
+            json=data.model_dump(mode="json"),
+        )
+        return SummaryGenerationResponse(**response)
 
     async def start_interview(
         self,
@@ -144,14 +168,14 @@ class RogueHttpClient:
         api_key: Optional[str] = None,
     ) -> StartInterviewResponse:
         """Start a new interview session."""
-        data = {"model": model}
+        data = StartInterviewRequest(model=model)
         if api_key:
-            data["api_key"] = api_key
+            data.api_key = api_key
 
         response = await self._request(
             "POST",
             "/api/v1/interview/start",
-            json=data,
+            json=data.model_dump(mode="json"),
         )
 
         return StartInterviewResponse(**response)
@@ -162,24 +186,29 @@ class RogueHttpClient:
         message: str,
     ) -> SendMessageResponse:
         """Send a message in an interview session."""
-        data = {"session_id": session_id, "message": message}
+        data = SendMessageRequest(session_id=session_id, message=message)
         response = await self._request(
             "POST",
             "/api/v1/interview/message",
-            json=data,
+            json=data.model_dump(mode="json"),
         )
         return SendMessageResponse(**response)
 
     async def get_interview_conversation(
-        self, session_id: str
+        self,
+        session_id: str,
     ) -> GetConversationResponse:
         """Get the full conversation for an interview session."""
         response = await self._request(
-            "GET", f"/api/v1/interview/conversation/{session_id}"
+            "GET",
+            f"/api/v1/interview/conversation/{session_id}",
         )
         return GetConversationResponse(**response)
 
-    async def end_interview(self, session_id: str) -> None:
+    async def end_interview(
+        self,
+        session_id: str,
+    ) -> None:
         """End an interview session."""
         await self._request("DELETE", f"/api/v1/interview/session/{session_id}")
 

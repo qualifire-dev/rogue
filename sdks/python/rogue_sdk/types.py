@@ -314,6 +314,37 @@ class HealthResponse(BaseModel):
     timestamp: datetime
 
 
+class ScenarioGenerationRequest(BaseModel):
+    """Request to generate test scenarios."""
+
+    business_context: str
+    model: str = "openai/gpt-4.1"
+    api_key: Optional[str] = None
+    count: int = 10
+
+
+class ScenarioGenerationResponse(BaseModel):
+    """Response containing generated scenarios."""
+
+    scenarios: Scenarios
+    message: str
+
+
+class SummaryGenerationRequest(BaseModel):
+    """Request to generate evaluation summary."""
+
+    results: EvaluationResults
+    model: str = "openai/gpt-4.1"
+    api_key: Optional[str] = None
+
+
+class SummaryGenerationResponse(BaseModel):
+    """Response containing generated summary."""
+
+    summary: str
+    message: str
+
+
 # WebSocket Messages
 
 

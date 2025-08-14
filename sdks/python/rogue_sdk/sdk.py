@@ -258,10 +258,8 @@ class RogueSDK:
         model: str = "openai/gpt-4o-mini",
         api_key: Optional[str] = None,
         count: int = 10,
-    ) -> "Scenarios":
+    ) -> Scenarios:
         """Generate test scenarios based on business context."""
-        from .types import Scenarios
-
         response_data = await self.http_client.generate_scenarios(
             business_context=business_context,
             model=model,
@@ -269,22 +267,22 @@ class RogueSDK:
             count=count,
         )
 
-        return Scenarios.model_validate(response_data["scenarios"])
+        return Scenarios.model_validate(response_data.scenarios)
 
     async def generate_summary(
         self,
-        results: "EvaluationResults",
+        results: EvaluationResults,
         model: str = "openai/gpt-4o-mini",
         api_key: Optional[str] = None,
     ) -> str:
         """Generate evaluation summary from results."""
         response_data = await self.http_client.generate_summary(
-            results=results.model_dump(),
+            results=results,
             model=model,
             api_key=api_key,
         )
 
-        return response_data["summary"]
+        return response_data.summary
 
     async def start_interview(
         self,
