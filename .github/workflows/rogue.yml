@@ -23,12 +23,14 @@ jobs:
         with:
           python-version-file: ".python-version"
 
+      - name: Create venv
+        run: uv venv
+
       - name: Install rogue sdk
-        working-directory: sdks/python
-        run: uv pip install -e . --system
+        run: source .venv/bin/activate && uv pip install -e sdks/python
 
       - name: Install rogue server
-        run: uv pip install -e . --system
+        run: source .venv/bin/activate && uv pip install -e .
 
       - name: Run shirtify agent in background
         uses: JarvusInnovations/background-action@v1
