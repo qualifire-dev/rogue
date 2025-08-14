@@ -7,8 +7,8 @@ from loguru import logger
 from pydantic import SecretStr, ValidationError
 from rich.console import Console
 from rich.markdown import Markdown
-from rogue_client import RogueClientConfig, RogueSDK
-from rogue_client.types import AgentConfig, AuthType, EvaluationResults, Scenarios
+from rogue_sdk import RogueClientConfig, RogueSDK
+from rogue_sdk.types import AgentConfig, AuthType, EvaluationResults, Scenarios
 
 from .models.cli_input import CLIInput, PartialCLIInput
 

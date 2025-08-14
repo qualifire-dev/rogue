@@ -5,14 +5,14 @@ A comprehensive Python SDK for interacting with the Rogue Agent Evaluator API.
 ## Installation
 
 ```bash
-pip install rogue-client
+pip install rogue-sdk
 ```
 
 ## Quick Start
 
 ```python
 import asyncio
-from rogue_client import RogueSDK, RogueClientConfig, AuthType, ScenarioType
+from rogue_sdk import RogueSDK, RogueClientConfig, AuthType, ScenarioType
 
 async def main():
     # Configure the SDK
@@ -53,7 +53,7 @@ Main SDK class that combines HTTP and WebSocket functionality.
 #### Configuration
 
 ```python
-from rogue_client import RogueClientConfig
+from rogue_sdk import RogueClientConfig
 
 config = RogueClientConfig(
     base_url="http://localhost:8000",
@@ -105,7 +105,7 @@ result = await client.run_evaluation_with_updates(
 #### AgentConfig
 
 ```python
-from rogue_client.types import AgentConfig, AuthType
+from rogue_sdk.types import AgentConfig, AuthType
 
 agent_config = AgentConfig(
     evaluated_agent_url="http://localhost:3000",
@@ -120,7 +120,7 @@ agent_config = AgentConfig(
 #### Scenario
 
 ```python
-from rogue_client.types import Scenario, ScenarioType
+from rogue_sdk.types import Scenario, ScenarioType
 
 scenario = Scenario(
     scenario="The agent should be polite",
@@ -132,7 +132,7 @@ scenario = Scenario(
 #### EvaluationRequest
 
 ```python
-from rogue_client.types import EvaluationRequest
+from rogue_sdk.types import EvaluationRequest
 
 request = EvaluationRequest(
     agent_config=agent_config,
@@ -147,7 +147,7 @@ request = EvaluationRequest(
 ### Custom HTTP Client
 
 ```python
-from rogue_client import RogueHttpClient
+from rogue_sdk import RogueHttpClient
 
 async with RogueHttpClient(config) as http_client:
     health = await http_client.health()
@@ -157,7 +157,7 @@ async with RogueHttpClient(config) as http_client:
 ### WebSocket Client
 
 ```python
-from rogue_client import RogueWebSocketClient
+from rogue_sdk import RogueWebSocketClient
 
 ws_client = RogueWebSocketClient("http://localhost:8000", job_id)
 
@@ -171,7 +171,7 @@ await ws_client.connect()
 ### Error Handling
 
 ```python
-from rogue_client.types import EvaluationStatus
+from rogue_sdk.types import EvaluationStatus
 
 try:
     result = await client.quick_evaluate(agent_url, scenarios)
@@ -193,7 +193,7 @@ except Exception as e:
 
 ```python
 import asyncio
-from rogue_client import RogueSDK, RogueClientConfig
+from rogue_sdk import RogueSDK, RogueClientConfig
 
 async def basic_evaluation():
     config = RogueClientConfig(base_url="http://localhost:8000")
@@ -218,8 +218,8 @@ asyncio.run(basic_evaluation())
 
 ```python
 import asyncio
-from rogue_client import RogueSDK, RogueClientConfig
-from rogue_client.types import AgentConfig, Scenario, EvaluationRequest, AuthType, ScenarioType
+from rogue_sdk import RogueSDK, RogueClientConfig
+from rogue_sdk.types import AgentConfig, Scenario, EvaluationRequest, AuthType, ScenarioType
 
 async def advanced_evaluation():
     config = RogueClientConfig(base_url="http://localhost:8000")
@@ -290,14 +290,14 @@ python -m pytest tests/
 ### Type Checking
 
 ```bash
-python -m mypy rogue_client/
+python -m mypy rogue_sdk/
 ```
 
 ### Code Formatting
 
 ```bash
-python -m black rogue_client/
-python -m flake8 rogue_client/
+python -m black rogue_sdk/
+python -m flake8 rogue_sdk/
 ```
 
 ## License

@@ -37,7 +37,7 @@ curl http://localhost:8000/api/v1/health
 # Test SDK connection
 uv run python -c "
 import asyncio
-from sdks.python.rogue_client import RogueSDK, RogueClientConfig
+from rogue_sdk import RogueSDK, RogueClientConfig
 
 async def test():
     config = RogueClientConfig(base_url='http://localhost:8000', timeout=30.0)

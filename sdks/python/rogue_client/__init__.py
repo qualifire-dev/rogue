@@ -6,7 +6,7 @@ A comprehensive Python SDK for interacting with the Rogue Agent Evaluator API.
 Example:
     ```python
     import asyncio
-    from rogue_client import RogueSDK, RogueClientConfig, AuthType, ScenarioType
+    from rogue_sdk import RogueSDK, RogueClientConfig, AuthType, ScenarioType
 
     async def main():
         config = RogueClientConfig(base_url="http://localhost:8000")
@@ -40,15 +40,15 @@ Example:
     ```
 """
 
+# HTTP and WebSocket clients
+from .client import RogueHttpClient
+
 # Main SDK class
 from .sdk import RogueSDK
 
-# HTTP and WebSocket clients
-from .client import RogueHttpClient
-from .websocket import RogueWebSocketClient
-
 # All types
 from .types import *
+from .websocket import RogueWebSocketClient
 
 # Version
 __version__ = "1.0.0"

@@ -4,8 +4,8 @@ import json
 import gradio as gr
 from loguru import logger
 from pydantic import HttpUrl
-from rogue_client import RogueClientConfig, RogueSDK
-from rogue_client.types import (
+from rogue_sdk import RogueClientConfig, RogueSDK
+from rogue_sdk.types import (
     AgentConfig,
     AuthType,
     EvaluationRequest,

@@ -2,7 +2,7 @@ from functools import lru_cache
 from typing import Dict, List
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from rogue_client.types import EvaluationJob, WebSocketMessage
+from rogue_sdk.types import EvaluationJob, WebSocketMessage
 
 from ...common.logging.config import get_logger
 

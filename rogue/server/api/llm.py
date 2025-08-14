@@ -8,7 +8,7 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from rogue_client.types import EvaluationResults, Scenarios
+from rogue_sdk.types import EvaluationResults, Scenarios
 
 from ...common.logging import get_logger
 from ..services.llm_service import LLMService

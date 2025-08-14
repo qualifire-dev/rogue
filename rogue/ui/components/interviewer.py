@@ -3,7 +3,7 @@ from typing import List
 
 import gradio as gr
 from loguru import logger
-from rogue_client import RogueClientConfig, RogueSDK
+from rogue_sdk import RogueClientConfig, RogueSDK
 
 from ...common.workdir_utils import dump_business_context
 

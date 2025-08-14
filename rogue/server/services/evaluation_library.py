@@ -7,7 +7,7 @@ from typing import Any, AsyncGenerator, Callable, Optional
 
 from loguru import logger
 from pydantic import HttpUrl
-from rogue_client.types import AgentConfig
+from rogue_sdk.types import AgentConfig
 
 from ...models.config import AuthType
 from ...models.evaluation_result import EvaluationResults
