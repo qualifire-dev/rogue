@@ -78,11 +78,16 @@ class RogueSDK:
         return await self.http_client.cancel_evaluation(job_id)
 
     async def wait_for_evaluation(
-        self, job_id: str, poll_interval: float = 2.0, max_wait_time: float = 300.0
+        self,
+        job_id: str,
+        poll_interval: float = 2.0,
+        max_wait_time: float = 3000.0,
     ) -> EvaluationJob:
         """Wait for evaluation to complete (polling)."""
         return await self.http_client.wait_for_evaluation(
-            job_id, poll_interval, max_wait_time
+            job_id,
+            poll_interval,
+            max_wait_time,
         )
 
     # WebSocket Methods

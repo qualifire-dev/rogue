@@ -57,7 +57,7 @@ def set_cli_args(parser: ArgumentParser) -> None:
     )
     parser.add_argument(
         "-m",
-        "--judge-llm-model",
+        "--judge-llm",
         required=False,
         help="Model to use for scenario evaluation and report generation",
     )

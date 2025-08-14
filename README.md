@@ -168,7 +168,7 @@ uv run -m rogue cli [OPTIONS]
 | --evaluated-agent-credentials | Yes*<br/>if `auth_type` is not `no_auth`              |                                 | Credentials for the agent (if required).                                                                                                                |
 | --input-scenarios-file        | Yes                                                   | `<workdir>/scenarios.json`      | Path to scenarios file.                                                                                                                                 |
 | --output-report-file          | No                                                    | `<workdir>/report.md`           | Where to save the markdown report.                                                                                                                      |
-| --judge-llm-model             | Yes                                                   |                                 | Model name for LLM evaluation (Litellm format).                                                                                                         |
+| --judge-llm                   | Yes                                                   |                                 | Model name for LLM evaluation (Litellm format).                                                                                                         |
 | --judge-llm-api-key           | No                                                    |                                 | API key for LLM (see environment section).                                                                                                              |
 | --business-context            | Yes*<br/>Unless `--business-context-file` is supplied |                                 | Business context as a string.                                                                                                                           |
 | --business-context-file       | Yes*<br/>Unless `--business-context` is supplied      | `<workdir>/business_context.md` | OR path to file containing the business context.<br/>If both given, `--business-context` has priority                                                   |
@@ -196,7 +196,7 @@ with our business context located at `./.rogue/business_context.md`
 ```json
 {
     "evaluated_agent_url": "http://localhost:10001",
-    "judge_llm_model": "openai/o4-mini"
+    "judge_llm": "openai/o4-mini"
 }
 ```
 
@@ -211,7 +211,7 @@ uv run -m rogue cli
 ```bash
 uv run -m rogue cli \
     --evaluated-agent-url http://localhost:10001 \
-    --judge-llm-model openai/o4-mini \
+    --judge-llm openai/o4-mini \
     --business-context-file './.rogue/business_context.md'
 ```
 

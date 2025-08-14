@@ -108,7 +108,7 @@ import { AgentConfig, Scenario, AuthType, ScenarioType } from '@rogue/sdk';
 const agentConfig: AgentConfig = {
   evaluated_agent_url: 'http://localhost:3000',
   evaluated_agent_auth_type: AuthType.NO_AUTH,
-  judge_llm_model: 'openai/gpt-4o-mini',
+  judge_llm: 'openai/gpt-4o-mini',
   interview_mode: true,
   deep_test_mode: false,
   parallel_runs: 1
@@ -173,7 +173,7 @@ function useRogueEvaluation(config: RogueClientConfig) {
             agent_config: {
               evaluated_agent_url: agentUrl,
               evaluated_agent_auth_type: 'no_auth',
-              judge_llm_model: 'openai/gpt-4o-mini'
+              judge_llm: 'openai/gpt-4o-mini'
             },
             scenarios: scenarios.map(s => ({ scenario: s, scenario_type: 'policy' }))
           },

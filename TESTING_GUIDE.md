@@ -132,7 +132,7 @@ EOF
 # Run evaluation via CLI (will use SDK if server is running)
 uv run python -m rogue cli \
   --evaluated-agent-url "http://localhost:10001" \
-  --judge-llm-model "openai/gpt-4o-mini" \
+  --judge-llm "openai/gpt-4o-mini" \
   --business-context "Test agent for demonstration"
 ```
 

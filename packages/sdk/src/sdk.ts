@@ -6,20 +6,20 @@
  */
 
 import { RogueHttpClient } from './client';
-import { RogueWebSocketClient } from './websocket';
 import {
-  RogueClientConfig,
+  AgentConfig,
+  AuthType,
+  EvaluationJob,
   EvaluationRequest,
   EvaluationResponse,
-  EvaluationJob,
-  JobListResponse,
-  HealthResponse,
   EvaluationStatus,
-  AgentConfig,
+  HealthResponse,
+  JobListResponse,
+  RogueClientConfig,
   Scenario,
-  AuthType,
   ScenarioType
 } from './types';
+import { RogueWebSocketClient } from './websocket';
 
 // Core client interface
 export interface RogueClient {
@@ -111,8 +111,8 @@ export function createRogueClient(config: RogueClientConfig): RogueClient {
 
           // Check if job is complete
           if (data.status === EvaluationStatus.COMPLETED ||
-              data.status === EvaluationStatus.FAILED ||
-              data.status === EvaluationStatus.CANCELLED) {
+            data.status === EvaluationStatus.FAILED ||
+            data.status === EvaluationStatus.CANCELLED) {
             wsClient?.disconnect();
             wsClient = null;
             resolve(data);
@@ -154,7 +154,7 @@ export function createRogueClient(config: RogueClientConfig): RogueClient {
         evaluated_agent_url: agentUrl,
         evaluated_agent_auth_type: options.authType || AuthType.NO_AUTH,
         evaluated_agent_credentials: options.authCredentials,
-        judge_llm_model: options.judgeModel || 'openai/gpt-4o-mini',
+        judge_llm: options.judgeModel || 'openai/gpt-4o-mini',
         deep_test_mode: options.deepTest || false,
         interview_mode: true,
         parallel_runs: 1
@@ -211,6 +211,7 @@ export async function getEvaluation(
 }
 
 // Export everything for flexibility
-export * from './types';
 export { RogueHttpClient } from './client';
+export * from './types';
 export { RogueWebSocketClient } from './websocket';
+

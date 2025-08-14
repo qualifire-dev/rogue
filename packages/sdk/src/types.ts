@@ -31,7 +31,7 @@ export interface AgentConfig {
   evaluated_agent_auth_type: AuthType;
   evaluated_agent_credentials?: string;
   service_llm?: string;
-  judge_llm_model: string;
+  judge_llm: string;
   interview_mode?: boolean;
   deep_test_mode?: boolean;
   parallel_runs?: number;
@@ -119,7 +119,7 @@ export interface RogueClientConfig {
 }
 
 // Event Types for WebSocket
-export type WebSocketEventType = 
+export type WebSocketEventType =
   | "job_update"
   | "chat_update"
   | "error"
