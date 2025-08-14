@@ -1,9 +1,7 @@
 from typing import List
 
 from pydantic import BaseModel, Field
-
-from .chat_history import ChatHistory
-from .scenario import Scenario
+from rogue_sdk.types import ChatHistory, Scenario
 
 
 class ConversationEvaluation(BaseModel):

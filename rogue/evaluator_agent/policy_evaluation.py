@@ -4,8 +4,8 @@ import re
 from litellm import completion
 from loguru import logger
 from pydantic import ValidationError
+from rogue_sdk.types import ChatHistory
 
-from ..models.chat_history import ChatHistory
 from ..models.evaluation_result import PolicyEvaluationResult
 
 POLICY_EVALUATION_PROMPT = """

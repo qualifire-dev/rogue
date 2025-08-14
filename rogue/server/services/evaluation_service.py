@@ -2,10 +2,9 @@ import asyncio
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from rogue_sdk.types import EvaluationJob, EvaluationStatus, WebSocketMessage
+from rogue_sdk.types import EvaluationJob, EvaluationStatus, Scenarios, WebSocketMessage
 
 from ...common.logging import get_logger, set_job_context
-from ...models.scenario import Scenarios
 from ..core.evaluation_orchestrator import EvaluationOrchestrator
 from ..websocket.manager import get_websocket_manager
 

@@ -57,7 +57,7 @@ class RogueHttpClient:
             backoff.expo,
             Exception,
             max_time=self.timeout,
-            max_retries=self.retries,
+            max_tries=self.retries,
         )
         async def request():
             """Make HTTP request."""

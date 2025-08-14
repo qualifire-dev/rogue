@@ -8,11 +8,10 @@ from google.adk.sessions import InMemorySessionService, Session
 from google.genai import types
 from httpx import AsyncClient
 from loguru import logger
+from rogue_sdk.types import AuthType, Scenarios
 
 from ..common.agent_sessions import create_session
-from ..models.config import AuthType, get_auth_header
 from ..models.evaluation_result import EvaluationResults
-from ..models.scenario import Scenarios
 from .evaluator_agent import EvaluatorAgent
 
 
@@ -117,7 +116,7 @@ async def arun_evaluator_agent(
     )
 
     try:
-        headers = get_auth_header(auth_type, auth_credentials)
+        headers = auth_type.get_auth_header(auth_credentials)
 
         update_queue: Queue = Queue()
         results_queue: Queue = Queue()

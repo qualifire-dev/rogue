@@ -13,6 +13,7 @@ from httpx import AsyncClient
 from loguru import logger
 from pydantic import ValidationError
 from pydantic_yaml import to_yaml_str
+from rogue_sdk.types import ChatHistory, ChatMessage, Scenario, Scenarios, ScenarioType
 
 from ..common.agent_model_wrapper import get_llm_from_model
 from ..common.remote_agent_connection import (
@@ -20,14 +21,11 @@ from ..common.remote_agent_connection import (
     RemoteAgentConnections,
 )
 from ..evaluator_agent.policy_evaluation import evaluate_policy
-from ..models.chat_history import ChatHistory
-from ..models.chat_history import Message as HistoryMessage
 from ..models.evaluation_result import (
     ConversationEvaluation,
     EvaluationResult,
     EvaluationResults,
 )
-from ..models.scenario import Scenario, Scenarios, ScenarioType
 
 FAST_MODE_AGENT_INSTRUCTIONS = """
 You are a scenario tester agent. Your task is to test the given scenarios against another agent and
@@ -511,7 +509,7 @@ class EvaluatorAgent:
                 self._context_id_to_chat_history[context_id] = ChatHistory()
 
             self._context_id_to_chat_history[context_id].add_message(
-                HistoryMessage(
+                ChatMessage(
                     role="user",
                     content=message,
                 ),
@@ -543,7 +541,7 @@ class EvaluatorAgent:
                 self._get_text_from_response(response) or "Not a text response"
             )
             self._context_id_to_chat_history[context_id].add_message(
-                HistoryMessage(
+                ChatMessage(
                     role="assistant",
                     content=agent_response_text,
                 ),

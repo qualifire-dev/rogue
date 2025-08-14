@@ -4,11 +4,12 @@ Type definitions for Rogue Agent Evaluator Python SDK.
 These types mirror the FastAPI server models and provide type safety.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl
+from loguru import logger
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
 
 
 class AuthType(str, Enum):
@@ -18,6 +19,20 @@ class AuthType(str, Enum):
     API_KEY = "api_key"
     BEARER_TOKEN = "bearer_token"  # nosec B105
     BASIC_AUTH = "basic"
+
+    def get_auth_header(
+        self,
+        auth_credentials: Optional[str],
+    ) -> dict[str, str]:
+        if self == AuthType.NO_AUTH or not auth_credentials:
+            return {}
+        elif self == AuthType.API_KEY:
+            return {"X-API-Key": auth_credentials}
+        elif self == AuthType.BEARER_TOKEN:
+            return {"Authorization": f"Bearer {auth_credentials}"}
+        elif self == AuthType.BASIC_AUTH:
+            return {"Authorization": f"Basic {auth_credentials}"}
+        return {}
 
 
 class ScenarioType(str, Enum):
@@ -52,12 +67,23 @@ class AgentConfig(BaseModel):
     )
     evaluated_agent_credentials: Optional[str] = Field(alias="auth_credentials")
     service_llm: str = "openai/gpt-4.1"
-    judge_llm_model: str = "openai/o4-mini"
+    judge_llm: str = "openai/o4-mini"
     interview_mode: bool = True
     deep_test_mode: bool = False
     parallel_runs: int = 1
     judge_llm_api_key: Optional[str] = None
     business_context: str
+
+    @model_validator(mode="after")
+    def check_auth_credentials(self) -> "AgentConfig":
+        auth_type = self.evaluated_agent_auth_type
+        auth_credentials = self.evaluated_agent_credentials
+
+        if auth_type and auth_type != AuthType.NO_AUTH and not auth_credentials:
+            raise ValueError(
+                "Authentication Credentials cannot be empty for the selected auth type."
+            )
+        return self
 
 
 class Scenario(BaseModel):
@@ -68,6 +94,38 @@ class Scenario(BaseModel):
     dataset: Optional[str] = None
     expected_outcome: Optional[str] = None
     dataset_sample_size: Optional[int] = None
+
+    @model_validator(mode="after")
+    def validate_dataset_for_type(self) -> "Scenario":
+        non_dataset_types = [
+            ScenarioType.POLICY,
+        ]
+
+        dataset_required = self.scenario_type not in non_dataset_types
+
+        if dataset_required and self.dataset is None:
+            raise ValueError(
+                f"`dataset` must be provided when scenario_type is "
+                f"'{self.scenario_type.value}'"
+            )
+        elif not dataset_required and self.dataset is not None:
+            logger.info(
+                f"`dataset` is not required for scenario_type "
+                f"'{self.scenario_type.value}', ignoring.",
+            )
+            self.dataset = None
+        return self
+
+    @model_validator(mode="after")
+    def validate_dataset_sample_size(self) -> "Scenario":
+        if self.dataset is None:
+            self.dataset_sample_size = None
+            return self
+
+        if self.dataset_sample_size is None:
+            raise ValueError("`dataset_sample_size` must be set when `dataset` is set")
+
+        return self
 
 
 class ChatMessage(BaseModel):
@@ -82,6 +140,11 @@ class ChatHistory(BaseModel):
     """Chat history containing messages."""
 
     messages: List[ChatMessage]
+
+    def add_message(self, message: ChatMessage):
+        if message.timestamp is None:
+            message.timestamp = datetime.now(timezone.utc).isoformat()
+        self.messages.append(message)
 
 
 class ConversationEvaluation(BaseModel):
@@ -104,6 +167,21 @@ class Scenarios(BaseModel):
     """Collection of evaluation scenarios."""
 
     scenarios: List[Scenario] = []
+
+    def get_scenarios_by_type(self, scenario_type: ScenarioType) -> "Scenarios":
+        return Scenarios(
+            scenarios=[
+                scenario
+                for scenario in self.scenarios
+                if scenario.scenario_type == scenario_type
+            ]
+        )
+
+    def get_policy_scenarios(self) -> "Scenarios":
+        return self.get_scenarios_by_type(ScenarioType.POLICY)
+
+    def get_prompt_injection_scenarios(self) -> "Scenarios":
+        return self.get_scenarios_by_type(ScenarioType.PROMPT_INJECTION)
 
 
 class EvaluationResults(BaseModel):

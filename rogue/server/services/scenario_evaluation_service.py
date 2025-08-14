@@ -1,11 +1,9 @@
 from typing import Any, AsyncGenerator
 
 from loguru import logger
+from rogue_sdk.types import AuthType, EvaluationResults, Scenarios
 
 from ...evaluator_agent.run_evaluator_agent import arun_evaluator_agent
-from ...models.config import AuthType
-from ...models.evaluation_result import EvaluationResults
-from ...models.scenario import Scenarios
 
 
 class ScenarioEvaluationService:

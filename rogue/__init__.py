@@ -15,13 +15,7 @@ from . import (
     run_ui,
     ui,
 )
-from .models.config import AgentConfig, AuthType
-from .models.evaluation_result import (
-    ConversationEvaluation,
-    EvaluationResult,
-    EvaluationResults,
-)
-from .models.scenario import Scenario, Scenarios, ScenarioType
+from .models.evaluation_result import ConversationEvaluation
 
 # Import the new library interface
 from .server.services.evaluation_library import EvaluationLibrary, quick_evaluate
@@ -40,15 +34,7 @@ __all__ = [
     "quick_evaluate",
     # Core classes
     "EvaluationLibrary",
-    "AgentConfig",
-    "Scenario",
-    "Scenarios",
-    "EvaluationResults",
-    "EvaluationResult",
     "ConversationEvaluation",
-    # Enums
-    "AuthType",
-    "ScenarioType",
     # Submodules (backward compatibility)
     "common",
     "evaluator_agent",

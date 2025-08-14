@@ -4,11 +4,10 @@ Evaluation orchestrator - Server-native evaluation logic.
 
 from typing import Any, AsyncGenerator, Tuple
 
+from rogue_sdk.types import AuthType, EvaluationResults, Scenarios
+
 from ...common.logging import get_logger
 from ...evaluator_agent.run_evaluator_agent import arun_evaluator_agent
-from ...models.config import AuthType
-from ...models.evaluation_result import EvaluationResults
-from ...models.scenario import Scenarios
 
 
 class EvaluationOrchestrator:

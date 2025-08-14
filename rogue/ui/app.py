@@ -2,7 +2,9 @@ import json
 from pathlib import Path
 
 import gradio as gr
+from rogue_sdk.types import AuthType
 
+from ..common.workdir_utils import load_config
 from .components.config_screen import create_config_screen
 from .components.interviewer import create_interviewer_screen
 from .components.report_generator import (
@@ -12,8 +14,6 @@ from .components.report_generator import (
 from .components.scenario_generator import create_scenario_generator_screen
 from .components.scenario_runner import create_scenario_runner_screen
 from .config.theme import theme
-from ..common.workdir_utils import load_config
-from ..models.config import AuthType
 
 
 def get_app(workdir: Path):

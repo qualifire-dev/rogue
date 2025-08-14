@@ -1,9 +1,9 @@
 import gradio as gr
 from loguru import logger
 from pydantic import ValidationError
+from rogue_sdk.types import AgentConfig, AuthType
 
 from ...common.workdir_utils import dump_config
-from ...models.config import AgentConfig, AuthType
 
 
 def create_config_screen(
@@ -192,15 +192,16 @@ def create_config_screen(
 
         try:
             config = AgentConfig(
-                agent_url=url,
-                auth_type=auth_t,
-                auth_credentials=creds,
+                evaluated_agent_url=url,
+                evaluated_agent_auth_type=auth_t,
+                evaluated_agent_credentials=creds,
                 service_llm=service_llm_val,
                 judge_llm=llm,
                 judge_llm_api_key=llm_key,
                 deep_test_mode=deep_test_mode_val,
                 interview_mode=interview_mode_val,
                 parallel_runs=parallel_runs_val,
+                business_context="",
             )
 
             config_dict = config.model_dump(mode="json")
