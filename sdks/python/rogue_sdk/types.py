@@ -340,8 +340,10 @@ class RogueClientConfig(BaseModel):
     retries: int = 3
 
     @field_validator("base_url", mode="after")
-    def validate_base_url(cls, v: str) -> HttpUrl:
-        return HttpUrl(v)
+    def validate_base_url(cls, v: str | HttpUrl) -> HttpUrl:
+        if isinstance(v, str):
+            return HttpUrl(v)
+        return v
 
     class Config:
         # Allow extra fields for future extensibility
