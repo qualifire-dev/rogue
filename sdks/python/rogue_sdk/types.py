@@ -9,7 +9,14 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
 from loguru import logger
-from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    HttpUrl,
+    field_validator,
+    model_validator,
+)
 
 
 class AuthType(str, Enum):
@@ -128,7 +135,7 @@ class Scenario(BaseModel):
 class Scenarios(BaseModel):
     """Collection of evaluation scenarios."""
 
-    scenarios: List[Scenario] = []
+    scenarios: List[Scenario] = Field(default_factory=list)
 
     def get_scenarios_by_type(self, scenario_type: ScenarioType) -> "Scenarios":
         return Scenarios(
@@ -184,7 +191,7 @@ class EvaluationResult(BaseModel):
 class EvaluationResults(BaseModel):
     """Collection of evaluation results."""
 
-    results: List[EvaluationResult] = []
+    results: List[EvaluationResult] = Field(default_factory=list)
 
     def add_result(self, new_result: EvaluationResult):
         for result in self.results:
@@ -214,7 +221,7 @@ class InterviewSession(BaseModel):
     """An interview session with conversation state."""
 
     session_id: str
-    messages: List[InterviewMessage] = []
+    messages: List[InterviewMessage] = Field(default_factory=list)
     is_complete: bool = False
     message_count: int = 0
 
@@ -324,6 +331,8 @@ class WebSocketMessage(BaseModel):
 class RogueClientConfig(BaseModel):
     """Configuration for the Rogue client."""
 
+    model_config = ConfigDict(extra="allow")
+
     base_url: HttpUrl | str
     api_key: Optional[str] = None
     timeout: float = 30.0
@@ -334,10 +343,6 @@ class RogueClientConfig(BaseModel):
         if isinstance(v, str):
             return HttpUrl(v)
         return v
-
-    class Config:
-        # Allow extra fields for future extensibility
-        extra = "allow"
 
 
 # Event Types

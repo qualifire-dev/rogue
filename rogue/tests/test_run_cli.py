@@ -36,9 +36,9 @@ from rogue.run_cli import get_cli_input
         ),
         (  # Only config file
             {
-                "agent_url": "https://localhost:10001",
-                "auth_type": "api_key",
-                "auth_credentials": "abc123",
+                "evaluated_agent_url": "https://localhost:10001",
+                "evaluated_agent_auth_type": "api_key",
+                "evaluated_agent_credentials": "abc123",
             },
             # business context isn't in the config file,
             # so it must be provided using a file or hardcoded string
@@ -58,7 +58,7 @@ from rogue.run_cli import get_cli_input
         ),
         (  # Both config file and CLI args
             {
-                "agent_url": "https://localhost:10001",
+                "evaluated_agent_url": "https://localhost:10001",
             },
             Namespace(
                 evaluated_agent_url="https://overriden_agent_url:10001",
