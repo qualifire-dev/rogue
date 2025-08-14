@@ -267,8 +267,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case StartEvaluationMsg:
-		// Stop eval spinner and actually start the evaluation
-		m.evalSpinner.SetActive(false)
+		// Actually start the evaluation (keep spinner running during evaluation)
 		if m.evalState != nil && !m.evalState.Running {
 			ctx := context.Background()
 			m.startEval(ctx, m.evalState)
@@ -306,11 +305,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.currentScreen == EvaluationDetailScreen && m.evalState != nil {
 			if m.evalState.Running {
 				return m, autoRefreshCmd()
-			} else if m.evalState.Completed && m.evalState.Summary == "" && !m.evalState.SummaryGenerated && !m.summarySpinner.IsActive() {
-				// Trigger summary generation for completed evaluations (only once and if we don't have one yet)
-				m.evalState.SummaryGenerated = true // Mark as attempted to prevent multiple generations
-				m.triggerSummaryGeneration()
-				return m, m.summaryGenerationCmd()
+			} else if m.evalState.Completed {
+				// Stop eval spinner when evaluation completes
+				m.evalSpinner.SetActive(false)
+				if m.evalState.Summary == "" && !m.evalState.SummaryGenerated && !m.summarySpinner.IsActive() {
+					// Trigger summary generation for completed evaluations (only once and if we don't have one yet)
+					m.evalState.SummaryGenerated = true // Mark as attempted to prevent multiple generations
+					m.triggerSummaryGeneration()
+					return m, m.summaryGenerationCmd()
+				}
 			}
 		}
 		return m, nil

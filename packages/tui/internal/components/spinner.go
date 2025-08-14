@@ -17,7 +17,7 @@ type Spinner struct {
 	ID      int
 	frames  []string
 	current int
-	style   lipgloss.Style
+	Style   lipgloss.Style
 	active  bool
 }
 
@@ -29,7 +29,7 @@ func NewSpinner(id int) Spinner {
 			"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏",
 		},
 		current: 0,
-		style:   lipgloss.NewStyle().Foreground(lipgloss.Color("63")), // Purple
+		Style:   lipgloss.NewStyle().Foreground(lipgloss.Color("63")), // Purple
 		active:  false,
 	}
 }
@@ -60,7 +60,7 @@ func (s Spinner) View() string {
 	if !s.active {
 		return ""
 	}
-	return s.style.Render(s.frames[s.current])
+	return s.Style.Render(s.frames[s.current])
 }
 
 // SetActive sets whether the spinner should be active

@@ -259,7 +259,7 @@ func (m Model) renderEvaluationDetail() string {
 
 	// Status style
 	statusStyle := lipgloss.NewStyle().
-		Foreground(t.Primary()).
+		Foreground(t.Text()).
 		Background(t.BackgroundPanel()).
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(t.Primary()).
@@ -267,7 +267,22 @@ func (m Model) renderEvaluationDetail() string {
 		Width(m.width - 4).
 		Align(lipgloss.Center)
 
-	status := statusStyle.Render(fmt.Sprintf("Status: %s", m.evalState.Status))
+	var statusText string
+	if m.evalState.Status != "completed" && m.evalSpinner.IsActive() {
+		m.evalSpinner.Style = lipgloss.NewStyle().Foreground(t.Success())
+		statusText = fmt.Sprintf("Status: %s %s", m.evalState.Status, m.evalSpinner.View())
+	} else {
+		statusText = fmt.Sprintf("Status: %s", m.evalState.Status)
+		statusStyle = lipgloss.NewStyle().
+			Foreground(t.Success()).
+			Background(t.BackgroundPanel()).
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(t.Primary()).
+			Padding(0, 2).
+			Width(m.width - 4).
+			Align(lipgloss.Center)
+	}
+	status := statusStyle.Render(statusText)
 
 	// Calculate available height for content area (excluding header, status, help)
 	totalContentHeight := m.height - 10 // header(3) + status(2) + help(1) + margins(4)
