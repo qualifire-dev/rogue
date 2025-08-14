@@ -128,6 +128,27 @@ class Scenario(BaseModel):
         return self
 
 
+class Scenarios(BaseModel):
+    """Collection of evaluation scenarios."""
+
+    scenarios: List[Scenario] = []
+
+    def get_scenarios_by_type(self, scenario_type: ScenarioType) -> "Scenarios":
+        return Scenarios(
+            scenarios=[
+                scenario
+                for scenario in self.scenarios
+                if scenario.scenario_type == scenario_type
+            ]
+        )
+
+    def get_policy_scenarios(self) -> "Scenarios":
+        return self.get_scenarios_by_type(ScenarioType.POLICY)
+
+    def get_prompt_injection_scenarios(self) -> "Scenarios":
+        return self.get_scenarios_by_type(ScenarioType.PROMPT_INJECTION)
+
+
 class ChatMessage(BaseModel):
     """Chat message in a conversation."""
 
@@ -161,27 +182,6 @@ class EvaluationResult(BaseModel):
     scenario: Scenario
     conversations: List[ConversationEvaluation]
     passed: bool
-
-
-class Scenarios(BaseModel):
-    """Collection of evaluation scenarios."""
-
-    scenarios: List[Scenario] = []
-
-    def get_scenarios_by_type(self, scenario_type: ScenarioType) -> "Scenarios":
-        return Scenarios(
-            scenarios=[
-                scenario
-                for scenario in self.scenarios
-                if scenario.scenario_type == scenario_type
-            ]
-        )
-
-    def get_policy_scenarios(self) -> "Scenarios":
-        return self.get_scenarios_by_type(ScenarioType.POLICY)
-
-    def get_prompt_injection_scenarios(self) -> "Scenarios":
-        return self.get_scenarios_by_type(ScenarioType.PROMPT_INJECTION)
 
 
 class EvaluationResults(BaseModel):

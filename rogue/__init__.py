@@ -15,7 +15,6 @@ from . import (
     run_ui,
     ui,
 )
-from .models.evaluation_result import ConversationEvaluation
 
 # Import the new library interface
 from .server.services.evaluation_library import EvaluationLibrary, quick_evaluate
@@ -34,7 +33,6 @@ __all__ = [
     "quick_evaluate",
     # Core classes
     "EvaluationLibrary",
-    "ConversationEvaluation",
     # Submodules (backward compatibility)
     "common",
     "evaluator_agent",

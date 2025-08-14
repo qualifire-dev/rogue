@@ -3,8 +3,7 @@ from typing import Tuple
 
 import gradio as gr
 from loguru import logger
-
-from rogue.models.evaluation_result import EvaluationResults
+from rogue_sdk.types import EvaluationResults
 
 
 def _load_report_data_from_files(

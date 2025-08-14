@@ -8,10 +8,9 @@ from google.adk.sessions import InMemorySessionService, Session
 from google.genai import types
 from httpx import AsyncClient
 from loguru import logger
-from rogue_sdk.types import AuthType, Scenarios
+from rogue_sdk.types import AuthType, EvaluationResults, Scenarios
 
 from ..common.agent_sessions import create_session
-from ..models.evaluation_result import EvaluationResults
 from .evaluator_agent import EvaluatorAgent
 
 

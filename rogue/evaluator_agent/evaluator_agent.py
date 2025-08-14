@@ -13,7 +13,16 @@ from httpx import AsyncClient
 from loguru import logger
 from pydantic import ValidationError
 from pydantic_yaml import to_yaml_str
-from rogue_sdk.types import ChatHistory, ChatMessage, Scenario, Scenarios, ScenarioType
+from rogue_sdk.types import (
+    ChatHistory,
+    ChatMessage,
+    ConversationEvaluation,
+    EvaluationResult,
+    EvaluationResults,
+    Scenario,
+    Scenarios,
+    ScenarioType,
+)
 
 from ..common.agent_model_wrapper import get_llm_from_model
 from ..common.remote_agent_connection import (
@@ -21,11 +30,6 @@ from ..common.remote_agent_connection import (
     RemoteAgentConnections,
 )
 from ..evaluator_agent.policy_evaluation import evaluate_policy
-from ..models.evaluation_result import (
-    ConversationEvaluation,
-    EvaluationResult,
-    EvaluationResults,
-)
 
 FAST_MODE_AGENT_INSTRUCTIONS = """
 You are a scenario tester agent. Your task is to test the given scenarios against another agent and
