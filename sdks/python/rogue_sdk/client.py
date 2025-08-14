@@ -72,6 +72,8 @@ class RogueHttpClient:
             Exception,
             max_time=self.timeout,
             max_tries=self.retries,
+            giveup=lambda e: isinstance(e, httpx.HTTPStatusError)
+            and 400 <= e.response.status_code < 500,
         )
         async def request():
             """Make HTTP request."""
