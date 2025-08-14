@@ -6,7 +6,7 @@ These types mirror the FastAPI server models and provide type safety.
 
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 from loguru import logger
 from pydantic import (
@@ -348,10 +348,20 @@ class SummaryGenerationResponse(BaseModel):
 # WebSocket Messages
 
 
+class WebSocketEventType(str, Enum):
+    """WebSocket event types."""
+
+    JOB_UPDATE = "job_update"
+    CHAT_UPDATE = "chat_update"
+    ERROR = "error"
+    CONNECTED = "connected"
+    DISCONNECTED = "disconnected"
+
+
 class WebSocketMessage(BaseModel):
     """WebSocket message structure."""
 
-    type: str
+    type: WebSocketEventType
     job_id: str
     data: Dict[str, Any]
 
@@ -374,7 +384,3 @@ class RogueClientConfig(BaseModel):
         if isinstance(v, str):
             return HttpUrl(v)
         return v
-
-
-# Event Types
-WebSocketEventType = Union[str,]  # Allow any string for flexibility

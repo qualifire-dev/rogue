@@ -2,7 +2,7 @@ from functools import lru_cache
 from typing import Dict, List
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from rogue_sdk.types import EvaluationJob, WebSocketMessage
+from rogue_sdk.types import EvaluationJob, WebSocketEventType, WebSocketMessage
 
 from ...common.logging.config import get_logger
 
@@ -53,7 +53,7 @@ class _WebSocketManager:
 
     async def broadcast_job_update(self, job: EvaluationJob):
         message = WebSocketMessage(
-            type="job_update",
+            type=WebSocketEventType.JOB_UPDATE,
             job_id=job.job_id,
             data={
                 "status": job.status.value,

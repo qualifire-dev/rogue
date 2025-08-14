@@ -53,13 +53,13 @@ class RogueWebSocketClient:
             )  # type: ignore[assignment]
             self.is_connected = True
             self.reconnect_attempts = 0
-            self._emit("connected", {"url": ws_url})
+            self._emit(WebSocketEventType.CONNECTED, {"url": ws_url})
 
             # Start message handling task
             self._message_handler_task = asyncio.create_task(self._handle_messages())
 
         except Exception as e:
-            self._emit("error", {"error": str(e)})
+            self._emit(WebSocketEventType.ERROR, {"error": str(e)})
             raise
 
     async def disconnect(self) -> None:
@@ -78,7 +78,7 @@ class RogueWebSocketClient:
             await self.websocket.close()  # type: ignore[attr-defined]
             self.websocket = None
 
-        self._emit("disconnected", {})
+        self._emit(WebSocketEventType.DISCONNECTED, {})
 
     def on(self, event: WebSocketEventType, handler: Callable) -> None:
         """Add event handler."""
@@ -107,7 +107,8 @@ class RogueWebSocketClient:
             while not self._stop_event.is_set() and self.websocket:
                 try:
                     message_data = await asyncio.wait_for(
-                        self.websocket.recv(), timeout=1.0  # type: ignore[attr-defined]
+                        self.websocket.recv(),
+                        timeout=1.0,  # type: ignore[attr-defined]
                     )
 
                     try:
@@ -137,10 +138,10 @@ class RogueWebSocketClient:
 
     async def _handle_message(self, message: WebSocketMessage) -> None:
         """Handle a parsed WebSocket message."""
-        if message.type == "job_update":
-            self._emit("job_update", message.data)
-        elif message.type == "chat_update":
-            self._emit("chat_update", message.data)
+        if message.type == WebSocketEventType.JOB_UPDATE:
+            self._emit(WebSocketEventType.JOB_UPDATE, message.data)
+        elif message.type == WebSocketEventType.CHAT_UPDATE:
+            self._emit(WebSocketEventType.CHAT_UPDATE, message.data)
         else:
             logger.warning(f"Unknown WebSocket message type: {message.type}")
 

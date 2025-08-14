@@ -5,7 +5,7 @@ Combines HTTP client and WebSocket client for complete functionality.
 """
 
 import asyncio
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 from loguru import logger
 from pydantic import HttpUrl
@@ -106,7 +106,11 @@ class RogueSDK:
             await self.ws_client.disconnect()
             self.ws_client = None
 
-    def on_websocket_event(self, event: WebSocketEventType, handler: Callable) -> None:
+    def on_websocket_event(
+        self,
+        event: WebSocketEventType,
+        handler: Callable[[WebSocketEventType, Any], None],
+    ) -> None:
         """Add WebSocket event handler."""
         if not self.ws_client:
             raise RuntimeError(
@@ -203,10 +207,10 @@ class RogueSDK:
         await self.connect_websocket(job_id)
 
         # Set up event handlers
-        self.on_websocket_event("job_update", handle_job_update)
-        self.on_websocket_event("error", handle_error)
+        self.on_websocket_event(WebSocketEventType.JOB_UPDATE, handle_job_update)
+        self.on_websocket_event(WebSocketEventType.ERROR, handle_error)
         if on_chat:
-            self.on_websocket_event("chat_update", handle_chat_update)
+            self.on_websocket_event(WebSocketEventType.CHAT_UPDATE, handle_chat_update)
 
         try:
             # Wait for completion or timeout

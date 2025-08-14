@@ -2,7 +2,13 @@ import asyncio
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from rogue_sdk.types import EvaluationJob, EvaluationStatus, Scenarios, WebSocketMessage
+from rogue_sdk.types import (
+    EvaluationJob,
+    EvaluationStatus,
+    Scenarios,
+    WebSocketEventType,
+    WebSocketMessage,
+)
 
 from ...common.logging import get_logger, set_job_context
 from ..core.evaluation_orchestrator import EvaluationOrchestrator
@@ -213,7 +219,7 @@ class EvaluationService:
             data = {"role": "assistant", "content": str(chat_data)}
 
         message = WebSocketMessage(
-            type="chat_update",
+            type=WebSocketEventType.CHAT_UPDATE,
             job_id=job_id,
             data=data,
         )
