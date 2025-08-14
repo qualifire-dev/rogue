@@ -226,9 +226,9 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
 
                 # Create agent config
                 agent_config = AgentConfig(
-                    agent_url=HttpUrl(agent_url),
-                    auth_type=auth_type_val,
-                    auth_credentials=auth_credentials,
+                    evaluated_agent_url=HttpUrl(agent_url),
+                    evaluated_agent_auth_type=auth_type_val,
+                    evaluated_agent_credentials=auth_credentials,
                     judge_llm=judge_model,
                     deep_test_mode=deep_test,
                 )
