@@ -167,7 +167,7 @@ class ChatMessage(BaseModel):
 class ChatHistory(BaseModel):
     """Chat history containing messages."""
 
-    messages: List[ChatMessage]
+    messages: List[ChatMessage] = Field(default_factory=list)
 
     def add_message(self, message: ChatMessage):
         if message.timestamp is None:
