@@ -214,7 +214,7 @@ func (v Viewport) VisibleLineCount() int {
 }
 
 // Update handles standard message-based viewport updates
-func (v Viewport) Update(msg tea.Msg) (Viewport, tea.Cmd) {
+func (v *Viewport) Update(msg tea.Msg) (*Viewport, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {

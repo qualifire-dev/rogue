@@ -323,17 +323,26 @@ func (m Model) renderEvaluationDetail() string {
 	// Update events viewport
 	m.eventsViewport.SetSize(m.width-4, eventsHeight-4) // -4 for border and padding
 	m.eventsViewport.SetContent(strings.Join(lines, "\n"))
+
+	// Set border color based on focus
+	eventsBorderFg := t.Border()
+	if m.focusedViewport == 0 {
+		eventsBorderFg = t.Primary()
+	}
+
 	m.eventsViewport.Style = lipgloss.NewStyle().
 		Foreground(t.Text()).
 		Background(t.BackgroundPanel()).
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(t.Border()).
+		BorderForeground(eventsBorderFg).
 		Padding(1, 2).
 		Width(m.width - 4).
 		Height(eventsHeight)
 
-	// Auto-scroll to bottom for new events (like a chat)
-	m.eventsViewport.GotoBottom()
+	// Auto-scroll to bottom for new events (like a chat) only if auto-scroll is enabled
+	if m.eventsAutoScroll {
+		m.eventsViewport.GotoBottom()
+	}
 
 	eventsContent := m.eventsViewport.View()
 
@@ -346,10 +355,13 @@ func (m Model) renderEvaluationDetail() string {
 		Padding(0, 1)
 
 	var helpMsg string
-	if m.evalState.Completed {
-		helpMsg = "b Back  s Stop  r Report  ↑↓/k j Scroll  PgUp/Dn Page  u/d Half Page"
+	if m.evalState.Completed && (m.evalState.Summary != "" || m.summarySpinner.IsActive()) {
+		// Both viewports are visible, show tab navigation
+		helpMsg = "b Back  s Stop  r Report  Tab Switch Focus  ↑↓/k j Scroll  PgUp/Dn Page  u/d Half Page  Home/End Top/Bottom"
+	} else if m.evalState.Completed {
+		helpMsg = "b Back  s Stop  r Report  ↑↓/k j Scroll  PgUp/Dn Page  u/d Half Page  Home/End Top/Bottom"
 	} else {
-		helpMsg = "b Back  s Stop  ↑↓/k j Scroll  PgUp/Dn Page  u/d Half Page"
+		helpMsg = "b Back  s Stop  ↑↓/k j Scroll  PgUp/Dn Page  u/d Half Page  Home/End Top/Bottom"
 	}
 	helpText := helpStyle.Render(helpMsg)
 
@@ -398,11 +410,20 @@ func (m Model) renderEvaluationDetail() string {
 		// Update summary viewport
 		m.summaryViewport.SetSize(m.width-4, summaryHeight-4) // -4 for border and padding
 		m.summaryViewport.SetContent(summaryBody)
+
+		// Set border color based on focus
+		summaryBorderFg := t.Primary() // Default border for summary
+		if m.focusedViewport == 1 {
+			summaryBorderFg = t.Primary() // Keep primary when focused
+		} else {
+			summaryBorderFg = t.Border() // Use normal border when not focused
+		}
+
 		m.summaryViewport.Style = lipgloss.NewStyle().
 			Foreground(t.Text()).
 			Background(t.BackgroundPanel()).
 			Border(lipgloss.RoundedBorder()).
-			BorderForeground(t.Primary()).
+			BorderForeground(summaryBorderFg).
 			Padding(1, 2).
 			Width(m.width - 4).
 			Height(summaryHeight)

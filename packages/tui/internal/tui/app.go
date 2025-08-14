@@ -153,8 +153,10 @@ type Model struct {
 	evalSpinner    components.Spinner
 
 	// Viewports for scrollable content
-	eventsViewport  components.Viewport
-	summaryViewport components.Viewport
+	eventsViewport   components.Viewport
+	summaryViewport  components.Viewport
+	focusedViewport  int  // 0 = events, 1 = summary
+	eventsAutoScroll bool // Track if events should auto-scroll to bottom
 
 	// /eval state
 	evalState *EvaluationViewState
@@ -216,8 +218,10 @@ func (a *App) Run() error {
 		evalSpinner:    components.NewSpinner(3),
 
 		// Initialize viewports
-		eventsViewport:  components.NewViewport(1, 80, 20),
-		summaryViewport: components.NewViewport(2, 80, 20),
+		eventsViewport:   components.NewViewport(1, 80, 20),
+		summaryViewport:  components.NewViewport(2, 80, 20),
+		focusedViewport:  0,    // Start with events viewport focused
+		eventsAutoScroll: true, // Start with auto-scroll enabled
 	}
 
 	// Load existing configuration
@@ -281,6 +285,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.startEval(ctx, m.evalState)
 			// move to detail screen
 			m.currentScreen = EvaluationDetailScreen
+			// Reset viewport focus to events when entering detail screen
+			m.focusedViewport = 0
+			// Enable auto-scroll for new evaluation
+			m.eventsAutoScroll = true
 			return m, autoRefreshCmd()
 		}
 		return m, nil
@@ -779,6 +787,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.String() {
 			case "b":
 				m.currentScreen = DashboardScreen
+				// Reset viewport focus when leaving detail screen
+				m.focusedViewport = 0
 				return m, nil
 			case "s":
 				if m.evalState.cancelFn != nil {
@@ -791,16 +801,50 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.currentScreen = ReportScreen
 				}
 				return m, nil
+			case "tab":
+				// Switch focus between viewports
+				// Only switch if both viewports are visible (evaluation completed with summary)
+				if m.evalState.Completed && (m.evalState.Summary != "" || m.summarySpinner.IsActive()) {
+					m.focusedViewport = (m.focusedViewport + 1) % 2
+				}
+				return m, nil
+			case "end":
+				// Go to bottom and re-enable auto-scroll for events viewport
+				if m.focusedViewport == 0 {
+					m.eventsViewport.GotoBottom()
+					m.eventsAutoScroll = true
+				} else if m.focusedViewport == 1 {
+					m.summaryViewport.GotoBottom()
+				}
+				return m, nil
+			case "home":
+				// Go to top and disable auto-scroll for events viewport
+				if m.focusedViewport == 0 {
+					m.eventsViewport.GotoTop()
+					m.eventsAutoScroll = false
+				} else if m.focusedViewport == 1 {
+					m.summaryViewport.GotoTop()
+				}
+				return m, nil
 			default:
-				// Update viewports for scrolling when in evaluation detail screen
-				m.eventsViewport, cmd = m.eventsViewport.Update(msg)
-				if cmd != nil {
-					cmds = append(cmds, cmd)
+				// Update only the focused viewport for scrolling
+				if m.focusedViewport == 0 {
+					// Events viewport is focused - disable auto-scroll when user manually scrolls
+					m.eventsAutoScroll = false
+					eventsViewportPtr, cmd := m.eventsViewport.Update(msg)
+					if cmd != nil {
+						cmds = append(cmds, cmd)
+					}
+					m.eventsViewport = *eventsViewportPtr
+				} else if m.focusedViewport == 1 {
+					// Summary viewport is focused
+					summaryViewportPtr, cmd := m.summaryViewport.Update(msg)
+					if cmd != nil {
+						cmds = append(cmds, cmd)
+					}
+					m.summaryViewport = *summaryViewportPtr
 				}
-				m.summaryViewport, cmd = m.summaryViewport.Update(msg)
-				if cmd != nil {
-					cmds = append(cmds, cmd)
-				}
+
 				return m, tea.Batch(cmds...)
 			}
 		}
