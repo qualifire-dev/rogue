@@ -11,6 +11,7 @@ from . import (
     models,
     prompt_injection_evaluator,
     run_cli,
+    run_server,
     run_ui,
     ui,
 )
@@ -55,6 +56,7 @@ __all__ = [
     "prompt_injection_evaluator",
     "run_cli",
     "run_ui",
+    "run_server",
     "ui",
 ]
 
