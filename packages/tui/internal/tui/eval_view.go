@@ -321,7 +321,8 @@ func (m Model) renderEvaluationDetail() string {
 	}
 
 	// Update events viewport
-	m.eventsViewport.SetSize(m.width-4, eventsHeight-6) // -4 for border and padding
+	// Set viewport to match the style height (which includes border and padding)
+	m.eventsViewport.SetSize(m.width-4, eventsHeight-2) // -2 for padding only (border is handled by style)
 	m.eventsViewport.SetContent(strings.Join(lines, "\n"))
 
 	// Set border color based on focus
@@ -408,7 +409,8 @@ func (m Model) renderEvaluationDetail() string {
 		summaryBody := summaryTitle + "\n" + summaryText
 
 		// Update summary viewport
-		m.summaryViewport.SetSize(m.width-4, summaryHeight-4) // -4 for border and padding
+		// Set viewport to match the style height (which includes border and padding)
+		m.summaryViewport.SetSize(m.width-4, summaryHeight-2) // -2 for padding only (border is handled by style)
 		m.summaryViewport.SetContent(summaryBody)
 
 		// Set border color based on focus
