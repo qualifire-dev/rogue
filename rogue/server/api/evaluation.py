@@ -61,7 +61,7 @@ async def create_evaluation(
         request=request,
     )
 
-    evaluation_service.add_job(job)
+    await evaluation_service.add_job(job)
     background_tasks.add_task(evaluation_service.run_job, job_id)
 
     logger.info(
@@ -94,7 +94,7 @@ async def get_evaluation(
     job_id: str,
     evaluation_service: EvaluationService = Depends(get_evaluation_service),
 ):
-    job = evaluation_service.get_job(job_id)
+    job = await evaluation_service.get_job(job_id)
     logger.info(f"Job: {job}")
     if not job:
         raise HTTPException(status_code=404, detail="Evaluation job not found")
@@ -106,7 +106,7 @@ async def cancel_evaluation(
     job_id: str,
     evaluation_service: EvaluationService = Depends(get_evaluation_service),
 ):
-    success = evaluation_service.cancel_job(job_id)
+    success = await evaluation_service.cancel_job(job_id)
     if not success:
         raise HTTPException(status_code=404, detail="Evaluation job not found")
     return {"message": "Evaluation job cancelled successfully"}

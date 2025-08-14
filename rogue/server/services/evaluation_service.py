@@ -22,33 +22,39 @@ class EvaluationService:
         self.jobs: Dict[str, EvaluationJob] = {}
         self.logger = get_logger(__name__)
         self.websocket_manager = get_websocket_manager()
+        self._lock = asyncio.Lock()
 
-    def add_job(self, job: EvaluationJob):
-        self.jobs[job.job_id] = job
+    async def add_job(self, job: EvaluationJob):
+        async with self._lock:
+            self.jobs[job.job_id] = job
 
-    def get_job(self, job_id: str) -> Optional[EvaluationJob]:
-        return self.jobs.get(job_id)
+    async def get_job(self, job_id: str) -> Optional[EvaluationJob]:
+        async with self._lock:
+            return self.jobs.get(job_id)
 
-    def get_jobs(
+    async def get_jobs(
         self,
         status: Optional[EvaluationStatus] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> List[EvaluationJob]:
-        jobs = list(self.jobs.values())
+        async with self._lock:
+            jobs = list(self.jobs.values())
+
         if status:
             jobs = [job for job in jobs if job.status == status]
 
         jobs.sort(key=lambda x: x.created_at, reverse=True)
         return jobs[offset : offset + limit]
 
-    def get_job_count(self, status: Optional[EvaluationStatus] = None) -> int:
-        if status:
-            return len([job for job in self.jobs.values() if job.status == status])
-        return len(self.jobs)
+    async def get_job_count(self, status: Optional[EvaluationStatus] = None) -> int:
+        async with self._lock:
+            if status:
+                return len([job for job in self.jobs.values() if job.status == status])
+            return len(self.jobs)
 
-    def cancel_job(self, job_id: str) -> bool:
-        job = self.jobs.get(job_id)
+    async def cancel_job(self, job_id: str) -> bool:
+        job = await self.get_job(job_id)
         if not job:
             return False
 
@@ -60,7 +66,7 @@ class EvaluationService:
         return True
 
     async def run_job(self, job_id: str):
-        job = self.jobs.get(job_id)
+        job = await self.get_job(job_id)
         if not job:
             return
 

@@ -133,11 +133,18 @@ class RogueSDK:
     async def run_evaluation_with_updates(
         self,
         request: EvaluationRequest,
-        on_update: Optional[Callable[[EvaluationJob], None]] = None,
+        on_update: Optional[Callable[[dict], None]] = None,
         on_chat: Optional[Callable[[dict], None]] = None,
         timeout: float = 600.0,
     ) -> EvaluationJob:
-        """Run evaluation with real-time updates."""
+        """
+        Run evaluation with real-time updates.
+
+        Notes:
+        - on_update is called with a dict:
+            {"job_id", "status", "progress", "error_message"}.
+        - on_chat is called with the raw chat payload dict.
+        """
         # Create evaluation
         response = await self.create_evaluation(request)
         job_id = response.job_id
