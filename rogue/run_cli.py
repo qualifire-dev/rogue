@@ -273,7 +273,6 @@ def read_config_file(config_file: Path) -> dict:
             return AgentConfig.model_validate_json(
                 config_file.read_text(),
             ).model_dump(
-                by_alias=False,
                 exclude_none=True,
             )
         except ValidationError:

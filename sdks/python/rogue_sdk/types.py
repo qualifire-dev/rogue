@@ -9,14 +9,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
 from loguru import logger
-from pydantic import (
-    BaseModel,
-    ConfigDict,
-    Field,
-    HttpUrl,
-    field_validator,
-    model_validator,
-)
+from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
 
 
 class AuthType(str, Enum):
@@ -65,14 +58,11 @@ class EvaluationStatus(str, Enum):
 class AgentConfig(BaseModel):
     """Configuration for the agent being evaluated."""
 
-    model_config = ConfigDict(populate_by_name=True)
-
-    evaluated_agent_url: HttpUrl = Field(alias="agent_url")
+    evaluated_agent_url: HttpUrl
     evaluated_agent_auth_type: AuthType = Field(
-        alias="auth_type",
         default=AuthType.NO_AUTH,
     )
-    evaluated_agent_credentials: Optional[str] = Field(alias="auth_credentials")
+    evaluated_agent_credentials: Optional[str] = None
     service_llm: str = "openai/gpt-4.1"
     judge_llm: str = "openai/o4-mini"
     interview_mode: bool = True
