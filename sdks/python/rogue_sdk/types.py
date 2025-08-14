@@ -9,7 +9,14 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
 from loguru import logger
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    HttpUrl,
+    field_validator,
+    model_validator,
+)
 
 
 class AuthType(str, Enum):
@@ -327,10 +334,14 @@ class WebSocketMessage(BaseModel):
 class RogueClientConfig(BaseModel):
     """Configuration for the Rogue client."""
 
-    base_url: HttpUrl
+    base_url: HttpUrl | str
     api_key: Optional[str] = None
     timeout: float = 30.0
     retries: int = 3
+
+    @field_validator("base_url", mode="after")
+    def validate_base_url(cls, v: str) -> HttpUrl:
+        return HttpUrl(v)
 
     class Config:
         # Allow extra fields for future extensibility
