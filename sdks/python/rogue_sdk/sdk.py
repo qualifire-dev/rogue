@@ -202,7 +202,10 @@ class RogueSDK:
 
         def handle_chat_update(event, data):
             if on_chat:
-                on_chat(data)
+                try:
+                    on_chat(data)
+                except Exception as e:
+                    logger.warning(f"Chat update callback failed: {e}")
 
         def handle_error(event, data):
             if not result_future.done():
