@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 
 from .common.configure_logger import configure_logger
 from .run_cli import run_cli, set_cli_args
+from .run_server import set_server_args
 from .run_ui import run_ui, set_ui_args
 
 load_dotenv()
@@ -35,6 +36,13 @@ def parse_args():
     )
 
     subparsers = parser.add_subparsers(dest="mode")
+
+    server_parser = subparsers.add_parser(
+        "server",
+        help="Run in server mode",
+        parents=[common_parser()],
+    )
+    set_server_args(server_parser)
 
     # UI mode
     ui_parser = subparsers.add_parser(
