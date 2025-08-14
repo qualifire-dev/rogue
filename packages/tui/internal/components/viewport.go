@@ -307,8 +307,22 @@ func (v Viewport) View() string {
 		}
 	}
 
+	// Pad each line to full width to ensure proper background color coverage
+	for i, line := range visibleLines {
+		// Use lipgloss.Width to get the actual display width (accounting for ANSI codes)
+		lineWidth := lipgloss.Width(line)
+		if lineWidth < v.Width {
+			// Pad with spaces to fill the width
+			padding := v.Width - lineWidth
+			visibleLines[i] = line + strings.Repeat(" ", padding)
+		}
+	}
+
 	content := strings.Join(visibleLines, "\n")
-	return v.Style.Render(content)
+	return v.Style.
+		Width(v.Width).
+		MaxWidth(v.Width).
+		Render(content)
 }
 
 // updateBounds calculates the maximum scroll offsets based on content and viewport size
@@ -322,7 +336,7 @@ func (v *Viewport) updateBounds() {
 	// Calculate max horizontal offset based on the longest line
 	maxLineWidth := 0
 	for _, line := range v.lines {
-		width := utf8.RuneCountInString(line)
+		width := lipgloss.Width(line)
 		if width > maxLineWidth {
 			maxLineWidth = width
 		}

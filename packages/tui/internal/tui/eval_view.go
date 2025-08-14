@@ -321,7 +321,7 @@ func (m Model) renderEvaluationDetail() string {
 	}
 
 	// Update events viewport
-	m.eventsViewport.SetSize(m.width-4, eventsHeight-4) // -4 for border and padding
+	m.eventsViewport.SetSize(m.width-4, eventsHeight-6) // -4 for border and padding
 	m.eventsViewport.SetContent(strings.Join(lines, "\n"))
 
 	// Set border color based on focus
