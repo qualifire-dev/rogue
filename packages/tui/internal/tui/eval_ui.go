@@ -25,9 +25,10 @@ type EvaluationViewState struct {
 	cancelFn func() error
 
 	// Report generation
-	Summary   string // Generated markdown summary
-	JobID     string // For tracking the evaluation job
-	Completed bool   // Whether evaluation finished successfully
+	Summary          string // Generated markdown summary
+	JobID            string // For tracking the evaluation job
+	Completed        bool   // Whether evaluation finished successfully
+	SummaryGenerated bool   // Whether summary generation was already attempted
 
 	// Editing state for New Evaluation
 	currentField int // 0: AgentURL, 1: JudgeModel, 2: ParallelRuns, 3: DeepTest, 4: StartButton

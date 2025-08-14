@@ -306,8 +306,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.currentScreen == EvaluationDetailScreen && m.evalState != nil {
 			if m.evalState.Running {
 				return m, autoRefreshCmd()
-			} else if m.evalState.Completed && m.evalState.Summary == "" && !m.summarySpinner.IsActive() {
-				// Trigger summary generation for completed evaluations (only if we don't have one yet and not already generating)
+			} else if m.evalState.Completed && m.evalState.Summary == "" && !m.evalState.SummaryGenerated && !m.summarySpinner.IsActive() {
+				// Trigger summary generation for completed evaluations (only once and if we don't have one yet)
+				m.evalState.SummaryGenerated = true // Mark as attempted to prevent multiple generations
 				m.triggerSummaryGeneration()
 				return m, m.summaryGenerationCmd()
 			}
@@ -789,8 +790,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.currentScreen = DashboardScreen
 				return m, nil
 			case "r":
-				// Refresh summary if we have job ID
-				if m.evalState.JobID != "" {
+				// Regenerate summary if we have job ID (force refresh)
+				if m.evalState.JobID != "" && !m.summarySpinner.IsActive() {
+					// Allow manual regeneration by resetting the flag
+					m.evalState.SummaryGenerated = false
 					m.summarySpinner.SetActive(true)
 					return m, m.summaryGenerationCmd()
 				}
@@ -810,41 +813,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
-}
-
-// generateSummaryAsync generates a summary in the background
-func (m *Model) generateSummaryAsync() {
-	if m.evalState == nil || m.evalState.JobID == "" {
-		return
-	}
-
-	go func() {
-		sdk := NewRogueSDK(m.config.ServerURL)
-
-		// Use the judge model and API key from config
-		judgeModel := m.evalState.JudgeModel
-		var apiKey string
-
-		// Extract provider from judge model (e.g. "openai/gpt-4" -> "openai")
-		if parts := strings.Split(judgeModel, "/"); len(parts) >= 2 {
-			provider := parts[0]
-			if key, ok := m.config.APIKeys[provider]; ok {
-				apiKey = key
-			}
-		}
-
-		// Create a context with longer timeout for summary generation
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-		defer cancel()
-
-		summary, err := sdk.GenerateSummary(ctx, m.evalState.JobID, judgeModel, apiKey)
-		if err != nil {
-			// Set error message as summary
-			m.evalState.Summary = fmt.Sprintf("# Summary Generation Failed\n\nError: %v", err)
-		} else {
-			m.evalState.Summary = summary
-		}
-	}()
 }
 
 // exitRequested inspects batched cmds for a ScenarioEditorMsg with Action=="exit"
