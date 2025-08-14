@@ -45,9 +45,11 @@ func (s Spinner) Start() tea.Cmd {
 func (s Spinner) Update(msg tea.Msg) (Spinner, tea.Cmd) {
 	switch msg := msg.(type) {
 	case SpinnerTickMsg:
-		if msg.ID == s.ID && s.active {
-			s.current = (s.current + 1) % len(s.frames)
-			return s, s.Start() // Continue spinning
+		if msg.ID == s.ID {
+			if s.active {
+				s.current = (s.current + 1) % len(s.frames)
+			}
+			return s, s.Start() // Continue spinning regardless of active state
 		}
 	}
 	return s, nil
