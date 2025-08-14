@@ -152,6 +152,10 @@ type Model struct {
 	summarySpinner components.Spinner
 	evalSpinner    components.Spinner
 
+	// Viewports for scrollable content
+	eventsViewport  components.Viewport
+	summaryViewport components.Viewport
+
 	// /eval state
 	evalState *EvaluationViewState
 }
@@ -210,6 +214,10 @@ func (a *App) Run() error {
 		healthSpinner:  components.NewSpinner(1),
 		summarySpinner: components.NewSpinner(2),
 		evalSpinner:    components.NewSpinner(3),
+
+		// Initialize viewports
+		eventsViewport:  components.NewViewport(1, 80, 20),
+		summaryViewport: components.NewViewport(2, 80, 20),
 	}
 
 	// Load existing configuration
@@ -783,6 +791,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.currentScreen = ReportScreen
 				}
 				return m, nil
+			default:
+				// Update viewports for scrolling when in evaluation detail screen
+				m.eventsViewport, cmd = m.eventsViewport.Update(msg)
+				if cmd != nil {
+					cmds = append(cmds, cmd)
+				}
+				m.summaryViewport, cmd = m.summaryViewport.Update(msg)
+				if cmd != nil {
+					cmds = append(cmds, cmd)
+				}
+				return m, tea.Batch(cmds...)
 			}
 		}
 

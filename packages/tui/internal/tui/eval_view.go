@@ -301,20 +301,8 @@ func (m Model) renderEvaluationDetail() string {
 		summaryHeight = 0
 	}
 
-	// Events container (scrollable)
-	eventsStyle := lipgloss.NewStyle().
-		Foreground(t.Text()).
-		Background(t.BackgroundPanel()).
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(t.Border()).
-		Padding(1, 2).
-		Width(m.width - 4).
-		Height(eventsHeight)
-
-	// Show events (scrollable - show last N events that fit in the height)
-	maxVisibleLines := eventsHeight - 4 // -4 for padding and border
+	// Prepare events content for viewport
 	var lines []string
-
 	for _, ev := range m.evalState.Events {
 		switch ev.Type {
 		case "status":
@@ -332,15 +320,22 @@ func (m Model) renderEvaluationDetail() string {
 		lines = append(lines, lipgloss.NewStyle().Foreground(t.TextMuted()).Italic(true).Render("Waiting for evaluation events..."))
 	}
 
-	// Show last N lines that fit in the visible area (scrolling effect)
-	var visibleLines []string
-	if len(lines) > maxVisibleLines {
-		visibleLines = lines[len(lines)-maxVisibleLines:]
-	} else {
-		visibleLines = lines
-	}
+	// Update events viewport
+	m.eventsViewport.SetSize(m.width-4, eventsHeight-4) // -4 for border and padding
+	m.eventsViewport.SetContent(strings.Join(lines, "\n"))
+	m.eventsViewport.Style = lipgloss.NewStyle().
+		Foreground(t.Text()).
+		Background(t.BackgroundPanel()).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(t.Border()).
+		Padding(1, 2).
+		Width(m.width - 4).
+		Height(eventsHeight)
 
-	eventsContent := eventsStyle.Render(strings.Join(visibleLines, "\n"))
+	// Auto-scroll to bottom for new events (like a chat)
+	m.eventsViewport.GotoBottom()
+
+	eventsContent := m.eventsViewport.View()
 
 	// Help text style (for bottom of screen)
 	helpStyle := lipgloss.NewStyle().
@@ -352,9 +347,9 @@ func (m Model) renderEvaluationDetail() string {
 
 	var helpMsg string
 	if m.evalState.Completed {
-		helpMsg = "b Back  s Stop  r Report"
+		helpMsg = "b Back  s Stop  r Report  ↑↓/k j Scroll  PgUp/Dn Page  u/d Half Page"
 	} else {
-		helpMsg = "b Back  s Stop"
+		helpMsg = "b Back  s Stop  ↑↓/k j Scroll  PgUp/Dn Page  u/d Half Page"
 	}
 	helpText := helpStyle.Render(helpMsg)
 
@@ -373,15 +368,6 @@ func (m Model) renderEvaluationDetail() string {
 	// Create summary section if available
 	var summaryContent string
 	if showSummary {
-		summaryStyle := lipgloss.NewStyle().
-			Foreground(t.Text()).
-			Background(t.BackgroundPanel()).
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(t.Primary()).
-			Padding(1, 2).
-			Width(m.width - 4).
-			Height(summaryHeight)
-
 		var summaryTitleText string
 		if m.summarySpinner.IsActive() {
 			summaryTitleText = fmt.Sprintf("📊 Evaluation Summary %s", m.summarySpinner.View())
@@ -403,26 +389,25 @@ func (m Model) renderEvaluationDetail() string {
 				Render("Generating summary with LLM...")
 		} else {
 			// Render the markdown summary with styling
-			styledSummary := renderMarkdownSummary(t, m.evalState.Summary)
-
-			// Split into lines and show what fits in the available height
-			summaryLines := strings.Split(styledSummary, "\n")
-			maxSummaryLines := summaryHeight - 8 // -4 for title, padding, border
-
-			var displayLines []string
-			if len(summaryLines) > maxSummaryLines {
-				// Show first N lines that fit, add "..." if truncated
-				displayLines = summaryLines[:maxSummaryLines-1]
-				displayLines = append(displayLines, lipgloss.NewStyle().Foreground(t.TextMuted()).Italic(true).Render("... (press 'r' for full report)"))
-			} else {
-				displayLines = summaryLines
-			}
-
-			summaryText = strings.Join(displayLines, "\n")
+			summaryText = renderMarkdownSummary(t, m.evalState.Summary)
 		}
 
+		// Prepare summary content for viewport
 		summaryBody := summaryTitle + "\n" + summaryText
-		summaryContent = summaryStyle.Render(summaryBody)
+
+		// Update summary viewport
+		m.summaryViewport.SetSize(m.width-4, summaryHeight-4) // -4 for border and padding
+		m.summaryViewport.SetContent(summaryBody)
+		m.summaryViewport.Style = lipgloss.NewStyle().
+			Foreground(t.Text()).
+			Background(t.BackgroundPanel()).
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(t.Primary()).
+			Padding(1, 2).
+			Width(m.width - 4).
+			Height(summaryHeight)
+
+		summaryContent = m.summaryViewport.View()
 	}
 
 	// Arrange content based on whether we have a summary or not
