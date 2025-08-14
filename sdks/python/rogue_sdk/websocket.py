@@ -45,6 +45,10 @@ class RogueWebSocketClient:
         if self.is_connected:
             return
 
+        # Allow re-connecting
+        if self._stop_event.is_set():
+            self._stop_event.clear()
+
         ws_url = f"{self.base_url}/ws/{self.job_id}"
 
         try:
@@ -107,8 +111,8 @@ class RogueWebSocketClient:
             while not self._stop_event.is_set() and self.websocket:
                 try:
                     message_data = await asyncio.wait_for(
-                        self.websocket.recv(),
-                        timeout=1.0,  # type: ignore[attr-defined]
+                        self.websocket.recv(),  # type: ignore[attr-defined]
+                        timeout=1.0,
                     )
 
                     try:
@@ -151,7 +155,17 @@ class RogueWebSocketClient:
         for handler in handlers:
             try:
                 if asyncio.iscoroutinefunction(handler):
-                    asyncio.create_task(handler(event, data))
+                    task = asyncio.create_task(handler(event, data))
+                    task.add_done_callback(
+                        lambda t: (
+                            logger.exception(
+                                "WS handler error",
+                                exc_info=t.exception(),
+                            )
+                            if t.exception()
+                            else None
+                        )
+                    )
                 else:
                     handler(event, data)
             except Exception:

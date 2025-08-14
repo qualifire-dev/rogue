@@ -83,8 +83,12 @@ async def list_evaluations(
     offset: int = 0,
     evaluation_service: EvaluationService = Depends(get_evaluation_service),
 ):
-    jobs = evaluation_service.get_jobs(status=status, limit=limit, offset=offset)
-    total = evaluation_service.get_job_count(status=status)
+    jobs = await evaluation_service.get_jobs(
+        status=status,
+        limit=limit,
+        offset=offset,
+    )
+    total = await evaluation_service.get_job_count(status=status)
 
     return JobListResponse(jobs=jobs, total=total)
 
