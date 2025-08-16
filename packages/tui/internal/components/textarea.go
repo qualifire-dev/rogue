@@ -47,8 +47,8 @@ func DefaultTextAreaKeyMap() TextAreaKeyMap {
 		InsertNewline:           []string{"enter", "ctrl+m"},
 		DeleteCharacterBackward: []string{"backspace", "ctrl+h"},
 		DeleteCharacterForward:  []string{"delete", "ctrl+d"},
-		LineStart:               []string{"home", "ctrl+a"},
-		LineEnd:                 []string{"end", "ctrl+e"},
+		LineStart:               []string{"home", "ctrl+a", "cmd+left"},
+		LineEnd:                 []string{"end", "ctrl+e", "cmd+right"},
 		InputBegin:              []string{"alt+<", "ctrl+home"},
 		InputEnd:                []string{"alt+>", "ctrl+end"},
 	}
@@ -116,6 +116,8 @@ type TextArea struct {
 // NewTextArea creates a new textarea with the given width and height
 func NewTextArea(id int, width, height int) TextArea {
 	vp := NewViewport(id+1000, width, height) // Use different ID to avoid conflicts
+	// Disable viewport key mappings to prevent conflicts with text input
+	vp.KeyMap = ViewportKeyMap{}
 
 	return TextArea{
 		ID:              id,
@@ -126,7 +128,7 @@ func NewTextArea(id int, width, height int) TextArea {
 		CharLimit:       0, // No limit
 		MaxHeight:       1000,
 		MaxWidth:        500,
-		ShowLineNumbers: false,
+		ShowLineNumbers: true, // Enable line numbers by default
 		Prompt:          "",
 		PromptWidth:     0,
 		value:           make([][]rune, 1),
@@ -320,6 +322,12 @@ func (t *TextArea) IsFocused() bool {
 	return t.focus
 }
 
+// SetShowLineNumbers enables or disables line numbers
+func (t *TextArea) SetShowLineNumbers(show bool) {
+	t.ShowLineNumbers = show
+	t.updateViewport()
+}
+
 // Reset clears the textarea content
 func (t *TextArea) Reset() {
 	t.value = make([][]rune, 1)
@@ -341,6 +349,12 @@ func (t *TextArea) updateViewport() {
 	contentWidth := t.Width - 4   // 2 padding on each side
 	contentHeight := t.Height - 2 // 1 padding on top and bottom
 
+	// Account for line numbers if enabled
+	if t.ShowLineNumbers {
+		lineNumWidth := t.getLineNumberWidth()
+		contentWidth -= lineNumWidth + 1 // +1 for space after line numbers
+	}
+
 	// Update viewport size to match content area
 	t.viewport.SetSize(contentWidth, contentHeight)
 
@@ -356,7 +370,8 @@ func (t *TextArea) updateViewport() {
 
 		// Add line number if enabled
 		if t.ShowLineNumbers {
-			lineStr = fmt.Sprintf("%3d ", i+1) + lineStr
+			lineNumStr := t.formatLineNumber(i + 1)
+			lineStr = lineNumStr + lineStr
 		}
 
 		lines = append(lines, lineStr)
@@ -596,8 +611,17 @@ func (t *TextArea) Update(msg tea.Msg) (*TextArea, tea.Cmd) {
 			t.scrollToCursor()
 		default:
 			// Handle regular character input
-			if len(msg.String()) == 1 {
-				t.InsertRune([]rune(msg.String())[0])
+			keyStr := msg.String()
+
+			// Special handling for space key since it might have special representation
+			if keyStr == " " || keyStr == "space" {
+				t.InsertRune(' ')
+			} else if len(keyStr) == 1 {
+				// Convert to rune properly to handle unicode characters
+				runes := []rune(keyStr)
+				if len(runes) == 1 {
+					t.InsertRune(runes[0])
+				}
 			}
 		}
 
@@ -651,7 +675,7 @@ func (t *TextArea) renderLineWithCursor(lineStr string, lineIndex int) string {
 		cursorPos += t.PromptWidth
 	}
 	if t.ShowLineNumbers {
-		cursorPos += 4
+		cursorPos += t.getLineNumberWidth() + 1 // +1 for space after line number
 	}
 
 	if cursorPos >= len(lineStr) {
@@ -677,7 +701,8 @@ func (t *TextArea) placeholderView() string {
 			line = t.Style.Base.Render(t.Prompt)
 		}
 		if t.ShowLineNumbers {
-			line = t.Style.Base.Render("    ") + line
+			lineNumStr := t.formatLineNumber(1) // Use line 1 for placeholder
+			line = t.Style.Base.Render(lineNumStr) + line
 		}
 
 		if i == 0 {
@@ -720,14 +745,14 @@ func (t *TextArea) renderViewportWithCursor(viewportContent string) string {
 			cursorCol += len(t.Prompt)
 		}
 		if t.ShowLineNumbers {
-			cursorCol += 4 // "123 " format
+			cursorCol += t.getLineNumberWidth() + 1 // +1 for space after line number
 		}
 
 		line := lines[cursorLine]
 		if cursorCol >= len(line) {
 			// Cursor at end of line
 			lines[cursorLine] = line + t.Style.Cursor.Render(" ")
-		} else if cursorCol >= 0 {
+		} else if cursorCol >= 0 && cursorCol < len(line) {
 			// Cursor in middle of line
 			before := line[:cursorCol]
 			atCursor := string(line[cursorCol])
@@ -757,7 +782,7 @@ func (t *TextArea) renderDirectly() string {
 
 		// Add line number if enabled
 		if t.ShowLineNumbers {
-			lineNum := t.Style.Base.Render(fmt.Sprintf("%3d ", i+1))
+			lineNum := t.Style.Base.Render(t.formatLineNumber(i + 1))
 			lineStr = lineNum + lineStr
 		}
 
@@ -779,7 +804,8 @@ func (t *TextArea) renderDirectly() string {
 			emptyLine = t.Style.Base.Render(t.Prompt)
 		}
 		if t.ShowLineNumbers {
-			emptyLine = t.Style.Base.Render("    ") + emptyLine
+			lineNumStr := t.formatLineNumber(len(lines) + 1)
+			emptyLine = t.Style.Base.Render(lineNumStr) + emptyLine
 		}
 		lines = append(lines, emptyLine)
 	}
@@ -793,7 +819,22 @@ func (t *TextArea) renderDirectly() string {
 	return t.Style.Base.Render(content)
 }
 
+// getLineNumberWidth calculates the width needed for line numbers
+func (t *TextArea) getLineNumberWidth() int {
+	maxLineNum := len(t.value)
+	if maxLineNum == 0 {
+		maxLineNum = 1
+	}
+	// Calculate digits needed for the maximum line number
+	digits := len(fmt.Sprintf("%d", maxLineNum))
+	if digits < 2 {
+		digits = 2 // Minimum 2 digits for better appearance
+	}
+	return digits
+}
+
 // Helper function to format line numbers
 func (t *TextArea) formatLineNumber(num int) string {
-	return fmt.Sprintf("%3d ", num)
+	width := t.getLineNumberWidth()
+	return fmt.Sprintf("%*d ", width, num)
 }
