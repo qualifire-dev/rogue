@@ -25,21 +25,24 @@ type ScenarioData struct {
 
 // ScenariosFile represents the JSON file structure
 type ScenariosFile struct {
-	Scenarios []ScenarioData `json:"scenarios"`
+	BusinessContext *string        `json:"business_context"`
+	Scenarios       []ScenarioData `json:"scenarios"`
 }
 
 // ScenarioEditor represents the scenario editor component
 type ScenarioEditor struct {
 	// Data
-	scenarios   []ScenarioData
-	filteredIdx []int
-	searchMode  bool
-	searchQuery string
+	scenarios       []ScenarioData
+	businessContext *string
+	filteredIdx     []int
+	searchMode      bool
+	searchQuery     string
 
 	// Selection and mode
-	selectedIndex int
-	mode          ScenarioEditorMode
-	currentField  int
+	selectedIndex      int
+	bizContextSelected bool // true when business context is selected instead of scenarios
+	mode               ScenarioEditorMode
+	currentField       int
 
 	// Editing buffer
 	editing   ScenarioData
@@ -50,6 +53,10 @@ type ScenarioEditor struct {
 	height       int
 	scrollOffset int
 	visibleItems int
+
+	// Business context
+	bizViewport *Viewport
+	bizTextArea *TextArea
 
 	// File management
 	filePath string // path to .rogue/scenarios.json
@@ -66,6 +73,7 @@ const (
 	ListMode ScenarioEditorMode = iota
 	EditMode
 	AddMode
+	BusinessContextMode
 )
 
 // ScenarioEditorMsg represents messages from the scenario editor
@@ -83,6 +91,13 @@ func NewScenarioEditor() ScenarioEditor {
 		currentField:  0,
 		visibleItems:  10,
 	}
+
+	// Initialize business context components
+	vp := NewViewport(9999, 80, 10) // Use unique ID
+	editor.bizViewport = &vp
+
+	ta := NewTextArea(9998, 80, 10) // Use unique ID
+	editor.bizTextArea = &ta
 
 	// Discover scenarios.json location and load
 	editor.filePath = discoverScenariosFile()
@@ -103,6 +118,14 @@ func (e *ScenarioEditor) SetSize(width, height int) {
 		maxItems = 5
 	}
 	e.visibleItems = maxItems
+
+	// Update business context components size
+	if e.bizViewport != nil {
+		e.bizViewport.SetSize(width-4, 10) // 10 lines, account for padding
+	}
+	if e.bizTextArea != nil {
+		e.bizTextArea.SetSize(width-4, 10) // 10 lines, account for padding
+	}
 }
 
 // Update handles input for the scenario editor
@@ -114,6 +137,8 @@ func (e ScenarioEditor) Update(msg tea.Msg) (ScenarioEditor, tea.Cmd) {
 			return e.handleListMode(m)
 		case EditMode, AddMode:
 			return e.handleEditMode(m)
+		case BusinessContextMode:
+			return e.handleBusinessContextMode(m)
 		}
 	}
 	return e, nil
@@ -126,16 +151,47 @@ func (e ScenarioEditor) handleListMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 		// Request parent to exit the scenarios screen
 		return e, func() tea.Msg { return ScenarioEditorMsg{Action: "exit"} }
 	case "up", "k":
-		if e.selectedIndex > 0 {
+		if e.bizContextSelected {
+			// Move from business context to last scenario
+			e.bizContextSelected = false
+			if len(e.filteredIdx) > 0 {
+				e.selectedIndex = len(e.filteredIdx) - 1
+				e.updateScroll()
+			}
+		} else if e.selectedIndex > 0 {
 			e.selectedIndex--
 			e.updateScroll()
+		} else if len(e.filteredIdx) > 0 {
+			// Move from first scenario to business context
+			e.bizContextSelected = true
 		}
 		return e, nil
 
 	case "down", "j":
-		if e.selectedIndex < len(e.filteredIdx)-1 {
+		if e.bizContextSelected {
+			// Move from business context to first scenario
+			e.bizContextSelected = false
+			e.selectedIndex = 0
+			e.updateScroll()
+		} else if e.selectedIndex < len(e.filteredIdx)-1 {
 			e.selectedIndex++
 			e.updateScroll()
+		} else {
+			// Move from last scenario to business context
+			e.bizContextSelected = true
+		}
+		return e, nil
+
+	case "b":
+		// Enter business context edit mode
+		e.mode = BusinessContextMode
+		if e.bizTextArea != nil {
+			bizContext := ""
+			if e.businessContext != nil {
+				bizContext = *e.businessContext
+			}
+			e.bizTextArea.SetValue(bizContext)
+			e.bizTextArea.Focus()
 		}
 		return e, nil
 
@@ -146,6 +202,21 @@ func (e ScenarioEditor) handleListMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 		return e, func() tea.Msg { return DialogOpenMsg{Dialog: dialog} }
 
 	case "enter":
+		if e.bizContextSelected {
+			// Enter business context edit mode
+			e.mode = BusinessContextMode
+			if e.bizTextArea != nil {
+				bizContext := ""
+				if e.businessContext != nil {
+					bizContext = *e.businessContext
+				}
+				e.bizTextArea.SetValue(bizContext)
+				e.bizTextArea.Focus()
+			}
+			e.errorMsg = ""
+			e.infoMsg = ""
+			return e, nil
+		}
 		if len(e.filteredIdx) == 0 {
 			return e, nil
 		}
@@ -169,7 +240,7 @@ func (e ScenarioEditor) handleListMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 		return e, nil
 
 	case "d", "delete":
-		if len(e.filteredIdx) == 0 {
+		if e.bizContextSelected || len(e.filteredIdx) == 0 {
 			return e, nil
 		}
 		// Ask for confirmation using a modal dialog
@@ -190,6 +261,55 @@ func (e ScenarioEditor) handleListMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 		}
 		return e, func() tea.Msg { return ScenarioEditorMsg{Action: "saved"} }
 	default:
+		return e, nil
+	}
+}
+
+// handleBusinessContextMode handles input in business context edit mode
+func (e ScenarioEditor) handleBusinessContextMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd) {
+	switch msg.String() {
+	case "escape", "esc":
+		// Save and exit business context edit mode
+		if e.bizTextArea != nil {
+			content := e.bizTextArea.GetValue()
+			if content == "" {
+				e.businessContext = nil
+			} else {
+				e.businessContext = &content
+			}
+			e.bizTextArea.Blur()
+		}
+		e.mode = ListMode
+		e.bizContextSelected = true // Keep business context selected when exiting edit mode
+		e.errorMsg = ""
+		e.infoMsg = ""
+		return e, nil
+
+	case "ctrl+s":
+		// Save business context
+		if e.bizTextArea != nil {
+			content := e.bizTextArea.GetValue()
+			if content == "" {
+				e.businessContext = nil
+			} else {
+				e.businessContext = &content
+			}
+		}
+		// Save to file
+		if err := e.saveScenarios(); err != nil {
+			e.errorMsg = fmt.Sprintf("Save error: %v", err)
+		} else {
+			e.infoMsg = "Business context saved"
+		}
+		return e, nil
+
+	default:
+		// Pass through to TextArea
+		if e.bizTextArea != nil {
+			updatedTextArea, cmd := e.bizTextArea.Update(msg)
+			*e.bizTextArea = *updatedTextArea
+			return e, cmd
+		}
 		return e, nil
 	}
 }
@@ -411,6 +531,10 @@ func (e *ScenarioEditor) rebuildFilter() {
 	if e.selectedIndex < 0 {
 		e.selectedIndex = 0
 	}
+	// Reset business context selection when filtering
+	if e.searchQuery != "" {
+		e.bizContextSelected = false
+	}
 }
 
 // rebuildFilterResetSelection resets selection and scroll when search changes
@@ -418,6 +542,7 @@ func (e *ScenarioEditor) rebuildFilterResetSelection() {
 	e.rebuildFilter()
 	e.selectedIndex = 0
 	e.scrollOffset = 0
+	e.bizContextSelected = false
 }
 
 // SetSearchQuery updates the search query and rebuilds the filtered list
@@ -454,9 +579,55 @@ func (e ScenarioEditor) View() string {
 			e.renderEditView(t),
 			styles.WhitespaceStyle(t.Background()),
 		)
+	case BusinessContextMode:
+		return lipgloss.Place(
+			e.width,
+			e.height-1,
+			lipgloss.Left,
+			lipgloss.Top,
+			e.renderBusinessContextView(t),
+			styles.WhitespaceStyle(t.Background()),
+		)
+
 	default:
 		return ""
 	}
+}
+
+// renderBusinessContextView renders the business context editing view
+func (e ScenarioEditor) renderBusinessContextView(t theme.Theme) string {
+	title := lipgloss.NewStyle().Background(t.Background()).Foreground(t.Primary()).Bold(true).Render("\nEdit Business Context")
+
+	var bizTextArea string
+	if e.bizTextArea != nil {
+		bizTextArea = e.bizTextArea.View()
+		// Apply theme styling to the textarea content
+		bizTextArea = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Text()).Render(bizTextArea)
+	} else {
+		bizTextArea = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Text()).Render("TextArea not available")
+	}
+
+	help := lipgloss.NewStyle().Background(t.Background()).Foreground(t.TextMuted()).Render("Esc save and exit  Ctrl+S save  Standard text editing keys")
+	errorLine := ""
+	if e.errorMsg != "" {
+		errorLine = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Error()).Render("⚠ " + e.errorMsg)
+	}
+	infoLine := ""
+	if e.infoMsg != "" {
+		infoLine = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Success()).Render("✓ " + e.infoMsg)
+	}
+
+	content := strings.Join([]string{
+		title,
+		"",
+		bizTextArea,
+		"",
+		help,
+		errorLine,
+		infoLine,
+	}, "\n")
+
+	return content
 }
 
 // renderListView renders the list of scenarios
@@ -470,11 +641,32 @@ func (e ScenarioEditor) renderListView(t theme.Theme) string {
 		fmt.Sprintf("File: %s  |  Search: %s  |  Matches: %d/%d", e.displayPath(), searchDisplay, len(e.filteredIdx), len(e.scenarios)),
 	)
 
+	// Business context section
+	bizContext := ""
+	if e.businessContext != nil {
+		bizContext = *e.businessContext
+	}
+	bizLabel := "Business Context:"
+	if e.bizContextSelected {
+		bizLabel = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Primary()).Bold(true).Render("› Business Context:")
+	} else {
+		bizLabel = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Accent()).Render("Business Context:")
+	}
+
+	// Update viewport content and render
+	var bizText string
+	if e.bizViewport != nil {
+		e.bizViewport.SetContent(bizContext)
+		bizText = e.bizViewport.View()
+		// Apply theme styling to the viewport content
+		bizText = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Text()).Render(bizText)
+	} else {
+		bizText = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Text()).Render(ellipsis(bizContext, e.width-20))
+	}
+
 	var body string
-	rowCount := 0
 	if len(e.filteredIdx) == 0 {
 		body = lipgloss.NewStyle().Background(t.Background()).Foreground(t.TextMuted()).Render("No scenarios. Press 'n' to add.")
-		rowCount = 1
 	} else {
 		start := e.scrollOffset
 		end := start + e.visibleItems
@@ -484,20 +676,20 @@ func (e ScenarioEditor) renderListView(t theme.Theme) string {
 
 		// use near-full panel width (account for outer layout padding)
 		contentWidth := e.width - 4
-		if contentWidth < 40 {
-			contentWidth = 40
+		if contentWidth < 60 {
+			contentWidth = 60
 		}
 		typeWidth := 12
-		scenWidth := (contentWidth - typeWidth) / 2
-		if scenWidth < 24 {
-			scenWidth = 24
-			typeWidth = contentWidth - scenWidth
+		remainingWidth := contentWidth - typeWidth
+		colWidth := remainingWidth / 3
+		if colWidth < 20 {
+			colWidth = 20
 		}
 
-		// table header (no dataset column)
+		// table header
 		typeCol := lipgloss.NewStyle().Background(t.Background()).Foreground(t.Accent()).Width(typeWidth).Render("Type")
-		scenCol := lipgloss.NewStyle().Background(t.Background()).Foreground(t.Accent()).Width(scenWidth).Render("Scenario")
-		outcomeCol := lipgloss.NewStyle().Background(t.Background()).Foreground(t.Accent()).Width(scenWidth).Render("Expected Outcome")
+		scenCol := lipgloss.NewStyle().Background(t.Background()).Foreground(t.Accent()).Width(colWidth).Render("Scenario")
+		outcomeCol := lipgloss.NewStyle().Background(t.Background()).Foreground(t.Accent()).Width(colWidth).Render("Expected Outcome")
 		rows := []string{lipgloss.JoinHorizontal(lipgloss.Left, typeCol, scenCol, outcomeCol)}
 
 		for i := start; i < end; i++ {
@@ -508,15 +700,15 @@ func (e ScenarioEditor) renderListView(t theme.Theme) string {
 			typeStyle := lipgloss.NewStyle().Background(t.Background()).Foreground(t.Text())
 			scenStyle := lipgloss.NewStyle().Background(t.Background()).Foreground(t.Text())
 
-			scenText := ellipsis(strings.ReplaceAll(s.Scenario, "\n", " "), scenWidth-2)
+			scenText := ellipsis(strings.ReplaceAll(s.Scenario, "\n", " "), colWidth-2)
 			scenOutcome := ""
 			if s.ExpectedOutcome != nil {
 				scenOutcome = *s.ExpectedOutcome
 				scenOutcome = strings.ReplaceAll(scenOutcome, "\n", " ")
 			}
-			scenOutcome = ellipsis(scenOutcome, scenWidth-2)
+			scenOutcome = ellipsis(scenOutcome, colWidth-2)
 
-			if i == e.selectedIndex {
+			if i == e.selectedIndex && !e.bizContextSelected {
 				pointer = "› "
 				typeStyle = typeStyle.Background(t.Background()).Foreground(t.Primary()).Bold(true)
 				scenStyle = scenStyle.Background(t.Background()).Foreground(t.Primary()).Bold(true)
@@ -525,27 +717,18 @@ func (e ScenarioEditor) renderListView(t theme.Theme) string {
 			line := lipgloss.JoinHorizontal(
 				lipgloss.Left,
 				typeStyle.Width(typeWidth).Render(pointer+s.ScenarioType),
-				scenStyle.Width(scenWidth).Render(scenText),
-				scenStyle.Width(scenWidth).Render(scenOutcome),
+				scenStyle.Width(colWidth).Render(scenText),
+				scenStyle.Width(colWidth).Render(scenOutcome),
 			)
 			rows = append(rows, line)
 		}
 		// Render table within a compact width and keep it left-aligned inside the panel
 		body = lipgloss.NewStyle().Width(contentWidth).Background(t.Background()).Render(strings.Join(rows, "\n"))
-		body = lipgloss.Place(
-			e.width,
-			e.height-10,
-			lipgloss.Left,
-			lipgloss.Top,
-			body,
-			styles.WhitespaceStyle(t.Background()),
-		)
-		rowCount = len(rows)
 	}
 
 	// Build lines and push help to bottom (above footer)
 	help := lipgloss.NewStyle().Background(t.Background()).Foreground(t.TextMuted()).Render(
-		"↑/↓ navigate  Enter edit  n new  d delete  / search (type to filter, Enter to exit)  Esc back",
+		"↑/↓ navigate scenarios & business context  Enter edit  n new  d delete  / search  Esc back",
 	)
 
 	errorLine := ""
@@ -557,32 +740,22 @@ func (e ScenarioEditor) renderListView(t theme.Theme) string {
 		infoLine = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Success()).Render("✓ " + e.infoMsg)
 	}
 
-	// Calculate spacer lines to pin help near the bottom (leave 1 line for footer)
-	totalWithoutSpacer := 0
-	totalWithoutSpacer += 1 // header
-	totalWithoutSpacer += 1 // sub
-	totalWithoutSpacer += 1 // blank
-	totalWithoutSpacer += rowCount
-	totalWithoutSpacer += 1 // blank before error/info
+	// Build content sections
+	var contentParts []string
+	contentParts = append(contentParts, "", sub, "", bizLabel, bizText, "", body, "")
+
+	// Add error/info messages if present
 	if errorLine != "" {
-		totalWithoutSpacer += 1
+		contentParts = append(contentParts, errorLine)
 	}
 	if infoLine != "" {
-		totalWithoutSpacer += 1
+		contentParts = append(contentParts, infoLine)
 	}
-	totalWithoutSpacer += 1 // help
 
-	content := strings.Join([]string{
-		"",
-		sub,
-		"",
-		body,
-		"",
-		errorLine,
-		infoLine,
-		"",
-		help,
-	}, "\n")
+	// Add help at the end
+	contentParts = append(contentParts, "", help)
+
+	content := strings.Join(contentParts, "\n")
 
 	// No outer border/background; return plain content to fill full height under layout
 	return content
@@ -847,6 +1020,7 @@ func (e *ScenarioEditor) loadScenarios() error {
 		return err
 	}
 	e.scenarios = file.Scenarios
+	e.businessContext = file.BusinessContext
 	return nil
 }
 
@@ -859,7 +1033,10 @@ func (e *ScenarioEditor) saveScenarios() error {
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
 	}
-	file := ScenariosFile{Scenarios: e.scenarios}
+	file := ScenariosFile{
+		BusinessContext: e.businessContext,
+		Scenarios:       e.scenarios,
+	}
 	data, err := json.MarshalIndent(file, "", "  ")
 	if err != nil {
 		return err
