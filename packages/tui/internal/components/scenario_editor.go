@@ -625,8 +625,8 @@ func (e ScenarioEditor) renderBusinessContextView(t theme.Theme) string {
 	}
 
 	// Calculate maximum textarea height (subtract from total available height)
-	availableHeight := e.height - 1 // -1 for parent layout
-	textAreaHeight := availableHeight - usedHeight
+	availableHeight := e.height - 1                    // -1 for parent layout
+	textAreaHeight := availableHeight - usedHeight - 5 // -5 to prevent footer overflow
 	if textAreaHeight < 5 {
 		textAreaHeight = 5 // Minimum height
 	}
@@ -634,16 +634,17 @@ func (e ScenarioEditor) renderBusinessContextView(t theme.Theme) string {
 	// Update textarea size to use maximum available height (account for border padding)
 	var bizTextArea string
 	if e.bizTextArea != nil {
-		e.bizTextArea.SetSize(e.width-8, textAreaHeight) // -8 for border and padding
+		e.bizTextArea.SetSize(e.width-10, textAreaHeight) // -8 for border and padding
 		bizTextArea = e.bizTextArea.View()
 	} else {
 		bizTextArea = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Text()).Render("TextArea not available")
 	}
 
-	// Create bordered container for the textarea
+	// Create bordered container for the textarea (primary border when editing)
 	borderStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(t.Accent()).
+		BorderForeground(t.Primary()).
+		Background(t.BackgroundPanel()).
 		Padding(1, 1).
 		Width(e.width - 4).        // Account for outer padding
 		Height(textAreaHeight + 2) // +2 for border padding
@@ -688,25 +689,32 @@ func (e ScenarioEditor) renderListView(t theme.Theme) string {
 
 	// Update viewport content and render
 	var bizText string
-	if e.bizViewport != nil {
-		e.bizViewport.SetContent(bizContext)
-		viewportContent := e.bizViewport.View()
 
-		// Create a subtle border for the business context display
-		borderStyle := lipgloss.NewStyle().
+	// Choose border style based on selection state
+	var borderStyle lipgloss.Style
+	if e.bizContextSelected {
+		// Primary border and panel background when selected
+		borderStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(t.Primary()).
+			Background(t.BackgroundPanel()).
+			Padding(0, 1).
+			Width(e.width - 8) // Account for padding and border
+	} else {
+		// Subtle border when not selected
+		borderStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(t.TextMuted()).
 			Padding(0, 1).
 			Width(e.width - 8) // Account for padding and border
+	}
 
+	if e.bizViewport != nil {
+		e.bizViewport.SetContent(bizContext)
+		viewportContent := e.bizViewport.View()
 		bizText = borderStyle.Render(viewportContent)
 	} else {
 		content := ellipsis(bizContext, e.width-20)
-		borderStyle := lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(t.TextMuted()).
-			Padding(0, 1).
-			Width(e.width - 8)
 		bizText = borderStyle.Render(content)
 	}
 
