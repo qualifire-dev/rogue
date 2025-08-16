@@ -611,9 +611,10 @@ func (e ScenarioEditor) renderBusinessContextView(t theme.Theme) string {
 		infoLine = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Success()).Render("✓ " + e.infoMsg)
 	}
 
-	// Calculate available height for textarea
+	// Calculate available height for textarea and border
 	usedHeight := 0
 	usedHeight += 2 // title (1 line) + blank line after title
+	usedHeight += 2 // border top and bottom
 	usedHeight += 1 // blank line before help
 	usedHeight += 1 // help line
 	if errorLine != "" {
@@ -630,21 +631,29 @@ func (e ScenarioEditor) renderBusinessContextView(t theme.Theme) string {
 		textAreaHeight = 5 // Minimum height
 	}
 
-	// Update textarea size to use maximum available height
+	// Update textarea size to use maximum available height (account for border padding)
 	var bizTextArea string
 	if e.bizTextArea != nil {
-		e.bizTextArea.SetSize(e.width-4, textAreaHeight)
+		e.bizTextArea.SetSize(e.width-8, textAreaHeight) // -8 for border and padding
 		bizTextArea = e.bizTextArea.View()
-		// Apply theme styling to the textarea content
-		bizTextArea = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Text()).Render(bizTextArea)
 	} else {
 		bizTextArea = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Text()).Render("TextArea not available")
 	}
 
+	// Create bordered container for the textarea
+	borderStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(t.Accent()).
+		Padding(1, 1).
+		Width(e.width - 4).        // Account for outer padding
+		Height(textAreaHeight + 2) // +2 for border padding
+
+	borderedTextArea := borderStyle.Render(bizTextArea)
+
 	content := strings.Join([]string{
 		title,
 		"",
-		bizTextArea,
+		borderedTextArea,
 		"",
 		help,
 		errorLine,
@@ -681,11 +690,24 @@ func (e ScenarioEditor) renderListView(t theme.Theme) string {
 	var bizText string
 	if e.bizViewport != nil {
 		e.bizViewport.SetContent(bizContext)
-		bizText = e.bizViewport.View()
-		// Apply theme styling to the viewport content
-		bizText = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Text()).Render(bizText)
+		viewportContent := e.bizViewport.View()
+
+		// Create a subtle border for the business context display
+		borderStyle := lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(t.TextMuted()).
+			Padding(0, 1).
+			Width(e.width - 8) // Account for padding and border
+
+		bizText = borderStyle.Render(viewportContent)
 	} else {
-		bizText = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Text()).Render(ellipsis(bizContext, e.width-20))
+		content := ellipsis(bizContext, e.width-20)
+		borderStyle := lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(t.TextMuted()).
+			Padding(0, 1).
+			Width(e.width - 8)
+		bizText = borderStyle.Render(content)
 	}
 
 	var body string
