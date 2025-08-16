@@ -358,11 +358,11 @@ func (m Model) renderEvaluationDetail() string {
 	var helpMsg string
 	if m.evalState.Completed && (m.evalState.Summary != "" || m.summarySpinner.IsActive()) {
 		// Both viewports are visible, show tab navigation
-		helpMsg = "b Back  s Stop  r Report  Tab Switch Focus  ↑↓/k j Scroll  PgUp/Dn Page  u/d Half Page  Home/End Top/Bottom"
+		helpMsg = "b Back  s Stop  r Report  Tab Switch Focus  ↑↓ scroll"
 	} else if m.evalState.Completed {
-		helpMsg = "b Back  s Stop  r Report  ↑↓/k j Scroll  PgUp/Dn Page  u/d Half Page  Home/End Top/Bottom"
+		helpMsg = "b Back  s Stop  r Report  ↑↓ scroll"
 	} else {
-		helpMsg = "b Back  s Stop  ↑↓/k j Scroll  PgUp/Dn Page  u/d Half Page  Home/End Top/Bottom"
+		helpMsg = "b Back  s Stop  ↑↓ scroll"
 	}
 	helpText := helpStyle.Render(helpMsg)
 
