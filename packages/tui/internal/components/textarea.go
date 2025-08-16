@@ -7,6 +7,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"
+	"github.com/rogue/tui/internal/theme"
 )
 
 // TextAreaKeyMap defines the keybindings for the textarea
@@ -59,6 +60,7 @@ type TextAreaStyle struct {
 	Text        lipgloss.Style
 	Cursor      lipgloss.Style
 	Placeholder lipgloss.Style
+	Panel       lipgloss.Style // For background panel and padding
 }
 
 // DefaultTextAreaStyle returns default styles for the textarea
@@ -68,7 +70,22 @@ func DefaultTextAreaStyle() TextAreaStyle {
 		Text:        lipgloss.NewStyle(),
 		Cursor:      lipgloss.NewStyle().Background(lipgloss.Color("7")),
 		Placeholder: lipgloss.NewStyle().Foreground(lipgloss.Color("240")),
+		Panel:       lipgloss.NewStyle().Padding(1, 2),
 	}
+}
+
+// ApplyTheme applies theme-based styling to the textarea
+func (t *TextArea) ApplyTheme(th theme.Theme) {
+	t.Style.Panel = lipgloss.NewStyle().
+		Background(th.BackgroundPanel()).
+		Padding(1, 2)
+	t.Style.Cursor = lipgloss.NewStyle().
+		Background(th.Primary()).
+		Foreground(th.Background())
+	t.Style.Text = lipgloss.NewStyle().
+		Foreground(th.Text())
+	t.Style.Placeholder = lipgloss.NewStyle().
+		Foreground(th.TextMuted())
 }
 
 // TextArea represents a multi-line text input component
@@ -319,6 +336,13 @@ func (t *TextArea) updateViewport() {
 	if t.viewport == nil {
 		return
 	}
+
+	// Calculate content area (subtract padding from total size)
+	contentWidth := t.Width - 4   // 2 padding on each side
+	contentHeight := t.Height - 2 // 1 padding on top and bottom
+
+	// Update viewport size to match content area
+	t.viewport.SetSize(contentWidth, contentHeight)
 
 	// Build content string for viewport
 	var lines []string
@@ -586,26 +610,33 @@ func (t *TextArea) Update(msg tea.Msg) (*TextArea, tea.Cmd) {
 
 // View renders the textarea into a string
 func (t *TextArea) View() string {
+	var content string
+
 	if len(t.value) == 0 || (len(t.value) == 1 && len(t.value[0]) == 0) {
 		if t.Placeholder != "" {
-			return t.placeholderView()
+			content = t.placeholderView()
+		} else {
+			content = ""
+		}
+	} else {
+		// Use viewport for scrolling if available
+		if t.viewport != nil {
+			// Ensure viewport is up to date
+			t.updateViewport()
+
+			// Get viewport content but we need to add cursor manually
+			viewportContent := t.viewport.View()
+
+			// We need to render cursor on the visible content
+			content = t.renderViewportWithCursor(viewportContent)
+		} else {
+			// Fallback to old rendering if no viewport
+			content = t.renderDirectly()
 		}
 	}
 
-	// Use viewport for scrolling if available
-	if t.viewport != nil {
-		// Ensure viewport is up to date
-		t.updateViewport()
-
-		// Get viewport content but we need to add cursor manually
-		viewportContent := t.viewport.View()
-
-		// We need to render cursor on the visible content
-		return t.renderViewportWithCursor(viewportContent)
-	}
-
-	// Fallback to old rendering if no viewport
-	return t.renderDirectly()
+	// Apply panel styling (background and padding)
+	return t.Style.Panel.Width(t.Width).Height(t.Height).Render(content)
 }
 
 // renderLineWithCursor renders a line with the cursor positioned correctly

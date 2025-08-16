@@ -96,7 +96,8 @@ func NewScenarioEditor() ScenarioEditor {
 	vp := NewViewport(9999, 80, 10) // Use unique ID
 	editor.bizViewport = &vp
 
-	ta := NewTextArea(9998, 80, 10) // Use unique ID
+	ta := NewTextArea(9998, 80, 10)     // Use unique ID
+	ta.ApplyTheme(theme.CurrentTheme()) // Apply current theme
 	editor.bizTextArea = &ta
 
 	// Discover scenarios.json location and load
@@ -124,7 +125,9 @@ func (e *ScenarioEditor) SetSize(width, height int) {
 		e.bizViewport.SetSize(width-4, 10) // 10 lines, account for padding
 	}
 	if e.bizTextArea != nil {
-		e.bizTextArea.SetSize(width-4, 10) // 10 lines, account for padding
+		// Size will be set dynamically in renderBusinessContextView
+		// Just update width here
+		e.bizTextArea.SetSize(width-4, e.bizTextArea.Height)
 	}
 }
 
@@ -598,15 +601,6 @@ func (e ScenarioEditor) View() string {
 func (e ScenarioEditor) renderBusinessContextView(t theme.Theme) string {
 	title := lipgloss.NewStyle().Background(t.Background()).Foreground(t.Primary()).Bold(true).Render("\nEdit Business Context")
 
-	var bizTextArea string
-	if e.bizTextArea != nil {
-		bizTextArea = e.bizTextArea.View()
-		// Apply theme styling to the textarea content
-		bizTextArea = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Text()).Render(bizTextArea)
-	} else {
-		bizTextArea = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Text()).Render("TextArea not available")
-	}
-
 	help := lipgloss.NewStyle().Background(t.Background()).Foreground(t.TextMuted()).Render("Esc save and exit  Ctrl+S save  Standard text editing keys")
 	errorLine := ""
 	if e.errorMsg != "" {
@@ -615,6 +609,36 @@ func (e ScenarioEditor) renderBusinessContextView(t theme.Theme) string {
 	infoLine := ""
 	if e.infoMsg != "" {
 		infoLine = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Success()).Render("✓ " + e.infoMsg)
+	}
+
+	// Calculate available height for textarea
+	usedHeight := 0
+	usedHeight += 2 // title (1 line) + blank line after title
+	usedHeight += 1 // blank line before help
+	usedHeight += 1 // help line
+	if errorLine != "" {
+		usedHeight += 1 // error line
+	}
+	if infoLine != "" {
+		usedHeight += 1 // info line
+	}
+
+	// Calculate maximum textarea height (subtract from total available height)
+	availableHeight := e.height - 1 // -1 for parent layout
+	textAreaHeight := availableHeight - usedHeight
+	if textAreaHeight < 5 {
+		textAreaHeight = 5 // Minimum height
+	}
+
+	// Update textarea size to use maximum available height
+	var bizTextArea string
+	if e.bizTextArea != nil {
+		e.bizTextArea.SetSize(e.width-4, textAreaHeight)
+		bizTextArea = e.bizTextArea.View()
+		// Apply theme styling to the textarea content
+		bizTextArea = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Text()).Render(bizTextArea)
+	} else {
+		bizTextArea = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Text()).Render("TextArea not available")
 	}
 
 	content := strings.Join([]string{
