@@ -58,6 +58,10 @@ type ScenarioEditor struct {
 	bizViewport *Viewport
 	bizTextArea *TextArea
 
+	// Scenario editing
+	scenarioTextArea        *TextArea
+	expectedOutcomeTextArea *TextArea
+
 	// File management
 	filePath string // path to .rogue/scenarios.json
 
@@ -100,6 +104,15 @@ func NewScenarioEditor() ScenarioEditor {
 	ta.ApplyTheme(theme.CurrentTheme()) // Apply current theme
 	editor.bizTextArea = &ta
 
+	// Initialize scenario editing TextAreas
+	scenTA := NewTextArea(9997, 80, 8) // Scenario text area
+	scenTA.ApplyTheme(theme.CurrentTheme())
+	editor.scenarioTextArea = &scenTA
+
+	outTA := NewTextArea(9996, 80, 8) // Expected outcome text area
+	outTA.ApplyTheme(theme.CurrentTheme())
+	editor.expectedOutcomeTextArea = &outTA
+
 	// Discover scenarios.json location and load
 	editor.filePath = discoverScenariosFile()
 	_ = editor.loadScenarios()
@@ -128,6 +141,14 @@ func (e *ScenarioEditor) SetSize(width, height int) {
 		// Size will be set dynamically in renderBusinessContextView
 		// Just update width here
 		e.bizTextArea.SetSize(width-4, e.bizTextArea.Height)
+	}
+
+	// Update scenario editing TextAreas size
+	if e.scenarioTextArea != nil {
+		e.scenarioTextArea.SetSize(width-4, 8) // Height will be set dynamically in renderEditView
+	}
+	if e.expectedOutcomeTextArea != nil {
+		e.expectedOutcomeTextArea.SetSize(width-4, 8) // Height will be set dynamically in renderEditView
 	}
 }
 
@@ -227,9 +248,22 @@ func (e ScenarioEditor) handleListMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 		e.mode = EditMode
 		e.editing = e.scenarios[idx]
 		e.currentField = 0
-		e.cursorPos = len(e.editing.Scenario)
 		e.errorMsg = ""
 		e.infoMsg = ""
+
+		// Set up TextAreas with current values
+		if e.scenarioTextArea != nil {
+			e.scenarioTextArea.SetValue(e.editing.Scenario)
+			e.scenarioTextArea.Focus()
+		}
+		if e.expectedOutcomeTextArea != nil {
+			outVal := ""
+			if e.editing.ExpectedOutcome != nil {
+				outVal = *e.editing.ExpectedOutcome
+			}
+			e.expectedOutcomeTextArea.SetValue(outVal)
+			e.expectedOutcomeTextArea.Blur()
+		}
 		return e, nil
 
 	case "n", "a":
@@ -237,9 +271,18 @@ func (e ScenarioEditor) handleListMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 		e.mode = AddMode
 		e.editing = ScenarioData{ScenarioType: "policy"}
 		e.currentField = 0
-		e.cursorPos = 0
 		e.errorMsg = ""
 		e.infoMsg = ""
+
+		// Set up TextAreas for new scenario
+		if e.scenarioTextArea != nil {
+			e.scenarioTextArea.SetValue("")
+			e.scenarioTextArea.Focus()
+		}
+		if e.expectedOutcomeTextArea != nil {
+			e.expectedOutcomeTextArea.SetValue("")
+			e.expectedOutcomeTextArea.Blur()
+		}
 		return e, nil
 
 	case "d", "delete":
@@ -325,97 +368,29 @@ func (e ScenarioEditor) handleEditMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 		e.mode = ListMode
 		e.errorMsg = ""
 		e.infoMsg = ""
+		if e.scenarioTextArea != nil {
+			e.scenarioTextArea.Blur()
+		}
+		if e.expectedOutcomeTextArea != nil {
+			e.expectedOutcomeTextArea.Blur()
+		}
 		return e, nil
 
-	case "down":
+	case "tab", "down":
+		// Switch between fields
 		e.currentField = (e.currentField + 1) % e.numFields()
-		e.resetCursorForField()
+		e.updateTextAreaFocus()
 		return e, nil
 
-	case "up":
+	case "shift+tab", "up":
+		// Switch between fields (reverse)
 		e.currentField = (e.currentField - 1 + e.numFields()) % e.numFields()
-		e.resetCursorForField()
-		return e, nil
-
-	case "left":
-		if e.currentField == 0 { // scenario_type toggle
-			if e.editing.ScenarioType == "prompt_injection" {
-				e.editing.ScenarioType = "policy"
-				// Clear dataset fields for policy
-				e.editing.Dataset = nil
-				e.editing.DatasetSampleSize = nil
-			}
-			return e, nil
-		}
-		if e.cursorPos > 0 && e.isTextField(e.currentField) {
-			e.cursorPos--
-		}
-		return e, nil
-
-	case "right":
-		if e.currentField == 0 { // scenario_type toggle
-			if e.editing.ScenarioType == "policy" {
-				e.editing.ScenarioType = "prompt_injection"
-			}
-			return e, nil
-		}
-		if e.isTextField(e.currentField) {
-			fieldLen := len(e.currentFieldText())
-			if e.cursorPos < fieldLen {
-				e.cursorPos++
-			}
-		}
-		return e, nil
-
-	case "backspace":
-		if !e.isTextField(e.currentField) {
-			return e, nil
-		}
-		txt := e.currentFieldText()
-		if e.cursorPos > 0 && len(txt) > 0 {
-			newTxt := txt[:e.cursorPos-1] + txt[e.cursorPos:]
-			e.setCurrentFieldText(newTxt)
-			e.cursorPos--
-		}
-		return e, nil
-
-	case "delete":
-		if !e.isTextField(e.currentField) {
-			return e, nil
-		}
-		txt := e.currentFieldText()
-		if e.cursorPos < len(txt) {
-			newTxt := txt[:e.cursorPos] + txt[e.cursorPos+1:]
-			e.setCurrentFieldText(newTxt)
-		}
-		return e, nil
-
-	case "enter":
-		// If Save button is focused, save; otherwise insert newline at cursor
-		if e.currentField >= 2 {
-			if err := e.validateEditing(); err != nil {
-				e.errorMsg = err.Error()
-				return e, nil
-			}
-			e.applyEditing()
-			if err := e.saveScenarios(); err != nil {
-				e.errorMsg = fmt.Sprintf("Save error: %v", err)
-				return e, nil
-			}
-			e.mode = ListMode
-			e.rebuildFilter()
-			e.infoMsg = "Scenario saved"
-			return e, func() tea.Msg { return ScenarioEditorMsg{Action: "saved"} }
-		}
-		// Insert newline into current text field
-		txt := e.currentFieldText()
-		newTxt := txt[:e.cursorPos] + "\n" + txt[e.cursorPos:]
-		e.setCurrentFieldText(newTxt)
-		e.cursorPos++
+		e.updateTextAreaFocus()
 		return e, nil
 
 	case "ctrl+s":
 		// Save via shortcut
+		e.syncTextAreasToEditing()
 		if err := e.validateEditing(); err != nil {
 			e.errorMsg = err.Error()
 			return e, nil
@@ -428,21 +403,51 @@ func (e ScenarioEditor) handleEditMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 		e.mode = ListMode
 		e.rebuildFilter()
 		e.infoMsg = "Scenario saved"
+		if e.scenarioTextArea != nil {
+			e.scenarioTextArea.Blur()
+		}
+		if e.expectedOutcomeTextArea != nil {
+			e.expectedOutcomeTextArea.Blur()
+		}
 		return e, func() tea.Msg { return ScenarioEditorMsg{Action: "saved"} }
 
 	default:
-		// Character input for text fields
-		if !e.isTextField(e.currentField) {
-			return e, nil
+		// Pass input to the currently focused TextArea
+		var cmd tea.Cmd
+		if e.currentField == 0 && e.scenarioTextArea != nil {
+			updatedTextArea, taCmd := e.scenarioTextArea.Update(msg)
+			*e.scenarioTextArea = *updatedTextArea
+			cmd = taCmd
+		} else if e.currentField == 1 && e.expectedOutcomeTextArea != nil {
+			updatedTextArea, taCmd := e.expectedOutcomeTextArea.Update(msg)
+			*e.expectedOutcomeTextArea = *updatedTextArea
+			cmd = taCmd
+		} else if e.currentField >= 2 {
+			// Save button focused, handle enter key
+			if msg.String() == "enter" {
+				e.syncTextAreasToEditing()
+				if err := e.validateEditing(); err != nil {
+					e.errorMsg = err.Error()
+					return e, nil
+				}
+				e.applyEditing()
+				if err := e.saveScenarios(); err != nil {
+					e.errorMsg = fmt.Sprintf("Save error: %v", err)
+					return e, nil
+				}
+				e.mode = ListMode
+				e.rebuildFilter()
+				e.infoMsg = "Scenario saved"
+				if e.scenarioTextArea != nil {
+					e.scenarioTextArea.Blur()
+				}
+				if e.expectedOutcomeTextArea != nil {
+					e.expectedOutcomeTextArea.Blur()
+				}
+				return e, func() tea.Msg { return ScenarioEditorMsg{Action: "saved"} }
+			}
 		}
-		s := msg.String()
-		if len(s) == 1 {
-			txt := e.currentFieldText()
-			newTxt := txt[:e.cursorPos] + s + txt[e.cursorPos:]
-			e.setCurrentFieldText(newTxt)
-			e.cursorPos++
-		}
-		return e, nil
+		return e, cmd
 	}
 }
 
@@ -451,41 +456,37 @@ func (e *ScenarioEditor) numFields() int {
 	return 3
 }
 
-func (e *ScenarioEditor) isTextField(field int) bool {
-	// Both fields are text inputs
-	return true
-}
-
-func (e *ScenarioEditor) currentFieldText() string {
-	switch e.currentField {
-	case 0:
-		return e.editing.Scenario
-	case 1:
-		if e.editing.ExpectedOutcome == nil {
-			return ""
+// updateTextAreaFocus manages focus between TextAreas based on currentField
+func (e *ScenarioEditor) updateTextAreaFocus() {
+	if e.scenarioTextArea != nil {
+		if e.currentField == 0 {
+			e.scenarioTextArea.Focus()
+		} else {
+			e.scenarioTextArea.Blur()
 		}
-		return *e.editing.ExpectedOutcome
-	default:
-		return ""
+	}
+	if e.expectedOutcomeTextArea != nil {
+		if e.currentField == 1 {
+			e.expectedOutcomeTextArea.Focus()
+		} else {
+			e.expectedOutcomeTextArea.Blur()
+		}
 	}
 }
 
-func (e *ScenarioEditor) setCurrentFieldText(val string) {
-	switch e.currentField {
-	case 0:
-		e.editing.Scenario = val
-	case 1:
-		if val == "" {
+// syncTextAreasToEditing copies TextArea contents to the editing struct
+func (e *ScenarioEditor) syncTextAreasToEditing() {
+	if e.scenarioTextArea != nil {
+		e.editing.Scenario = e.scenarioTextArea.GetValue()
+	}
+	if e.expectedOutcomeTextArea != nil {
+		outVal := e.expectedOutcomeTextArea.GetValue()
+		if outVal == "" {
 			e.editing.ExpectedOutcome = nil
 		} else {
-			v := val
-			e.editing.ExpectedOutcome = &v
+			e.editing.ExpectedOutcome = &outVal
 		}
 	}
-}
-
-func (e *ScenarioEditor) resetCursorForField() {
-	e.cursorPos = len(e.currentFieldText())
 }
 
 // Validation based on Python model rules (policy-only editing)
@@ -823,31 +824,58 @@ func (e ScenarioEditor) renderEditView(t theme.Theme) string {
 	}
 	title := lipgloss.NewStyle().Background(t.Background()).Foreground(t.Primary()).Bold(true).Render("\n" + modeTitle)
 
-	// Field 0: scenario (multiline, subtle style)
+	// Calculate available height for TextAreas
+	usedHeight := 0
+	usedHeight += 2 // title (1 line) + blank line after title
+	usedHeight += 2 // scenario label + blank line
+	usedHeight += 2 // expected outcome label + blank line
+	usedHeight += 1 // save label
+	usedHeight += 2 // blank lines around help
+	usedHeight += 1 // help line
+	usedHeight += 1 // error line (if present)
+	usedHeight += 5 // extra buffer to prevent footer overflow
+
+	availableHeight := e.height - 1                      // -1 for parent layout
+	textAreaHeight := (availableHeight - usedHeight) / 2 // Split between two TextAreas
+	if textAreaHeight < 4 {
+		textAreaHeight = 4 // Minimum height
+	}
+
+	// Field 0: scenario TextArea
 	scenLabel := "Scenario"
 	if e.currentField == 0 {
 		scenLabel = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Primary()).Bold(true).Render("▶ Scenario")
 	}
-	scenText := renderTextArea(t, e.width-4, e.currentField == 0, e.editing.Scenario, e.cursorPos)
 
-	// Field 1: expected_outcome (multiline, subtle style)
+	var scenText string
+	if e.scenarioTextArea != nil {
+		e.scenarioTextArea.SetSize(e.width-4, textAreaHeight)
+		scenText = e.scenarioTextArea.View()
+	} else {
+		scenText = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Text()).Render("TextArea not available")
+	}
+
+	// Field 1: expected_outcome TextArea
 	outLabel := "Expected Outcome"
 	if e.currentField == 1 {
 		outLabel = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Primary()).Bold(true).Render("▶ Expected Outcome")
 	}
-	outVal := ""
-	if e.editing.ExpectedOutcome != nil {
-		outVal = *e.editing.ExpectedOutcome
-	}
-	outText := renderTextArea(t, e.width-4, e.currentField == 1, outVal, e.cursorPos)
 
-	// Simple Save button hint: third focus index (2)
+	var outText string
+	if e.expectedOutcomeTextArea != nil {
+		e.expectedOutcomeTextArea.SetSize(e.width-4, textAreaHeight)
+		outText = e.expectedOutcomeTextArea.View()
+	} else {
+		outText = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Text()).Render("TextArea not available")
+	}
+
+	// Save button hint
 	saveLabel := "Save"
 	if e.currentField >= 2 {
 		saveLabel = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Primary()).Bold(true).Render("▶ Save")
 	}
 
-	help := lipgloss.NewStyle().Background(t.Background()).Foreground(t.TextMuted()).Render("↑/↓ switch fields  ←/→ move cursor  Enter newline/Save  Ctrl+S save  Esc cancel")
+	help := lipgloss.NewStyle().Background(t.Background()).Foreground(t.TextMuted()).Render("Tab/↑↓ switch fields  Ctrl+S save  Esc cancel")
 	errorLine := ""
 	if e.errorMsg != "" {
 		errorLine = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Error()).Render("⚠ " + e.errorMsg)
@@ -861,8 +889,7 @@ func (e ScenarioEditor) renderEditView(t theme.Theme) string {
 	parts = append(parts, "", saveLabel)
 	parts = append(parts, "", help, errorLine)
 
-	content := strings.Join(parts, "\n\n")
-	// Less intrusive: no border/background; fill width
+	content := strings.Join(parts, "\n")
 	return content
 }
 
