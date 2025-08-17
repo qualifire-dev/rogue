@@ -88,7 +88,6 @@ func (m Model) renderNewEvaluation() string {
 	// Prepare field values
 	agent := m.evalState.AgentURL
 	judge := m.evalState.JudgeModel
-	parallel := fmt.Sprintf("%d", m.evalState.ParallelRuns)
 	deep := "❌"
 	if m.evalState.DeepTest {
 		deep = "✅"
@@ -156,7 +155,6 @@ func (m Model) renderNewEvaluation() string {
 	formSection := lipgloss.JoinVertical(lipgloss.Left,
 		renderField(0, "Agent URL:", agent),
 		renderField(1, "Judge LLM:", judge),
-		renderField(2, "Parallel Runs:", parallel),
 		renderField(3, "Deep Test:", deep),
 	)
 
