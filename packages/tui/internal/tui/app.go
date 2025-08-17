@@ -160,6 +160,9 @@ type Model struct {
 
 	// /eval state
 	evalState *EvaluationViewState
+
+	// Configuration state
+	configState *ConfigState
 }
 
 // Evaluation represents an evaluation
@@ -183,6 +186,16 @@ type Config struct {
 	APIKeys          map[string]string `toml:"api_keys"`
 	SelectedModel    string            `toml:"selected_model"`
 	SelectedProvider string            `toml:"selected_provider"`
+}
+
+// ConfigState represents the configuration screen state
+type ConfigState struct {
+	ActiveField ConfigField
+	ServerURL   string
+	CursorPos   int
+	ThemeIndex  int
+	IsEditing   bool
+	HasChanges  bool
 }
 
 // NewApp creates a new TUI application
@@ -362,6 +375,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.currentScreen = ScenariosScreen
 		case "configuration":
 			m.currentScreen = ConfigurationScreen
+			// Initialize config state when entering configuration screen
+			m.configState = &ConfigState{
+				ActiveField: ConfigFieldServerURL,
+				ServerURL:   m.config.ServerURL,
+				CursorPos:   0,
+				ThemeIndex:  m.findCurrentThemeIndex(),
+				IsEditing:   false,
+				HasChanges:  false,
+			}
 		case "help":
 			m.currentScreen = HelpScreen
 		case "dialog_info":
@@ -571,6 +593,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "ctrl+g":
 			m.currentScreen = ConfigurationScreen
+			// Initialize config state when entering configuration screen
+			m.configState = &ConfigState{
+				ActiveField: ConfigFieldServerURL,
+				ServerURL:   m.config.ServerURL,
+				CursorPos:   0,
+				ThemeIndex:  m.findCurrentThemeIndex(),
+				IsEditing:   false,
+				HasChanges:  false,
+			}
 			return m, nil
 
 		case "ctrl+h", "?":
@@ -613,6 +644,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Let dialogs handle escape - this shouldn't be reached due to order, but just in case
 				return m, nil
 			}
+			if m.currentScreen == ConfigurationScreen && m.configState != nil {
+				if m.configState.IsEditing {
+					// Cancel editing and revert changes
+					m.configState.IsEditing = false
+					m.configState.ServerURL = m.config.ServerURL
+					m.configState.CursorPos = 0
+					m.configState.HasChanges = false
+					return m, nil
+				} else {
+					// Exit configuration screen
+					m.currentScreen = DashboardScreen
+					m.configState = nil
+					m.commandInput.SetFocus(true)
+					m.commandInput.SetValue("")
+					return m, nil
+				}
+			}
 			if m.currentScreen == ScenariosScreen {
 				// Let the editor consume ESC first
 				m.scenarioEditor, cmd = m.scenarioEditor.Update(msg)
@@ -635,6 +683,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					cmds = append(cmds, cmd)
 				}
 				return m, tea.Batch(cmds...)
+			}
+			// Handle configuration screen enter
+			if m.currentScreen == ConfigurationScreen && m.configState != nil {
+				if m.configState.IsEditing {
+					// Save changes
+					m.handleConfigSave()
+					return m, nil
+				} else {
+					// Start editing the active field
+					m.configState.IsEditing = true
+					if m.configState.ActiveField == ConfigFieldServerURL {
+						m.configState.CursorPos = len(m.configState.ServerURL)
+					}
+					return m, nil
+				}
 			}
 			// Forward enter to the active screen if needed
 			if m.currentScreen == ScenariosScreen {
@@ -666,6 +729,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		default:
+			// Handle configuration screen input
+			if m.currentScreen == ConfigurationScreen && m.configState != nil {
+				return m.handleConfigInput(msg)
+			}
+
 			// Handle scenario editor input when on scenarios screen
 			if m.currentScreen == ScenariosScreen {
 				m.scenarioEditor, cmd = m.scenarioEditor.Update(msg)
@@ -1021,4 +1089,132 @@ func (m *Model) loadConfig() error {
 	}
 
 	return nil
+}
+
+// findCurrentThemeIndex returns the index of the current theme in the available themes list
+func (m *Model) findCurrentThemeIndex() int {
+	currentTheme := theme.CurrentThemeName()
+	availableThemes := theme.AvailableThemes()
+	for i, themeName := range availableThemes {
+		if themeName == currentTheme {
+			return i
+		}
+	}
+	return 0 // Default to first theme if not found
+}
+
+// handleConfigSave saves configuration changes
+func (m *Model) handleConfigSave() {
+	if m.configState == nil {
+		return
+	}
+
+	// Save server URL if it changed
+	if m.configState.ActiveField == ConfigFieldServerURL {
+		m.config.ServerURL = m.configState.ServerURL
+		m.configState.HasChanges = true
+	}
+
+	// Save theme if it changed
+	if m.configState.ActiveField == ConfigFieldTheme {
+		availableThemes := theme.AvailableThemes()
+		if m.configState.ThemeIndex >= 0 && m.configState.ThemeIndex < len(availableThemes) {
+			selectedTheme := availableThemes[m.configState.ThemeIndex]
+			if selectedTheme != theme.CurrentThemeName() {
+				m.config.Theme = selectedTheme
+				theme.SetTheme(selectedTheme)
+				m.configState.HasChanges = true
+			}
+		}
+	}
+
+	// Exit editing mode
+	m.configState.IsEditing = false
+
+	// Save to file if there were changes
+	if m.configState.HasChanges {
+		m.saveConfig()
+		m.configState.HasChanges = false
+	}
+}
+
+// handleConfigInput handles keyboard input for the configuration screen
+func (m Model) handleConfigInput(msg tea.KeyMsg) (Model, tea.Cmd) {
+	if m.configState == nil {
+		return m, nil
+	}
+
+	switch msg.String() {
+	case "up":
+		if m.configState.IsEditing && m.configState.ActiveField == ConfigFieldTheme {
+			// Navigate theme options
+			availableThemes := theme.AvailableThemes()
+			if m.configState.ThemeIndex > 0 {
+				m.configState.ThemeIndex--
+			} else {
+				m.configState.ThemeIndex = len(availableThemes) - 1
+			}
+		} else if !m.configState.IsEditing {
+			// Navigate between fields
+			if m.configState.ActiveField == ConfigFieldTheme {
+				m.configState.ActiveField = ConfigFieldServerURL
+			}
+		}
+		return m, nil
+
+	case "down":
+		if m.configState.IsEditing && m.configState.ActiveField == ConfigFieldTheme {
+			// Navigate theme options
+			availableThemes := theme.AvailableThemes()
+			if m.configState.ThemeIndex < len(availableThemes)-1 {
+				m.configState.ThemeIndex++
+			} else {
+				m.configState.ThemeIndex = 0
+			}
+		} else if !m.configState.IsEditing {
+			// Navigate between fields
+			if m.configState.ActiveField == ConfigFieldServerURL {
+				m.configState.ActiveField = ConfigFieldTheme
+			}
+		}
+		return m, nil
+
+	case "left":
+		if m.configState.IsEditing && m.configState.ActiveField == ConfigFieldServerURL {
+			if m.configState.CursorPos > 0 {
+				m.configState.CursorPos--
+			}
+		}
+		return m, nil
+
+	case "right":
+		if m.configState.IsEditing && m.configState.ActiveField == ConfigFieldServerURL {
+			if m.configState.CursorPos < len(m.configState.ServerURL) {
+				m.configState.CursorPos++
+			}
+		}
+		return m, nil
+
+	case "backspace":
+		if m.configState.IsEditing && m.configState.ActiveField == ConfigFieldServerURL {
+			if m.configState.CursorPos > 0 && len(m.configState.ServerURL) > 0 {
+				m.configState.ServerURL = m.configState.ServerURL[:m.configState.CursorPos-1] +
+					m.configState.ServerURL[m.configState.CursorPos:]
+				m.configState.CursorPos--
+			}
+		}
+		return m, nil
+
+	default:
+		// Handle character input for server URL
+		if m.configState.IsEditing && m.configState.ActiveField == ConfigFieldServerURL {
+			if len(msg.String()) == 1 {
+				char := msg.String()
+				m.configState.ServerURL = m.configState.ServerURL[:m.configState.CursorPos] +
+					char + m.configState.ServerURL[m.configState.CursorPos:]
+				m.configState.CursorPos++
+			}
+		}
+		return m, nil
+	}
 }
