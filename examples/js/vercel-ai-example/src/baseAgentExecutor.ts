@@ -2,7 +2,7 @@ import { Message, Task, TaskState, TaskStatusUpdateEvent } from '@a2a-js/sdk';
 import { AgentExecutor, ExecutionEventBus, RequestContext } from '@a2a-js/sdk/server';
 
 import { v4 as uuidv4 } from 'uuid';
-import { VercelAgent } from './agent';
+import { VercelAgent } from './agent.js';
 
 // Store for conversation contexts
 const contexts = new Map<string, Message[]>();
@@ -199,19 +199,18 @@ export abstract class BaseAgentExecutor implements AgentExecutor {
     try {
       // Run the agent - Can return a stream or a string.
       const response: ReadableStream<string> = await this.runAgent(historyForAgent);
+      const aggregatedResponse: string = await this.handleStreamResponse(eventBus, taskId, contextId, existingTask, userMessage, response);
+
 
       // Create the agent's final message for the history - we will fill the parts later
       const agentMessage: Message = {
         kind: 'message',
         role: 'agent',
         messageId: uuidv4(),
-        parts: [],  // We will fill this later
+        parts: [{ kind: 'text', text: aggregatedResponse }], 
         taskId: taskId,
         contextId: contextId,
       };
-
-      const aggregatedResponse: string = await this.handleStreamResponse(eventBus, taskId, contextId, existingTask, userMessage, response);
-      agentMessage.parts.push({ kind: 'text', text: aggregatedResponse });
 
       // Adding the message to the history
       this.addMessageToHistory(contextId, agentMessage);
