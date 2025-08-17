@@ -5,7 +5,7 @@ from loguru import logger
 from ..evaluator_agent.run_evaluator_agent import arun_evaluator_agent
 from ..models.config import AuthType
 from ..models.evaluation_result import (
-    EvaluationResults,
+    PolicyEvaluationResult,
 )
 from ..models.scenario import Scenarios
 
@@ -30,7 +30,7 @@ class ScenarioEvaluationService:
         self._scenarios = scenarios
         self._business_context = business_context
         self._deep_test_mode = deep_test_mode
-        self._results = EvaluationResults()
+        self._results = PolicyEvaluationResult()
 
     async def evaluate_scenarios(self) -> AsyncGenerator[tuple[str, Any], None]:
         logger.info(
@@ -82,7 +82,7 @@ class ScenarioEvaluationService:
                     results = data
                     if results and results.results:
                         logger.info(
-                            f"📊 Processing {len(results.results)} evaluation results"
+                            f"📊 Processing {len(results.results)} evaluation results",
                         )
                         for res in results.results:
                             self._results.add_result(res)
@@ -90,12 +90,12 @@ class ScenarioEvaluationService:
                         logger.warning("⚠️ Received results update but no results data")
                 else:  # it's a 'chat' or 'status' update
                     logger.debug(
-                        f"🔄 Forwarding {update_type} update: {str(data)[:50]}..."
+                        f"🔄 Forwarding {update_type} update: {str(data)[:50]}...",
                     )
                     yield update_type, data
 
             logger.info(
-                f"🏁 arun_evaluator_agent completed. Total updates: {update_count}"
+                f"🏁 arun_evaluator_agent completed. Total updates: {update_count}",
             )
 
         except Exception as e:
@@ -137,6 +137,6 @@ class ScenarioEvaluationService:
             (
                 "✅ ScenarioEvaluationService completed with "
                 f"{len(self._results.results)} total results"
-            )
+            ),
         )
         yield "done", self._results

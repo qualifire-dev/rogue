@@ -1,7 +1,6 @@
 name: "Run Tests"
 description: "Runs pytest"
 
-
 inputs:
   python-version:
     description: "Python version used for the test run. This is only used for output file naming to avoid conflicts."
@@ -12,7 +11,7 @@ runs:
   steps:
     - name: "Run tests"
       shell: bash
-      run: uv run --dev pytest --junitxml=test-results.xml --cov=rogue --cov-report=xml
+      run: source .venv/bin/activate && uv run --dev pytest --junitxml=test-results.xml --cov=rogue --cov-report=xml
 
     - name: "Upload Test Results"
       uses: actions/upload-artifact@v4

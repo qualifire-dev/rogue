@@ -1,40 +1,35 @@
 import json
-from typing import Optional, Any, Callable
+from typing import Any, Callable, Optional
 from uuid import uuid4
 
 from a2a.client import A2ACardResolver
-from a2a.types import (
-    Message,
-    MessageSendParams,
-    Role,
-    Part,
-    TextPart,
-    Task,
-)
+from a2a.types import Message, MessageSendParams, Part, Role, Task, TextPart
 from google.adk.agents import LlmAgent
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.models import LlmRequest, LlmResponse
-from google.adk.tools import FunctionTool, BaseTool, ToolContext
+from google.adk.tools import BaseTool, FunctionTool, ToolContext
 from google.genai import types
-
 from httpx import AsyncClient
 from loguru import logger
 from pydantic import ValidationError
 from pydantic_yaml import to_yaml_str
+from rogue_sdk.types import (
+    ChatHistory,
+    ChatMessage,
+    ConversationEvaluation,
+    EvaluationResult,
+    EvaluationResults,
+    Scenario,
+    Scenarios,
+    ScenarioType,
+)
 
 from ..common.agent_model_wrapper import get_llm_from_model
 from ..common.remote_agent_connection import (
-    RemoteAgentConnections,
     JSON_RPC_ERROR_TYPES,
+    RemoteAgentConnections,
 )
 from ..evaluator_agent.policy_evaluation import evaluate_policy
-from ..models.chat_history import ChatHistory, Message as HistoryMessage
-from ..models.evaluation_result import (
-    EvaluationResults,
-    ConversationEvaluation,
-    EvaluationResult,
-)
-from ..models.scenario import Scenarios, Scenario, ScenarioType
 
 FAST_MODE_AGENT_INSTRUCTIONS = """
 You are a scenario tester agent. Your task is to test the given scenarios against another agent and
@@ -159,20 +154,18 @@ class EvaluatorAgent:
         self,
         http_client: AsyncClient,
         evaluated_agent_address: str,
-        model: str,
+        judge_llm: str,
         scenarios: Scenarios,
         business_context: Optional[str],
-        llm_auth: Optional[str] = None,
+        judge_llm_auth: Optional[str] = None,
         debug: bool = False,
         chat_update_callback: Optional[Callable[[dict], None]] = None,
         deep_test_mode: bool = False,
-        judge_llm: str | None = None,
-        judge_llm_api_key: str | None = None,
     ) -> None:
         self._http_client = http_client
         self._evaluated_agent_address = evaluated_agent_address
-        self._model = model
-        self._llm_auth = llm_auth
+        self._judge_llm = judge_llm
+        self._judge_llm_auth = judge_llm_auth
         self._scenarios = scenarios
         self._evaluation_results: EvaluationResults = EvaluationResults()
         self.__evaluated_agent_client: RemoteAgentConnections | None = None
@@ -181,8 +174,6 @@ class EvaluatorAgent:
         self._business_context = business_context or ""
         self._chat_update_callback = chat_update_callback
         self._deep_test_mode = deep_test_mode
-        self._judge_llm = judge_llm
-        self._judge_llm_api_key = judge_llm_api_key
 
     async def _get_evaluated_agent_client(self) -> RemoteAgentConnections:
         logger.debug("_get_evaluated_agent - enter")
@@ -214,7 +205,7 @@ class EvaluatorAgent:
                 "deep_test_mode": self._deep_test_mode,
                 "scenario_count": len(self._scenarios.scenarios),
                 "agent_url": self._evaluated_agent_address,
-                "judge_llm": self._model,
+                "judge_llm": self._judge_llm,
                 "instructions_length": len(instructions),
             },
         )
@@ -224,11 +215,7 @@ class EvaluatorAgent:
             logger.info(
                 f"📋 Scenario {i + 1}: {scenario.scenario[:100]}...",
                 extra={
-                    "scenario_type": (
-                        scenario.scenario_type.value
-                        if scenario.scenario_type
-                        else "unknown"
-                    ),
+                    "scenario_type": scenario.scenario_type.value,
                     "expected_outcome": (
                         scenario.expected_outcome[:50] + "..."
                         if scenario.expected_outcome
@@ -240,7 +227,7 @@ class EvaluatorAgent:
         return LlmAgent(
             name="qualifire_agent_evaluator",
             description="An agent that evaluates test scenarios on other agents",
-            model=get_llm_from_model(self._model, self._llm_auth),
+            model=get_llm_from_model(self._judge_llm, self._judge_llm_auth),
             instruction=instructions,
             tools=[
                 FunctionTool(func=self._get_conversation_context_id),
@@ -305,9 +292,9 @@ class EvaluatorAgent:
     ) -> None:
         # Always log LLM requests to see what the judge is being asked
         logger.info(
-            f"🧠 LLM Request to {self._model}",
+            f"🧠 LLM Request to {self._judge_llm}",
             extra={
-                "model": self._model,
+                "judge_llm": self._judge_llm,
                 "agent_name": callback_context.agent_name,
                 "invocation_id": callback_context.invocation_id,
             },
@@ -357,7 +344,7 @@ class EvaluatorAgent:
                 model=self._judge_llm,
                 business_context=self._business_context,
                 expected_outcome=scenario.expected_outcome,
-                api_key=self._judge_llm_api_key,
+                api_key=self._judge_llm_auth,
             )
             return policy_evaluation_result.passed, policy_evaluation_result.reason
         elif scenario.scenario_type == ScenarioType.PROMPT_INJECTION:
@@ -400,7 +387,7 @@ class EvaluatorAgent:
                     self._context_id_to_chat_history.get(
                         context_id,
                         ChatHistory(),
-                    ).messages
+                    ).messages,
                 ),
                 "evaluation_passed (from agent)": evaluation_passed,
                 "reason (from agent)": reason,
@@ -448,7 +435,7 @@ class EvaluatorAgent:
                     messages=conversation_history,
                     passed=evaluation_passed,
                     reason=reason,
-                )
+                ),
             ],
             passed=evaluation_passed,
         )
@@ -462,6 +449,8 @@ class EvaluatorAgent:
     def _get_text_from_response(
         response: Task | Message | JSON_RPC_ERROR_TYPES,
     ) -> str | None:
+        logger.debug(f"_get_text_from_response {response}")
+
         def get_parts_text(parts: list[Part]) -> str:
             text = ""
             for p in parts:
@@ -478,6 +467,13 @@ class EvaluatorAgent:
             return get_parts_text(response.parts)
         elif isinstance(response, Task):
             if response.artifacts is None:
+                if (
+                    response.status is not None
+                    and response.status.message is not None
+                    and response.status.message.parts is not None
+                ):
+                    logger.debug("Returning text from task status message")
+                    return get_parts_text(response.status.message.parts)
                 return None
 
             artifacts_text = ""
@@ -526,7 +522,7 @@ class EvaluatorAgent:
                 self._context_id_to_chat_history[context_id] = ChatHistory()
 
             self._context_id_to_chat_history[context_id].add_message(
-                HistoryMessage(
+                ChatMessage(
                     role="user",
                     content=message,
                 ),
@@ -543,7 +539,7 @@ class EvaluatorAgent:
                             Part(
                                 root=TextPart(
                                     text=message,
-                                )
+                                ),
                             ),
                         ],
                     ),
@@ -558,7 +554,7 @@ class EvaluatorAgent:
                 self._get_text_from_response(response) or "Not a text response"
             )
             self._context_id_to_chat_history[context_id].add_message(
-                HistoryMessage(
+                ChatMessage(
                     role="assistant",
                     content=agent_response_text,
                 ),

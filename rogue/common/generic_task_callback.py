@@ -38,11 +38,17 @@ class GenericTaskUpdateCallback:
                 status=event.status,
             )
         else:
-            task.status = event.status
             if task.metadata is None:
                 task.metadata = event.metadata
             elif event.metadata is not None:
                 task.metadata |= event.metadata
+
+            if task.status is None:
+                task.status = event.status
+            elif task.status.message is None:
+                task.status.message = event.status.message
+            elif event.status.message is not None:
+                task.status.message.parts.extend(event.status.message.parts)
 
         self._task_id_to_task[event.taskId] = task
         return task

@@ -1,13 +1,13 @@
 import asyncio
-import gradio as gr
 
-from ...common.workdir_utils import dump_scenarios, dump_business_context
-from ...services.llm_service import LLMService
-from sdks.python.rogue_client import RogueSDK, RogueClientConfig
+import gradio as gr
+from loguru import logger
+from rogue_sdk import RogueClientConfig, RogueSDK
+
+from ...common.workdir_utils import dump_business_context, dump_scenarios
 
 
 def create_scenario_generator_screen(shared_state: gr.State, tabs_component: gr.Tabs):
-
     with gr.Column():
         gr.Markdown("## Scenario Generation")
         business_context_display = gr.Textbox(
@@ -25,6 +25,7 @@ def create_scenario_generator_screen(shared_state: gr.State, tabs_component: gr.
         if not current_context:
             gr.Warning("Business context is empty. Please finalize it first.")
             return state, None, gr.update()
+        logger.info("Generating scenarios")
 
         # Update the shared state with the potentially edited context
         state["business_context"] = current_context
@@ -36,29 +37,21 @@ def create_scenario_generator_screen(shared_state: gr.State, tabs_component: gr.
 
         async def generate_scenarios_async():
             # Try SDK first (server-based)
+            sdk_config = RogueClientConfig(
+                base_url="http://localhost:8000",
+                timeout=600.0,
+            )
+            sdk = RogueSDK(sdk_config)
             try:
-                sdk_config = RogueClientConfig(
-                    base_url="http://localhost:8000",
-                    timeout=600.0,
-                )
-                sdk = RogueSDK(sdk_config)
-
-                scenarios = await sdk.generate_scenarios(
+                return await sdk.generate_scenarios(
                     business_context=current_context,
                     model=service_llm,
                     api_key=api_key,
                 )
-
-                await sdk.close()
-                return scenarios
             except Exception:
-                # Fallback to legacy LLMService
-                llm_service = LLMService()
-                return llm_service.generate_scenarios(
-                    service_llm,
-                    current_context,
-                    llm_provider_api_key=api_key,
-                )
+                logger.exception("Failed to generate scenarios from LLM response.")
+            finally:
+                await sdk.close()
 
         try:
             scenarios = asyncio.run(generate_scenarios_async())
@@ -68,7 +61,8 @@ def create_scenario_generator_screen(shared_state: gr.State, tabs_component: gr.
             return {
                 shared_state: state,
                 scenarios_output: scenarios.model_dump_json(
-                    indent=2, exclude_none=True
+                    indent=2,
+                    exclude_none=True,
                 ),
                 tabs_component: gr.update(selected="run"),
             }

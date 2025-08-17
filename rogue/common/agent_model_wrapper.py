@@ -1,15 +1,9 @@
-import os
 from functools import lru_cache
 from typing import Optional
 
-import certifi
 from google.adk.models import LLMRegistry, BaseLlm
 from google.adk.models.lite_llm import LiteLlm
 from loguru import logger
-
-# Set SSL certificate environment variables globally for litellm
-os.environ["SSL_CERT_FILE"] = certifi.where()
-os.environ["REQUESTS_CA_BUNDLE"] = certifi.where()
 
 
 @lru_cache()

@@ -62,6 +62,7 @@ drizzle/
 __pycache__/
 *.egg-info/
 .coverage
+dist/
 
 # e2e test logs
 e2e_log.log
@@ -86,7 +87,7 @@ dev-debug.log
 tasks.json
 tasks/ 
 
-# adk
+dist/
 .adk/
 **/.rogue
 bin/

@@ -2,13 +2,7 @@ from typing import Optional
 
 from litellm import completion
 from loguru import logger
-
-from sdks.python.rogue_client.types import (
-    EvaluationResults,
-    Scenario,
-    ScenarioType,
-    Scenarios,
-)
+from rogue_sdk.types import EvaluationResults, Scenario, Scenarios, ScenarioType
 
 SCENARIO_GENERATION_SYSTEM_PROMPT = """
 # Test Scenario Designer
@@ -137,7 +131,7 @@ STATIC_SCENARIOS = [
         scenario_type=ScenarioType.PROMPT_INJECTION,
         dataset="qualifire/prompt-injections-benchmark",
         dataset_sample_size=10,
-    )
+    ),
 ]
 
 

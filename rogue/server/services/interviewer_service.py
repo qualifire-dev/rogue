@@ -1,3 +1,5 @@
+from typing import Any, Dict, Iterator
+
 from litellm import completion
 
 INTERVIEWER_SYSTEM_PROMPT = """
@@ -105,3 +107,11 @@ class InterviewerService:
 
         except Exception as e:
             return f"An error occurred: {e}"
+
+    def count_user_messages(self) -> int:
+        return sum(1 for msg in self._messages if msg["role"] == "user")
+
+    def iter_messages(self, include_system: bool = False) -> Iterator[Dict[str, Any]]:
+        return (
+            msg for msg in self._messages if include_system or msg["role"] != "system"
+        )

@@ -1,10 +1,11 @@
 import asyncio
-import gradio as gr
 from typing import List
 
+import gradio as gr
+from loguru import logger
+from rogue_sdk import RogueClientConfig, RogueSDK
+
 from ...common.workdir_utils import dump_business_context
-from ...services.interviewer_service import InterviewerService
-from sdks.python.rogue_client import RogueSDK, RogueClientConfig
 
 
 def create_interviewer_screen(
@@ -15,7 +16,7 @@ def create_interviewer_screen(
         gr.Markdown("## AI-Powered Interviewer")
         gr.Markdown(
             "Answer up to 5 questions to help us understand your agent's "
-            "business use case."
+            "business use case.",
         )
 
         chatbot = gr.Chatbot(height=400, label="Interviewer", type="tuples")
@@ -34,13 +35,13 @@ def create_interviewer_screen(
 
             async def handle_interview_message():
                 # Try SDK first (server-based)
-                try:
-                    sdk_config = RogueClientConfig(
-                        base_url="http://localhost:8000",
-                        timeout=600.0,
-                    )
-                    sdk = RogueSDK(sdk_config)
+                sdk_config = RogueClientConfig(
+                    base_url="http://localhost:8000",  # TODO! Make this configurable
+                    timeout=600.0,
+                )
+                sdk = RogueSDK(sdk_config)
 
+                try:
                     # Get or create interview session
                     if "interview_session_id" not in state:
                         # Start new interview session
@@ -51,25 +52,16 @@ def create_interviewer_screen(
                         state["interview_session_id"] = session.session_id
 
                     # Send message and get response
-                    response, is_complete, message_count = (
-                        await sdk.send_interview_message(
-                            session_id=state["interview_session_id"],
-                            message=message,
-                        )
+                    response = await sdk.send_interview_message(
+                        session_id=state["interview_session_id"],
+                        message=message,
                     )
 
-                    await sdk.close()
-                    return response
-
+                    return response.response
                 except Exception:
-                    # Fallback to legacy InterviewerService
-                    if "interviewer_service" not in state:
-                        state["interviewer_service"] = InterviewerService(
-                            model=service_llm,
-                            llm_provider_api_key=api_key,
-                        )
-                    interviewer_service = state["interviewer_service"]
-                    return interviewer_service.send_message(message)
+                    logger.exception("Failed to send interview message")
+                finally:
+                    await sdk.close()
 
             # Run async function in sync context
             bot_message = asyncio.run(handle_interview_message())
@@ -94,7 +86,7 @@ def create_interviewer_screen(
                 "Hi! We'll conduct a short interview to understand "
                 "your agent's business context. Please start be describing"
                 " the Business workflow and the user flow.",
-            ]
+            ],
         ]
 
         user_input.submit(

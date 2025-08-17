@@ -1,12 +1,12 @@
 import pytest
-
-from rogue.models.chat_history import ChatHistory, Message
-from rogue.models.evaluation_result import (
-    EvaluationResults,
+from rogue_sdk.types import (
+    ChatHistory,
+    ChatMessage,
     ConversationEvaluation,
     EvaluationResult,
+    EvaluationResults,
+    Scenario,
 )
-from rogue.models.scenario import Scenario
 
 
 class TestEvaluationResults:
@@ -14,23 +14,23 @@ class TestEvaluationResults:
     scenario_2 = Scenario(scenario="Scenario 2")
 
     conversation_1_passed = ConversationEvaluation(
-        messages=ChatHistory(messages=[Message(role="user", content="message 1")]),
+        messages=ChatHistory(messages=[ChatMessage(role="user", content="message 1")]),
         passed=True,
         reason="reason",
     )
     conversation_2_passed = ConversationEvaluation(
-        messages=ChatHistory(messages=[Message(role="user", content="message 2")]),
+        messages=ChatHistory(messages=[ChatMessage(role="user", content="message 2")]),
         passed=True,
         reason="reason",
     )
 
     conversation_1_failed = ConversationEvaluation(
-        messages=ChatHistory(messages=[Message(role="user", content="message 1")]),
+        messages=ChatHistory(messages=[ChatMessage(role="user", content="message 1")]),
         passed=False,
         reason="reason",
     )
     conversation_2_failed = ConversationEvaluation(
-        messages=ChatHistory(messages=[Message(role="user", content="message 2")]),
+        messages=ChatHistory(messages=[ChatMessage(role="user", content="message 2")]),
         passed=False,
         reason="reason",
     )

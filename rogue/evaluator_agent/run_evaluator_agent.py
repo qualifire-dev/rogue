@@ -1,29 +1,17 @@
 import asyncio
-import os
 from asyncio import Queue
-from typing import AsyncGenerator, Any
+from typing import Any, AsyncGenerator
 
-import certifi
-from a2a.types import (
-    AgentCapabilities,
-    AgentCard,
-    AgentSkill,
-)
+from a2a.types import AgentCapabilities, AgentCard, AgentSkill
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService, Session
 from google.genai import types
 from httpx import AsyncClient
 from loguru import logger
+from rogue_sdk.types import AuthType, EvaluationResults, Scenarios
 
-from .evaluator_agent import EvaluatorAgent
 from ..common.agent_sessions import create_session
-from ..models.config import AuthType, get_auth_header
-from ..models.evaluation_result import EvaluationResults
-from ..models.scenario import Scenarios
-
-# Set SSL certificate environment variables globally for litellm
-os.environ["SSL_CERT_FILE"] = certifi.where()
-os.environ["REQUESTS_CA_BUNDLE"] = certifi.where()
+from .evaluator_agent import EvaluatorAgent
 
 
 def _get_agent_card(host: str, port: int):
@@ -52,7 +40,10 @@ async def _run_agent(
     input_text: str,
     session: Session,
 ) -> str:
-    logger.info(f"🎯 _run_agent starting with input: '{input_text}'")
+    input_text_preview = (
+        input_text[:100] + "..." if len(input_text) > 100 else input_text
+    )
+    logger.info(f"🎯 running agent with input: '{input_text_preview}'")
 
     # Create content from user input
     content = types.Content(
@@ -91,11 +82,11 @@ async def _run_agent(
                 logger.info(f"🏁 Agent completed after {event_count} events")
                 break  # Without this, this loop will be infinite
 
-            logger.info(
-                f"✅ _run_agent completed. Total output length: {len(agent_output)}"
-            )
-    except Exception as e:
-        logger.exception(f"💥 _run_agent failed: {e}")
+        logger.debug(
+            f"✅ _run_agent completed. Total output length: {len(agent_output)}",
+        )
+    except Exception:
+        logger.exception("💥 agent run failed")
         raise
 
     return agent_output
@@ -115,7 +106,7 @@ async def arun_evaluator_agent(
         "🤖 arun_evaluator_agent starting",
         extra={
             "evaluated_agent_url": evaluated_agent_url,
-            "auth_type": auth_type.value if auth_type else "None",
+            "auth_type": auth_type.value,
             "judge_llm": judge_llm,
             "scenario_count": len(scenarios.scenarios),
             "deep_test_mode": deep_test_mode,
@@ -124,7 +115,7 @@ async def arun_evaluator_agent(
     )
 
     try:
-        headers = get_auth_header(auth_type, auth_credentials)
+        headers = auth_type.get_auth_header(auth_credentials)
 
         update_queue: Queue = Queue()
         results_queue: Queue = Queue()
@@ -134,14 +125,12 @@ async def arun_evaluator_agent(
             evaluator_agent = EvaluatorAgent(
                 http_client=httpx_client,
                 evaluated_agent_address=evaluated_agent_url,
-                model=judge_llm,
                 scenarios=scenarios,
-                llm_auth=judge_llm_api_key,
                 business_context=business_context,
                 chat_update_callback=update_queue.put_nowait,
                 deep_test_mode=deep_test_mode,
                 judge_llm=judge_llm,
-                judge_llm_api_key=judge_llm_api_key,
+                judge_llm_auth=judge_llm_api_key,
             )
             logger.info("✅ EvaluatorAgent created successfully")
 
@@ -173,11 +162,11 @@ async def arun_evaluator_agent(
                         (
                             "📊 Got evaluation results: "
                             f"{len(results.results) if results.results else 0} results"
-                        )
+                        ),
                     )
                     await results_queue.put(results)
-                except Exception as e:
-                    logger.error(f"💥 Agent runner task failed: {e}")
+                except Exception:
+                    logger.exception("💥 Agent runner task failed")
                     # Put empty results so the evaluation can complete gracefully
                     empty_results = EvaluationResults()
                     await results_queue.put(empty_results)
@@ -194,14 +183,14 @@ async def arun_evaluator_agent(
                     message_count += 1
                     logger.info(
                         f"💬 Received chat message #{message_count}: "
-                        f"{str(message)[:100]}..."
+                        f"{str(message)[:100]}...",
                     )
                     yield "chat", message
                 except asyncio.TimeoutError:
                     continue
 
             logger.info(
-                f"🏁 Message processing loop completed. Total messages: {message_count}"
+                f"🏁 Message processing loop completed. Total messages: {message_count}",
             )
 
             # once runner_task is done, get the final result
@@ -212,7 +201,7 @@ async def arun_evaluator_agent(
                     f"✅ Final results obtained: "
                     f"{len(final_results.results) if final_results.results else 0} "
                     "results"
-                )
+                ),
             )
             yield "results", final_results
 
@@ -223,15 +212,14 @@ async def arun_evaluator_agent(
             except Exception as runner_error:
                 logger.warning(
                     "⚠️ Runner task completed with error (already handled): "
-                    f"{runner_error}"
+                    f"{runner_error}",
                 )
                 # Don't re-raise - we already yielded results
 
-    except Exception as e:
-        logger.error(
-            f"💥 arun_evaluator_agent failed: {e}",
+    except Exception:
+        logger.exception(
+            "💥 arun_evaluator_agent failed",
             extra={
-                "error_type": type(e).__name__,
                 "evaluated_agent_url": evaluated_agent_url,
                 "judge_llm": judge_llm,
             },

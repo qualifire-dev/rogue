@@ -4,21 +4,13 @@ from pathlib import Path
 import requests
 from a2a.types import AgentCard
 from loguru import logger
-from pydantic import ValidationError, SecretStr
+from pydantic import SecretStr, ValidationError
 from rich.console import Console
 from rich.markdown import Markdown
+from rogue_sdk import RogueClientConfig, RogueSDK
+from rogue_sdk.types import AgentConfig, AuthType, EvaluationResults, Scenarios
 
 from .models.cli_input import CLIInput, PartialCLIInput
-
-# Import the Python SDK
-
-from sdks.python.rogue_client import RogueSDK, RogueClientConfig
-from sdks.python.rogue_client.types import (
-    AuthType,
-    AgentConfig,
-    EvaluationResults,
-    Scenarios,
-)
 
 
 def set_cli_args(parser: ArgumentParser) -> None:
@@ -26,6 +18,11 @@ def set_cli_args(parser: ArgumentParser) -> None:
         "--config-file",
         type=Path,
         help="Path to config file",
+    )
+    parser.add_argument(
+        "--rogue-server-url",
+        default="http://localhost:8000",
+        help="Rogue server URL",
     )
     parser.add_argument(
         "--evaluated-agent-url",
@@ -60,7 +57,7 @@ def set_cli_args(parser: ArgumentParser) -> None:
     )
     parser.add_argument(
         "-m",
-        "--judge-llm-model",
+        "--judge-llm",
         required=False,
         help="Model to use for scenario evaluation and report generation",
     )
@@ -89,6 +86,7 @@ def set_cli_args(parser: ArgumentParser) -> None:
 
 
 async def run_scenarios(
+    rogue_server_url: str,
     evaluated_agent_url: str,
     evaluated_agent_auth_type: AuthType,
     evaluated_agent_auth_credentials_secret: SecretStr | None,
@@ -112,6 +110,7 @@ async def run_scenarios(
 
     # Use SDK for evaluation
     return await _run_scenarios_with_sdk(
+        rogue_server_url=rogue_server_url,
         evaluated_agent_url=evaluated_agent_url,
         evaluated_agent_auth_type=evaluated_agent_auth_type,
         evaluated_agent_auth_credentials=evaluated_agent_auth_credentials,
@@ -125,6 +124,7 @@ async def run_scenarios(
 
 
 async def _run_scenarios_with_sdk(
+    rogue_server_url: str,
     evaluated_agent_url: str,
     evaluated_agent_auth_type: AuthType,
     evaluated_agent_auth_credentials: str | None,
@@ -139,24 +139,20 @@ async def _run_scenarios_with_sdk(
 
     # Initialize SDK
     sdk_config = RogueClientConfig(
-        base_url="http://localhost:8000",
+        base_url=rogue_server_url,
         timeout=600.0,  # Default server URL
     )
     sdk = RogueSDK(sdk_config)
 
     try:
         # Check if server is available
-        health = await sdk.health()
-        if health.status != "healthy":
-            raise Exception("Server not healthy")
+        await sdk.health()
 
-        # Convert scenarios to list of strings for SDK
-        scenario_strings = [scenario.scenario for scenario in scenarios.scenarios]
-
-        # Use SDK's quick_evaluate method
-        job = await sdk.quick_evaluate(
+        # Run evaluation
+        job = await sdk.run_evaluation(
             agent_url=evaluated_agent_url,
-            scenarios=scenario_strings,
+            scenarios=scenarios,
+            business_context=business_context,
             auth_type=evaluated_agent_auth_type,
             auth_credentials=evaluated_agent_auth_credentials,
             judge_model=judge_llm,
@@ -187,6 +183,7 @@ async def _run_scenarios_with_sdk(
 
 
 async def create_report(
+    rogue_server_url: str,
     judge_llm: str,
     results: EvaluationResults,
     output_report_file: Path,
@@ -200,7 +197,7 @@ async def create_report(
 
     # Use SDK for summary generation (server-based)
     sdk_config = RogueClientConfig(
-        base_url="http://localhost:8000",
+        base_url=rogue_server_url,
         timeout=600.0,
     )
     sdk = RogueSDK(sdk_config)
@@ -261,8 +258,8 @@ def merge_config_with_cli(
     )
 
     # Set defaults for required fields that are missing
-    if data.get("judge_llm_model") is None:
-        data["judge_llm_model"] = "openai/o4-mini"
+    if data.get("judge_llm") is None:
+        data["judge_llm"] = "openai/o4-mini"
 
     logger.debug(f"Running with parameters: {data}")
 
@@ -276,7 +273,6 @@ def read_config_file(config_file: Path) -> dict:
             return AgentConfig.model_validate_json(
                 config_file.read_text(),
             ).model_dump(
-                by_alias=False,
                 exclude_none=True,
             )
         except ValidationError:
@@ -333,10 +329,11 @@ async def run_cli(args: Namespace) -> int:
         },
     )
     results = await run_scenarios(
+        rogue_server_url=args.rogue_server_url,
         evaluated_agent_url=cli_input.evaluated_agent_url.encoded_string(),
         evaluated_agent_auth_type=cli_input.evaluated_agent_auth_type,
         evaluated_agent_auth_credentials_secret=cli_input.evaluated_agent_credentials,
-        judge_llm=cli_input.judge_llm_model,
+        judge_llm=cli_input.judge_llm,
         judge_llm_api_key_secret=cli_input.judge_llm_api_key,
         scenarios=scenarios,
         evaluation_results_output_path=args.workdir / "evaluation_results.json",
@@ -345,12 +342,13 @@ async def run_cli(args: Namespace) -> int:
     )
     if not results:
         raise ValueError(
-            f"No scenarios were evaluated for {cli_input.evaluated_agent_url}"
+            f"No scenarios were evaluated for {cli_input.evaluated_agent_url}",
         )
 
     logger.info("Creating report")
     report_summary = await create_report(
-        judge_llm=cli_input.judge_llm_model,
+        rogue_server_url=args.rogue_server_url,
+        judge_llm=cli_input.judge_llm,
         results=results,
         output_report_file=cli_input.output_report_file,
         judge_llm_api_key_secret=cli_input.judge_llm_api_key,

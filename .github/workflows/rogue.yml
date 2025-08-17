@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  rogue_sanity:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -23,8 +23,14 @@ jobs:
         with:
           python-version-file: ".python-version"
 
-      - name: Install rogue
-        run: uv pip install -e . --system
+      - name: Create venv
+        run: uv venv
+
+      - name: Install rogue sdk
+        run: source .venv/bin/activate && uv pip install -e sdks/python
+
+      - name: Install rogue server
+        run: source .venv/bin/activate && uv pip install -e .
 
       - name: Run shirtify agent in background
         uses: JarvusInnovations/background-action@v1
@@ -39,10 +45,8 @@ jobs:
         uses: JarvusInnovations/background-action@v1
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          HOST: 0.0.0.0
-          PORT: 8000
         with:
-          run: uv run -m rogue.server &
+          run: uv run -m rogue server --host 0.0.0.0 --port 8000 &
           wait-on: http-get://localhost:8000/api/v1/health
           tail: true
 
@@ -52,5 +56,5 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         with:
           evaluated_agent_url: "http://localhost:10001"
-          judge_llm_model: "openai/gpt-4.1-mini"
+          judge_llm: "openai/gpt-4.1-mini"
           workdir: "./examples/tshirt_store_agent/.rogue"

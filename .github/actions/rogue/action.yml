@@ -20,7 +20,7 @@ inputs:
   output_report_file:
     description: "Path to output report file"
     required: false
-  judge_llm_model:
+  judge_llm:
     description: "Model to use for scenario evaluation and report generation"
     required: false
   judge_llm_api_key:
@@ -35,15 +35,15 @@ inputs:
 runs:
   using: "composite"
   steps:
-# TODO once repo is public, uncomment this
-#    - name: "Install rogue"
-#      shell: bash
-#      run: uv install git+https://github.com/qualifire-dev/rogue.git
+    # TODO once repo is public, uncomment this
+    #    - name: "Install rogue"
+    #      shell: bash
+    #      run: uv install git+https://github.com/qualifire-dev/rogue.git
     - name: "Run rogue"
       shell: bash
       run: |
         ARGS=()
-        
+
         ARGS+=(--workdir "${{ inputs.workdir }}")
         ARGS+=(--evaluated-agent-url "${{ inputs.evaluated_agent_url }}")
           
@@ -64,10 +64,10 @@ runs:
           ARGS+=(--output-report-file "${{ inputs.output_report_file }}")
         fi
 
-        if [[ -n "${{ inputs.judge_llm_model }}" ]]; then
-          ARGS+=(--judge-llm-model "${{ inputs.judge_llm_model }}")
+        if [[ -n "${{ inputs.judge_llm }}" ]]; then
+          ARGS+=(--judge-llm "${{ inputs.judge_llm }}")
         fi
-        
+
         if [[ -n "${{ inputs.judge_llm_api_key }}" ]]; then
           ARGS+=(--judge-llm-api-key "${{ inputs.judge_llm_api_key }}")
         fi
