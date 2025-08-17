@@ -368,13 +368,14 @@ func (m Model) renderEvaluationDetail() string {
 	}
 	helpText := helpStyle.Render(helpMsg)
 
-	// Calculate content area height - use same conservative calculation as totalContentHeight
-	contentHeight := m.height - 10 // title(3) + help(1) + margins(2) + extra spacing(4)
+	// Calculate main content area height (space between header and footer)
+	// header(3) + helpText(1) + margins(2) = 6
+	mainContentHeight := m.height - 10
 
-	// Create content area
+	// Create content area for the main content (between header and footer)
 	contentArea := lipgloss.NewStyle().
 		Width(m.width).
-		Height(contentHeight).
+		Height(mainContentHeight).
 		Background(t.Background())
 
 	// Create spacing with background color
@@ -412,7 +413,7 @@ func (m Model) renderEvaluationDetail() string {
 
 		// Update summary viewport
 		// Use conservative sizing to match events viewport
-		m.summaryViewport.SetSize(m.width-4, summaryHeight-8)
+		m.summaryViewport.SetSize(m.width-4, summaryHeight-10)
 		m.summaryViewport.SetContent(summaryBody)
 
 		// Set border color based on focus
@@ -430,7 +431,7 @@ func (m Model) renderEvaluationDetail() string {
 			BorderForeground(summaryBorderFg).
 			Padding(1, 2).
 			Width(m.width - 4).
-			Height(summaryHeight)
+			Height(summaryHeight - 6)
 
 		summaryContent = m.summaryViewport.View()
 	}
@@ -449,7 +450,7 @@ func (m Model) renderEvaluationDetail() string {
 		mainContent = contentArea.Render(
 			lipgloss.Place(
 				m.width,
-				contentHeight,
+				mainContentHeight,
 				lipgloss.Center,
 				lipgloss.Top,
 				content,
@@ -463,7 +464,7 @@ func (m Model) renderEvaluationDetail() string {
 		mainContent = contentArea.Render(
 			lipgloss.Place(
 				m.width,
-				contentHeight,
+				mainContentHeight,
 				lipgloss.Center,
 				lipgloss.Top,
 				content,
