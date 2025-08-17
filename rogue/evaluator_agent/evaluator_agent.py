@@ -16,7 +16,6 @@ from google.adk.agents.callback_context import CallbackContext
 from google.adk.models import LlmRequest, LlmResponse
 from google.adk.tools import FunctionTool, BaseTool, ToolContext
 from google.genai import types
-
 from httpx import AsyncClient
 from loguru import logger
 from pydantic import ValidationError
@@ -447,6 +446,8 @@ class EvaluatorAgent:
     def _get_text_from_response(
         response: Task | Message | JSON_RPC_ERROR_TYPES,
     ) -> str | None:
+        logger.debug(f"_get_text_from_response {response}")
+
         def get_parts_text(parts: list[Part]) -> str:
             text = ""
             for p in parts:
@@ -463,6 +464,13 @@ class EvaluatorAgent:
             return get_parts_text(response.parts)
         elif isinstance(response, Task):
             if response.artifacts is None:
+                if (
+                    response.status is not None
+                    and response.status.message is not None
+                    and response.status.message.parts is not None
+                ):
+                    logger.debug("Returning text from task status message")
+                    return get_parts_text(response.status.message.parts)
                 return None
 
             artifacts_text = ""
