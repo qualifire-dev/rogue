@@ -89,9 +89,9 @@ func (m Model) renderNewEvaluation() string {
 	agent := m.evalState.AgentURL
 	judge := m.evalState.JudgeModel
 	parallel := fmt.Sprintf("%d", m.evalState.ParallelRuns)
-	deep := "false"
+	deep := "❌"
 	if m.evalState.DeepTest {
-		deep = "true"
+		deep = "✅"
 	}
 
 	// Helper function to render the start button
@@ -285,7 +285,8 @@ func (m Model) renderEvaluationDetail() string {
 	status := statusStyle.Render(statusText)
 
 	// Calculate available height for content area (excluding header, status, help)
-	totalContentHeight := m.height - 10 // header(3) + status(2) + help(1) + margins(4)
+	// header(3) + help(1) + margins(2) = 6, plus extra margin for status and spacing
+	totalContentHeight := m.height - 8 // More conservative calculation to prevent footer override
 
 	var eventsHeight, summaryHeight int
 	var showSummary bool
@@ -293,11 +294,11 @@ func (m Model) renderEvaluationDetail() string {
 	// If evaluation completed and we have a summary OR are generating one, split 50/50
 	if m.evalState.Completed && (m.evalState.Summary != "" || m.summarySpinner.IsActive()) {
 		showSummary = true
-		eventsHeight = (totalContentHeight / 2) - 4
+		eventsHeight = (totalContentHeight / 2) - 2           // Reduced margin to prevent overflow
 		summaryHeight = totalContentHeight - eventsHeight - 1 // -1 for spacer between them
 	} else {
-		// No summary, events take full height
-		eventsHeight = totalContentHeight
+		// No summary, events take full height with conservative margin
+		eventsHeight = totalContentHeight - 2 // Leave extra space to prevent footer override
 		summaryHeight = 0
 	}
 
@@ -322,7 +323,8 @@ func (m Model) renderEvaluationDetail() string {
 
 	// Update events viewport
 	// Set viewport to match the style height (which includes border and padding)
-	m.eventsViewport.SetSize(m.width-4, eventsHeight-4) // -2 for padding only (border is handled by style)
+	// Use more conservative sizing to prevent content overflow
+	m.eventsViewport.SetSize(m.width-4, eventsHeight-8) // -6 for padding and extra margin
 	m.eventsViewport.SetContent(strings.Join(lines, "\n"))
 
 	// Set border color based on focus
@@ -358,16 +360,16 @@ func (m Model) renderEvaluationDetail() string {
 	var helpMsg string
 	if m.evalState.Completed && (m.evalState.Summary != "" || m.summarySpinner.IsActive()) {
 		// Both viewports are visible, show tab navigation
-		helpMsg = "b Back  s Stop  r Report  Tab Switch Focus  ↑↓ scroll"
+		helpMsg = "b Back  s Stop  r Report  Tab Switch Focus  ↑↓ scroll end auto-scroll"
 	} else if m.evalState.Completed {
-		helpMsg = "b Back  s Stop  r Report  ↑↓ scroll"
+		helpMsg = "b Back  s Stop  r Report  ↑↓ scroll end auto-scroll"
 	} else {
-		helpMsg = "b Back  s Stop  ↑↓ scroll"
+		helpMsg = "b Back  s Stop  ↑↓ scroll end auto-scroll"
 	}
 	helpText := helpStyle.Render(helpMsg)
 
-	// Calculate content area height
-	contentHeight := m.height - 6 // title(3) + help(1) + margins(2)
+	// Calculate content area height - use same conservative calculation as totalContentHeight
+	contentHeight := m.height - 10 // title(3) + help(1) + margins(2) + extra spacing(4)
 
 	// Create content area
 	contentArea := lipgloss.NewStyle().
@@ -409,7 +411,8 @@ func (m Model) renderEvaluationDetail() string {
 		summaryBody := summaryTitle + "\n" + summaryText
 
 		// Update summary viewport
-		m.summaryViewport.SetSize(m.width-4, summaryHeight-4) 
+		// Use conservative sizing to match events viewport
+		m.summaryViewport.SetSize(m.width-4, summaryHeight-8)
 		m.summaryViewport.SetContent(summaryBody)
 
 		// Set border color based on focus
