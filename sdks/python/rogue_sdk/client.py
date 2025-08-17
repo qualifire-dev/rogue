@@ -221,7 +221,7 @@ class RogueHttpClient:
         max_wait_time: float = 3000.0,
     ) -> EvaluationJob:
         """Wait for evaluation to complete with polling."""
-        start_time = asyncio.get_event_loop().time()
+        start_time = asyncio.get_running_loop().time()
 
         while True:
             job = await self.get_evaluation(job_id)
@@ -234,7 +234,7 @@ class RogueHttpClient:
                 return job
 
             # Check timeout
-            elapsed = asyncio.get_event_loop().time() - start_time
+            elapsed = asyncio.get_running_loop().time() - start_time
             if elapsed >= max_wait_time:
                 raise TimeoutError(
                     f"Evaluation {job_id} did not complete within {max_wait_time}s"
