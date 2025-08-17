@@ -23,14 +23,16 @@ dependencies = [
 [dependency-groups]
 dev = [
     "bandit==1.8.5",
-    "black===25.1.0",
+    "black==25.1.0",
     "flake8==7.3.0",
     "mypy==1.16.1",
+    "add-trailing-comma==3.2.0",
     "pytest>=8.4.1",
     "pytest-asyncio>=0.24.0",
     "pytest-cov>=6.2.1",
     "pytest-mock>=3.14.1",
     "types-requests>=2.32.4.20250611",
+    "pre-commit>=4.3.0",
 ]
 examples = [
     "click==8.2.1",

@@ -146,7 +146,7 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
             visibility_updates[i * 3] = gr.update(visible=True)
             # Add a test status message to see if updates work
             visibility_updates[i * 3 + 1] = gr.update(
-                value=f"🔧 Initializing worker {i + 1}..."
+                value=f"🔧 Initializing worker {i + 1}...",
             )
         yield tuple(visibility_updates)
 
@@ -155,7 +155,7 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
         test_updates = get_blank_updates()
         for i in range(num_runners):
             test_updates[i * 3 + 1] = gr.update(
-                value=f"✅ Worker {i + 1} ready, starting evaluation..."
+                value=f"✅ Worker {i + 1} ready, starting evaluation...",
             )
         yield tuple(test_updates)
 
@@ -172,10 +172,14 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                 # Use SDK for evaluation
                 logger.info(f"Worker {worker_id}: Starting SDK evaluation")
                 await _worker_with_sdk(
-                    batch, worker_id, worker_config, worker_state, update_queue
+                    batch,
+                    worker_id,
+                    worker_config,
+                    worker_state,
+                    update_queue,
                 )
                 logger.info(
-                    f"Worker {worker_id}: SDK evaluation completed successfully"
+                    f"Worker {worker_id}: SDK evaluation completed successfully",
                 )
 
             except Exception as e:
@@ -208,7 +212,7 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                         worker_id,
                         "status",
                         f"Starting evaluation with SDK (batch size: {len(batch)})",
-                    )
+                    ),
                 )
 
                 agent_config = AgentConfig.model_validate(worker_config)
@@ -224,8 +228,8 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                     (
                         worker_id,
                         "status",
-                        f"Starting evaluation (batch size: {len(scenarios)})",
-                    )
+                        f"Starting evaluation (batch size: {len(batch)})",
+                    ),
                 )
 
                 # Define chat callback
@@ -244,8 +248,8 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                                     "role": chat_data.get("role", "assistant"),
                                     "content": chat_data.get("content", ""),
                                 },
-                            )
-                        )
+                            ),
+                        ),
                     )
 
                 # Define status callback
@@ -265,7 +269,7 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
 
                     # Use asyncio.create_task to schedule the async operation
                     asyncio.create_task(
-                        update_queue.put((worker_id, "status", status_msg))
+                        update_queue.put((worker_id, "status", status_msg)),
                     )
 
                 # Run evaluation with real-time updates
@@ -294,10 +298,10 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                                         "final results"
                                     ),
                                 },
-                            )
+                            ),
                         )
                         await update_queue.put(
-                            (worker_id, "status", "Failed: Could not retrieve results")
+                            (worker_id, "status", "Failed: Could not retrieve results"),
                         )
                         await update_queue.put((worker_id, "done", None))
                         return
@@ -306,7 +310,7 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                         (
                             f"Worker {worker_id}: Evaluation completed with "
                             f"status: {final_job.status}",
-                        )
+                        ),
                     )
 
                     if final_job.status == "completed" and final_job.results:
@@ -321,7 +325,7 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                                         f"{worker_id + 1}!"
                                     ),
                                 },
-                            )
+                            ),
                         )
                         # Wrap the list of results in EvaluationResults
                         results = EvaluationResults(results=final_job.results or [])
@@ -339,15 +343,15 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                                         f"{worker_id + 1}: {error_msg}"
                                     ),
                                 },
-                            )
+                            ),
                         )
                         await update_queue.put(
-                            (worker_id, "status", f"Failed: {error_msg}")
+                            (worker_id, "status", f"Failed: {error_msg}"),
                         )
                         await update_queue.put((worker_id, "done", None))
                     else:
                         await update_queue.put(
-                            (worker_id, "status", f"Evaluation {final_job.status}")
+                            (worker_id, "status", f"Evaluation {final_job.status}"),
                         )
                         await update_queue.put((worker_id, "done", None))
 
@@ -380,10 +384,10 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                                     "❌ Worker " f"{worker_id + 1} failed: {user_error}"
                                 ),
                             },
-                        )
+                        ),
                     )
                     await update_queue.put(
-                        (worker_id, "status", f"Error: {user_error}")
+                        (worker_id, "status", f"Error: {user_error}"),
                     )
                     await update_queue.put((worker_id, "done", None))
 
@@ -410,14 +414,14 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                 (
                     "Waiting for update from queue... "
                     f"({finished_workers}/{num_runners} finished)"
-                )
+                ),
             )
             worker_id, update_type, data = await update_queue.get()
             logger.info(
                 (
                     f"📨 Received update: worker_id={worker_id}, "
                     f"type={update_type}, data_preview={str(data)[:100]}"
-                )
+                ),
             )
 
             updates = get_blank_updates()
@@ -425,7 +429,7 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                 logger.info(f"📊 Status update for worker {worker_id}: {data}")
                 updates[worker_id * 3 + 1] = gr.update(value=data)
                 logger.debug(
-                    f"Status update prepared for component index {worker_id * 3 + 1}"
+                    f"Status update prepared for component index {worker_id * 3 + 1}",
                 )
             elif update_type == "chat":
                 role = "user" if data["role"] == "Evaluator Agent" else "assistant"
@@ -435,30 +439,31 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                     (
                         f"💬 Adding chat message for worker {worker_id}: "
                         f"role={role}, content={data['content'][:50]}..."
-                    )
+                    ),
                 )
                 logger.debug(
                     (
                         f"Worker {worker_id} chat history now has "
                         f"{len(worker_histories[worker_id])} messages"
-                    )
+                    ),
                 )
                 updates[worker_id * 3 + 2] = gr.update(
-                    value=worker_histories[worker_id]
+                    value=worker_histories[worker_id],
                 )
                 logger.debug(
-                    f"Chat update prepared for component index {worker_id * 3 + 2}"
+                    f"Chat update prepared for component index {worker_id * 3 + 2}",
                 )
             elif update_type == "done":
                 finished_workers += 1
                 logger.info(
-                    f"✅ Worker {worker_id} finished ({finished_workers}/{num_runners})"
+                    f"✅ Worker {worker_id} finished ({finished_workers}/{num_runners})",
                 )
                 if data:
                     all_results.combine(data)
                     logger.debug(f"Combined results from worker {worker_id}")
                 updates[worker_id * 3 + 1] = gr.update(
-                    value="Finished.", interactive=False
+                    value="Finished.",
+                    interactive=False,
                 )
 
             logger.debug(f"Yielding {len(updates)} updates to UI")
@@ -502,7 +507,7 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
     async def logged_run_and_evaluate_scenarios(state):
         logger.info("🔴 Run button clicked!")
         logger.debug(
-            f"Button click state keys: {list(state.keys()) if state else 'None'}"
+            f"Button click state keys: {list(state.keys()) if state else 'None'}",
         )
         async for update in run_and_evaluate_scenarios(state):
             yield update

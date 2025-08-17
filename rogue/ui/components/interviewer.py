@@ -16,7 +16,7 @@ def create_interviewer_screen(
         gr.Markdown("## AI-Powered Interviewer")
         gr.Markdown(
             "Answer up to 5 questions to help us understand your agent's "
-            "business use case."
+            "business use case.",
         )
 
         chatbot = gr.Chatbot(height=400, label="Interviewer", type="tuples")
@@ -57,11 +57,7 @@ def create_interviewer_screen(
                         message=message,
                     )
 
-                    return (
-                        response.response,
-                        response.is_complete,
-                        response.message_count,
-                    )
+                    return response.response
                 except Exception:
                     logger.exception("Failed to send interview message")
                 finally:
@@ -90,7 +86,7 @@ def create_interviewer_screen(
                 "Hi! We'll conduct a short interview to understand "
                 "your agent's business context. Please start be describing"
                 " the Business workflow and the user flow.",
-            ]
+            ],
         ]
 
         user_input.submit(
