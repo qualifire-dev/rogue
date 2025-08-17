@@ -86,7 +86,7 @@ def create_tshirt_store_agent() -> LlmAgent:
         description="An agent that sells t-shirts from a stored named Shirtify",
         model=LiteLlm(model=os.getenv("MODEL", "openai/gpt-4.1")),
         instruction=AGENT_INSTRUCTIONS,
-        tools=tools,  # type: ignore
+        tools=tools,  # type: ignore[arg-type]
     )
 
 

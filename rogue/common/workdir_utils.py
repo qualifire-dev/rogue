@@ -2,9 +2,7 @@ import json
 from pathlib import Path
 
 from loguru import logger
-
-from ..models.config import AgentConfig
-from ..models.scenario import Scenarios
+from rogue_sdk.types import AgentConfig, Scenarios
 
 
 def dump_business_context(state: dict, current_context: str):

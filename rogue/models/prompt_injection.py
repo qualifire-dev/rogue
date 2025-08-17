@@ -1,6 +1,5 @@
 from pydantic import BaseModel, Field
-
-from .chat_history import ChatHistory
+from rogue_sdk.types import ChatHistory
 
 
 class PromptInjectionPayload(BaseModel):

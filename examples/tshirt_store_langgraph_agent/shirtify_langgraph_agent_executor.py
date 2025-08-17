@@ -11,10 +11,7 @@ from a2a.types import (
     TextPart,
     UnsupportedOperationError,
 )
-from a2a.utils import (
-    new_agent_text_message,
-    new_task,
-)
+from a2a.utils import new_agent_text_message, new_task
 from a2a.utils.errors import ServerError
 
 from .shirtify_langgraph_agent import ShirtifyAgent
@@ -76,7 +73,7 @@ class ShirtifyAgentExecutor(AgentExecutor):
                     break
 
         except Exception as e:
-            logger.error(f"An error occurred while streaming the response: {e}")
+            logger.exception("An error occurred while streaming the response")
             raise ServerError(error=InternalError()) from e
 
     @staticmethod

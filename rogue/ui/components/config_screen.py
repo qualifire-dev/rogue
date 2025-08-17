@@ -1,9 +1,9 @@
 import gradio as gr
 from loguru import logger
 from pydantic import ValidationError
+from rogue_sdk.types import AgentConfig, AuthType
 
 from ...common.workdir_utils import dump_config
-from ...models.config import AgentConfig, AuthType
 
 
 def create_config_screen(
@@ -20,7 +20,7 @@ def create_config_screen(
             label="Agent URL",
             placeholder="http://localhost:8000",
             value=config_data.get(
-                "agent_url",
+                "evaluated_agent_url",
                 "http://localhost:10001",
             ),
         )
@@ -63,7 +63,7 @@ def create_config_screen(
             label="Authentication Type",
             choices=[e.value for e in AuthType],
             value=config_data.get(
-                "auth_type",
+                "evaluated_agent_auth_type",
                 AuthType.NO_AUTH.value,
             ),
         )
@@ -71,7 +71,7 @@ def create_config_screen(
             label="Authentication Credentials",
             type="password",
             visible=(
-                config_data.get("auth_type", AuthType.NO_AUTH.value)
+                config_data.get("evaluated_agent_auth_type", AuthType.NO_AUTH.value)
                 != AuthType.NO_AUTH.value
             ),
         )
@@ -192,15 +192,16 @@ def create_config_screen(
 
         try:
             config = AgentConfig(
-                agent_url=url,
-                auth_type=auth_t,
-                auth_credentials=creds,
+                evaluated_agent_url=url,
+                evaluated_agent_auth_type=auth_t,
+                evaluated_agent_credentials=creds,
                 service_llm=service_llm_val,
                 judge_llm=llm,
                 judge_llm_api_key=llm_key,
                 deep_test_mode=deep_test_mode_val,
                 interview_mode=interview_mode_val,
                 parallel_runs=parallel_runs_val,
+                business_context="",
             )
 
             config_dict = config.model_dump(mode="json")
@@ -228,7 +229,7 @@ def create_config_screen(
                         value=f"**Error:** {msg}", visible=True
                     )
                 else:
-                    logger.error(f"Unhandled validation error: {error}")
+                    logger.exception("Unhandled validation error")
                     error_updates[general_error_label] = gr.update(
                         value=f"**An unexpected error occurred:** {msg}",
                         visible=True,

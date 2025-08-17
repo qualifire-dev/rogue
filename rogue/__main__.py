@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 
 from .common.configure_logger import configure_logger
 from .run_cli import run_cli, set_cli_args
+from .run_server import run_server, set_server_args
 from .run_ui import run_ui, set_ui_args
 
 load_dotenv()
@@ -36,6 +37,14 @@ def parse_args():
 
     subparsers = parser.add_subparsers(dest="mode")
 
+    # Server mode
+    server_parser = subparsers.add_parser(
+        "server",
+        help="Run in server mode",
+        parents=[common_parser()],
+    )
+    set_server_args(server_parser)
+
     # UI mode
     ui_parser = subparsers.add_parser(
         "ui",
@@ -54,7 +63,7 @@ def parse_args():
 
     # Inject 'ui' if no subcommand is present
     argv = sys.argv[1:]
-    if len(argv) == 0 or argv[0] not in {"ui", "cli"}:
+    if len(argv) == 0 or argv[0] not in {"ui", "cli", "server"}:
         argv = ["ui"] + argv
 
     return parser.parse_args(argv)
@@ -71,6 +80,8 @@ def main():
     elif args.mode == "cli":
         exit_code = asyncio.run(run_cli(args))
         sys.exit(exit_code)
+    elif args.mode == "server":
+        run_server(args)
     else:
         raise ValueError(f"Unknown mode: {args.mode}")
 

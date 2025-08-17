@@ -1,12 +1,13 @@
-import gradio as gr
+import asyncio
 
-from ...common.workdir_utils import dump_scenarios, dump_business_context
-from ...services.llm_service import LLMService
+import gradio as gr
+from loguru import logger
+from rogue_sdk import RogueClientConfig, RogueSDK
+
+from ...common.workdir_utils import dump_business_context, dump_scenarios
 
 
 def create_scenario_generator_screen(shared_state: gr.State, tabs_component: gr.Tabs):
-    llm_service = LLMService()
-
     with gr.Column():
         gr.Markdown("## Scenario Generation")
         business_context_display = gr.Textbox(
@@ -24,6 +25,7 @@ def create_scenario_generator_screen(shared_state: gr.State, tabs_component: gr.
         if not current_context:
             gr.Warning("Business context is empty. Please finalize it first.")
             return state, None, gr.update()
+        logger.info("Generating scenarios")
 
         # Update the shared state with the potentially edited context
         state["business_context"] = current_context
@@ -33,12 +35,26 @@ def create_scenario_generator_screen(shared_state: gr.State, tabs_component: gr.
         service_llm = config.get("service_llm")
         api_key = config.get("judge_llm_api_key")
 
-        try:
-            scenarios = llm_service.generate_scenarios(
-                service_llm,
-                current_context,
-                llm_provider_api_key=api_key,
+        async def generate_scenarios_async():
+            # Try SDK first (server-based)
+            sdk_config = RogueClientConfig(
+                base_url="http://localhost:8000",
+                timeout=600.0,
             )
+            sdk = RogueSDK(sdk_config)
+            try:
+                return await sdk.generate_scenarios(
+                    business_context=current_context,
+                    model=service_llm,
+                    api_key=api_key,
+                )
+            except Exception:
+                logger.exception("Failed to generate scenarios from LLM response.")
+            finally:
+                await sdk.close()
+
+        try:
+            scenarios = asyncio.run(generate_scenarios_async())
             dump_scenarios(state, scenarios)
             state["scenarios"] = scenarios
 

@@ -2,9 +2,7 @@ from typing import Optional
 
 from litellm import completion
 from loguru import logger
-
-from rogue.models.evaluation_result import EvaluationResults
-from ..models.scenario import Scenario, ScenarioType, Scenarios
+from rogue_sdk.types import EvaluationResults, Scenario, Scenarios, ScenarioType
 
 SCENARIO_GENERATION_SYSTEM_PROMPT = """
 # Test Scenario Designer
