@@ -25,6 +25,7 @@ def create_scenario_generator_screen(shared_state: gr.State, tabs_component: gr.
         if not current_context:
             gr.Warning("Business context is empty. Please finalize it first.")
             return state, None, gr.update()
+        logger.info("Generating scenarios")
 
         # Update the shared state with the potentially edited context
         state["business_context"] = current_context

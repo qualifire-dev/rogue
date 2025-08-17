@@ -109,18 +109,21 @@ def get_app(workdir: Path):
             config = load_config(state)
             state["config"] = config
 
-            auth_type_val = config.get("auth_type", AuthType.NO_AUTH.value)
+            auth_type_val = config.get(
+                "evaluated_agent_auth_type",
+                AuthType.NO_AUTH.value,
+            )
             return {
                 shared_state: state,
                 agent_url: gr.update(
-                    value=config.get("agent_url", "http://localhost:10001")
+                    value=config.get("evaluated_agent_url", "http://localhost:10001")
                 ),
                 interview_mode: gr.update(value=config.get("interview_mode", True)),
                 deep_test_mode: gr.update(value=config.get("deep_test_mode", False)),
                 parallel_runs: gr.update(value=config.get("parallel_runs", 1)),
                 auth_type: gr.update(value=auth_type_val),
                 auth_credentials: gr.update(
-                    value=config.get("auth_credentials", ""),
+                    value=config.get("evaluated_agent_credentials", ""),
                     visible=auth_type_val != AuthType.NO_AUTH.value,
                 ),
                 service_llm: gr.update(

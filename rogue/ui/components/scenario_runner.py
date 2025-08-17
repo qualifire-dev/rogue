@@ -211,27 +211,7 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                     )
                 )
 
-                # Convert auth type
-                auth_type_val = worker_config.get("auth_type")
-                if isinstance(auth_type_val, str):
-                    auth_type_val = AuthType(auth_type_val)
-                elif auth_type_val is None:
-                    auth_type_val = AuthType.NO_AUTH
-
-                # Get required config values with defaults
-                agent_url = str(worker_config.get("agent_url", ""))
-                judge_model = str(worker_config.get("judge_llm", "openai/gpt-4o-mini"))
-                auth_credentials = worker_config.get("auth_credentials")
-                deep_test = bool(worker_config.get("deep_test_mode", False))
-
-                # Create agent config
-                agent_config = AgentConfig(
-                    evaluated_agent_url=HttpUrl(agent_url),
-                    evaluated_agent_auth_type=auth_type_val,
-                    evaluated_agent_credentials=auth_credentials,
-                    judge_llm=judge_model,
-                    deep_test_mode=deep_test,
-                )
+                agent_config = AgentConfig.model_validate(worker_config)
 
                 # Create evaluation request
                 request = EvaluationRequest(
@@ -294,7 +274,7 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                         request=request,
                         on_update=on_status_update,
                         on_chat=on_chat_update,
-                        timeout=600.0,
+                        timeout=3600.0,
                     )
 
                     if final_job is None:
@@ -519,15 +499,12 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
         final_ui_update[-1] = gr.update(selected="report")
         yield tuple(final_ui_update)
 
-    # Add logging to the main function instead
-    original_run_and_evaluate = run_and_evaluate_scenarios
-
     async def logged_run_and_evaluate_scenarios(state):
         logger.info("🔴 Run button clicked!")
         logger.debug(
             f"Button click state keys: {list(state.keys()) if state else 'None'}"
         )
-        async for update in original_run_and_evaluate(state):
+        async for update in run_and_evaluate_scenarios(state):
             yield update
 
     run_button.click(

@@ -20,7 +20,7 @@ def create_config_screen(
             label="Agent URL",
             placeholder="http://localhost:8000",
             value=config_data.get(
-                "agent_url",
+                "evaluated_agent_url",
                 "http://localhost:10001",
             ),
         )
@@ -63,7 +63,7 @@ def create_config_screen(
             label="Authentication Type",
             choices=[e.value for e in AuthType],
             value=config_data.get(
-                "auth_type",
+                "evaluated_agent_auth_type",
                 AuthType.NO_AUTH.value,
             ),
         )
@@ -71,7 +71,7 @@ def create_config_screen(
             label="Authentication Credentials",
             type="password",
             visible=(
-                config_data.get("auth_type", AuthType.NO_AUTH.value)
+                config_data.get("evaluated_agent_auth_type", AuthType.NO_AUTH.value)
                 != AuthType.NO_AUTH.value
             ),
         )

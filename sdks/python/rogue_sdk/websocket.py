@@ -49,7 +49,7 @@ class RogueWebSocketClient:
         if self._stop_event.is_set():
             self._stop_event.clear()
 
-        ws_url = f"{self.base_url}/ws/{self.job_id}"
+        ws_url = f"{self.base_url}/api/v1/ws/{self.job_id}"
 
         try:
             self.websocket = await websockets.connect(

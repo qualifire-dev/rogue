@@ -6,15 +6,7 @@ import asyncio
 from typing import Any, AsyncGenerator, Callable, Optional
 
 from loguru import logger
-from pydantic import HttpUrl
-from rogue_sdk.types import (
-    AgentConfig,
-    AuthType,
-    EvaluationResults,
-    Scenario,
-    Scenarios,
-    ScenarioType,
-)
+from rogue_sdk.types import AgentConfig, EvaluationResults, Scenarios
 
 from .scenario_evaluation_service import ScenarioEvaluationService
 
@@ -194,48 +186,3 @@ class EvaluationLibrary:
                 progress_callback=progress_callback,
             )
         )
-
-
-# Convenience functions for common use cases
-async def quick_evaluate(
-    agent_url: str,
-    scenarios: list[str],
-    judge_llm: str = "openai/gpt-4o-mini",
-    auth_type: str = "no_auth",
-    auth_credentials: Optional[str] = None,
-    judge_llm_api_key: Optional[str] = None,
-) -> EvaluationResults:
-    """
-    Quick evaluation with minimal configuration.
-
-    Args:
-        agent_url: URL of the agent to evaluate
-        scenarios: List of scenario descriptions
-        judge_llm: LLM model for evaluation
-        auth_type: Authentication type
-        auth_credentials: Authentication credentials
-        judge_llm_api_key: API key for judge LLM
-
-    Returns:
-        EvaluationResults
-    """
-
-    # Convert string scenarios to Scenario objects
-    scenario_objects = [
-        Scenario(scenario=desc, scenario_type=ScenarioType.POLICY) for desc in scenarios
-    ]
-    scenarios_obj = Scenarios(scenarios=scenario_objects)
-
-    # Create agent config
-    agent_config = AgentConfig(
-        evaluated_agent_url=HttpUrl(agent_url),
-        evaluated_agent_auth_type=AuthType(auth_type),
-        evaluated_agent_credentials=auth_credentials,
-        judge_llm=judge_llm,
-        judge_llm_api_key=judge_llm_api_key,
-    )
-
-    return await EvaluationLibrary.evaluate_agent(
-        agent_config=agent_config,
-        scenarios=scenarios_obj,
-    )

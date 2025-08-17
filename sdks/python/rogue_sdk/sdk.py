@@ -97,7 +97,7 @@ class RogueSDK:
         if self.ws_client:
             await self.ws_client.disconnect()
 
-        self.ws_client = RogueWebSocketClient(str(self.config.base_url), job_id)
+        self.ws_client = RogueWebSocketClient(str(self.config.base_url) + "", job_id)
         await self.ws_client.connect()
 
     async def disconnect_websocket(self) -> None:

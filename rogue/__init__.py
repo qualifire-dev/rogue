@@ -17,7 +17,7 @@ from . import (
 )
 
 # Import the new library interface
-from .server.services.evaluation_library import EvaluationLibrary, quick_evaluate
+from .server.services.evaluation_library import EvaluationLibrary
 
 # Main library interface
 evaluate_agent = EvaluationLibrary.evaluate_agent
@@ -30,7 +30,6 @@ __all__ = [
     "evaluate_agent",
     "evaluate_agent_streaming",
     "evaluate_agent_sync",
-    "quick_evaluate",
     # Core classes
     "EvaluationLibrary",
     # Submodules (backward compatibility)
