@@ -25,7 +25,7 @@ def get_app(workdir: Path):
                 "scenarios": [],
                 "results": [],
                 "workdir": workdir,
-            }
+            },
         )
 
         with gr.Tabs() as tabs:
@@ -63,7 +63,6 @@ def get_app(workdir: Path):
                 (
                     evaluation_results_display,
                     summary_display,
-                    refresh_button,
                 ) = create_report_generator_screen(shared_state)
 
         # --- Event Handlers ---
@@ -71,7 +70,6 @@ def get_app(workdir: Path):
             tabs,
             evaluation_results_display,
             summary_display,
-            refresh_button,
             shared_state,
         )
 
@@ -116,7 +114,7 @@ def get_app(workdir: Path):
             return {
                 shared_state: state,
                 agent_url: gr.update(
-                    value=config.get("evaluated_agent_url", "http://localhost:10001")
+                    value=config.get("evaluated_agent_url", "http://localhost:10001"),
                 ),
                 interview_mode: gr.update(value=config.get("interview_mode", True)),
                 deep_test_mode: gr.update(value=config.get("deep_test_mode", False)),
@@ -127,7 +125,7 @@ def get_app(workdir: Path):
                     visible=auth_type_val != AuthType.NO_AUTH.value,
                 ),
                 service_llm: gr.update(
-                    value=config.get("service_llm", "openai/gpt-4.1")
+                    value=config.get("service_llm", "openai/gpt-4.1"),
                 ),
                 judge_llm: gr.update(value=config.get("judge_llm", "openai/o4-mini")),
                 judge_llm_api_key: gr.update(value=config.get("judge_llm_api_key", "")),

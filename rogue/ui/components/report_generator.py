@@ -28,26 +28,22 @@ def _load_report_data_from_files(
 
 def create_report_generator_screen(
     shared_state: gr.State,
-) -> Tuple[gr.JSON, gr.Markdown, gr.Button]:
+) -> Tuple[gr.JSON, gr.Markdown]:
     with gr.Column():
-        gr.Markdown("# Test Report")
-        with gr.Row():
-            refresh_button = gr.Button("Load Latest Report")
         gr.Markdown("## Summary")
         summary_display = gr.Markdown(
-            shared_state.value.get("summary_text", "No summary generated yet.")
+            shared_state.value.get("summary_text", "No summary generated yet."),
         )
         gr.Markdown("## Evaluation Results")
         results_display = gr.JSON(label="Evaluation Results")
 
-    return results_display, summary_display, refresh_button
+    return results_display, summary_display
 
 
 def setup_report_generator_logic(
     tabs_component,
     evaluation_results_display,
     summary_display,
-    refresh_button,
     shared_state,
 ):
     def on_report_tab_select(state):
@@ -90,9 +86,3 @@ def setup_report_generator_logic(
             inputs=[shared_state],
             outputs=[evaluation_results_display, summary_display],
         )
-
-    refresh_button.click(
-        fn=on_report_tab_select,
-        inputs=[shared_state],
-        outputs=[evaluation_results_display, summary_display],
-    )
