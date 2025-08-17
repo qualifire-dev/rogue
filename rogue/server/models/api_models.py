@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 
 from ...common.sdk_utils import setup_sdk_path
-from ...models.evaluation_result import EvaluationResult
+from ...models.evaluation_result import PolicyEvaluationResult
 from rogue_client.types import AgentConfig, Scenario
 
 # Ensure SDK path is set up
@@ -33,7 +33,7 @@ class EvaluationJob(BaseModel):
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     request: EvaluationRequest
-    results: Optional[List[EvaluationResult]] = None
+    results: Optional[List[PolicyEvaluationResult]] = None
     error_message: Optional[str] = None
     progress: float = 0.0
 

@@ -305,7 +305,9 @@ func (m Model) renderEvaluationDetail() string {
 	for _, ev := range m.evalState.Events {
 		switch ev.Type {
 		case "status":
-			lines = append(lines, lipgloss.NewStyle().Foreground(t.Success()).Render(fmt.Sprintf("✓ %s", ev.Status)))
+			if ev.Status != "running" {
+				lines = append(lines, lipgloss.NewStyle().Foreground(t.Success()).Render(fmt.Sprintf("✓ %s", ev.Status)))
+			}
 		case "chat":
 			// Split multi-line chat messages
 			chatLines := strings.Split(renderChatMessage(t, ev.Role, ev.Content), "\n")

@@ -78,11 +78,16 @@ class RogueSDK:
         return await self.http_client.cancel_evaluation(job_id)
 
     async def wait_for_evaluation(
-        self, job_id: str, poll_interval: float = 2.0, max_wait_time: float = 300.0
+        self,
+        job_id: str,
+        poll_interval: float = 2.0,
+        max_wait_time: float = 300.0,
     ) -> EvaluationJob:
         """Wait for evaluation to complete (polling)."""
         return await self.http_client.wait_for_evaluation(
-            job_id, poll_interval, max_wait_time
+            job_id,
+            poll_interval,
+            max_wait_time,
         )
 
     # WebSocket Methods
@@ -105,7 +110,7 @@ class RogueSDK:
         """Add WebSocket event handler."""
         if not self.ws_client:
             raise RuntimeError(
-                "WebSocket not connected. Call connect_websocket() first."
+                "WebSocket not connected. Call connect_websocket() first.",
             )
         self.ws_client.on(event, handler)
 
@@ -176,7 +181,7 @@ class RogueSDK:
                             result_future.set_result(t.result())
                             if not result_future.done() and t.result()
                             else None
-                        )
+                        ),
                     )
 
         def handle_chat_update(event, data):
@@ -186,7 +191,7 @@ class RogueSDK:
         def handle_error(event, data):
             if not result_future.done():
                 result_future.set_exception(
-                    Exception(f"WebSocket error: {data.get('error')}")
+                    Exception(f"WebSocket error: {data.get('error')}"),
                 )
 
         # Set up event handlers
@@ -201,7 +206,7 @@ class RogueSDK:
             return result
         except asyncio.TimeoutError:
             raise TimeoutError(
-                f"Evaluation {job_id} did not complete within {timeout}s"
+                f"Evaluation {job_id} did not complete within {timeout}s",
             )
         finally:
             await self.disconnect_websocket()
@@ -220,7 +225,7 @@ class RogueSDK:
             agent_url=HttpUrl(agent_url),
             auth_type=auth_type,
             auth_credentials=auth_credentials,
-            judge_llm_model=judge_model,
+            judge_llm=judge_model,
             deep_test_mode=deep_test,
             interview_mode=True,
             parallel_runs=1,
@@ -294,7 +299,9 @@ class RogueSDK:
         )
 
     async def send_interview_message(
-        self, session_id: str, message: str
+        self,
+        session_id: str,
+        message: str,
     ) -> tuple[str, bool, int]:
         """
         Send a message in an interview session.

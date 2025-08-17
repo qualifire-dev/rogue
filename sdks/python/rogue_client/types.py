@@ -46,13 +46,15 @@ class AgentConfig(BaseModel):
 
     evaluated_agent_url: HttpUrl = Field(alias="agent_url")
     evaluated_agent_auth_type: AuthType = Field(
-        alias="auth_type", default=AuthType.NO_AUTH
+        alias="auth_type",
+        default=AuthType.NO_AUTH,
     )
     evaluated_agent_credentials: Optional[str] = Field(
-        alias="auth_credentials", default=None
+        alias="auth_credentials",
+        default=None,
     )
     service_llm: str = "openai/gpt-4.1"
-    judge_llm_model: str = "openai/o4-mini"
+    judge_llm: str = "openai/o4-mini"
     interview_mode: bool = True
     deep_test_mode: bool = False
     parallel_runs: int = 1

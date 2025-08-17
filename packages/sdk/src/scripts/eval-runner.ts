@@ -102,7 +102,7 @@ async function main() {
       evaluated_agent_url: agentUrl,
       evaluated_agent_auth_type: authType,
       evaluated_agent_credentials: authCredentials,
-      judge_llm_model: judgeModel,
+      judge_llm: judgeModel,
       deep_test_mode: deepTest,
       interview_mode: true,
       parallel_runs: parallelRuns,

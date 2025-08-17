@@ -35,7 +35,7 @@ type AgentConfig struct {
 	EvaluatedAgentURL         string   `json:"evaluated_agent_url"`
 	EvaluatedAgentAuthType    AuthType `json:"evaluated_agent_auth_type"`
 	EvaluatedAgentCredentials string   `json:"evaluated_agent_credentials,omitempty"`
-	JudgeLLMModel             string   `json:"judge_llm_model"`
+	JudgeLLMModel             string   `json:"judge_llm"`
 	InterviewMode             bool     `json:"interview_mode"`
 	DeepTestMode              bool     `json:"deep_test_mode"`
 	ParallelRuns              int      `json:"parallel_runs"`

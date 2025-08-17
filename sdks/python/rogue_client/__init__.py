@@ -25,7 +25,7 @@ Example:
                     "agent_config": {
                         "evaluated_agent_url": "http://localhost:3000",
                         "evaluated_agent_auth_type": AuthType.NO_AUTH,
-                        "judge_llm_model": "openai/gpt-4o-mini"
+                        "judge_llm": "openai/gpt-4o-mini"
                     },
                     "scenarios": [{
                         "scenario": "Test scenario",
