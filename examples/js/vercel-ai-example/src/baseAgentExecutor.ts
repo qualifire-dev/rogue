@@ -108,7 +108,7 @@ export abstract class BaseAgentExecutor implements AgentExecutor {
     taskId: string,
     contextId: string,
     eventBus: ExecutionEventBus,
-    error: any,
+   error: { message: string },
   ): void {
     const errorUpdate: TaskStatusUpdateEvent = {
       kind: 'status-update',
@@ -216,9 +216,9 @@ export abstract class BaseAgentExecutor implements AgentExecutor {
       this.addMessageToHistory(contextId, agentMessage);
 
       console.log(`[AgentExecutor] Task ${taskId} finished with state: completed`);
-    } catch (error: any) {
-      console.error(`[AgentExecutor] Error processing task ${taskId}:`, error);
-      this.publishTaskError(taskId, contextId, eventBus, error);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.publishTaskError(taskId, contextId, eventBus, { message: errorMessage });
     }
   }
 }
