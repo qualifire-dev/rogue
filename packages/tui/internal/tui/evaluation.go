@@ -191,7 +191,7 @@ func (sdk *RogueSDK) ConnectWebSocket(ctx context.Context, jobID string) error {
 	// Convert http:// to ws:// or https:// to wss://
 	wsURL := strings.Replace(sdk.baseURL, "http://", "ws://", 1)
 	wsURL = strings.Replace(wsURL, "https://", "wss://", 1)
-	wsURL += "/ws/" + url.PathEscape(jobID)
+	wsURL += "/api/v1/ws/" + url.PathEscape(jobID)
 
 	dialer := websocket.DefaultDialer
 	conn, _, err := dialer.DialContext(ctx, wsURL, nil)
