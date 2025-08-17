@@ -387,7 +387,7 @@ class EvaluatorAgent:
                     self._context_id_to_chat_history.get(
                         context_id,
                         ChatHistory(),
-                    ).messages
+                    ).messages,
                 ),
                 "evaluation_passed (from agent)": evaluation_passed,
                 "reason (from agent)": reason,
@@ -435,7 +435,7 @@ class EvaluatorAgent:
                     messages=conversation_history,
                     passed=evaluation_passed,
                     reason=reason,
-                )
+                ),
             ],
             passed=evaluation_passed,
         )
@@ -449,6 +449,8 @@ class EvaluatorAgent:
     def _get_text_from_response(
         response: Task | Message | JSON_RPC_ERROR_TYPES,
     ) -> str | None:
+        logger.debug(f"_get_text_from_response {response}")
+
         def get_parts_text(parts: list[Part]) -> str:
             text = ""
             for p in parts:
@@ -465,6 +467,13 @@ class EvaluatorAgent:
             return get_parts_text(response.parts)
         elif isinstance(response, Task):
             if response.artifacts is None:
+                if (
+                    response.status is not None
+                    and response.status.message is not None
+                    and response.status.message.parts is not None
+                ):
+                    logger.debug("Returning text from task status message")
+                    return get_parts_text(response.status.message.parts)
                 return None
 
             artifacts_text = ""
@@ -530,7 +539,7 @@ class EvaluatorAgent:
                             Part(
                                 root=TextPart(
                                     text=message,
-                                )
+                                ),
                             ),
                         ],
                     ),

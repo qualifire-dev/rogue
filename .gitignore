@@ -87,6 +87,6 @@ dev-debug.log
 tasks.json
 tasks/ 
 
-# adk
+dist/
 .adk/
 **/.rogue
