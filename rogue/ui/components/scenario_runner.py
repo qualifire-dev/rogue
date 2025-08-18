@@ -169,8 +169,7 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                 auth_type_val = AuthType(auth_type_val)
 
             try:
-                # Use SDK for evaluation
-                logger.info(f"Worker {worker_id}: Starting SDK evaluation")
+                logger.info(f"Worker {worker_id}: Starting evaluation")
                 await _worker_with_sdk(
                     batch,
                     worker_id,
@@ -179,7 +178,7 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                     update_queue,
                 )
                 logger.info(
-                    f"Worker {worker_id}: SDK evaluation completed successfully",
+                    f"Worker {worker_id}: evaluation completed successfully",
                 )
 
             except Exception as e:
@@ -194,8 +193,8 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
             worker_state: dict,
             update_queue: asyncio.Queue,
         ):
-            """Worker using SDK with real-time WebSocket updates."""
-            logger.info(f"🔌 Worker {worker_id}: Initializing SDK connection")
+            """Worker with real-time WebSocket updates."""
+            logger.info(f"🔌 Worker {worker_id}: Initializing connection")
             sdk_config = RogueClientConfig(
                 base_url=HttpUrl("http://localhost:8000"),
                 timeout=600.0,
@@ -211,7 +210,7 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                     (
                         worker_id,
                         "status",
-                        f"Starting evaluation with SDK (batch size: {len(batch)})",
+                        f"Starting evaluation (batch size: {len(batch)})",
                     ),
                 )
 
@@ -220,7 +219,7 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                 # Create evaluation request
                 request = EvaluationRequest(
                     agent_config=agent_config,
-                    scenarios=scenarios,
+                    scenarios=batch,
                 )
 
                 logger.info(f"Worker {worker_id}: Starting evaluation")
