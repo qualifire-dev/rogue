@@ -1,3 +1,7 @@
 {
-  "cSpell.words": ["Lipgloss"]
+  "python.testing.pytestArgs": [
+    "."
+  ],
+  "python.testing.unittestEnabled": false,
+  "python.testing.pytestEnabled": true
 }

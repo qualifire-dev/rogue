@@ -1,0 +1,56 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Rogue Server",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "./.venv/bin/python",
+            "module": "rogue",
+            "args": [
+                "server",
+                "--host",
+                "0.0.0.0",
+                "--port",
+                "8000"
+            ],
+            "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "name": "Rogue UI",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "./.venv/bin/python",
+            "module": "rogue",
+            "args": [
+                "ui"
+            ],
+            "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "name": "Rogue CLI",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "./.venv/bin/python",
+            "module": "rogue",
+            "args": [
+                "cli",
+                "--evaluated-agent-url",
+                "http://localhost:10001",
+                "--judge-llm",
+                "openai/o4-mini",
+                "--workdir",
+                "./examples/tshirt_store_agent/.rogue"
+            ],
+            "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "name": "shirtify agent",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "./.venv/bin/python",
+            "program": "./examples/tshirt_store_agent",
+            "envFile": "${workspaceFolder}/examples/tshirt_store_agent/.env"
+        }
+    ]
+}

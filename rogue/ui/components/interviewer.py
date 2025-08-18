@@ -36,7 +36,7 @@ def create_interviewer_screen(
             async def handle_interview_message():
                 # Try SDK first (server-based)
                 sdk_config = RogueClientConfig(
-                    base_url="http://localhost:8000",  # TODO! Make this configurable
+                    base_url=state.get("rogue_server_url", "http://localhost:8000"),
                     timeout=600.0,
                 )
                 sdk = RogueSDK(sdk_config)
