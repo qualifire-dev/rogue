@@ -107,9 +107,6 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
         config = state.get("config", {})
         scenarios = state.get("scenarios")
 
-        logger.info(f"Config found: {bool(config)}")
-        logger.info(f"Scenarios found: {bool(scenarios)}")
-        logger.debug(f"Config: {config}")
 
         if scenarios is None:
             logger.warning("No scenarios found in state")
@@ -122,13 +119,11 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
         logger.info(f"Number of scenarios to run: {len(scenarios)}")
 
         # Hide all runners and clear values
-        logger.info("Hiding all runners and clearing values")
         initial_updates = get_blank_updates()
         for i in range(MAX_PARALLEL_RUNS):
             initial_updates[i * 3] = gr.update(visible=False)  # Group
             initial_updates[i * 3 + 1] = gr.update(value="", visible=True)  # Status
             initial_updates[i * 3 + 2] = gr.update(value=None, visible=True)  # Chat
-        logger.debug(f"Yielding initial updates: {len(initial_updates)} components")
         yield tuple(initial_updates)
 
         if not config or not scenarios:
@@ -147,7 +142,6 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
         update_queue = asyncio.Queue()
 
         # Make the required number of runners visible
-        logger.info(f"Making {num_runners} runners visible")
         visibility_updates = get_blank_updates()
         for i in range(num_runners):
             visibility_updates[i * 3] = gr.update(visible=True)
@@ -458,9 +452,6 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                 )
                 updates[worker_id * 3 + 2] = gr.update(
                     value=worker_histories[worker_id],
-                )
-                logger.debug(
-                    f"Chat update prepared for component index {worker_id * 3 + 2}",
                 )
                 logger.debug(
                     f"Chat update prepared for component index {worker_id * 3 + 2}",
