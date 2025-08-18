@@ -124,18 +124,17 @@ func NewScenarioEditor() ScenarioEditor {
 func (e *ScenarioEditor) SetSize(width, height int) {
 	e.width = width
 	e.height = height
-	// Compute a reasonable number of visible list items based on height
-	// Reserve rows for borders, header, subline, table header, spacing, help and messages
-	// Rough overhead: ~12 rows on small terminals
-	maxItems := height - 12
-	if maxItems < 5 {
-		maxItems = 5
-	}
-	e.visibleItems = maxItems
+	// Calculate visible items more accurately based on actual UI elements
+	e.calculateVisibleItems()
 
-	// Update business context components size
+	// Update business context components size - make it adaptive
 	if e.bizViewport != nil {
-		e.bizViewport.SetSize(width-4, 10) // 10 lines, account for padding
+		// Use smaller business context to leave more room for scenarios
+		bizHeight := 3 // Reduce from 10 to 3 lines for business context
+		if height < 20 {
+			bizHeight = 2 // Even smaller on very small terminals
+		}
+		e.bizViewport.SetSize(width-4, bizHeight)
 	}
 	if e.bizTextArea != nil {
 		// Size will be set dynamically in renderBusinessContextView
@@ -150,6 +149,48 @@ func (e *ScenarioEditor) SetSize(width, height int) {
 	if e.expectedOutcomeTextArea != nil {
 		e.expectedOutcomeTextArea.SetSize(width-4, 8) // Height will be set dynamically in renderEditView
 	}
+}
+
+// calculateVisibleItems computes how many scenario items can fit in the available space
+func (e *ScenarioEditor) calculateVisibleItems() {
+	if e.mode != ListMode {
+		return
+	}
+
+	// Calculate the height used by UI elements in list mode:
+	// - Footer (from layout.go): 1 line
+	// - Empty line after main content: 1 line
+	// - File path/search info: 1 line
+	// - Empty line: 1 line
+	// - Business context label: 1 line
+	// - Business context box (viewport): dynamic height + 2 for border
+	// - Empty line: 1 line
+	// - Table header: 1 line
+	// - Scroll info (when present): 1 line
+	// - Empty line before help: 1 line
+	// - Help text: 1 line
+	// - Error/info messages: up to 2 lines
+	// - Extra padding/margins: 2 lines for safety
+
+	// Calculate business context height dynamically (same as in SetSize)
+	bizHeight := 3
+	if e.height < 20 {
+		bizHeight = 2
+	}
+	bizHeightWithBorder := bizHeight + 2
+
+	usedHeight := 1 + 1 + 1 + 1 + 1 + bizHeightWithBorder + 1 + 1 + 1 + 1 + 1 + 2 + 2 // Base: 14 + bizHeightWithBorder
+
+	availableHeight := e.height - usedHeight
+	if availableHeight < 3 {
+		availableHeight = 3 // Minimum to show at least a few items
+	}
+
+	e.visibleItems = availableHeight
+
+	// DEBUG: Print debug information
+	fmt.Printf("DEBUG: height=%d, usedHeight=%d, availableHeight=%d, visibleItems=%d, bizHeight=%d\n",
+		e.height, usedHeight, availableHeight, e.visibleItems, bizHeight)
 }
 
 // Update handles input for the scenario editor
@@ -326,6 +367,7 @@ func (e ScenarioEditor) handleBusinessContextMode(msg tea.KeyMsg) (ScenarioEdito
 			e.bizTextArea.Blur()
 		}
 		e.mode = ListMode
+		e.calculateVisibleItems()   // Recalculate for list mode
 		e.bizContextSelected = true // Keep business context selected when exiting edit mode
 		e.errorMsg = ""
 		e.infoMsg = ""
@@ -366,6 +408,7 @@ func (e ScenarioEditor) handleEditMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 	case "escape", "esc":
 		// Cancel editing
 		e.mode = ListMode
+		e.calculateVisibleItems() // Recalculate for list mode
 		e.errorMsg = ""
 		e.infoMsg = ""
 		if e.scenarioTextArea != nil {
@@ -401,6 +444,7 @@ func (e ScenarioEditor) handleEditMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 			return e, nil
 		}
 		e.mode = ListMode
+		e.calculateVisibleItems() // Recalculate for list mode
 		e.rebuildFilter()
 		e.infoMsg = "Scenario saved"
 		if e.scenarioTextArea != nil {
@@ -436,6 +480,7 @@ func (e ScenarioEditor) handleEditMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 					return e, nil
 				}
 				e.mode = ListMode
+				e.calculateVisibleItems() // Recalculate for list mode
 				e.rebuildFilter()
 				e.infoMsg = "Scenario saved"
 				if e.scenarioTextArea != nil {
@@ -513,10 +558,29 @@ func (e *ScenarioEditor) applyEditing() {
 
 // updateScroll updates the scroll offset to keep selected item visible
 func (e *ScenarioEditor) updateScroll() {
+	// Ensure we have valid visible items calculation
+	if e.visibleItems <= 0 {
+		e.calculateVisibleItems()
+	}
+
+	// Clamp scroll offset to valid bounds
+	maxScroll := len(e.filteredIdx) - e.visibleItems
+	if maxScroll < 0 {
+		maxScroll = 0
+	}
+
 	if e.selectedIndex < e.scrollOffset {
 		e.scrollOffset = e.selectedIndex
 	} else if e.selectedIndex >= e.scrollOffset+e.visibleItems {
 		e.scrollOffset = e.selectedIndex - e.visibleItems + 1
+	}
+
+	// Ensure scroll offset is within bounds
+	if e.scrollOffset < 0 {
+		e.scrollOffset = 0
+	}
+	if e.scrollOffset > maxScroll {
+		e.scrollOffset = maxScroll
 	}
 }
 
@@ -777,8 +841,40 @@ func (e ScenarioEditor) renderListView(t theme.Theme) string {
 			)
 			rows = append(rows, line)
 		}
+
+		// Add scroll indicators if needed
+		scrollInfo := ""
+		if len(e.filteredIdx) > e.visibleItems {
+			canScrollUp := e.scrollOffset > 0
+			canScrollDown := e.scrollOffset+e.visibleItems < len(e.filteredIdx)
+
+			upIndicator := " "
+			downIndicator := " "
+			if canScrollUp {
+				upIndicator = "↑"
+			}
+			if canScrollDown {
+				downIndicator = "↓"
+			}
+
+			visibleCount := end - start
+			scrollInfo = lipgloss.NewStyle().
+				Background(t.Background()).
+				Foreground(t.TextMuted()).
+				Render(fmt.Sprintf(" Scroll: %s%s (%d-%d of %d)",
+					upIndicator, downIndicator,
+					start+1,
+					start+visibleCount,
+					len(e.filteredIdx)))
+		}
+
+		tableContent := strings.Join(rows, "\n")
+		if scrollInfo != "" {
+			tableContent += "\n" + scrollInfo
+		}
+
 		// Render table within a compact width and keep it left-aligned inside the panel
-		body = lipgloss.NewStyle().Width(contentWidth).Background(t.Background()).Render(strings.Join(rows, "\n"))
+		body = lipgloss.NewStyle().Width(contentWidth).Background(t.Background()).Render(tableContent)
 	}
 
 	// Build lines and push help to bottom (above footer)
