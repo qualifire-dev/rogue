@@ -104,6 +104,7 @@ def get_app(workdir: Path, rogue_server_url: str):
                 "scenarios": [],
                 "results": [],
                 "workdir": workdir,
+                "rogue_server_url": rogue_server_url,
             }
             config = load_config(state)
             state["config"] = config
