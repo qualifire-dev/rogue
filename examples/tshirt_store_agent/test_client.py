@@ -5,13 +5,13 @@ from uuid import uuid4
 import httpx
 from a2a.client import A2AClient
 from a2a.types import (
-    SendMessageResponse,
+    GetTaskRequest,
     GetTaskResponse,
+    MessageSendParams,
+    SendMessageRequest,
+    SendMessageResponse,
     SendMessageSuccessResponse,
     Task,
-    SendMessageRequest,
-    MessageSendParams,
-    GetTaskRequest,
     TaskQueryParams,
 )
 
@@ -107,7 +107,8 @@ async def main() -> None:
     try:
         async with httpx.AsyncClient(timeout=30) as httpx_client:
             client = await A2AClient.get_client_from_agent_card_url(
-                httpx_client, AGENT_URL
+                httpx_client,
+                AGENT_URL,
             )
             print("Connection successful.")
 

@@ -38,7 +38,7 @@ def create_scenario_generator_screen(shared_state: gr.State, tabs_component: gr.
         async def generate_scenarios_async():
             # Try SDK first (server-based)
             sdk_config = RogueClientConfig(
-                base_url="http://localhost:8000",
+                base_url=state.get("rogue_server_url", "http://localhost:8000"),
                 timeout=600.0,
             )
             sdk = RogueSDK(sdk_config)
@@ -61,7 +61,8 @@ def create_scenario_generator_screen(shared_state: gr.State, tabs_component: gr.
             return {
                 shared_state: state,
                 scenarios_output: scenarios.model_dump_json(
-                    indent=2, exclude_none=True
+                    indent=2,
+                    exclude_none=True,
                 ),
                 tabs_component: gr.update(selected="run"),
             }

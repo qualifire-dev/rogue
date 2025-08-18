@@ -196,7 +196,9 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
             """Worker with real-time WebSocket updates."""
             logger.info(f"🔌 Worker {worker_id}: Initializing connection")
             sdk_config = RogueClientConfig(
-                base_url=HttpUrl("http://localhost:8000"),
+                base_url=HttpUrl(
+                    worker_state.get("rogue_server_url", "http://localhost:8000"),
+                ),
                 timeout=600.0,
             )
             sdk = RogueSDK(sdk_config)
@@ -480,7 +482,7 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
         # Generate summary using SDK (server-based)
         try:
             sdk_config = RogueClientConfig(
-                base_url="http://localhost:8000",
+                base_url=state.get("rogue_server_url", "http://localhost:8000"),
                 timeout=600.0,
             )
             sdk = RogueSDK(sdk_config)

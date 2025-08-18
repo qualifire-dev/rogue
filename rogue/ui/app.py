@@ -16,7 +16,7 @@ from .components.scenario_runner import create_scenario_runner_screen
 from .config.theme import theme
 
 
-def get_app(workdir: Path):
+def get_app(workdir: Path, rogue_server_url: str):
     with gr.Blocks(theme=theme, title="Qualifire Agent Evaluator") as app:
         shared_state = gr.State(
             {
@@ -25,6 +25,7 @@ def get_app(workdir: Path):
                 "scenarios": [],
                 "results": [],
                 "workdir": workdir,
+                "rogue_server_url": rogue_server_url,
             },
         )
 
