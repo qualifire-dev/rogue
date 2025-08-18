@@ -107,7 +107,6 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
         config = state.get("config", {})
         scenarios = state.get("scenarios")
 
-
         if scenarios is None:
             logger.warning("No scenarios found in state")
             gr.Warning("No scenarios found. Please generate scenarios first.")
