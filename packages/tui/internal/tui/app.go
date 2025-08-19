@@ -205,6 +205,7 @@ func NewApp() *App {
 		fmt.Printf("Warning: Failed to load themes: %v\n", err)
 		// Create a fallback theme if loading fails
 		theme.RegisterTheme("default", theme.NewSystemTheme(nil, true))
+		theme.SetTheme("aura")
 	}
 
 	return &App{}

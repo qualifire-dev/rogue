@@ -42,7 +42,7 @@ func NewCommandInput() CommandInput {
 		{Name: "/editor", Description: "Scenario editor", KeyBinding: "Ctrl+E", Action: "open_editor"},
 		{Name: "/eval", Description: "New evaluation", KeyBinding: "Ctrl+N", Action: "new_evaluation"},
 		{Name: "/help", Description: "Show help", KeyBinding: "Ctrl+H", Action: "help"},
-		{Name: "/quit", Description: "Quit application", KeyBinding: "Q", Action: "quit"},
+		{Name: "/quit", Description: "Quit application", KeyBinding: "ctrl+Q", Action: "quit"},
 	}
 
 	return CommandInput{
@@ -160,8 +160,15 @@ func (c CommandInput) Update(msg tea.Msg) (CommandInput, tea.Cmd) {
 
 		default:
 			// Handle regular character input
-			if len(msg.String()) == 1 {
-				char := msg.String()
+			keyStr := msg.String()
+
+			// Special handling for space key since it might have special representation
+			if keyStr == " " || keyStr == "space" {
+				c.input = c.input[:c.cursor] + " " + c.input[c.cursor:]
+				c.cursor++
+				c.updateSuggestions()
+			} else if len(keyStr) == 1 {
+				char := keyStr
 				c.input = c.input[:c.cursor] + char + c.input[c.cursor:]
 				c.cursor++
 				c.updateSuggestions()
@@ -214,16 +221,45 @@ func (c CommandInput) ViewInput() string {
 		inputStyle = inputStyle.BorderForeground(t.Primary())
 	}
 
-	// Render input with cursor
+	// Render input with cursor (similar to textarea approach)
 	var inputText string
-	if c.cursor == len(c.input) {
+
+	// Define text style for normal characters
+	textStyle := lipgloss.NewStyle().
+		Foreground(t.Text()).
+		Background(t.BackgroundPanel())
+
+	if c.cursor >= len(c.input) {
+		// Cursor at end of input
 		if c.focused {
-			inputText = c.input + "█"
+			cursorStyle := lipgloss.NewStyle().
+				Background(t.Primary()).
+				Foreground(t.Background())
+			inputText = textStyle.Render(c.input) + cursorStyle.Render(" ")
 		} else {
-			inputText = c.input + " "
+			inputText = textStyle.Render(c.input) + " "
+		}
+	} else if c.cursor >= 0 && c.cursor < len(c.input) {
+		// Cursor in middle of input - highlight the character at cursor position
+		if c.focused {
+			before := c.input[:c.cursor]
+			atCursor := string(c.input[c.cursor])
+			after := ""
+			if c.cursor+1 < len(c.input) {
+				after = c.input[c.cursor+1:]
+			}
+
+			// Render with cursor highlighting the character
+			cursorStyle := lipgloss.NewStyle().
+				Background(t.Primary()).
+				Foreground(t.Background())
+			inputText = textStyle.Render(before) + cursorStyle.Render(atCursor) + textStyle.Render(after)
+		} else {
+			inputText = textStyle.Render(c.input)
 		}
 	} else {
-		inputText = c.input[:c.cursor] + "█" + c.input[c.cursor:]
+		// Fallback for invalid cursor position
+		inputText = textStyle.Render(c.input)
 	}
 
 	return inputStyle.Render(inputText)
