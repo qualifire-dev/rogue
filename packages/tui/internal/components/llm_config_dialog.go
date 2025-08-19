@@ -25,7 +25,7 @@ func (d LLMConfigDialog) buildSelectableItems() []SelectableItem {
 			ModelIdx:     -1,
 			DisplayText:  provider.DisplayName,
 			IsConfigured: provider.Configured,
-			IsSelectable: !provider.Configured, // Only unconfigured providers are selectable for setup
+			IsSelectable: true, // Only unconfigured providers are selectable for setup
 		})
 
 		// Add model items if provider is configured
@@ -65,7 +65,7 @@ func (d LLMConfigDialog) getButtonText() string {
 
 	if selectedItem.Type == "model" {
 		return "Use Model"
-	} else if selectedItem.Type == "provider" && !selectedItem.IsConfigured {
+	} else if selectedItem.Type == "provider" {
 		return "Configure"
 	}
 	return "Select"
@@ -542,7 +542,7 @@ func (d LLMConfigDialog) handleEnter() (LLMConfigDialog, tea.Cmd) {
 					Action:   "configure",
 				}
 			}
-		} else if selectedItem.Type == "provider" && !selectedItem.IsConfigured {
+		} else if selectedItem.Type == "provider" {
 			// User selected an unconfigured provider - go to API key input
 			d.SelectedProvider = selectedItem.ProviderIdx
 			d.CurrentStep = APIKeyInputStep
@@ -552,12 +552,9 @@ func (d LLMConfigDialog) handleEnter() (LLMConfigDialog, tea.Cmd) {
 			}
 			d.SelectedBtn = 1
 
-			// Pre-fill API key if already configured
-			provider := d.Providers[selectedItem.ProviderIdx]
-			if existingKey, exists := d.ConfiguredKeys[provider.Name]; exists {
-				d.APIKeyInput = existingKey
-				d.APIKeyCursor = len(existingKey)
-			}
+			d.APIKeyInput = ""
+			d.APIKeyCursor = 0
+
 		}
 
 		return d, nil
@@ -819,7 +816,7 @@ func (d LLMConfigDialog) renderProviderSelection(t theme.Theme) []string {
 			// Render provider
 			var providerLine string
 
-			if isSelected && item.IsSelectable {
+			if isSelected {
 				// Selected unconfigured provider
 				nameStyle := lipgloss.NewStyle().
 					Foreground(t.Primary()).
