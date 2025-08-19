@@ -96,7 +96,7 @@ func (c CommandInput) Update(msg tea.Msg) (CommandInput, tea.Cmd) {
 		case "enter":
 			if c.showingSuggestions && len(c.suggestions) > 0 {
 				selected := c.suggestions[c.selectedSuggestion]
-				c.input = selected.Name + " "
+				c.input = "" // clear the input
 				c.cursor = len(c.input)
 				c.showingSuggestions = false
 				c.selectedSuggestion = 0

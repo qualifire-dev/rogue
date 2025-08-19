@@ -149,7 +149,7 @@ func (d Dialog) Update(msg tea.Msg) (Dialog, tea.Cmd) {
 				return DialogClosedMsg{Action: selectedAction, Input: d.Input}
 			}
 
-		case "tab", "right":
+		case "right":
 			// In input dialogs, use left/right to move the text cursor
 			if d.Type == InputDialog {
 				if d.InputCursor < len(d.Input) {
@@ -162,7 +162,7 @@ func (d Dialog) Update(msg tea.Msg) (Dialog, tea.Cmd) {
 			}
 			return d, nil
 
-		case "shift+tab", "left":
+		case "left":
 			// In input dialogs, use left/right to move the text cursor
 			if d.Type == InputDialog {
 				if d.InputCursor > 0 {
