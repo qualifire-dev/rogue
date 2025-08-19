@@ -310,14 +310,12 @@ func (c CommandInput) View() string {
 	content := lipgloss.JoinVertical(lipgloss.Left, suggestions, input)
 
 	if suggestions != "" {
-
 		return lipgloss.PlaceVertical(
 			c.width,
 			lipgloss.Center,
 			content,
 			styles.WhitespaceStyle(t.Background()),
 		)
-
 	}
 	return input
 }
