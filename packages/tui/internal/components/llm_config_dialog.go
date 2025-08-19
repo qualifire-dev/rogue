@@ -2,6 +2,8 @@ package components
 
 import (
 	"fmt"
+	"os/exec"
+	"runtime"
 	"strings"
 	"time"
 
@@ -287,7 +289,6 @@ func (d LLMConfigDialog) Update(msg tea.Msg) (LLMConfigDialog, tea.Cmd) {
 	if !d.Focused {
 		return d, nil
 	}
-
 	switch msg := msg.(type) {
 	case SpinnerTickMsg:
 		// Update spinner if loading
@@ -297,7 +298,6 @@ func (d LLMConfigDialog) Update(msg tea.Msg) (LLMConfigDialog, tea.Cmd) {
 			return d, cmd
 		}
 		return d, nil
-
 	case APIValidationCompleteMsg:
 		// Stop loading and process validation result
 		d.Loading = false
@@ -314,7 +314,11 @@ func (d LLMConfigDialog) Update(msg tea.Msg) (LLMConfigDialog, tea.Cmd) {
 			d.ErrorMessage = msg.ErrorMsg
 		}
 		return d, nil
-
+	case tea.PasteMsg:
+		if d.CurrentStep == APIKeyInputStep {
+			return d.handlePaste()
+		}
+		return d, nil
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "escape":
@@ -600,8 +604,6 @@ func (d LLMConfigDialog) handleEnter() (LLMConfigDialog, tea.Cmd) {
 			}),
 		)
 
-		return d, nil
-
 	case ModelSelectionStep:
 		if d.SelectedBtn == 0 { // Back
 			d.CurrentStep = APIKeyInputStep
@@ -636,6 +638,59 @@ func (d LLMConfigDialog) handleEnter() (LLMConfigDialog, tea.Cmd) {
 	}
 
 	return d, nil
+}
+
+// handlePaste handles clipboard paste operation for API key input
+func (d LLMConfigDialog) handlePaste() (LLMConfigDialog, tea.Cmd) {
+	// Get clipboard content based on the operating system
+	clipboardText, err := getClipboardContent()
+	if err != nil {
+		// If clipboard reading fails, just return without error
+		return d, nil
+	}
+
+	// Clean the clipboard text (remove newlines and trim whitespace)
+	cleanText := strings.TrimSpace(strings.ReplaceAll(clipboardText, "\n", ""))
+
+	if cleanText == "" {
+		return d, nil
+	}
+
+	// Insert the clipboard content at the current cursor position
+	d.APIKeyInput = d.APIKeyInput[:d.APIKeyCursor] + cleanText + d.APIKeyInput[d.APIKeyCursor:]
+	d.APIKeyCursor += len(cleanText)
+
+	return d, nil
+}
+
+// getClipboardContent reads content from the system clipboard
+func getClipboardContent() (string, error) {
+	var cmd *exec.Cmd
+
+	switch runtime.GOOS {
+	case "darwin": // macOS
+		cmd = exec.Command("pbpaste")
+	case "linux", "freebsd", "openbsd", "netbsd":
+		// Try xclip first, then xsel as fallback
+		if _, err := exec.LookPath("xclip"); err == nil {
+			cmd = exec.Command("xclip", "-selection", "clipboard", "-o")
+		} else if _, err := exec.LookPath("xsel"); err == nil {
+			cmd = exec.Command("xsel", "--clipboard", "--output")
+		} else {
+			return "", fmt.Errorf("no clipboard utility found (xclip or xsel required)")
+		}
+	case "windows":
+		cmd = exec.Command("powershell", "-command", "Get-Clipboard")
+	default:
+		return "", fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
+	}
+
+	output, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+
+	return string(output), nil
 }
 
 // View renders the LLM configuration dialog

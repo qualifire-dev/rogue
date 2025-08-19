@@ -188,9 +188,6 @@ func (e *ScenarioEditor) calculateVisibleItems() {
 
 	e.visibleItems = availableHeight
 
-	// DEBUG: Print debug information
-	fmt.Printf("DEBUG: height=%d, usedHeight=%d, availableHeight=%d, visibleItems=%d, bizHeight=%d\n",
-		e.height, usedHeight, availableHeight, e.visibleItems, bizHeight)
 }
 
 // Update handles input for the scenario editor
@@ -215,7 +212,7 @@ func (e ScenarioEditor) handleListMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 	case "escape", "esc":
 		// Request parent to exit the scenarios screen
 		return e, func() tea.Msg { return ScenarioEditorMsg{Action: "exit"} }
-	case "up", "k":
+	case "up":
 		if e.bizContextSelected {
 			// Move from business context to last scenario
 			e.bizContextSelected = false
@@ -232,7 +229,7 @@ func (e ScenarioEditor) handleListMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 		}
 		return e, nil
 
-	case "down", "j":
+	case "down":
 		if e.bizContextSelected {
 			// Move from business context to first scenario
 			e.bizContextSelected = false
@@ -800,7 +797,7 @@ func (e ScenarioEditor) renderListView(t theme.Theme) string {
 		}
 		typeWidth := 12
 		remainingWidth := contentWidth - typeWidth
-		colWidth := remainingWidth / 3
+		colWidth := remainingWidth / 2
 		if colWidth < 20 {
 			colWidth = 20
 		}

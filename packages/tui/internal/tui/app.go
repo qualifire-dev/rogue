@@ -269,6 +269,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
+	case tea.PasteMsg:
+		if m.llmDialog != nil {
+			*m.llmDialog, cmd = m.llmDialog.Update(msg)
+			if cmd != nil {
+				cmds = append(cmds, cmd)
+			}
+			return m, tea.Batch(cmds...)
+		}
 	case components.SpinnerTickMsg:
 		// Update spinners
 		m.healthSpinner, cmd = m.healthSpinner.Update(msg)
@@ -620,10 +628,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			)
 			m.dialog = &dialog
 			return m, nil
-
-		case "q":
-			return m, tea.Quit
-
 		case "/":
 			// If on scenarios screen, forward to editor for search
 			if m.currentScreen == ScenariosScreen {
