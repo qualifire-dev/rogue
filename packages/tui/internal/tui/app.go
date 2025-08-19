@@ -388,9 +388,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.configState = &ConfigState{
 				ActiveField: ConfigFieldServerURL,
 				ServerURL:   m.config.ServerURL,
-				CursorPos:   0,
+				CursorPos:   len(m.config.ServerURL), // Start cursor at end of existing text
 				ThemeIndex:  m.findCurrentThemeIndex(),
-				IsEditing:   false,
+				IsEditing:   true, // Automatically start editing the server URL field
 				HasChanges:  false,
 			}
 		case "help":
@@ -606,9 +606,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.configState = &ConfigState{
 				ActiveField: ConfigFieldServerURL,
 				ServerURL:   m.config.ServerURL,
-				CursorPos:   0,
+				CursorPos:   len(m.config.ServerURL), // Start cursor at end of existing text
 				ThemeIndex:  m.findCurrentThemeIndex(),
-				IsEditing:   false,
+				IsEditing:   true, // Automatically start editing the server URL field
 				HasChanges:  false,
 			}
 			return m, nil
@@ -1151,10 +1151,17 @@ func (m Model) handleConfigInput(msg tea.KeyMsg) (Model, tea.Cmd) {
 			} else {
 				m.configState.ThemeIndex = len(availableThemes) - 1
 			}
-		} else if !m.configState.IsEditing {
-			// Navigate between fields
+		} else {
+			// Navigate between fields (works both when editing and not editing)
 			if m.configState.ActiveField == ConfigFieldTheme {
+				// If we were editing theme, exit edit mode
+				if m.configState.IsEditing {
+					m.configState.IsEditing = false
+				}
 				m.configState.ActiveField = ConfigFieldServerURL
+				// Automatically enter edit mode for server URL field
+				m.configState.IsEditing = true
+				m.configState.CursorPos = len(m.configState.ServerURL)
 			}
 		}
 		return m, nil
@@ -1168,10 +1175,15 @@ func (m Model) handleConfigInput(msg tea.KeyMsg) (Model, tea.Cmd) {
 			} else {
 				m.configState.ThemeIndex = 0
 			}
-		} else if !m.configState.IsEditing {
-			// Navigate between fields
+		} else {
+			// Navigate between fields (works both when editing and not editing)
 			if m.configState.ActiveField == ConfigFieldServerURL {
+				// If we were editing server URL, save changes and exit edit mode
+				if m.configState.IsEditing {
+					m.configState.IsEditing = false
+				}
 				m.configState.ActiveField = ConfigFieldTheme
+				// Theme field doesn't auto-enter edit mode - user must press Enter to select themes
 			}
 		}
 		return m, nil
@@ -1205,8 +1217,15 @@ func (m Model) handleConfigInput(msg tea.KeyMsg) (Model, tea.Cmd) {
 	default:
 		// Handle character input for server URL
 		if m.configState.IsEditing && m.configState.ActiveField == ConfigFieldServerURL {
-			if len(msg.String()) == 1 {
-				char := msg.String()
+			keyStr := msg.String()
+
+			// Special handling for space key since it might have special representation
+			if keyStr == " " || keyStr == "space" {
+				m.configState.ServerURL = m.configState.ServerURL[:m.configState.CursorPos] +
+					" " + m.configState.ServerURL[m.configState.CursorPos:]
+				m.configState.CursorPos++
+			} else if len(keyStr) == 1 {
+				char := keyStr
 				m.configState.ServerURL = m.configState.ServerURL[:m.configState.CursorPos] +
 					char + m.configState.ServerURL[m.configState.CursorPos:]
 				m.configState.CursorPos++
