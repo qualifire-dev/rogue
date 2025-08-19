@@ -2,6 +2,7 @@ package components
 
 import (
 	"fmt"
+	"math"
 	"os/exec"
 	"runtime"
 	"strings"
@@ -11,14 +12,6 @@ import (
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/rogue/tui/internal/theme"
 )
-
-// min returns the minimum of two integers
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
 
 // buildSelectableItems creates a flattened list of providers and their models
 func (d LLMConfigDialog) buildSelectableItems() []SelectableItem {
@@ -590,7 +583,7 @@ func (d LLMConfigDialog) handleEnter() (LLMConfigDialog, tea.Cmd) {
 		d.ErrorMessage = ""
 		d.loadingSpinner.SetActive(true)
 
-		// Return command to start spinner and simulate API validation
+		// Return command to start spinner and simulate API validation TODO implement the api validation
 		return d, tea.Batch(
 			d.loadingSpinner.Start(),
 			tea.Tick(1500*time.Millisecond, func(time.Time) tea.Msg {
@@ -801,7 +794,7 @@ func (d LLMConfigDialog) renderProviderSelection(t theme.Theme) []string {
 	if len(allItems) > d.VisibleItems {
 		scrollInfo := fmt.Sprintf("Showing %d-%d of %d items",
 			d.ScrollOffset+1,
-			min(d.ScrollOffset+d.VisibleItems, len(allItems)),
+			math.Min(float64(d.ScrollOffset+d.VisibleItems), float64(len(allItems))),
 			len(allItems))
 
 		scrollStyle := lipgloss.NewStyle().
