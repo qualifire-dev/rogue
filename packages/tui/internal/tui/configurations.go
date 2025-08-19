@@ -96,12 +96,41 @@ func (m Model) RenderConfiguration() string {
 	// Server URL field
 	var serverURLDisplay string
 	if m.configState != nil && m.configState.ActiveField == ConfigFieldServerURL {
-		// Show editable field with cursor
+		// Show editable field with cursor (similar to textarea approach)
 		urlText := m.configState.ServerURL
-		if m.configState.CursorPos <= len(urlText) {
-			urlText = urlText[:m.configState.CursorPos] + "█" + urlText[m.configState.CursorPos:]
+
+		// Define text style for normal characters
+		textStyle := lipgloss.NewStyle().
+			Foreground(t.Text()).
+			Background(t.BackgroundElement())
+
+		var renderedText string
+		if m.configState.CursorPos >= len(urlText) {
+			// Cursor at end of input
+			cursorStyle := lipgloss.NewStyle().
+				Background(t.Primary()).
+				Foreground(t.Background())
+			renderedText = textStyle.Render(urlText) + cursorStyle.Render(" ")
+		} else if m.configState.CursorPos >= 0 && m.configState.CursorPos < len(urlText) {
+			// Cursor in middle of input - highlight the character at cursor position
+			before := urlText[:m.configState.CursorPos]
+			atCursor := string(urlText[m.configState.CursorPos])
+			after := ""
+			if m.configState.CursorPos+1 < len(urlText) {
+				after = urlText[m.configState.CursorPos+1:]
+			}
+
+			// Render with cursor highlighting the character
+			cursorStyle := lipgloss.NewStyle().
+				Background(t.Primary()).
+				Foreground(t.Background())
+			renderedText = textStyle.Render(before) + cursorStyle.Render(atCursor) + textStyle.Render(after)
+		} else {
+			// Fallback for invalid cursor position
+			renderedText = textStyle.Render(urlText)
 		}
-		serverURLDisplay = activeValueStyle.Width(40).Render(urlText)
+
+		serverURLDisplay = activeValueStyle.Width(40).Render(renderedText)
 	} else {
 		serverURLDisplay = valueStyle.Width(40).Render(m.config.ServerURL)
 	}

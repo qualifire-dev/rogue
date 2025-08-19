@@ -621,14 +621,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.currentScreen = InterviewScreen
 			return m, nil
 
-		case "ctrl+d":
-			// Show example info dialog
-			dialog := components.NewInfoDialog(
-				"Dialog Demo",
-				"This dialog was opened with Ctrl+D. You can navigate with Tab/Shift+Tab and close with Escape or Enter.",
-			)
-			m.dialog = &dialog
-			return m, nil
 		case "/":
 			// If on scenarios screen, forward to editor for search
 			if m.currentScreen == ScenariosScreen {

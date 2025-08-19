@@ -202,10 +202,18 @@ func (d Dialog) Update(msg tea.Msg) (Dialog, tea.Cmd) {
 
 		default:
 			// Handle regular character input for InputDialog
-			if d.Type == InputDialog && len(msg.String()) == 1 {
-				char := msg.String()
-				d.Input = d.Input[:d.InputCursor] + char + d.Input[d.InputCursor:]
-				d.InputCursor++
+			if d.Type == InputDialog {
+				keyStr := msg.String()
+
+				// Special handling for space key since it might have special representation
+				if keyStr == " " || keyStr == "space" {
+					d.Input = d.Input[:d.InputCursor] + " " + d.Input[d.InputCursor:]
+					d.InputCursor++
+				} else if len(keyStr) == 1 {
+					char := keyStr
+					d.Input = d.Input[:d.InputCursor] + char + d.Input[d.InputCursor:]
+					d.InputCursor++
+				}
 			}
 			return d, nil
 		}
@@ -272,12 +280,37 @@ func (d Dialog) View() string {
 			Background(t.Background()).
 			Padding(0, 1)
 
-		// Render input with cursor
+		// Render input with cursor (similar to textarea approach)
 		var inputText string
-		if d.InputCursor == len(d.Input) {
-			inputText = d.Input + "█"
+
+		// Define text style for normal characters
+		textStyle := lipgloss.NewStyle().
+			Foreground(t.Text()).
+			Background(t.Background())
+
+		if d.InputCursor >= len(d.Input) {
+			// Cursor at end of input
+			cursorStyle := lipgloss.NewStyle().
+				Background(t.Primary()).
+				Foreground(t.Background())
+			inputText = textStyle.Render(d.Input) + cursorStyle.Render(" ")
+		} else if d.InputCursor >= 0 && d.InputCursor < len(d.Input) {
+			// Cursor in middle of input - highlight the character at cursor position
+			before := d.Input[:d.InputCursor]
+			atCursor := string(d.Input[d.InputCursor])
+			after := ""
+			if d.InputCursor+1 < len(d.Input) {
+				after = d.Input[d.InputCursor+1:]
+			}
+
+			// Render with cursor highlighting the character
+			cursorStyle := lipgloss.NewStyle().
+				Background(t.Primary()).
+				Foreground(t.Background())
+			inputText = textStyle.Render(before) + cursorStyle.Render(atCursor) + textStyle.Render(after)
 		} else {
-			inputText = d.Input[:d.InputCursor] + "█" + d.Input[d.InputCursor:]
+			// Fallback for invalid cursor position
+			inputText = textStyle.Render(d.Input)
 		}
 
 		content = append(content, inputStyle.Render(inputText))
