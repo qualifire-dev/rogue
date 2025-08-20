@@ -1,3 +1,5 @@
+
+
 # Rogue - The AI Agent Evaluator
 
 <div align="center">
@@ -11,6 +13,7 @@
 
 Rogue is a powerful tool designed to evaluate the performance, compliance, and reliability of AI agents. It pits a dynamic `EvaluatorAgent` against your agent using Google's A2A protocol, testing it with a range of scenarios to ensure it behaves exactly as intended.
 
+https://github.com/user-attachments/assets/b5c04772-6916-4aab-825b-6a7476d77787
 
 ## 🔥 Quick Start
 
