@@ -38,10 +38,10 @@ type CommandSelectedMsg struct {
 func NewCommandInput() CommandInput {
 	commands := []Command{
 		{Name: "/models", Description: "Configure LLMs", KeyBinding: "Ctrl+L", Action: "configure_models"},
-		{Name: "/config", Description: "Configuration", KeyBinding: "Ctrl+S", Action: "configuration"},
 		{Name: "/editor", Description: "Scenario editor", KeyBinding: "Ctrl+E", Action: "open_editor"},
 		{Name: "/eval", Description: "New evaluation", KeyBinding: "Ctrl+N", Action: "new_evaluation"},
 		{Name: "/help", Description: "Show help", KeyBinding: "Ctrl+H", Action: "help"},
+		{Name: "/settings", Description: "settings", KeyBinding: "Ctrl+S", Action: "configuration"},
 	}
 
 	return CommandInput{
