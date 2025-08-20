@@ -88,7 +88,6 @@ Key Features:
 		"• " + keyStyle.Render("Ctrl+I") + descStyle.Render(" - Interview mode"),
 		"• " + keyStyle.Render("Ctrl+S") + descStyle.Render(" - Configuration"),
 		"• " + keyStyle.Render("Ctrl+H") + descStyle.Render(" - Help"),
-		"• " + keyStyle.Render("Q") + descStyle.Render(" - Quit application"),
 		"• " + keyStyle.Render("Esc") + descStyle.Render(" - Back/Cancel"),
 	}
 	sections = append(sections, contentStyle.Render(strings.Join(shortcuts, "\n")))
@@ -97,11 +96,10 @@ Key Features:
 	sections = append(sections, sectionHeaderStyle.Render("💬 Slash Commands"))
 	commands := []string{
 		"• " + commandStyle.Render("/models") + descStyle.Render(" - Configure LLM providers"),
-		"• " + commandStyle.Render("/config") + descStyle.Render(" - Configuration settings"),
 		"• " + commandStyle.Render("/editor") + descStyle.Render(" - Open scenario editor"),
 		"• " + commandStyle.Render("/eval") + descStyle.Render(" - Start new evaluation"),
 		"• " + commandStyle.Render("/help") + descStyle.Render(" - Show this help screen"),
-		"• " + commandStyle.Render("/quit") + descStyle.Render(" - Exit application"),
+		"• " + commandStyle.Render("/settings") + descStyle.Render(" - Edit settings"),
 	}
 	sections = append(sections, contentStyle.Render(strings.Join(commands, "\n")))
 
