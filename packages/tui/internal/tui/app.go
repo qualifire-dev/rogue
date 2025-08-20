@@ -674,7 +674,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			// Handle NewEvaluationScreen enter for start button and LLM config
 			if m.currentScreen == NewEvaluationScreen && m.evalState != nil {
-				if m.evalState.currentField == 4 { // Start button field
+				if m.evalState.currentField == 3 { // Start button field
 					m.handleNewEvalEnter()
 					// Return command to start evaluation after showing spinner
 					return m, startEvaluationCmd()
@@ -722,18 +722,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 					return m, nil
 				case "down":
-					if m.evalState.currentField < 4 { // Now includes start button (0-4)
+					if m.evalState.currentField < 3 { // Now includes start button (0-3)
 						m.evalState.currentField++
 						m.evalState.cursorPos = 0 // Reset cursor when switching fields
 					}
 					return m, nil
 				case "left":
-					if m.evalState.currentField <= 2 && m.evalState.cursorPos > 0 { // Text fields 0-2
+					if m.evalState.currentField <= 1 && m.evalState.cursorPos > 0 { // Text fields 0-2
 						m.evalState.cursorPos--
 					}
 					return m, nil
 				case "right":
-					if m.evalState.currentField <= 2 { // Text fields 0-2
+					if m.evalState.currentField <= 1 { // Text fields 0-1
 						// Get current field length to limit cursor
 						var fieldLen int
 						switch m.evalState.currentField {
@@ -750,7 +750,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 					return m, nil
 				case "space":
-					if m.evalState.currentField == 3 { // DeepTest field is now index 3
+					if m.evalState.currentField == 2 { // DeepTest field is now index 2
 						m.evalState.DeepTest = !m.evalState.DeepTest
 						return m, nil
 					}
@@ -763,7 +763,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				case "backspace":
 					// Handle backspace for text fields
-					if m.evalState.currentField <= 2 && m.evalState.cursorPos > 0 {
+					if m.evalState.currentField <= 1 && m.evalState.cursorPos > 0 {
 						switch m.evalState.currentField {
 						case 0: // AgentURL
 							runes := []rune(m.evalState.AgentURL)

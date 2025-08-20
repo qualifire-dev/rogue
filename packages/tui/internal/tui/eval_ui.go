@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"time"
 )
 
 // Minimal state for eval screens
@@ -31,7 +30,7 @@ type EvaluationViewState struct {
 	SummaryGenerated bool   // Whether summary generation was already attempted
 
 	// Editing state for New Evaluation
-	currentField int // 0: AgentURL, 1: JudgeModel, 2: ParallelRuns, 3: DeepTest, 4: StartButton
+	currentField int // 0: AgentURL, 1: JudgeModel, 2: DeepTest, 3: StartButton
 	cursorPos    int // rune index in current text field
 }
 
@@ -116,10 +115,4 @@ func (m *Model) triggerSummaryGeneration() {
 
 	// Start spinner for automatic summary generation
 	m.summarySpinner.SetActive(true)
-}
-
-// placeholder tick for periodic UI updates while running
-// Note: actual Bubble Tea cmds will be wired in the TUI update loop where tea is imported
-func (m *Model) evalTick() {
-	time.Sleep(300 * time.Millisecond)
 }

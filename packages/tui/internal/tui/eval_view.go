@@ -95,7 +95,7 @@ func (m Model) renderNewEvaluation() string {
 
 	// Helper function to render the start button
 	renderStartButton := func() string {
-		active := m.evalState.currentField == 4
+		active := m.evalState.currentField == 3
 		var buttonText string
 
 		if m.evalSpinner.IsActive() {
@@ -155,7 +155,7 @@ func (m Model) renderNewEvaluation() string {
 	formSection := lipgloss.JoinVertical(lipgloss.Left,
 		renderField(0, "Agent URL:", agent),
 		renderField(1, "Judge LLM:", judge),
-		renderField(3, "Deep Test:", deep),
+		renderField(2, "Deep Test:", deep),
 	)
 
 	var infoLines []string
