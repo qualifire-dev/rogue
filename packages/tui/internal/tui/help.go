@@ -86,7 +86,7 @@ Key Features:
 		"• " + keyStyle.Render("Ctrl+L") + descStyle.Render(" - Configure LLMs"),
 		"• " + keyStyle.Render("Ctrl+E") + descStyle.Render(" - Scenario editor"),
 		"• " + keyStyle.Render("Ctrl+I") + descStyle.Render(" - Interview mode"),
-		"• " + keyStyle.Render("Ctrl+S") + descStyle.Render(" - Configuration"),
+		"• " + keyStyle.Render("Ctrl+S") + descStyle.Render(" - Settings"),
 		"• " + keyStyle.Render("Ctrl+H") + descStyle.Render(" - Help"),
 		"• " + keyStyle.Render("Esc") + descStyle.Render(" - Back/Cancel"),
 	}
