@@ -42,7 +42,6 @@ func NewCommandInput() CommandInput {
 		{Name: "/editor", Description: "Scenario editor", KeyBinding: "Ctrl+E", Action: "open_editor"},
 		{Name: "/eval", Description: "New evaluation", KeyBinding: "Ctrl+N", Action: "new_evaluation"},
 		{Name: "/help", Description: "Show help", KeyBinding: "Ctrl+H", Action: "help"},
-		{Name: "/quit", Description: "Quit application", KeyBinding: "ctrl+Q", Action: "quit"},
 	}
 
 	return CommandInput{
