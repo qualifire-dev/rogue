@@ -395,40 +395,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "help":
 			m.currentScreen = HelpScreen
-		case "dialog_info":
-			// Show example info dialog
-			dialog := components.NewInfoDialog(
-				"Information",
-				"This is an example information dialog. It demonstrates how modal dialogs can overlay existing content using lipgloss v2.",
-			)
-			m.dialog = &dialog
-			return m, nil
-		case "dialog_input":
-			// Show example input dialog
-			dialog := components.NewInputDialog(
-				"Input Required",
-				"Please enter your name:",
-				"",
-			)
-			m.dialog = &dialog
-			return m, nil
-		case "dialog_error":
-			// Show example error dialog
-			dialog := components.ShowErrorDialog(
-				"Error",
-				"This is an example error dialog with a danger-styled button.",
-			)
-			m.dialog = &dialog
-			return m, nil
-		case "dialog_about":
-			// Show about dialog
-			dialog := components.ShowAboutDialog(
-				"Rogue TUI",
-				m.version,
-				"A terminal user interface for the Rogue agent evaluation system. Built with Bubble Tea and Lipgloss v2.",
-			)
-			m.dialog = &dialog
-			return m, nil
 		case "quit":
 			// Show confirmation dialog before quitting
 			dialog := components.NewConfirmationDialog(

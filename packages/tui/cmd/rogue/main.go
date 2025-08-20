@@ -20,7 +20,6 @@ func main() {
 	}
 	// Global flags
 	rootCmd.PersistentFlags().String("server-url", "http://localhost:8000", "Rogue server URL")
-	rootCmd.PersistentFlags().String("config", "", "Config file path (default: ~/.rogue/config.toml)")
 	rootCmd.PersistentFlags().Bool("debug", false, "Enable debug mode")
 	rootCmd.PersistentFlags().Bool("no-color", false, "Disable colors")
 	rootCmd.PersistentFlags().String("model", "", "Default LLM model")

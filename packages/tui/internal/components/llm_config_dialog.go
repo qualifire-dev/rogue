@@ -149,6 +149,7 @@ type LLMConfigDialog struct {
 	ErrorMessage       string
 	ExpandedProviders  map[int]bool // Track which providers are expanded
 	loadingSpinner     Spinner      // Spinner for loading states
+	ButtonsFocused     bool         // Track whether focus is on buttons (vs input field)
 }
 
 // LLMConfigResultMsg is sent when LLM configuration is complete
@@ -238,6 +239,7 @@ func NewLLMConfigDialog(configuredKeys map[string]string, selectedProvider, sele
 		ConfiguredModel:    selectedModel,
 		AvailableModels:    []string{},
 		ExpandedProviders:  make(map[int]bool),
+		ButtonsFocused:     false, // Start with input field focused
 	}
 
 	// Find the previously selected model or first selectable item
@@ -303,6 +305,7 @@ func (d LLMConfigDialog) Update(msg tea.Msg) (LLMConfigDialog, tea.Cmd) {
 				{Label: "Configure", Action: "configure", Style: PrimaryButton},
 			}
 			d.SelectedBtn = 1
+			d.ButtonsFocused = false // Reset focus state when transitioning
 		} else {
 			d.ErrorMessage = msg.ErrorMsg
 		}
@@ -314,7 +317,7 @@ func (d LLMConfigDialog) Update(msg tea.Msg) (LLMConfigDialog, tea.Cmd) {
 		return d, nil
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "escape":
+		case "esc":
 			return d, func() tea.Msg {
 				return LLMDialogClosedMsg{Action: "cancel"}
 			}
@@ -322,16 +325,32 @@ func (d LLMConfigDialog) Update(msg tea.Msg) (LLMConfigDialog, tea.Cmd) {
 		case "enter":
 			return d.handleEnter()
 
-		case "tab", "right":
-			// Navigate buttons for all steps
-			if len(d.Buttons) > 1 {
+		case "right":
+			// Navigate buttons if buttons are focused, otherwise move cursor in API key input
+			if d.CurrentStep == APIKeyInputStep && d.ButtonsFocused {
+				if len(d.Buttons) > 1 {
+					d.SelectedBtn = (d.SelectedBtn + 1) % len(d.Buttons)
+				}
+			} else if d.CurrentStep == APIKeyInputStep {
+				if d.APIKeyCursor < len(d.APIKeyInput) {
+					d.APIKeyCursor++
+				}
+			} else if len(d.Buttons) > 1 {
 				d.SelectedBtn = (d.SelectedBtn + 1) % len(d.Buttons)
 			}
 			return d, nil
 
-		case "shift+tab", "left":
-			// Navigate buttons for all steps
-			if len(d.Buttons) > 1 {
+		case "left":
+			// Navigate buttons if buttons are focused, otherwise move cursor in API key input
+			if d.CurrentStep == APIKeyInputStep && d.ButtonsFocused {
+				if len(d.Buttons) > 1 {
+					d.SelectedBtn = (d.SelectedBtn - 1 + len(d.Buttons)) % len(d.Buttons)
+				}
+			} else if d.CurrentStep == APIKeyInputStep {
+				if d.APIKeyCursor > 0 {
+					d.APIKeyCursor--
+				}
+			} else if len(d.Buttons) > 1 {
 				d.SelectedBtn = (d.SelectedBtn - 1 + len(d.Buttons)) % len(d.Buttons)
 			}
 			return d, nil
@@ -347,6 +366,11 @@ func (d LLMConfigDialog) Update(msg tea.Msg) (LLMConfigDialog, tea.Cmd) {
 						d.updateScroll()
 						break
 					}
+				}
+			case APIKeyInputStep:
+				// Move focus from buttons back to input field
+				if d.ButtonsFocused {
+					d.ButtonsFocused = false
 				}
 			case ModelSelectionStep:
 				if d.SelectedModel > 0 {
@@ -367,148 +391,44 @@ func (d LLMConfigDialog) Update(msg tea.Msg) (LLMConfigDialog, tea.Cmd) {
 						break
 					}
 				}
+			case APIKeyInputStep:
+				// Move focus from input field to buttons
+				if !d.ButtonsFocused {
+					d.ButtonsFocused = true
+				}
 			case ModelSelectionStep:
 				if d.SelectedModel < len(d.AvailableModels)-1 {
 					d.SelectedModel++
 				}
 			}
 			return d, nil
-
-		case "pgup", "ctrl+u":
-			// Page up - jump up by visible items count
-			if d.CurrentStep == ProviderSelectionStep {
-				items := d.buildSelectableItems()
-				targetIdx := d.SelectedModelIdx - d.VisibleItems
-
-				// Find the nearest selectable item going backwards
-				for i := targetIdx; i >= 0; i-- {
-					if items[i].IsSelectable {
-						d.SelectedModelIdx = i
-						d.updateScroll()
-						break
-					}
-				}
-
-				// If no selectable item found, go to first selectable item
-				if targetIdx < 0 {
-					for i := 0; i < len(items); i++ {
-						if items[i].IsSelectable {
-							d.SelectedModelIdx = i
-							d.updateScroll()
-							break
-						}
-					}
-				}
-			}
-			return d, nil
-
-		case "pgdown", "ctrl+d":
-			// Page down - jump down by visible items count
-			if d.CurrentStep == ProviderSelectionStep {
-				items := d.buildSelectableItems()
-				targetIdx := d.SelectedModelIdx + d.VisibleItems
-
-				// Find the nearest selectable item going forwards
-				for i := targetIdx; i < len(items); i++ {
-					if items[i].IsSelectable {
-						d.SelectedModelIdx = i
-						d.updateScroll()
-						break
-					}
-				}
-
-				// If no selectable item found, go to last selectable item
-				if targetIdx >= len(items) {
-					for i := len(items) - 1; i >= 0; i-- {
-						if items[i].IsSelectable {
-							d.SelectedModelIdx = i
-							d.updateScroll()
-							break
-						}
-					}
-				}
-			}
-			return d, nil
-
-		case "home":
-			// Go to first selectable item
-			if d.CurrentStep == ProviderSelectionStep {
-				items := d.buildSelectableItems()
-				for i := 0; i < len(items); i++ {
-					if items[i].IsSelectable {
-						d.SelectedModelIdx = i
-						d.updateScroll()
-						break
-					}
-				}
-			}
-			return d, nil
-
-		case "end":
-			// Go to last selectable item
-			if d.CurrentStep == ProviderSelectionStep {
-				items := d.buildSelectableItems()
-				for i := len(items) - 1; i >= 0; i-- {
-					if items[i].IsSelectable {
-						d.SelectedModelIdx = i
-						d.updateScroll()
-						break
-					}
-				}
-			}
-			return d, nil
-
 		case "backspace":
-			if d.CurrentStep == APIKeyInputStep && d.APIKeyCursor > 0 && len(d.APIKeyInput) > 0 {
+			if d.CurrentStep == APIKeyInputStep && !d.ButtonsFocused && d.APIKeyCursor > 0 && len(d.APIKeyInput) > 0 {
 				d.APIKeyInput = d.APIKeyInput[:d.APIKeyCursor-1] + d.APIKeyInput[d.APIKeyCursor:]
 				d.APIKeyCursor--
 			}
 			return d, nil
 
 		case "delete":
-			if d.CurrentStep == APIKeyInputStep && d.APIKeyCursor < len(d.APIKeyInput) {
+			if d.CurrentStep == APIKeyInputStep && !d.ButtonsFocused && d.APIKeyCursor < len(d.APIKeyInput) {
 				d.APIKeyInput = d.APIKeyInput[:d.APIKeyCursor] + d.APIKeyInput[d.APIKeyCursor+1:]
 			}
 			return d, nil
 
-		case "ctrl+a":
-			if d.CurrentStep == APIKeyInputStep {
-				d.APIKeyCursor = 0
-			} else if d.CurrentStep == ProviderSelectionStep {
-				// Go to first selectable item
-				items := d.buildSelectableItems()
-				for i := 0; i < len(items); i++ {
-					if items[i].IsSelectable {
-						d.SelectedModelIdx = i
-						d.updateScroll()
-						break
-					}
-				}
-			}
-			return d, nil
-
-		case "ctrl+e":
-			if d.CurrentStep == APIKeyInputStep {
-				d.APIKeyCursor = len(d.APIKeyInput)
-			} else if d.CurrentStep == ProviderSelectionStep {
-				// Go to last selectable item
-				items := d.buildSelectableItems()
-				for i := len(items) - 1; i >= 0; i-- {
-					if items[i].IsSelectable {
-						d.SelectedModelIdx = i
-						d.updateScroll()
-						break
-					}
-				}
-			}
-			return d, nil
-
 		default:
-			// Handle regular character input for API key
-			if d.CurrentStep == APIKeyInputStep && len(msg.String()) == 1 {
-				char := msg.String()
-				d.APIKeyInput = d.APIKeyInput[:d.APIKeyCursor] + char + d.APIKeyInput[d.APIKeyCursor:]
-				d.APIKeyCursor++
+			// Handle regular character input for API key (only when input field is focused)
+			if d.CurrentStep == APIKeyInputStep && !d.ButtonsFocused {
+				keyStr := msg.String()
+
+				// Special handling for space key since it might have special representation
+				if keyStr == " " || keyStr == "space" {
+					d.APIKeyInput = d.APIKeyInput[:d.APIKeyCursor] + " " + d.APIKeyInput[d.APIKeyCursor:]
+					d.APIKeyCursor++
+				} else if len(keyStr) == 1 {
+					char := keyStr
+					d.APIKeyInput = d.APIKeyInput[:d.APIKeyCursor] + char + d.APIKeyInput[d.APIKeyCursor:]
+					d.APIKeyCursor++
+				}
 			}
 			return d, nil
 		}
@@ -551,6 +471,7 @@ func (d LLMConfigDialog) handleEnter() (LLMConfigDialog, tea.Cmd) {
 				{Label: "Validate", Action: "validate", Style: PrimaryButton},
 			}
 			d.SelectedBtn = 1
+			d.ButtonsFocused = false // Focus on input field when entering this step
 
 			d.APIKeyInput = ""
 			d.APIKeyCursor = 0
@@ -567,6 +488,7 @@ func (d LLMConfigDialog) handleEnter() (LLMConfigDialog, tea.Cmd) {
 				{Label: "Next", Action: "next", Style: PrimaryButton},
 			}
 			d.SelectedBtn = 1
+			d.ButtonsFocused = false // Reset focus state when going back
 			return d, nil
 		}
 
@@ -602,6 +524,7 @@ func (d LLMConfigDialog) handleEnter() (LLMConfigDialog, tea.Cmd) {
 				{Label: "Validate", Action: "validate", Style: PrimaryButton},
 			}
 			d.SelectedBtn = 1
+			d.ButtonsFocused = false // Reset focus state when going back
 			return d, nil
 		}
 
@@ -812,7 +735,8 @@ func (d LLMConfigDialog) renderProviderSelection(t theme.Theme) []string {
 		var line string
 		var isSelected = (actualIndex == d.SelectedModelIdx)
 
-		if item.Type == "provider" {
+		switch item.Type {
+		case "provider":
 			// Render provider
 			var providerLine string
 
@@ -842,7 +766,7 @@ func (d LLMConfigDialog) renderProviderSelection(t theme.Theme) []string {
 
 			line = providerLine
 
-		} else if item.Type == "model" {
+		case "model":
 			// Render model
 			var modelLine string
 			provider := d.Providers[item.ProviderIdx]
@@ -919,6 +843,25 @@ func (d LLMConfigDialog) renderAPIKeyInput(t theme.Theme) []string {
 	content = append(content, instructionStyle.Render(fmt.Sprintf("Enter your %s API key:", provider.DisplayName)))
 	content = append(content, "")
 
+	// Add focus indicator for input field
+	var inputFieldLine string
+	if !d.ButtonsFocused {
+		// Input field is focused - show triangle indicator
+		focusIndicator := lipgloss.NewStyle().
+			Foreground(t.Primary()).
+			Bold(true)
+		inputFieldLine = focusIndicator.Render("▶ ") + "API Key:"
+	} else {
+		// Input field not focused
+		inputFieldLine = "  API Key:"
+	}
+
+	labelStyle := lipgloss.NewStyle().
+		Foreground(t.Text()).
+		Width(d.Width - 4).
+		Align(lipgloss.Left)
+	content = append(content, labelStyle.Render(inputFieldLine))
+
 	// API key input field
 	inputStyle := lipgloss.NewStyle().
 		Width(d.Width-6).
@@ -927,14 +870,37 @@ func (d LLMConfigDialog) renderAPIKeyInput(t theme.Theme) []string {
 		Background(t.Background()).
 		Padding(0, 1)
 
-	// Render input with cursor (mask the API key for security)
+	// Render input with cursor (similar to textarea approach)
 	var inputText string
-	maskedInput := strings.Repeat("*", len(d.APIKeyInput))
 
-	if d.APIKeyCursor == len(d.APIKeyInput) {
-		inputText = maskedInput + "█"
+	// Define text style for normal characters
+	textStyle := lipgloss.NewStyle().
+		Foreground(t.Text()).
+		Background(t.Background())
+
+	if d.APIKeyCursor >= len(d.APIKeyInput) {
+		// Cursor at end of input
+		cursorStyle := lipgloss.NewStyle().
+			Background(t.Primary()).
+			Foreground(t.Background())
+		inputText = textStyle.Render(d.APIKeyInput) + cursorStyle.Render(" ")
+	} else if d.APIKeyCursor >= 0 && d.APIKeyCursor < len(d.APIKeyInput) {
+		// Cursor in middle of input - highlight the character at cursor position
+		before := d.APIKeyInput[:d.APIKeyCursor]
+		atCursor := string(d.APIKeyInput[d.APIKeyCursor])
+		after := ""
+		if d.APIKeyCursor+1 < len(d.APIKeyInput) {
+			after = d.APIKeyInput[d.APIKeyCursor+1:]
+		}
+
+		// Render with cursor highlighting the character
+		cursorStyle := lipgloss.NewStyle().
+			Background(t.Primary()).
+			Foreground(t.Background())
+		inputText = textStyle.Render(before) + cursorStyle.Render(atCursor) + textStyle.Render(after)
 	} else {
-		inputText = maskedInput[:d.APIKeyCursor] + "█" + maskedInput[d.APIKeyCursor:]
+		// Fallback for invalid cursor position
+		inputText = textStyle.Render(d.APIKeyInput)
 	}
 
 	content = append(content, inputStyle.Render(inputText))
@@ -948,6 +914,20 @@ func (d LLMConfigDialog) renderAPIKeyInput(t theme.Theme) []string {
 		Italic(true)
 
 	content = append(content, helpStyle.Render(fmt.Sprintf("Environment variable: %s", provider.APIKeyName)))
+	content = append(content, "")
+
+	// Add navigation hints
+	navHintStyle := lipgloss.NewStyle().
+		Foreground(t.Accent()).
+		Width(d.Width - 4).
+		Align(lipgloss.Center).
+		Italic(true)
+
+	if d.ButtonsFocused {
+		content = append(content, navHintStyle.Render("↑ Input field • ←→ Navigate buttons • Enter: Execute"))
+	} else {
+		content = append(content, navHintStyle.Render("↓ Buttons • ←→ Move cursor • Enter: Execute"))
+	}
 
 	return content
 }
@@ -1031,6 +1011,11 @@ func (d LLMConfigDialog) renderButtons(t theme.Theme) string {
 		buttonText := btn.Label
 		if i == 1 && d.CurrentStep == ProviderSelectionStep {
 			buttonText = d.getButtonText()
+		}
+
+		// Add focus indicator for buttons when they're focused
+		if d.CurrentStep == APIKeyInputStep && d.ButtonsFocused && i == d.SelectedBtn {
+			buttonText = "▶ " + buttonText
 		}
 		buttonStyle := lipgloss.NewStyle().
 			Padding(0, 2).
