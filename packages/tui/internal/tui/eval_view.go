@@ -170,7 +170,7 @@ func (m Model) renderNewEvaluation() string {
 
 	buttonSection := renderStartButton()
 
-	helpText := helpStyle.Render("t Test Server   ↑/↓ switch fields   ←/→ move cursor   Tab/Enter config model   Space toggle   Enter activate   Esc Back")
+	helpText := helpStyle.Render("t Test Server   ↑/↓ switch fields   ←/→ move cursor    Space toggle   Enter activate   Esc Back")
 
 	// Calculate content area height (excluding title and help)
 	contentHeight := m.height - 6 // title(3) + help(1) + margins(2)
