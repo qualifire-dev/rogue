@@ -219,7 +219,7 @@ func (a *App) Run() error {
 		scenarios:     []Scenario{},
 		config: Config{
 			ServerURL: "http://localhost:8000",
-			Theme:     "dark",
+			Theme:     "aura",
 			APIKeys:   make(map[string]string),
 		},
 		version:        "v0.1.0",
@@ -243,6 +243,8 @@ func (a *App) Run() error {
 		// If config loading fails, continue with defaults
 		fmt.Printf("Warning: Failed to load config: %v\n", err)
 	}
+
+	theme.SetTheme(model.config.Theme)
 
 	// Set command input as focused by default
 	model.commandInput.SetFocus(true)
