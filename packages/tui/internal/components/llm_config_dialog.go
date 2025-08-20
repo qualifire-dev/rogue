@@ -6,7 +6,6 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
-	"time"
 
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"
@@ -502,19 +501,20 @@ func (d LLMConfigDialog) handleEnter() (LLMConfigDialog, tea.Cmd) {
 		d.ErrorMessage = ""
 		d.loadingSpinner.SetActive(true)
 
+		provider := d.Providers[d.SelectedProvider]
+		selectedModel := ""
+		if d.SelectedModel < len(d.AvailableModels) {
+			selectedModel = d.AvailableModels[d.SelectedModel]
+		}
 		// Return command to start spinner and simulate API validation TODO implement the api validation
-		return d, tea.Batch(
-			d.loadingSpinner.Start(),
-			tea.Tick(1500*time.Millisecond, func(time.Time) tea.Msg {
-				// Simulate API key validation and model fetching
-				provider := d.Providers[d.SelectedProvider]
-				return APIValidationCompleteMsg{
-					Success:  true,
-					Models:   provider.Models, // In real implementation, fetch from API
-					ErrorMsg: "",
-				}
-			}),
-		)
+		return d, func() tea.Msg {
+			return LLMConfigResultMsg{
+				Provider: provider.Name,
+				APIKey:   d.APIKeyInput,
+				Model:    selectedModel,
+				Action:   "configure",
+			}
+		}
 
 	case ModelSelectionStep:
 		if d.SelectedBtn == 0 { // Back
