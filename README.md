@@ -11,8 +11,7 @@
 
 Rogue is a powerful, tool designed to evaluate the performance, compliance, and reliability of AI agents. It pits a dynamic `EvaluatorAgent` against your agent using Google's A2A protocol, testing it with a range of scenarios to ensure it behaves exactly as intended.
 
-<img src="https://storage.googleapis.com/qualifire-docs-assets/rogue-tui-2.mp4" width="600"/>
-
+[demo](https://storage.googleapis.com/qualifire-docs-assets/rogue-tui-2.mp4)
 
 ## 🔥 Quick Start
 
