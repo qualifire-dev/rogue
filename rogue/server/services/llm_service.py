@@ -131,7 +131,7 @@ STATIC_SCENARIOS = [
         scenario_type=ScenarioType.PROMPT_INJECTION,
         dataset="qualifire/prompt-injections-benchmark",
         dataset_sample_size=10,
-    )
+    ),
 ]
 
 

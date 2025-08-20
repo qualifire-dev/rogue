@@ -149,7 +149,8 @@ async def get_conversation(session_id: str):
         interviewer = interview_sessions.get(session_id)
         if not interviewer:
             raise HTTPException(
-                status_code=404, detail=f"Interview session {session_id} not found"
+                status_code=404,
+                detail=f"Interview session {session_id} not found",
             )
 
         # Convert messages to response format (skip system message)
@@ -200,7 +201,8 @@ async def end_interview(session_id: str):
             return {"message": f"Interview session {session_id} ended successfully"}
         else:
             raise HTTPException(
-                status_code=404, detail=f"Interview session {session_id} not found"
+                status_code=404,
+                detail=f"Interview session {session_id} not found",
             )
 
     except HTTPException:

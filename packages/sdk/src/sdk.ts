@@ -1,25 +1,25 @@
 /**
  * Functional TypeScript SDK for Rogue Agent Evaluator
- * 
+ *
  * More idiomatic TypeScript approach using factory functions
  * instead of classes.
  */
 
-import { RogueHttpClient } from './client';
+import { RogueHttpClient } from "./client";
+import { RogueWebSocketClient } from "./websocket";
 import {
-  AgentConfig,
-  AuthType,
-  EvaluationJob,
+  RogueClientConfig,
   EvaluationRequest,
   EvaluationResponse,
-  EvaluationStatus,
-  HealthResponse,
+  EvaluationJob,
   JobListResponse,
-  RogueClientConfig,
+  HealthResponse,
+  EvaluationStatus,
+  AgentConfig,
   Scenario,
-  ScenarioType
-} from './types';
-import { RogueWebSocketClient } from './websocket';
+  AuthType,
+  ScenarioType,
+} from "./types";
 
 // Core client interface
 export interface RogueClient {
@@ -27,9 +27,17 @@ export interface RogueClient {
   health(): Promise<HealthResponse>;
   createEvaluation(request: EvaluationRequest): Promise<EvaluationResponse>;
   getEvaluation(jobId: string): Promise<EvaluationJob>;
-  listEvaluations(status?: EvaluationStatus, limit?: number, offset?: number): Promise<JobListResponse>;
+  listEvaluations(
+    status?: EvaluationStatus,
+    limit?: number,
+    offset?: number
+  ): Promise<JobListResponse>;
   cancelEvaluation(jobId: string): Promise<{ message: string }>;
-  waitForEvaluation(jobId: string, pollInterval?: number, maxWaitTime?: number): Promise<EvaluationJob>;
+  waitForEvaluation(
+    jobId: string,
+    pollInterval?: number,
+    maxWaitTime?: number
+  ): Promise<EvaluationJob>;
   runEvaluationWithUpdates(
     request: EvaluationRequest,
     onUpdate?: (job: EvaluationJob) => void,
@@ -69,7 +77,11 @@ export function createRogueClient(config: RogueClientConfig): RogueClient {
       return httpClient.getEvaluation(jobId);
     },
 
-    async listEvaluations(status?: EvaluationStatus, limit?: number, offset?: number) {
+    async listEvaluations(
+      status?: EvaluationStatus,
+      limit?: number,
+      offset?: number
+    ) {
       return httpClient.listEvaluations(status, limit, offset);
     },
 
@@ -77,7 +89,11 @@ export function createRogueClient(config: RogueClientConfig): RogueClient {
       return httpClient.cancelEvaluation(jobId);
     },
 
-    async waitForEvaluation(jobId: string, pollInterval?: number, maxWaitTime?: number) {
+    async waitForEvaluation(
+      jobId: string,
+      pollInterval?: number,
+      maxWaitTime?: number
+    ) {
       return httpClient.waitForEvaluation(jobId, pollInterval, maxWaitTime);
     },
 
@@ -99,20 +115,22 @@ export function createRogueClient(config: RogueClientConfig): RogueClient {
 
       return new Promise<EvaluationJob>((resolve, reject) => {
         if (!wsClient) {
-          reject(new Error('WebSocket connection failed'));
+          reject(new Error("WebSocket connection failed"));
           return;
         }
 
         // Set up event handlers
-        wsClient.on('job_update', (event, data) => {
+        wsClient.on("job_update", (event, data) => {
           if (onUpdate) {
             onUpdate(data);
           }
 
           // Check if job is complete
-          if (data.status === EvaluationStatus.COMPLETED ||
+          if (
+            data.status === EvaluationStatus.COMPLETED ||
             data.status === EvaluationStatus.FAILED ||
-            data.status === EvaluationStatus.CANCELLED) {
+            data.status === EvaluationStatus.CANCELLED
+          ) {
             wsClient?.disconnect();
             wsClient = null;
             resolve(data);
@@ -120,12 +138,12 @@ export function createRogueClient(config: RogueClientConfig): RogueClient {
         });
 
         if (onChat) {
-          wsClient.on('chat_update', (event, data) => {
+          wsClient.on("chat_update", (event, data) => {
             onChat(data);
           });
         }
 
-        wsClient.on('error', (event, data) => {
+        wsClient.on("error", (event, data) => {
           wsClient?.disconnect();
           wsClient = null;
           reject(new Error(`WebSocket error: ${data.error}`));
@@ -135,7 +153,7 @@ export function createRogueClient(config: RogueClientConfig): RogueClient {
         setTimeout(() => {
           wsClient?.disconnect();
           wsClient = null;
-          reject(new Error('Evaluation timed out'));
+          reject(new Error("Evaluation timed out"));
         }, 300000); // 5 minutes
       });
     },
@@ -153,28 +171,28 @@ export function createRogueClient(config: RogueClientConfig): RogueClient {
       const agentConfig: AgentConfig = {
         evaluated_agent_url: agentUrl,
         evaluated_agent_auth_type: options.authType || AuthType.NO_AUTH,
-        evaluated_agent_credentials: options.authCredentials,
-        judge_llm: options.judgeModel || 'openai/gpt-4o-mini',
+        evaluated_agent_credentials: options.authCredentials || "",
+        judge_llm: options.judgeModel || "openai/gpt-4o-mini",
         deep_test_mode: options.deepTest || false,
         interview_mode: true,
-        parallel_runs: 1
+        parallel_runs: 1,
       };
 
-      const scenarioObjects: Scenario[] = scenarios.map(scenario => ({
+      const scenarioObjects: Scenario[] = scenarios.map((scenario) => ({
         scenario,
-        scenario_type: ScenarioType.POLICY
+        scenario_type: ScenarioType.POLICY,
       }));
 
       const request: EvaluationRequest = {
         agent_config: agentConfig,
         scenarios: scenarioObjects,
         max_retries: 3,
-        timeout_seconds: 300
+        timeout_seconds: 300,
       };
 
       const response = await httpClient.createEvaluation(request);
       return httpClient.waitForEvaluation(response.job_id);
-    }
+    },
   };
 }
 
@@ -211,7 +229,6 @@ export async function getEvaluation(
 }
 
 // Export everything for flexibility
-export { RogueHttpClient } from './client';
-export * from './types';
-export { RogueWebSocketClient } from './websocket';
-
+export { RogueHttpClient } from "./client";
+export * from "./types";
+export { RogueWebSocketClient } from "./websocket";

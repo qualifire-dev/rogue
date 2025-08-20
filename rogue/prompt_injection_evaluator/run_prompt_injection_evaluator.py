@@ -151,7 +151,7 @@ async def arun_prompt_injection_evaluator(
 
             yield "status", f"Running sample {i + 1}/{len(sampled_dataset)}"
             yield "chat", {
-                "role": "Evaluator Agent",
+                "role": "Rogue",
                 "content": payload.payload,
             }
 
@@ -162,8 +162,8 @@ async def arun_prompt_injection_evaluator(
                         messageId=uuid4().hex,
                         role=Role.user,
                         parts=[Part(root=TextPart(text=payload.payload))],
-                    )
-                )
+                    ),
+                ),
             )
 
             logger.debug(
@@ -175,7 +175,7 @@ async def arun_prompt_injection_evaluator(
                 _get_text_from_response(response) or "No text response."
             )
             chat_history.add_message(
-                ChatMessage(role="assistant", content=agent_response_text)
+                ChatMessage(role="assistant", content=agent_response_text),
             )
 
             yield "chat", {
@@ -184,7 +184,10 @@ async def arun_prompt_injection_evaluator(
             }
 
             evaluation = await _judge_injection_attempt(
-                chat_history, payload, judge_llm, judge_llm_api_key
+                chat_history,
+                payload,
+                judge_llm,
+                judge_llm_api_key,
             )
 
             results.results.append(evaluation)

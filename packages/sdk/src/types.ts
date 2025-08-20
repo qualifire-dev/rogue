@@ -1,6 +1,6 @@
 /**
  * TypeScript types for Rogue Agent Evaluator API
- * 
+ *
  * These types mirror the Pydantic models from the FastAPI server.
  */
 
@@ -9,12 +9,12 @@ export enum AuthType {
   NO_AUTH = "no_auth",
   API_KEY = "api_key",
   BEARER_TOKEN = "bearer_token",
-  BASIC_AUTH = "basic"
+  BASIC_AUTH = "basic",
 }
 
 export enum ScenarioType {
   POLICY = "policy",
-  PROMPT_INJECTION = "prompt_injection"
+  PROMPT_INJECTION = "prompt_injection",
 }
 
 export enum EvaluationStatus {
@@ -22,7 +22,7 @@ export enum EvaluationStatus {
   RUNNING = "running",
   COMPLETED = "completed",
   FAILED = "failed",
-  CANCELLED = "cancelled"
+  CANCELLED = "cancelled",
 }
 
 // Core Models

@@ -342,7 +342,7 @@ async def run_cli(args: Namespace) -> int:
     )
     if not results:
         raise ValueError(
-            f"No scenarios were evaluated for {cli_input.evaluated_agent_url}"
+            f"No scenarios were evaluated for {cli_input.evaluated_agent_url}",
         )
 
     logger.info("Creating report")

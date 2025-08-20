@@ -23,11 +23,11 @@ class CLIInput(BaseModel):
     def get_scenarios_from_file(self) -> Scenarios:
         if not self.input_scenarios_file.exists():
             raise ValueError(
-                f"Input scenarios file does not exist: {self.input_scenarios_file}"
+                f"Input scenarios file does not exist: {self.input_scenarios_file}",
             )
         if not self.input_scenarios_file.is_file():
             raise ValueError(
-                f"Input scenarios file is not a file: {self.input_scenarios_file}"
+                f"Input scenarios file is not a file: {self.input_scenarios_file}",
             )
 
         return Scenarios.model_validate_json(self.input_scenarios_file.read_text())
@@ -39,7 +39,7 @@ class CLIInput(BaseModel):
 
         if auth_type != AuthType.NO_AUTH and not auth_credentials:
             raise ValueError(
-                "Authentication Credentials cannot be empty for the selected auth type."
+                "Authentication Credentials cannot be empty for the selected auth type.",  # noqa: E501
             )
         return self
 

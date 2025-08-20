@@ -87,7 +87,7 @@ class EvaluationLibrary:
 
                 if progress_callback:
                     logger.debug(
-                        f"📤 Calling progress_callback with update_type='{update_type}'"
+                        f"📤 Calling progress_callback with update_type='{update_type}'",
                     )
                     try:
                         progress_callback(update_type, data)
@@ -100,7 +100,7 @@ class EvaluationLibrary:
                     logger.info(
                         "✅ Evaluation completed with "
                         f"{len(results.results) if results and results.results else 0} "
-                        "results"
+                        "results",
                     )
                     break
 
@@ -108,7 +108,7 @@ class EvaluationLibrary:
                 (
                     "🏁 Finished iterating over updates. "
                     f"Total updates received: {update_count}"
-                )
+                ),
             )
 
             if not results:
@@ -184,5 +184,5 @@ class EvaluationLibrary:
                 scenarios=scenarios,
                 business_context=business_context,
                 progress_callback=progress_callback,
-            )
+            ),
         )

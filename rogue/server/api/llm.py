@@ -82,7 +82,8 @@ async def generate_summary(request: SummaryGenerationRequest):
         logger.info("Successfully generated evaluation summary")
 
         return SummaryGenerationResponse(
-            summary=summary, message="Successfully generated evaluation summary"
+            summary=summary,
+            message="Successfully generated evaluation summary",
         )
 
     except Exception as e:

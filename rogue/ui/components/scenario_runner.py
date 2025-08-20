@@ -433,7 +433,8 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                     f"Status update prepared for component index {worker_id * 3 + 1}",
                 )
             elif update_type == "chat":
-                role = "user" if data["role"] == "Evaluator Agent" else "assistant"
+                logger.info(f"📨 Received chat update: {data['role']}")
+                role = "user" if data["role"] == "Rogue" else "assistant"
                 chat_message = {"role": role, "content": data["content"]}
                 worker_histories[worker_id].append(chat_message)
                 logger.info(

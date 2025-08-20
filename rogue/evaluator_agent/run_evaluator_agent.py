@@ -83,7 +83,7 @@ async def _run_agent(
                 break  # Without this, this loop will be infinite
 
         logger.debug(
-            f"✅ _run_agent completed. Total output length: {len(agent_output)}"
+            f"✅ _run_agent completed. Total output length: {len(agent_output)}",
         )
     except Exception:
         logger.exception("💥 agent run failed")
@@ -162,7 +162,7 @@ async def arun_evaluator_agent(
                         (
                             "📊 Got evaluation results: "
                             f"{len(results.results) if results.results else 0} results"
-                        )
+                        ),
                     )
                     await results_queue.put(results)
                 except Exception:
@@ -183,14 +183,14 @@ async def arun_evaluator_agent(
                     message_count += 1
                     logger.info(
                         f"💬 Received chat message #{message_count}: "
-                        f"{str(message)[:100]}..."
+                        f"{str(message)[:100]}...",
                     )
                     yield "chat", message
                 except asyncio.TimeoutError:
                     continue
 
             logger.info(
-                f"🏁 Message processing loop completed. Total messages: {message_count}"
+                f"🏁 Message processing loop completed. Total messages: {message_count}",
             )
 
             # once runner_task is done, get the final result
@@ -201,7 +201,7 @@ async def arun_evaluator_agent(
                     f"✅ Final results obtained: "
                     f"{len(final_results.results) if final_results.results else 0} "
                     "results"
-                )
+                ),
             )
             yield "results", final_results
 
@@ -212,7 +212,7 @@ async def arun_evaluator_agent(
             except Exception as runner_error:
                 logger.warning(
                     "⚠️ Runner task completed with error (already handled): "
-                    f"{runner_error}"
+                    f"{runner_error}",
                 )
                 # Don't re-raise - we already yielded results
 

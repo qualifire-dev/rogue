@@ -10,15 +10,18 @@ from uuid import uuid4
 
 # Context variables for structured logging
 request_id_var: contextvars.ContextVar[str] = contextvars.ContextVar(
-    "request_id", default=""
+    "request_id",
+    default="",
 )
 user_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("user_id", default="")
 job_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("job_id", default="")
 agent_url_var: contextvars.ContextVar[str] = contextvars.ContextVar(
-    "agent_url", default=""
+    "agent_url",
+    default="",
 )
 scenario_count_var: contextvars.ContextVar[int] = contextvars.ContextVar(
-    "scenario_count", default=0
+    "scenario_count",
+    default=0,
 )
 
 

@@ -11,6 +11,8 @@
     "build": "tsc",
     "build:watch": "tsc --watch",
     "clean": "rm -rf dist",
+    "build:runner": "tsc -p tsconfig.json",
+    "runner:dev": "ts-node --transpile-only src/scripts/eval-runner.ts",
     "prepublishOnly": "npm run clean && npm run build",
     "test": "jest",
     "lint": "eslint src/**/*.ts",
@@ -33,7 +35,7 @@
     "eslint": "^8.0.0",
     "jest": "^29.0.0",
     "prettier": "^3.0.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.9.2"
   },
   "dependencies": {
     "ws": "^8.14.0"

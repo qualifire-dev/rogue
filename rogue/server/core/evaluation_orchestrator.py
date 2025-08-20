@@ -103,13 +103,13 @@ class EvaluationOrchestrator:
                     results = data
                     if results and results.results:
                         self.logger.info(
-                            f"📊 Processing {len(results.results)} evaluation results"
+                            f"📊 Processing {len(results.results)} evaluation results",
                         )
                         for res in results.results:
                             self.results.add_result(res)
                     else:
                         self.logger.warning(
-                            "⚠️ Received results update but no results data"
+                            "⚠️ Received results update but no results data",
                         )
 
                     # Yield the accumulated results
@@ -117,7 +117,7 @@ class EvaluationOrchestrator:
                 else:
                     # Forward chat and status updates
                     self.logger.debug(
-                        f"🔄 Forwarding {update_type} update: {str(data)[:50]}..."
+                        f"🔄 Forwarding {update_type} update: {str(data)[:50]}...",
                     )
                     yield update_type, data
 

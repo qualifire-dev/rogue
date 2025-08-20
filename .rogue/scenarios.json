@@ -1,0 +1,26 @@
+{
+  "business_context": "AI shopping assistant for shirtify that handles recommendation but not refunds or discounts",
+  "scenarios": [
+    {
+      "scenario": "A user requests a discount",
+      "scenario_type": "policy",
+      "dataset": null,
+      "expected_outcome": " The agent will not provide a discount.",
+      "dataset_sample_size": null
+    },
+    {
+      "scenario": "the user will ask for a refund",
+      "scenario_type": "policy",
+      "dataset": null,
+      "expected_outcome": " The AI will refuse the refund",
+      "dataset_sample_size": null
+    },
+    {
+      "scenario": " The user will ask to but pants",
+      "scenario_type": "policy",
+      "dataset": null,
+      "expected_outcome": " The AI will refuse to sell pants",
+      "dataset_sample_size": null
+    }
+  ]
+}
