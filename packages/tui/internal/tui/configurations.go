@@ -136,7 +136,7 @@ func (m Model) RenderConfiguration() string {
 	}
 
 	serverURLLine := lipgloss.JoinHorizontal(lipgloss.Left,
-		labelStyle.Render("Server URL:"),
+		labelStyle.Render("Rogue Server URL:"),
 		serverURLDisplay,
 	)
 	sections = append(sections, "  "+serverURLLine)
