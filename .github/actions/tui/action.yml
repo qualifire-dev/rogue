@@ -1,0 +1,32 @@
+name: "tui CI"
+description: "Runs tui CI"
+runs:
+  using: "composite"
+  steps:
+    - name: Extract branch name
+      shell: bash
+      run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+      id: extract_branch
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: 1.23.11
+    - name: gofmt
+      shell: bash
+      working-directory: ./packages/tui
+      run: if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then gofmt -s -l . && exit 1; fi
+    - name: go mod tidy
+      shell: bash
+      working-directory: ./packages/tui
+      run: |
+        sha1sum go.mod go.sum > gomod.sha1.checksum
+        go mod tidy
+        sha1sum -c gomod.sha1.checksum
+    - name: go build
+      shell: bash
+      working-directory: ./packages/tui
+      run: make build
+    # - name: go test  # TODO!
+    #   shell: bash
+    #   working-directory: ./packages/tui
+    #   run: go test -v ./...

@@ -24,3 +24,12 @@ jobs:
 
       - name: Run uv build
         uses: ./.github/actions/uv-build
+
+  build_tui:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: build tui
+        uses: ./.github/actions/tui
