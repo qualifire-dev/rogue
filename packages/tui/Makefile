@@ -3,7 +3,7 @@
 .PHONY: build clean run test install deps dev
 
 # Variables
-BINARY_NAME=rogue
+BINARY_NAME=rogue-tui
 BUILD_DIR?=dist
 CMD_DIR=cmd/rogue
 VERSION?=dev

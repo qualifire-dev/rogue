@@ -41,7 +41,7 @@ jobs:
         id: create_zip
         run: |
           cd /opt/dist
-          zip -9r rogue-release-${{ github.ref_name }}.zip .
+          zip -9r rogue-release-${{ github.ref_name }}.zip ./rogue-*
           echo "zip_path=dist/rogue-release-${{ github.ref_name }}.zip" >> $GITHUB_OUTPUT
 
       - name: Upload release artifacts
