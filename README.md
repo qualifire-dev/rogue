@@ -19,16 +19,38 @@ https://github.com/user-attachments/assets/b5c04772-6916-4aab-825b-6a7476d77787
 
 ### Prerequisites
 
+- `uvx` - If not installed, follow [uv installation guide](https://docs.astral.sh/uv/getting-started/installation/)
 - Python 3.10+
 - An API key for an LLM provider (e.g., OpenAI, Google, Anthropic).
 
 ### Installation
 
+#### Option 1: Quick Install (Recommended)
+
+Use our automated install script to get up and running quickly:
+
+```bash
+# Unix/Linux/macOS
+curl -fsSL https://raw.githubusercontent.com/qualifire-dev/rogue-private/main/install.sh | bash
+
+# Windows (PowerShell)
+Invoke-Expression (Invoke-WebRequest -Uri "https://raw.githubusercontent.com/qualifire-dev/rogue-private/main/install.ps1").Content
+```
+
+The install script automatically:
+- Downloads the latest release (or specific version with `-v` flag, or explicitly with `-v latest`)
+- Updates your PATH
+- Provides both `rogue` and `rogue-tui` commands
+
+**Note**: Use `install.sh` for Unix/Linux/macOS and `install.ps1` for Windows PowerShell.
+
+#### Option 2: Manual Installation
+
 1.  **Clone the repository:**
 
     ```bash
-    git clone https://github.com/qualifire-dev/rogue.git
-    cd rogue
+    git clone https://github.com/qualifire-dev/rogue-private.git
+    cd rogue-private
     ```
 
 2.  **Install dependencies:**
@@ -70,6 +92,15 @@ python -m rogue
 ```
 
 Navigate to the URL displayed in your terminal (usually `http://127.0.0.1:7860`) to begin.
+
+### Available Commands
+
+After installation, you'll have access to two main commands:
+
+- **`rogue`** - The main Python-based rogue agent evaluator with Gradio web UI
+- **`rogue-tui`** - A modern terminal user interface built with Go and Bubble Tea
+
+Both commands support the same core functionality but with different interfaces.
 
 ---
 
