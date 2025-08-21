@@ -25,6 +25,14 @@ jobs:
       - name: Run uv build
         uses: ./.github/actions/uv-build
 
+      - name: Upload Python wheel
+        # if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-wheel
+          path: dist/*.whl
+          retention-days: 1
+
   build_tui:
     runs-on: ubuntu-latest
     steps:
@@ -33,3 +41,55 @@ jobs:
 
       - name: build tui
         uses: ./.github/actions/tui
+
+      - name: Upload TUI binary
+        # if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tui-binary
+          path: packages/tui/bin/rogue
+          retention-days: 1
+
+  release:
+    needs: [build, build_tui]
+    runs-on: ubuntu-latest
+    # if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download Python wheel
+        uses: actions/download-artifact@v4
+        with:
+          name: python-wheel
+          path: dist
+
+      - name: Download TUI binary
+        uses: actions/download-artifact@v4
+        with:
+          name: tui-binary
+          path: dist
+
+      - name: Create release zip
+        run: |
+          cd dist
+          zip -r rogue-release-0.1.${{ github.run_number }}.zip .
+          echo "RELEASE_ZIP_PATH=dist/rogue-release-0.1.${{ github.run_number }}.zip" >> $GITHUB_ENV
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rogue-release
+          path: dist/rogue-release-0.1.${{ github.run_number }}.zip
+          retention-days: 30
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/rogue-release-0.1.${{ github.run_number }}.zip
+          tag_name: v0.1.${{ github.run_number }}
+          name: Release v0.1.${{ github.run_number }}
+          draft: true
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
