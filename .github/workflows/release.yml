@@ -29,18 +29,18 @@ jobs:
       - name: Run uv build
         uses: ./.github/actions/uv-build
         with:
-          dist_dir: "dist"
+          dist_dir: "/opt/dist"
       
       - name: Build tui
         uses: ./.github/actions/tui-build
         with:
           build_all: "true"
-          build_dir: "dist"
+          build_dir: "/opt/dist"
 
       - name: Create release zip
         id: create_zip
         run: |
-          cd dist
+          cd /opt/dist
           zip -9r rogue-release-${{ github.ref_name }}.zip .
           echo "zip_path=dist/rogue-release-${{ github.ref_name }}.zip" >> $GITHUB_OUTPUT
 
