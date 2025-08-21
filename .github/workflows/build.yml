@@ -7,6 +7,9 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -76,20 +79,25 @@ jobs:
           zip -r rogue-release-0.1.${{ github.run_number }}.zip .
           echo "RELEASE_ZIP_PATH=dist/rogue-release-0.1.${{ github.run_number }}.zip" >> $GITHUB_ENV
 
+      - name: Set release zip path output
+        id: release_zip_path
+        run: echo "zip_path=dist/rogue-release-0.1.${{ github.run_number }}.zip" >> $GITHUB_OUTPUT
+
       - name: Upload release artifacts
         uses: actions/upload-artifact@v4
         with:
           name: rogue-release
-          path: dist/rogue-release-0.1.${{ github.run_number }}.zip
+          path: ${{ steps.release_zip_path.outputs.zip_path }}
           retention-days: 365  # TODO: how much time do we need to keep the release artifacts?
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
-          files: dist/rogue-release-0.1.${{ github.run_number }}.zip
+          files: ${{ steps.release_zip_path.outputs.zip_path }}
           tag_name: v0.1.${{ github.run_number }}
           name: Release v0.1.${{ github.run_number }}
           draft: true
           prerelease: false
+          generate_release_notes: true
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
