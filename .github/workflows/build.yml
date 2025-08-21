@@ -46,8 +46,8 @@ jobs:
         # if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v4
         with:
-          name: tui-binary
-          path: packages/tui/bin/rogue
+          name: tui-binaries
+          path: packages/tui/bin/rogue-*
           retention-days: 1
 
   release:
@@ -64,10 +64,10 @@ jobs:
           name: python-wheel
           path: dist
 
-      - name: Download TUI binary
+      - name: Download TUI binaries
         uses: actions/download-artifact@v4
         with:
-          name: tui-binary
+          name: tui-binaries
           path: dist
 
       - name: Create release zip
@@ -81,7 +81,7 @@ jobs:
         with:
           name: rogue-release
           path: dist/rogue-release-0.1.${{ github.run_number }}.zip
-          retention-days: 30
+          retention-days: 365  # TODO: how much time do we need to keep the release artifacts?
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1

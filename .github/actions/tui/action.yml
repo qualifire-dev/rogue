@@ -25,7 +25,7 @@ runs:
     - name: go build
       shell: bash
       working-directory: ./packages/tui
-      run: make build
+      run: make build-all
     # - name: go test  # TODO!
     #   shell: bash
     #   working-directory: ./packages/tui
