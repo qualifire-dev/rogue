@@ -26,7 +26,7 @@ jobs:
         uses: ./.github/actions/uv-build
 
       - name: Upload Python wheel
-        # if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v4
         with:
           name: python-wheel
@@ -43,7 +43,7 @@ jobs:
         uses: ./.github/actions/tui
 
       - name: Upload TUI binary
-        # if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v4
         with:
           name: tui-binaries
@@ -53,7 +53,7 @@ jobs:
   release:
     needs: [build, build_tui]
     runs-on: ubuntu-latest
-    # if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: write
     concurrency:
@@ -98,7 +98,7 @@ jobs:
           files: ${{ steps.release_zip_path.outputs.zip_path }}
           tag_name: v0.1.${{ github.run_number }}
           name: Release v0.1.${{ github.run_number }}
-          draft: true
+          draft: false
           prerelease: false
           generate_release_notes: true
         env:
