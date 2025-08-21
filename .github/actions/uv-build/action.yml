@@ -5,6 +5,10 @@ inputs:
     description: "working directory"
     required: false
     default: "."
+  dist_dir:
+    description: "Output directory for the built package"
+    required: false
+    default: "dist"
 runs:
   using: "composite"
   steps:
@@ -12,4 +16,4 @@ runs:
       shell: bash
       run: |
         cd "${{ inputs.workdir }}"
-        uv build
+        uv build --out-dir "${{ inputs.dist_dir }}"

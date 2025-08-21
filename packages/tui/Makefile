@@ -3,8 +3,8 @@
 .PHONY: build clean run test install deps dev
 
 # Variables
-BINARY_NAME=rogue
-BUILD_DIR=bin
+BINARY_NAME=rogue-tui
+BUILD_DIR?=dist
 CMD_DIR=cmd/rogue
 VERSION?=dev
 COMMIT?=$(shell git rev-parse --short HEAD)

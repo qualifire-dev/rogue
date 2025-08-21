@@ -1,0 +1,24 @@
+name: "tui codestyle"
+description: "Runs tui codestyle"
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: 1.23.11
+    - name: gofmt
+      shell: bash
+      working-directory: ./packages/tui
+      run: if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then gofmt -s -l . && exit 1; fi
+    - name: go mod tidy
+      shell: bash
+      working-directory: ./packages/tui
+      run: |
+        sha1sum go.mod go.sum > gomod.sha1.checksum
+        go mod tidy
+        sha1sum -c gomod.sha1.checksum
+    # - name: go test  # TODO!
+    #   shell: bash
+    #   working-directory: ./packages/tui
+    #   run: go test -v ./...

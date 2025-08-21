@@ -24,3 +24,8 @@ jobs:
 
       - name: Run uv build
         uses: ./.github/actions/uv-build
+      
+      - name: Build tui
+        uses: ./.github/actions/tui-build
+        with:
+          build_all: "false"  # We will build for all platforms on the release
