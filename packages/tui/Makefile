@@ -4,7 +4,7 @@
 
 # Variables
 BINARY_NAME=rogue
-BUILD_DIR=dist
+BUILD_DIR?=dist
 CMD_DIR=cmd/rogue
 VERSION?=dev
 COMMIT?=$(shell git rev-parse --short HEAD)

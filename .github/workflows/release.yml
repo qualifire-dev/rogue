@@ -28,11 +28,14 @@ jobs:
 
       - name: Run uv build
         uses: ./.github/actions/uv-build
+        with:
+          dist_dir: "dist"
       
       - name: Build tui
         uses: ./.github/actions/tui-build
         with:
           build_all: "true"
+          build_dir: "dist"
 
       - name: Create release zip
         id: create_zip

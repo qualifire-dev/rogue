@@ -5,6 +5,10 @@ inputs:
     description: "Whether to build all architectures (true) or just for the current platform (false)"
     required: false
     default: "false"
+  build_dir:
+    description: "Directory where binaries will be output"
+    required: false
+    default: "dist"
 runs:
   using: "composite"
   steps:
@@ -17,7 +21,7 @@ runs:
       working-directory: ./packages/tui
       run: |
         if [ "${{ inputs.build_all }}" = "true" ]; then
-          make build-all
+          make build-all BUILD_DIR="${{ inputs.build_dir }}"
         else
-          make build
+          make build BUILD_DIR="${{ inputs.build_dir }}"
         fi
