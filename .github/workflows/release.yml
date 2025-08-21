@@ -1,0 +1,61 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: release-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: ".python-version"
+
+      - name: Run uv build
+        uses: ./.github/actions/uv-build
+      
+      - name: Build tui
+        uses: ./.github/actions/tui-build
+        with:
+          build_all: "true"
+
+      - name: Create release zip
+        id: create_zip
+        run: |
+          cd dist
+          zip -9r rogue-release-${{ github.ref_name }}.zip .
+          echo "zip_path=dist/rogue-release-${{ github.ref_name }}.zip" >> $GITHUB_OUTPUT
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rogue-release
+          path: ${{ steps.create_zip.outputs.zip_path }}
+          retention-days: 365  # TODO: how much time do we need to keep the release artifacts?
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.create_zip.outputs.zip_path }}
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

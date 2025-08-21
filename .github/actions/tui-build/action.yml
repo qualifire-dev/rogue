@@ -1,0 +1,23 @@
+name: "tui build"
+description: "Builds the tui"
+inputs:
+  build_all:
+    description: "Whether to build all architectures (true) or just for the current platform (false)"
+    required: false
+    default: "false"
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: 1.23.11
+    - name: go build
+      shell: bash
+      working-directory: ./packages/tui
+      run: |
+        if [ "${{ inputs.build_all }}" = "true" ]; then
+          make build-all
+        else
+          make build
+        fi
