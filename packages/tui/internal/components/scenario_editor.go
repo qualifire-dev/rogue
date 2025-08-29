@@ -760,6 +760,7 @@ func (e ScenarioEditor) renderListView(t theme.Theme) string {
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(t.Primary()).
 			Background(t.BackgroundPanel()).
+			BorderBackground(t.BackgroundPanel()).
 			Padding(0, 1).
 			Width(e.width - 8) // Account for padding and border
 	} else {
@@ -767,6 +768,8 @@ func (e ScenarioEditor) renderListView(t theme.Theme) string {
 		borderStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(t.TextMuted()).
+			BorderBackground(t.BackgroundPanel()).
+			Background(t.BackgroundPanel()).
 			Padding(0, 1).
 			Width(e.width - 8) // Account for padding and border
 	}

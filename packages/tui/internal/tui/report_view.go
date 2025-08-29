@@ -42,6 +42,7 @@ func (m Model) renderReport() string {
 		Background(t.BackgroundPanel()).
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(t.Border()).
+		BorderBackground(t.BackgroundPanel()).
 		Padding(1, 2).
 		Width(m.width - 4).
 		Height(m.height - 8) // Leave space for header and help

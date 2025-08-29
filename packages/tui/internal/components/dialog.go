@@ -230,6 +230,7 @@ func (d Dialog) View() string {
 	dialogStyle := lipgloss.NewStyle().
 		Width(d.Width).
 		Border(lipgloss.RoundedBorder()).
+		BorderBackground(t.BackgroundPanel()).
 		BorderForeground(t.Primary()).
 		Background(t.BackgroundPanel()).
 		Padding(1, 2)
@@ -277,6 +278,7 @@ func (d Dialog) View() string {
 			Width(d.Width-6).
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(t.Border()).
+			BorderBackground(t.Background()).
 			Background(t.Background()).
 			Padding(0, 1)
 
@@ -391,12 +393,14 @@ func (d Dialog) renderButtons(t theme.Theme) string {
 					Background(t.Border()).
 					Foreground(t.Background()).
 					BorderForeground(t.Border()).
+					BorderBackground(t.Background()).
 					Bold(true)
 			} else {
 				buttonStyle = buttonStyle.
 					Background(t.BackgroundElement()).
 					Foreground(t.Text()).
-					BorderForeground(t.Border())
+					BorderForeground(t.Border()).
+					BorderBackground(t.Background())
 			}
 
 		case DangerButton:

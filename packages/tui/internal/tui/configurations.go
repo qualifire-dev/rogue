@@ -23,9 +23,10 @@ func (m Model) RenderConfiguration() string {
 	containerStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(t.Border()).
+		BorderBackground(t.BackgroundPanel()).
 		Padding(1, 2).
 		Width(m.width - 4).
-		Height(m.height - 4).
+		Height(m.height - 1).
 		Background(t.BackgroundPanel())
 
 	// Title style
@@ -49,7 +50,7 @@ func (m Model) RenderConfiguration() string {
 		Foreground(t.Text()).
 		Background(t.BackgroundPanel()).
 		Bold(true).
-		Width(15)
+		Width(25)
 
 	// Field value style
 	valueStyle := lipgloss.NewStyle().

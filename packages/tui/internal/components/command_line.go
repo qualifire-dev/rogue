@@ -214,10 +214,11 @@ func (c CommandInput) ViewInput() string {
 		Width(effectiveWidth).
 		Border(lipgloss.RoundedBorder()).
 		Background(t.BackgroundPanel()).
-		BorderForeground(t.Border())
+		BorderForeground(t.Border()).
+		BorderBackground(t.BackgroundPanel())
 
 	if c.focused {
-		inputStyle = inputStyle.BorderForeground(t.Primary())
+		inputStyle = inputStyle.BorderForeground(t.Primary()).BorderBackground(t.BackgroundPanel())
 	}
 
 	// Render input with cursor (similar to textarea approach)
