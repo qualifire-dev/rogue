@@ -181,20 +181,6 @@ func (m Model) RenderConfiguration() string {
 	}
 	sections = append(sections, strings.Join(themeLines, "\n"))
 
-	// Instructions Section
-	sections = append(sections, sectionHeaderStyle.Render("📋 Instructions"))
-	instructions := `• Use ↑/↓ arrows to navigate between fields
-• Enter to edit the selected field  
-• ↑/↓ arrows to select theme options (when editing)
-• ←/→ arrows to move cursor in text fields
-• Enter to save changes
-• Esc to cancel editing or return to dashboard`
-	sections = append(sections, lipgloss.NewStyle().
-		Foreground(t.TextMuted()).
-		Background(t.BackgroundPanel()).
-		MarginLeft(2).
-		Render(instructions))
-
 	// Footer
 	sections = append(sections, footerStyle.Render("↑/↓: Navigate • Enter: Edit/Save • Esc: Cancel/Back"))
 
