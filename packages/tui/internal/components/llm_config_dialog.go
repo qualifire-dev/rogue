@@ -849,8 +849,9 @@ func (d LLMConfigDialog) renderAPIKeyInput(t theme.Theme) []string {
 		// Input field is focused - show triangle indicator
 		focusIndicator := lipgloss.NewStyle().
 			Foreground(t.Primary()).
+			Background(t.BackgroundPanel()).
 			Bold(true)
-		inputFieldLine = focusIndicator.Render("▶ ") + "API Key:"
+		inputFieldLine = focusIndicator.Render("▶ API Key:")
 	} else {
 		// Input field not focused
 		inputFieldLine = "  API Key:"
@@ -858,6 +859,7 @@ func (d LLMConfigDialog) renderAPIKeyInput(t theme.Theme) []string {
 
 	labelStyle := lipgloss.NewStyle().
 		Foreground(t.Text()).
+		Background(t.BackgroundPanel()).
 		Width(d.Width - 4).
 		Align(lipgloss.Left)
 	content = append(content, labelStyle.Render(inputFieldLine))
@@ -867,7 +869,7 @@ func (d LLMConfigDialog) renderAPIKeyInput(t theme.Theme) []string {
 		Width(d.Width-6).
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(t.Primary()).
-		Background(t.Background()).
+		Background(t.BackgroundPanel()).
 		Padding(0, 1)
 
 	// Render input with cursor (similar to textarea approach)
@@ -876,13 +878,13 @@ func (d LLMConfigDialog) renderAPIKeyInput(t theme.Theme) []string {
 	// Define text style for normal characters
 	textStyle := lipgloss.NewStyle().
 		Foreground(t.Text()).
-		Background(t.Background())
+		Background(t.BackgroundPanel())
 
 	if d.APIKeyCursor >= len(d.APIKeyInput) {
 		// Cursor at end of input
 		cursorStyle := lipgloss.NewStyle().
 			Background(t.Primary()).
-			Foreground(t.Background())
+			Foreground(t.BackgroundPanel())
 		inputText = textStyle.Render(d.APIKeyInput) + cursorStyle.Render(" ")
 	} else if d.APIKeyCursor >= 0 && d.APIKeyCursor < len(d.APIKeyInput) {
 		// Cursor in middle of input - highlight the character at cursor position
@@ -896,7 +898,7 @@ func (d LLMConfigDialog) renderAPIKeyInput(t theme.Theme) []string {
 		// Render with cursor highlighting the character
 		cursorStyle := lipgloss.NewStyle().
 			Background(t.Primary()).
-			Foreground(t.Background())
+			Foreground(t.BackgroundPanel())
 		inputText = textStyle.Render(before) + cursorStyle.Render(atCursor) + textStyle.Render(after)
 	} else {
 		// Fallback for invalid cursor position
@@ -1021,6 +1023,7 @@ func (d LLMConfigDialog) renderButtons(t theme.Theme) string {
 			Padding(0, 2).
 			Background(t.BackgroundPanel()).
 			Border(lipgloss.RoundedBorder()).
+			BorderBackground(t.BackgroundPanel()).
 			Align(lipgloss.Center)
 
 		// Apply button styling based on type and selection
@@ -1031,12 +1034,14 @@ func (d LLMConfigDialog) renderButtons(t theme.Theme) string {
 					Background(t.Primary()).
 					Foreground(t.Background()).
 					BorderForeground(t.Primary()).
+					BorderBackground(t.BackgroundPanel()).
 					Bold(true)
 			} else {
 				buttonStyle = buttonStyle.
 					Background(t.BackgroundElement()).
 					Foreground(t.Primary()).
-					BorderForeground(t.Primary())
+					BorderForeground(t.Primary()).
+					BorderBackground(t.BackgroundPanel())
 			}
 
 		case SecondaryButton:
@@ -1045,12 +1050,14 @@ func (d LLMConfigDialog) renderButtons(t theme.Theme) string {
 					Background(t.Border()).
 					Foreground(t.Text()).
 					BorderForeground(t.Border()).
+					BorderBackground(t.BackgroundPanel()).
 					Bold(true)
 			} else {
 				buttonStyle = buttonStyle.
 					Background(t.BackgroundElement()).
 					Foreground(t.Text()).
-					BorderForeground(t.Border())
+					BorderForeground(t.Border()).
+					BorderBackground(t.BackgroundPanel())
 			}
 
 		case DangerButton:
@@ -1059,12 +1066,14 @@ func (d LLMConfigDialog) renderButtons(t theme.Theme) string {
 					Background(t.Error()).
 					Foreground(t.Background()).
 					BorderForeground(t.Error()).
+					BorderBackground(t.Background()).
 					Bold(true)
 			} else {
 				buttonStyle = buttonStyle.
 					Background(t.BackgroundElement()).
 					Foreground(t.Error()).
-					BorderForeground(t.Error())
+					BorderForeground(t.Error()).
+					BorderBackground(t.Background())
 			}
 		}
 
@@ -1076,16 +1085,19 @@ func (d LLMConfigDialog) renderButtons(t theme.Theme) string {
 	for i, button := range buttons {
 		buttonParts = append(buttonParts, button)
 		if i < len(buttons)-1 {
-			buttonParts = append(buttonParts, "  ") // Add spacing between buttons
+			buttonParts = append(buttonParts, lipgloss.NewStyle().Height(3).Background(t.BackgroundPanel()).Render("  ")) // Add spacing between buttons
 		}
 	}
 	buttonRow := lipgloss.JoinHorizontal(lipgloss.Left, buttonParts...)
 
-	// Center the button row
-	return lipgloss.NewStyle().
-		Width(d.Width - 8).
-		Background(t.BackgroundPanel()).
-		Align(lipgloss.Center).
-		Render(buttonRow)
+	return lipgloss.Place(
+		d.Width-8,
+		4,
+		lipgloss.Center,
+		lipgloss.Center,
+		buttonRow,
+		lipgloss.WithWhitespaceChars(" "),
+		lipgloss.WithWhitespaceStyle(lipgloss.NewStyle().Background(t.BackgroundPanel())),
+	)
 
 }

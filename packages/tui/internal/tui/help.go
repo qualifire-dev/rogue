@@ -15,6 +15,7 @@ func (m Model) RenderHelp() string {
 	containerStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(t.Border()).
+		BorderBackground(t.BackgroundPanel()).
 		Padding(1, 2).
 		Width(m.width - 4).
 		Height(m.height - 4).
@@ -63,7 +64,7 @@ func (m Model) RenderHelp() string {
 	var sections []string
 
 	// Title
-	sections = append(sections, titleStyle.Render("❓ Rogue - AI Agent Evaluator Help"))
+	sections = append(sections, titleStyle.Render("❓ Rogue"))
 
 	// About section
 	sections = append(sections, sectionHeaderStyle.Render("📖 About Rogue"))
@@ -105,9 +106,7 @@ Key Features:
 
 	// Navigation section
 	sections = append(sections, sectionHeaderStyle.Render("🧭 Navigation"))
-	navigationText := `You can navigate through Rogue using either keyboard shortcuts or slash commands.
-Type "/" in the command input to see available commands with auto-completion.
-Use arrow keys to navigate through suggestions and Enter to select.`
+	navigationText := `Type "/" in the command input to see available commands with auto-completion.`
 	sections = append(sections, contentStyle.Render(navigationText))
 
 	// Workflow section

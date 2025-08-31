@@ -99,7 +99,7 @@ func (m Model) renderNewEvaluation() string {
 		var buttonText string
 
 		if m.evalSpinner.IsActive() {
-			buttonText = fmt.Sprintf("%s Starting Evaluation...", m.evalSpinner.View())
+			buttonText = " Starting Evaluation..."
 		} else {
 			buttonText = "[ Start Evaluation ]"
 		}
