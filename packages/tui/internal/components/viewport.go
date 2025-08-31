@@ -293,16 +293,16 @@ func (v Viewport) View() string {
 				words := strings.Fields(line)
 				line = ""
 				lineWidth := 0
-				
+
 				for _, word := range words {
 					wordWidth := utf8.RuneCountInString(word)
-					
+
 					// If adding this word would exceed width, add to next line
 					if lineWidth > 0 && lineWidth+wordWidth+1 > v.Width {
 						// Add current line to lines slice
 						visibleLines[lineIndex] = line
 						lineIndex++
-						
+
 						// Reset for next line
 						line = word
 						lineWidth = wordWidth
