@@ -288,11 +288,33 @@ func (v Viewport) View() string {
 				}
 			}
 
-			// Truncate to viewport width
+			// Wrap content to viewport width
 			if v.Width > 0 && utf8.RuneCountInString(line) > v.Width {
-				runes := []rune(line)
-				if v.Width < len(runes) {
-					line = string(runes[:v.Width])
+				words := strings.Fields(line)
+				line = ""
+				lineWidth := 0
+				
+				for _, word := range words {
+					wordWidth := utf8.RuneCountInString(word)
+					
+					// If adding this word would exceed width, add to next line
+					if lineWidth > 0 && lineWidth+wordWidth+1 > v.Width {
+						// Add current line to lines slice
+						visibleLines[lineIndex] = line
+						lineIndex++
+						
+						// Reset for next line
+						line = word
+						lineWidth = wordWidth
+					} else {
+						// Add word to current line
+						if lineWidth > 0 {
+							line += " "
+							lineWidth++
+						}
+						line += word
+						lineWidth += wordWidth
+					}
 				}
 			}
 
