@@ -100,16 +100,16 @@ func NewScenarioEditor() ScenarioEditor {
 	vp := NewViewport(9999, 80, 10) // Use unique ID
 	editor.bizViewport = &vp
 
-	ta := NewTextArea(9998, 80, 10)     // Use unique ID
-	ta.ApplyTheme(theme.CurrentTheme()) // Apply current theme
+	ta := NewTextArea(9998, 80, 10, theme.CurrentTheme()) // Use unique ID
+	ta.ApplyTheme(theme.CurrentTheme())                   // Apply current theme
 	editor.bizTextArea = &ta
 
 	// Initialize scenario editing TextAreas
-	scenTA := NewTextArea(9997, 80, 8) // Scenario text area
+	scenTA := NewTextArea(9997, 80, 8, theme.CurrentTheme()) // Scenario text area
 	scenTA.ApplyTheme(theme.CurrentTheme())
 	editor.scenarioTextArea = &scenTA
 
-	outTA := NewTextArea(9996, 80, 8) // Expected outcome text area
+	outTA := NewTextArea(9996, 80, 8, theme.CurrentTheme()) // Expected outcome text area
 	outTA.ApplyTheme(theme.CurrentTheme())
 	editor.expectedOutcomeTextArea = &outTA
 

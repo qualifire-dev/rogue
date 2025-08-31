@@ -188,7 +188,7 @@ func NewLLMConfigDialog(configuredKeys map[string]string, selectedProvider, sele
 			Name:        "openai",
 			DisplayName: "OpenAI",
 			APIKeyName:  "OPENAI_API_KEY",
-			Models:      []string{"gpt-4", "gpt-4-turbo", "gpt-3.5-turbo", "gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini", "gpt-5", "gpt-5-mini"},
+			Models:      []string{"gpt-5", "gpt-5-mini", "gpt-5-nano", "gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini"},
 			Configured:  configuredKeys["openai"] != "",
 		},
 		{
@@ -202,15 +202,8 @@ func NewLLMConfigDialog(configuredKeys map[string]string, selectedProvider, sele
 			Name:        "google",
 			DisplayName: "Google AI",
 			APIKeyName:  "GOOGLE_API_KEY",
-			Models:      []string{"gemini-1.5-pro", "gemini-1.5-flash", "gemini-pro", "gemini-pro-vision"},
+			Models:      []string{"gemini-2.5-pro", "gemini-2.5-flash"},
 			Configured:  configuredKeys["google"] != "",
-		},
-		{
-			Name:        "cohere",
-			DisplayName: "Cohere",
-			APIKeyName:  "COHERE_API_KEY",
-			Models:      []string{"command-r-plus", "command-r", "command", "command-light", "command-nightly"},
-			Configured:  configuredKeys["cohere"] != "",
 		},
 	}
 

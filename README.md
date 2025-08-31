@@ -1,5 +1,3 @@
-
-
 # Rogue - The AI Agent Evaluator
 
 <div align="center">
@@ -242,6 +240,9 @@ _The following tables show the models we have tested with Rogue._
 
 #### OpenAI:
 
+- gpt-5
+- gpt-5-mini
+- gpt-5-nano
 - openai/gpt-4.1
 - openai/gpt-4.1-mini
 - openai/gpt-4.5-preview
