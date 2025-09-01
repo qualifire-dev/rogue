@@ -9,7 +9,6 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea/v2"
-	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/rogue/tui/internal/components"
 	"github.com/rogue/tui/internal/theme"
@@ -155,6 +154,7 @@ type Model struct {
 	// Viewports for scrollable content
 	eventsViewport   components.Viewport
 	summaryViewport  components.Viewport
+	reportViewport   components.Viewport
 	focusedViewport  int  // 0 = events, 1 = summary
 	eventsAutoScroll bool // Track if events should auto-scroll to bottom
 
@@ -234,6 +234,7 @@ func (a *App) Run() error {
 		// Initialize viewports
 		eventsViewport:   components.NewViewport(1, 80, 20),
 		summaryViewport:  components.NewViewport(2, 80, 20),
+		reportViewport:   components.NewViewport(3, 80, 20),
 		focusedViewport:  0,    // Start with events viewport focused
 		eventsAutoScroll: true, // Start with auto-scroll enabled
 	}
@@ -323,10 +324,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Err != nil {
 			if m.evalState != nil {
 				m.evalState.Summary = fmt.Sprintf("# Summary Generation Failed\n\nError: %v", msg.Err)
+				// Update report viewport if we're on the report screen
+				if m.currentScreen == ReportScreen {
+					m.reportViewport.SetContent(m.evalState.Summary)
+				}
 			}
 		} else {
 			if m.evalState != nil {
 				m.evalState.Summary = msg.Summary
+				// Update report viewport if we're on the report screen
+				if m.currentScreen == ReportScreen {
+					m.reportViewport.SetContent(m.evalState.Summary)
+				}
 			}
 		}
 		return m, nil
@@ -338,6 +347,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.commandInput.SetWidth(msg.Width - 8) // Leave some margin
 		// Update scenario editor size
 		m.scenarioEditor.SetSize(msg.Width, msg.Height)
+		// Update viewport sizes
+		viewportWidth := msg.Width - 4
+		viewportHeight := msg.Height - 8
+		m.eventsViewport.SetSize(viewportWidth, viewportHeight)
+		m.summaryViewport.SetSize(viewportWidth, viewportHeight)
+		m.reportViewport.SetSize(viewportWidth, viewportHeight)
 		return m, nil
 
 	case AutoRefreshMsg:
@@ -566,6 +581,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "ctrl+e":
 			m.currentScreen = ScenariosScreen
+			return m, nil
+
+		case "ctrl+r":
+			m.currentScreen = ReportScreen
+			// Update report viewport content when entering report screen
+			if m.evalState != nil {
+				var reportContent string
+				if m.evalState.Summary == "" {
+					if m.evalState.Completed {
+						reportContent = "Generating summary, please wait..."
+					} else {
+						reportContent = "Evaluation not completed yet. Complete an evaluation to see the report."
+					}
+				} else {
+					reportContent = m.evalState.Summary
+				}
+				m.reportViewport.SetContent(reportContent)
+			}
 			return m, nil
 
 		case "ctrl+g":
@@ -838,6 +871,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Navigate to report if evaluation completed
 				if m.evalState.Completed {
 					m.currentScreen = ReportScreen
+					// Update report viewport content when entering report screen
+					var reportContent string
+					if m.evalState.Summary == "" {
+						reportContent = "Generating summary, please wait..."
+					} else {
+						reportContent = m.evalState.Summary
+					}
+					m.reportViewport.SetContent(reportContent)
 				}
 				return m, nil
 			case "tab":
@@ -903,6 +944,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, m.summaryGenerationCmd()
 				}
 				return m, nil
+			case "home":
+				// Go to top of report
+				m.reportViewport.GotoTop()
+				return m, nil
+			case "end":
+				// Go to bottom of report
+				m.reportViewport.GotoBottom()
+				return m, nil
+			default:
+				// Update the report viewport for scrolling
+				reportViewportPtr, cmd := m.reportViewport.Update(msg)
+				if cmd != nil {
+					cmds = append(cmds, cmd)
+				}
+				m.reportViewport = *reportViewportPtr
+				return m, tea.Batch(cmds...)
 			}
 		}
 
@@ -918,13 +975,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
-}
-
-// exitRequested inspects batched cmds for a ScenarioEditorMsg with Action=="exit"
-func exitRequested(cmds []tea.Cmd) bool {
-	// We cannot introspect tea.Cmd directly; rely on state changes via messages instead.
-	// This helper is a placeholder to keep structure; editor already switches its own mode on ESC.
-	return false
 }
 
 // View renders the current screen
@@ -965,39 +1015,6 @@ func (m Model) View() string {
 	}
 
 	return mainLayout
-}
-
-// renderEvaluations renders the evaluations list
-func (m Model) renderEvaluations() string {
-	style := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("62")).
-		Padding(1, 2).
-		Width(m.width - 4).
-		Height(m.height - 4)
-
-	title := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("205")).
-		Bold(true).
-		Render("📊 Evaluations")
-
-	content := fmt.Sprintf(`%s
-
-No evaluations found.
-
-Press Ctrl+N to create a new evaluation.
-Press Esc to return to dashboard.
-`, title)
-
-	return style.Render(content)
-}
-
-// getKeyStatus returns the status of an API key
-func getKeyStatus(key string) string {
-	if key == "" {
-		return "Not set"
-	}
-	return "Set"
 }
 
 // saveConfig saves the current configuration to file
