@@ -634,6 +634,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, tea.Batch(cmds...)
 			}
+
+			if m.currentScreen == ReportScreen {
+				// go back to the evaluation view screen
+				m.currentScreen = EvaluationDetailScreen
+				return m, nil
+			}
 			// Default ESC behavior: back to dashboard
 			m.currentScreen = DashboardScreen
 			m.commandInput.SetFocus(true) // Keep focused when returning to dashboard
