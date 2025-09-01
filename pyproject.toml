@@ -1,5 +1,5 @@
 [project]
-name = "rogue"
+name = "rogue-ai"
 version = "0.1.0"
 description = "Rogue agent evaluator by Qualifire"
 readme = "README.md"

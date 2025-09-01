@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
     concurrency:
       group: release-${{ github.ref }}
       cancel-in-progress: true
@@ -30,6 +31,14 @@ jobs:
         uses: ./.github/actions/uv-build
         with:
           dist_dir: "/opt/dist"
+      
+      - name: Publish to PyPI
+        uses: ./.github/actions/publish-pypi
+        with:
+          workdir: "."
+          dist_dir: "/opt/dist"
+          pypi_token: ${{ secrets.PYPI_API_TOKEN }}
+          package_name: "rogue-ai"
       
       - name: Build tui
         uses: ./.github/actions/tui-build

@@ -1,0 +1,55 @@
+name: "publish-pypi"
+description: "Publishes Python package to PyPI if version is new, with validation"
+inputs:
+  workdir:
+    description: "Working directory containing pyproject.toml"
+    required: false
+    default: "."
+  dist_dir:
+    description: "Directory containing built packages"
+    required: true
+  pypi_token:
+    description: "PyPI API token for authentication"
+    required: true
+  package_name:
+    description: "Name of the package on PyPI"
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Check if wheel version changed
+      id: check_version
+      shell: bash
+      run: |
+        # Get the current version from pyproject.toml
+        cd "${{ inputs.workdir }}"
+        CURRENT_VERSION=$(grep '^version = ' pyproject.toml | cut -d'"' -f2)
+        echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+
+        # Check if this version already exists on PyPI
+        if curl -s "https://pypi.org/pypi/${{ inputs.package_name }}/$CURRENT_VERSION/json" > /dev/null 2>&1; then
+          echo "version_exists=true" >> $GITHUB_OUTPUT
+          echo "Version $CURRENT_VERSION already exists on PyPI, skipping publish"
+        else
+          echo "version_exists=false" >> $GITHUB_OUTPUT
+          echo "Version $CURRENT_VERSION is new, will publish to PyPI"
+        fi
+
+    - name: Validate wheel with twine check
+      if: steps.check_version.outputs.version_exists == 'false'
+      shell: bash
+      run: |
+        # Install twine for validation
+        uv pip install twine
+
+        # Check the wheel for common issues
+        cd "${{ inputs.dist_dir }}"
+        twine check ${{ inputs.package_name }}*.whl
+
+    - name: Publish to PyPI
+      if: steps.check_version.outputs.version_exists == 'false'
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        packages-dir: ${{ inputs.dist_dir }}
+        user: __token__
+        password: ${{ inputs.pypi_token }}
