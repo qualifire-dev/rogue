@@ -20,19 +20,19 @@ VERSION=""
 
 # Function to print colored output
 print_status() {
-    echo -e "${BLUE}[INFO]${NC} $1"
+    echo -e "${BLUE}[INFO]${NC} $1" >&2
 }
 
 print_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
+    echo -e "${GREEN}[SUCCESS]${NC} $1" >&2
 }
 
 print_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
+    echo -e "${YELLOW}[WARNING]${NC} $1" >&2
 }
 
 print_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
+    echo -e "${RED}[ERROR]${NC} $1" >&2
 }
 
 # Function to show usage
@@ -181,8 +181,8 @@ add_to_path() {
 # Function to download release
 download_release() {
     local temp_dir="$1"
-    local repo="qualifire-dev/rogue-private"
     local version="$2"
+    local repo="qualifire-dev/rogue-private"
     
     local release_info
     local download_url
@@ -196,14 +196,14 @@ download_release() {
             version="v$version"
         fi
     fi
-    
+
     # Fetch release information
     if [ "$version" = "latest" ]; then
         print_status "Fetching latest release information..."
-        release_info=$(curl -s "https://api.github.com/repos/$repo/releases/latest" 2>/dev/null)
+        release_info=$(curl -s "https://api.github.com/repos/$repo/releases/latest" --header "Authorization: Bearer $GITHUB_TOKEN" 2>/dev/null)
     else
         print_status "Fetching release information for version $version..."
-        release_info=$(curl -s "https://api.github.com/repos/$repo/releases/tags/$version" 2>/dev/null)
+        release_info=$(curl -s "https://api.github.com/repos/$repo/releases/tags/$version" --header "Authorization: Bearer $GITHUB_TOKEN" 2>/dev/null)
     fi
     
     if [ $? -ne 0 ]; then
@@ -211,18 +211,20 @@ download_release() {
         return 1
     fi
     
-    # Extract download URL
-    download_url=$(echo "$release_info" | grep -o '"browser_download_url": "[^"]*"' | cut -d'"' -f4)
-    
-    if [ -z "$download_url" ]; then
-        print_error "Failed to parse release information for $version"
+    # Extract the first asset "url" field from the assets array (not the release url)
+    asset_url=$(echo "$release_info" | awk '/"assets": \[/,/\]/' | grep -o '"url": *"[^"]*"' | head -n 1 | sed 's/"url": *"\([^"]*\)"/\1/')
+
+    if [ -z "$asset_url" ]; then
+        print_error "Failed to parse release information for $version - no .zip asset URL found"
+        print_error "Available assets:"
+        echo "$release_info" | grep -o '"name": *"[^"]*"' | sed 's/.*"name": *"\([^"]*\)"/  - \1/' || true
         return 1
     fi
     
     # For latest version, also extract and update the tag name
     if [ "$version" = "latest" ]; then
         local tag_name
-        tag_name=$(echo "$release_info" | grep -o '"tag_name": "[^"]*"' | cut -d'"' -f4)
+        tag_name=$(echo "$release_info" | grep -o '"tag_name": *"[^"]*"' | head -n 1 | sed 's/.*"tag_name": *"\([^"]*\)"/\1/')
         
         if [ -n "$tag_name" ]; then
             version="$tag_name"
@@ -241,8 +243,18 @@ download_release() {
     local archive_name="rogue-release-${version}.zip"
     local archive_path="$temp_dir/$archive_name"
     
-    if ! curl -L -o "$archive_path" "$download_url"; then
+    if ! curl -L -o "$archive_path" --header "Accept: application/octet-stream" --header "Authorization: Bearer $GITHUB_TOKEN" "$asset_url"; then
         print_error "Failed to download release archive"
+        return 1
+    fi
+    
+    # Validate downloaded file is a valid zip archive
+    print_status "Validating downloaded archive..."
+    if ! unzip -t "$archive_path" >/dev/null 2>&1; then
+        print_error "Downloaded file is not a valid zip archive"
+        print_error "File size: $(ls -lh "$archive_path" | awk '{print $5}')"
+        print_error "File type: $(file "$archive_path")"
+        rm -f "$archive_path"
         return 1
     fi
     
@@ -300,7 +312,15 @@ extract_and_install() {
     # Store the wheel file for uvx usage
     if [ -n "$wheel_file" ]; then
         print_status "Setting up Python wheel for uvx..."
-        local wheel_dest="$install_dir/rogue.whl"
+        
+        # Clean up any previous rogue wheels in the installation directory
+        print_status "Cleaning up any previous rogue wheels..."
+        find "$install_dir" -name "rogue-*.whl" -delete 2>/dev/null || true
+        
+        # Use the original wheel filename to preserve version information
+        local wheel_filename
+        wheel_filename=$(basename "$wheel_file")
+        local wheel_dest="$install_dir/$wheel_filename"
         
         if ! cp "$wheel_file" "$wheel_dest"; then
             print_error "Failed to copy wheel file"
@@ -308,16 +328,37 @@ extract_and_install() {
             return 1
         fi
         
+        # Install the wheel and its dependencies using uv
+        print_status "Installing wheel and dependencies with uv..."
+        local wheel_path="$install_dir/$wheel_filename"
+        
+        # Create a virtual environment in the install directory
+        if ! uv venv "$install_dir/venv" --python "$(which python3)"; then
+            print_error "Failed to create virtual environment"
+            rm -rf "$temp_extract_dir"
+            return 1
+        fi
+        
+        # Activate the virtual environment and install the wheel
+        if ! source "$install_dir/venv/bin/activate" && uv pip install "$wheel_path"; then
+            print_error "Failed to install wheel and dependencies"
+            rm -rf "$temp_extract_dir"
+            return 1
+        fi
+        
         # Create wrapper script for rogue command
         local wrapper_script="$install_dir/rogue"
-        cat > "$wrapper_script" << 'EOF'
+        cat > "$wrapper_script" << EOF
 #!/bin/bash
-# Rogue wrapper script that uses uvx to run the wheel
-uvx "$(dirname "$0")/rogue.whl" "$@"
+# Rogue wrapper script that uses the installed virtual environment
+source "\$(dirname "\$0")/venv/bin/activate"
+exec python -m rogue "\$@"
 EOF
         
         chmod +x "$wrapper_script"
-        print_success "Python wheel setup completed - use 'rogue' command"
+        print_success "Python wheel and dependencies installed successfully"
+        print_status "Virtual environment: $install_dir/venv"
+        print_status "Use 'rogue' command to run the installed package"
     fi
     
     # Install binary
@@ -378,6 +419,10 @@ done
 main() {
     print_status "Rogue Installer"
     print_status "========================"
+    print_status "INSTALL_DIR: $INSTALL_DIR"
+    print_status "SKIP_PATH_UPDATE: $SKIP_PATH_UPDATE"
+    print_status "FORCE_INSTALL: $FORCE_INSTALL"
+    print_status "VERSION: $VERSION"
     
     # Check if installation directory already exists
     if [ -d "$INSTALL_DIR" ] && [ "$FORCE_INSTALL" = false ]; then
@@ -404,7 +449,9 @@ main() {
     # Download release
     local archive_path
     archive_path=$(download_release "$temp_dir" "$VERSION")
-    if [ $? -ne 0 ]; then
+
+    download_exit_code=$?
+    if [ $download_exit_code -ne 0 ] || [ -z "$archive_path" ]; then
         exit 1
     fi
     
@@ -450,7 +497,7 @@ main() {
     
     print_status "Available commands:"
     if [ -f "$INSTALL_DIR/rogue" ]; then
-        echo "  rogue - Python-based rogue agent evaluator (runs with uvx)"
+        echo "  rogue - Python-based rogue agent evaluator (installed in virtual environment)"
     fi
     if [ -f "$INSTALL_DIR/rogue-tui" ]; then
         echo "  rogue-tui - Terminal UI for rogue agent evaluator"
