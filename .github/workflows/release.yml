@@ -12,6 +12,7 @@ jobs:
     permissions:
       contents: write
       id-token: write
+      packages: read
     concurrency:
       group: release-${{ github.ref }}
       cancel-in-progress: true

@@ -58,3 +58,4 @@ runs:
         packages-dir: ${{ inputs.dist_dir }}
         user: __token__
         password: ${{ inputs.pypi_token }}
+        verbose: true
