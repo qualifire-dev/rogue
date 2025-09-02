@@ -9,6 +9,7 @@ require (
 	github.com/charmbracelet/lipgloss/v2 v2.0.0-beta.3
 	github.com/charmbracelet/x/ansi v0.9.3
 	github.com/gorilla/websocket v1.5.1
+	github.com/muesli/reflow v0.3.0
 	github.com/spf13/cobra v1.8.0
 )
 
@@ -17,7 +18,6 @@ require (
 	github.com/charmbracelet/x/input v0.3.7 // indirect
 	github.com/charmbracelet/x/windows v0.2.1 // indirect
 	github.com/dlclark/regexp2 v1.11.5 // indirect
-	github.com/muesli/reflow v0.3.0 // indirect
 	golang.org/x/net v0.38.0 // indirect
 )
 
