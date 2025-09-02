@@ -27,30 +27,44 @@ jobs:
         with:
           python-version-file: ".python-version"
 
-      - name: Run uv build
+      - name: Run uv build - main package
         uses: ./.github/actions/uv-build
         with:
-          dist_dir: "/opt/dist"
+          dist_dir: "/opt/dist/rogue-ai"
       
-      - name: Publish to PyPI
+      - name: Publish to PyPI - main package
         uses: ./.github/actions/publish-pypi
         with:
           workdir: "."
-          dist_dir: "/opt/dist"
+          dist_dir: "/opt/dist/rogue-ai"
           pypi_token: ${{ secrets.PYPI_API_TOKEN }}
           package_name: "rogue-ai"
-      
+
+      - name: Run uv build - sdk package
+        uses: ./.github/actions/uv-build
+        with:
+          workdir: "sdks/python"
+          dist_dir: "/opt/dist/rogue-ai-sdk"
+
+      - name: Publish to PyPI - sdk package
+        uses: ./.github/actions/publish-pypi
+        with:
+          workdir: "sdks/python"
+          dist_dir: "/opt/dist/rogue-ai-sdk"
+          pypi_token: ${{ secrets.PYPI_API_TOKEN }}
+          package_name: "rogue-ai-sdk"
+
       - name: Build tui
         uses: ./.github/actions/tui-build
         with:
           build_all: "true"
-          build_dir: "/opt/dist"
+          build_dir: "/opt/dist/rogue-tui"
 
       - name: Create release zip
         id: create_zip
         run: |
           cd /opt/dist
-          zip -9r rogue-release-${{ github.ref_name }}.zip ./rogue-*
+          zip -9r rogue-release-${{ github.ref_name }}.zip ./rogue-tui/* ./rogue-ai/* ./rogue-ai-sdk/*
           echo "zip_path=/opt/dist/rogue-release-${{ github.ref_name }}.zip" >> $GITHUB_OUTPUT
 
       - name: Upload release artifacts
