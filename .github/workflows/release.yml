@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      # id-token: write
+      id-token: write
       packages: read
     concurrency:
       group: release-${{ github.ref }}
