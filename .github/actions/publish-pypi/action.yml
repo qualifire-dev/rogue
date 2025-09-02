@@ -47,7 +47,9 @@ runs:
 
         # Check the wheel for common issues
         cd "${{ inputs.dist_dir }}"
-        twine check ${{ inputs.package_name }}*.whl
+        # Convert hyphens to underscores for wheel filename (uv build converts - to _)
+        wheel_package_name=$(echo "${{ inputs.package_name }}" | sed 's/-/_/g')
+        twine check ${wheel_package_name}*.whl
 
     - name: Publish to PyPI
       if: steps.check_version.outputs.version_exists == 'false'
