@@ -42,13 +42,11 @@ examples = [
 ]
 
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["rogue*"]
-exclude = ["sdks*", "packages*", "examples*", "tests*"]
+[tool.hatch.build.targets.wheel]
+packages = ["rogue"]
 
-[tool.setuptools.package-data]
-"*" = ["*.yaml", "*.yml", "*.json", "*.txt", "*.md"]
+[tool.hatch.build.targets.wheel.sources]
+"rogue" = "rogue"

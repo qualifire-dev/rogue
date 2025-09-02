@@ -1,5 +1,5 @@
 [project]
-name = "rogue-sdk"
+name = "rogue-ai-sdk"
 version = "1.0.0"
 description = "Python SDK for Rogue Agent Evaluator"
 readme = "README.md"
