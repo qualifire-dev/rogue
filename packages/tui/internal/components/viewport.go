@@ -6,6 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"
+	"github.com/muesli/reflow/wrap"
 )
 
 // ViewportKeyMap defines the keybindings for the viewport. Note that you don't
@@ -59,7 +60,9 @@ type Viewport struct {
 	XOffset           int
 	HorizontalStep    int
 	Style             lipgloss.Style
+	WrapContent       bool // Enable automatic content wrapping
 	content           string
+	originalContent   string // Store original unwrapped content
 	lines             []string
 	maxYOffset        int
 	maxXOffset        int
@@ -78,6 +81,7 @@ func NewViewport(id int, width, height int) Viewport {
 		MouseWheelDelta:   3,
 		HorizontalStep:    4,
 		Style:             lipgloss.NewStyle(),
+		WrapContent:       true, // Enable wrapping by default
 		YOffset:           0,
 		XOffset:           0,
 		lines:             []string{},
@@ -92,19 +96,55 @@ func NewViewport(id int, width, height int) Viewport {
 func (v *Viewport) SetSize(width, height int) {
 	v.Width = width
 	v.Height = height
+
+	// Re-wrap content if wrapping is enabled and we have original content
+	if v.WrapContent && v.originalContent != "" && v.Width > 0 {
+		v.content = wrap.String(v.originalContent, v.Width)
+		v.lines = strings.Split(v.content, "\n")
+	}
+
 	v.updateBounds()
 }
 
 // SetContent sets the viewport's text content
 func (v *Viewport) SetContent(content string) {
-	v.content = content
-	v.lines = strings.Split(content, "\n")
+	v.originalContent = content
+
+	if v.WrapContent && v.Width > 0 {
+		// Wrap the content using reflow's wrap.String
+		v.content = wrap.String(content, v.Width)
+	} else {
+		v.content = content
+	}
+
+	v.lines = strings.Split(v.content, "\n")
 	v.updateBounds()
 }
 
 // GetContent returns the viewport's content
 func (v Viewport) GetContent() string {
 	return v.content
+}
+
+// GetOriginalContent returns the original unwrapped content
+func (v Viewport) GetOriginalContent() string {
+	return v.originalContent
+}
+
+// SetWrapContent enables or disables automatic content wrapping
+func (v *Viewport) SetWrapContent(wrapEnabled bool) {
+	v.WrapContent = wrapEnabled
+
+	// Re-process content with new wrapping setting
+	if v.originalContent != "" {
+		if v.WrapContent && v.Width > 0 {
+			v.content = wrap.String(v.originalContent, v.Width)
+		} else {
+			v.content = v.originalContent
+		}
+		v.lines = strings.Split(v.content, "\n")
+		v.updateBounds()
+	}
 }
 
 // SetYOffset sets the Y offset (vertical scroll position)
@@ -278,8 +318,8 @@ func (v Viewport) View() string {
 		for i := startLine; i < endLine && lineIndex < v.Height; i++ {
 			line := v.lines[i]
 
-			// Apply horizontal scrolling
-			if v.XOffset > 0 && utf8.RuneCountInString(line) > v.XOffset {
+			// Apply horizontal scrolling (only if wrapping is disabled)
+			if !v.WrapContent && v.XOffset > 0 && utf8.RuneCountInString(line) > v.XOffset {
 				runes := []rune(line)
 				if v.XOffset < len(runes) {
 					line = string(runes[v.XOffset:])
@@ -288,33 +328,11 @@ func (v Viewport) View() string {
 				}
 			}
 
-			// Wrap content to viewport width
-			if v.Width > 0 && utf8.RuneCountInString(line) > v.Width {
-				words := strings.Fields(line)
-				line = ""
-				lineWidth := 0
-
-				for _, word := range words {
-					wordWidth := utf8.RuneCountInString(word)
-
-					// If adding this word would exceed width, add to next line
-					if lineWidth > 0 && lineWidth+wordWidth+1 > v.Width {
-						// Add current line to lines slice
-						visibleLines[lineIndex] = line
-						lineIndex++
-
-						// Reset for next line
-						line = word
-						lineWidth = wordWidth
-					} else {
-						// Add word to current line
-						if lineWidth > 0 {
-							line += " "
-							lineWidth++
-						}
-						line += word
-						lineWidth += wordWidth
-					}
+			// Truncate content to viewport width if necessary (for non-wrapped content)
+			if !v.WrapContent && v.Width > 0 && utf8.RuneCountInString(line) > v.Width {
+				runes := []rune(line)
+				if v.Width < len(runes) {
+					line = string(runes[:v.Width])
 				}
 			}
 
