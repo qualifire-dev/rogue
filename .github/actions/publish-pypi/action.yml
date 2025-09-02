@@ -55,7 +55,7 @@ runs:
       if: steps.check_version.outputs.version_exists == 'false'
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
-        packages-dir: ${{ inputs.dist_dir }}
+        packages_dir: ${{ inputs.dist_dir }}
         user: __token__
         password: ${{ inputs.pypi_token }}
         verbose: true
