@@ -583,24 +583,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.currentScreen = ScenariosScreen
 			return m, nil
 
-		case "ctrl+r":
-			m.currentScreen = ReportScreen
-			// Update report viewport content when entering report screen
-			if m.evalState != nil {
-				var reportContent string
-				if m.evalState.Summary == "" {
-					if m.evalState.Completed {
-						reportContent = "Generating summary, please wait..."
-					} else {
-						reportContent = "Evaluation not completed yet. Complete an evaluation to see the report."
-					}
-				} else {
-					reportContent = m.evalState.Summary
-				}
-				m.reportViewport.SetContent(reportContent)
-			}
-			return m, nil
-
 		case "ctrl+g":
 			m.currentScreen = ConfigurationScreen
 			// Initialize config state when entering configuration screen
