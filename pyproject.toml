@@ -16,6 +16,7 @@ dependencies = [
     "pydantic==2.11.7",
     "pydantic-yaml==1.5.1",
     "python-dotenv==1.1.1",
+    "requests>=2.32.4",
     "rich>=14.0.0",
     "rogue-ai-sdk>=0.1.0",
     "uvicorn>=0.32.0",
@@ -51,3 +52,6 @@ packages = ["rogue"]
 
 [tool.hatch.build.targets.wheel.sources]
 "rogue" = "rogue"
+
+[project.scripts]
+rogue-ai = "rogue.__main__:main"
