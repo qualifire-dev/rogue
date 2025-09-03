@@ -16,6 +16,8 @@ runs:
       uses: actions/setup-go@v5
       with:
         go-version: 1.23.11
+        cache: true
+        cache-dependency-path: packages/tui/go.sum
     - name: go build
       shell: bash
       working-directory: ./packages/tui

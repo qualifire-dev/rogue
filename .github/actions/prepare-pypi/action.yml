@@ -1,0 +1,61 @@
+name: "prepare-pypi"
+description: "Prepares Python package for PyPI upload. Validates the wheel and makes sure that the version does not overlap"
+inputs:
+  workdir:
+    description: "Working directory containing pyproject.toml"
+    required: false
+    default: "."
+  dist_dir:
+    description: "Directory containing built packages"
+    required: true
+  package_name:
+    description: "Name of the package on PyPI"
+    required: true
+outputs:
+  version_exists:
+    description: "Whether the version already exists on PyPI"
+    value: ${{ steps.check_version.outputs.version_exists }}
+runs:
+  using: "composite"
+  steps:
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version-file: ".python-version"
+
+    - name: Check if wheel version changed
+      id: check_version
+      shell: bash
+      run: |
+        # Get the current version from pyproject.toml
+        cd "${{ inputs.workdir }}"
+        CURRENT_VERSION=$(grep '^version = ' pyproject.toml | cut -d'"' -f2)
+        echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+
+        # Check if this version already exists on PyPI
+        response=$(curl -s "https://pypi.org/pypi/${{ inputs.package_name }}/$CURRENT_VERSION/json")
+        if echo "$response" | grep -q '"message": "Not Found"'; then
+          echo "version_exists=false" >> $GITHUB_OUTPUT
+          echo "Version $CURRENT_VERSION is new, will publish to PyPI"
+        else
+          echo "version_exists=true" >> $GITHUB_OUTPUT
+          echo "Version $CURRENT_VERSION already exists on PyPI, skipping publish"
+        fi
+
+    - name: Validate wheel with twine check
+      if: steps.check_version.outputs.version_exists == 'false'
+      shell: bash
+      run: |
+        # Install twine for validation
+        uv venv 
+        source .venv/bin/activate
+        uv pip install twine
+
+        # Check the wheel for common issues
+        cd "${{ inputs.dist_dir }}"
+        # Convert hyphens to underscores for wheel filename (uv build converts - to _)
+        wheel_package_name=$(echo "${{ inputs.package_name }}" | sed 's/-/_/g')
+        twine check ${wheel_package_name}*.whl
