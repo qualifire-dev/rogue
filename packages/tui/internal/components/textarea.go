@@ -64,13 +64,13 @@ type TextAreaStyle struct {
 }
 
 // DefaultTextAreaStyle returns default styles for the textarea
-func DefaultTextAreaStyle() TextAreaStyle {
+func DefaultTextAreaStyle(th theme.Theme) TextAreaStyle {
 	return TextAreaStyle{
-		Base:        lipgloss.NewStyle(),
-		Text:        lipgloss.NewStyle(),
-		Cursor:      lipgloss.NewStyle().Background(lipgloss.Color("7")),
-		Placeholder: lipgloss.NewStyle().Foreground(lipgloss.Color("240")),
-		Panel:       lipgloss.NewStyle().Padding(1, 2),
+		Base:        lipgloss.NewStyle().Background(th.BackgroundPanel()),
+		Text:        lipgloss.NewStyle().Background(th.BackgroundPanel()),
+		Cursor:      lipgloss.NewStyle().Background(th.Primary()),
+		Placeholder: lipgloss.NewStyle().Foreground(th.TextMuted()).Background(th.BackgroundPanel()),
+		Panel:       lipgloss.NewStyle().Padding(1, 2).Background(th.BackgroundPanel()),
 	}
 }
 
@@ -114,7 +114,7 @@ type TextArea struct {
 }
 
 // NewTextArea creates a new textarea with the given width and height
-func NewTextArea(id int, width, height int) TextArea {
+func NewTextArea(id int, width, height int, th theme.Theme) TextArea {
 	vp := NewViewport(id+1000, width, height) // Use different ID to avoid conflicts
 	// Disable viewport key mappings to prevent conflicts with text input
 	vp.KeyMap = ViewportKeyMap{}
@@ -124,7 +124,7 @@ func NewTextArea(id int, width, height int) TextArea {
 		Width:           width,
 		Height:          height,
 		KeyMap:          DefaultTextAreaKeyMap(),
-		Style:           DefaultTextAreaStyle(),
+		Style:           DefaultTextAreaStyle(th),
 		CharLimit:       0, // No limit
 		MaxHeight:       1000,
 		MaxWidth:        500,
@@ -729,6 +729,8 @@ func (t *TextArea) renderViewportWithCursor(viewportContent string) string {
 		return viewportContent
 	}
 
+	th := theme.CurrentTheme()
+
 	// Calculate the cursor position relative to the viewport
 	cursorLine := t.row - t.viewport.YOffset
 
@@ -736,6 +738,13 @@ func (t *TextArea) renderViewportWithCursor(viewportContent string) string {
 	if cursorLine < 0 || cursorLine >= t.viewport.Height {
 		return viewportContent
 	}
+	cursorStyle := lipgloss.NewStyle().
+		Background(th.Primary()).
+		Foreground(th.BackgroundPanel())
+
+	textStyle := lipgloss.NewStyle().
+		Foreground(th.Text()).
+		Background(th.BackgroundPanel())
 
 	lines := strings.Split(viewportContent, "\n")
 	if cursorLine >= 0 && cursorLine < len(lines) {
@@ -751,7 +760,7 @@ func (t *TextArea) renderViewportWithCursor(viewportContent string) string {
 		line := lines[cursorLine]
 		if cursorCol >= len(line) {
 			// Cursor at end of line
-			lines[cursorLine] = line + t.Style.Cursor.Render(" ")
+			lines[cursorLine] = line + cursorStyle.Render(" ")
 		} else if cursorCol >= 0 && cursorCol < len(line) {
 			// Cursor in middle of line
 			before := line[:cursorCol]
@@ -760,7 +769,8 @@ func (t *TextArea) renderViewportWithCursor(viewportContent string) string {
 			if cursorCol+1 < len(line) {
 				after = line[cursorCol+1:]
 			}
-			lines[cursorLine] = before + t.Style.Cursor.Render(atCursor) + after
+
+			lines[cursorLine] = textStyle.Render(before) + cursorStyle.Render(atCursor) + textStyle.Render(after)
 		}
 	}
 

@@ -5,7 +5,7 @@ import (
 	"github.com/rogue/tui/internal/theme"
 )
 
-// renderReport renders the evaluation report screen with summary
+// renderReport renders the evaluation report screen with summary using a viewport for scrollable content
 func (m Model) renderReport() string {
 	t := theme.CurrentTheme()
 
@@ -36,17 +36,7 @@ func (m Model) renderReport() string {
 
 	header := titleStyle.Render("📊 Evaluation Report")
 
-	// Report container
-	reportStyle := lipgloss.NewStyle().
-		Foreground(t.Text()).
-		Background(t.BackgroundPanel()).
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(t.Border()).
-		BorderBackground(t.BackgroundPanel()).
-		Padding(1, 2).
-		Width(m.width - 4).
-		Height(m.height - 8) // Leave space for header and help
-
+	// Prepare report content for the viewport
 	var reportContent string
 	if m.evalState.Summary == "" {
 		if m.evalState.Completed {
@@ -67,7 +57,29 @@ func (m Model) renderReport() string {
 		reportContent = renderMarkdownSummary(t, m.evalState.Summary)
 	}
 
-	// Note: spacing handled by content area placement
+	// Calculate viewport dimensions
+	viewportWidth := m.width - 4   // Leave margins
+	viewportHeight := m.height - 8 // title(3) + help(1) + margins(4)
+
+	// Create a temporary copy of the viewport to avoid modifying the original
+	viewport := m.reportViewport
+	viewport.SetSize(viewportWidth, viewportHeight)
+	viewport.SetContent(reportContent)
+
+	// Style the viewport with border
+	viewportStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(t.Border()).
+		BorderBackground(t.BackgroundPanel()).
+		Background(t.BackgroundPanel()).
+		Width(viewportWidth + 2).  // +2 for border
+		Height(viewportHeight + 2) // +2 for border
+
+	// Apply viewport styling
+	viewport.Style = lipgloss.NewStyle().
+		Foreground(t.Text()).
+		Background(t.BackgroundPanel()).
+		Padding(1, 2)
 
 	// Help text style
 	helpStyle := lipgloss.NewStyle().
@@ -77,25 +89,29 @@ func (m Model) renderReport() string {
 		Align(lipgloss.Center).
 		Padding(0, 1)
 
-	helpText := helpStyle.Render("r Refresh   b Back to Dashboard   Esc Exit")
+	// Include scroll indicators in help text
+	scrollInfo := ""
+	if !viewport.AtTop() || !viewport.AtBottom() {
+		scrollInfo = "↑↓ Scroll   "
+	}
+	helpText := helpStyle.Render(scrollInfo + "r Refresh   b Back to Dashboard   Esc Exit")
 
-	// Calculate content area height
-	contentHeight := m.height - 6 // title(3) + help(1) + margins(2)
+	// Create the viewport content area
+	viewportContent := viewportStyle.Render(viewport.View())
 
-	// Create content area
+	// Center the viewport in the available space
 	contentArea := lipgloss.NewStyle().
 		Width(m.width).
-		Height(contentHeight).
+		Height(viewportHeight + 2).
 		Background(t.Background())
 
-	// Place report in the content area
-	mainContent := contentArea.Render(
+	centeredViewport := contentArea.Render(
 		lipgloss.Place(
 			m.width,
-			contentHeight,
+			viewportHeight+2,
 			lipgloss.Center,
 			lipgloss.Top,
-			reportStyle.Render(reportContent),
+			viewportContent,
 			lipgloss.WithWhitespaceStyle(lipgloss.NewStyle().Background(t.Background())),
 		),
 	)
@@ -103,7 +119,7 @@ func (m Model) renderReport() string {
 	// Combine all sections
 	fullLayout := lipgloss.JoinVertical(lipgloss.Left,
 		header,
-		mainContent,
+		centeredViewport,
 		helpText,
 	)
 

@@ -1,5 +1,5 @@
 [project]
-name = "rogue"
+name = "rogue-ai"
 version = "0.1.0"
 description = "Rogue agent evaluator by Qualifire"
 readme = "README.md"
@@ -11,12 +11,13 @@ dependencies = [
     "fastapi>=0.115.0",
     "google-adk==1.5.0",
     "gradio==5.35.0",
-    "litellm==1.71.2",
+    "litellm==1.76.1",
     "loguru==0.7.3",
     "pydantic==2.11.7",
     "pydantic-yaml==1.5.1",
     "python-dotenv==1.1.1",
     "rich>=14.0.0",
+    "rogue-ai-sdk>=0.1.0",
     "uvicorn>=0.32.0",
 ]
 
@@ -42,13 +43,11 @@ examples = [
 ]
 
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["rogue*"]
-exclude = ["sdks*", "packages*", "examples*", "tests*"]
+[tool.hatch.build.targets.wheel]
+packages = ["rogue"]
 
-[tool.setuptools.package-data]
-"*" = ["*.yaml", "*.yml", "*.json", "*.txt", "*.md"]
+[tool.hatch.build.targets.wheel.sources]
+"rogue" = "rogue"
