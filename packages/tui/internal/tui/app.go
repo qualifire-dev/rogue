@@ -593,8 +593,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "cancel":
 				// Handle cancel action
 				if m.dialog != nil && m.dialog.Title == "Preserve Evaluation Report" {
-					// Close dialog and stay on evaluation screen
+					// Close dialog and return to main screen
 					m.dialog = nil
+					m.currentScreen = DashboardScreen
+					m.commandInput.SetFocus(true)
+					m.commandInput.SetValue("")
 					return m, nil
 				}
 				// Close LLM dialog if it was cancelled
