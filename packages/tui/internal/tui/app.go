@@ -181,13 +181,14 @@ type Scenario struct {
 
 // Config represents application configuration
 type Config struct {
-	ServerURL        string            `toml:"server_url"`
-	Theme            string            `toml:"theme"`
-	APIKeys          map[string]string `toml:"api_keys"`
-	SelectedModel    string            `toml:"selected_model"`
-	SelectedProvider string            `toml:"selected_provider"`
-	QualifireAPIKey  string            `toml:"qualifire_api_key"`
-	QualifireEnabled bool              `toml:"qualifire_enabled"`
+	ServerURL               string            `toml:"server_url"`
+	Theme                   string            `toml:"theme"`
+	APIKeys                 map[string]string `toml:"api_keys"`
+	SelectedModel           string            `toml:"selected_model"`
+	SelectedProvider        string            `toml:"selected_provider"`
+	QualifireAPIKey         string            `toml:"qualifire_api_key"`
+	QualifireEnabled        bool              `toml:"qualifire_enabled"`
+	DontShowQualifirePrompt bool              `toml:"dont_show_qualifire_prompt"`
 }
 
 // ConfigState represents the configuration screen state
@@ -519,7 +520,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						// Show appropriate success dialog
 						var message string
 						if msg.Input != "" {
-							message = "Qualifire API key has been successfully saved and integration is now enabled."
+							message = "Qualifire API key has been successfully saved and integration is now enabled. Your evaluation report will now be automatically persisted."
 						} else {
 							message = "Qualifire API key has been cleared and integration is now disabled."
 						}
@@ -530,6 +531,37 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.dialog = &successDialog
 						return m, nil
 					}
+				}
+			case "configure_qualifire":
+				// Handle "Configure Qualifire" from report persistence dialog
+				if m.dialog != nil && m.dialog.Title == "Preserve Evaluation Report" {
+					// Close current dialog and open Qualifire API key dialog
+					dialog := components.NewInputDialog(
+						"Configure Qualifire API Key",
+						"Enter your Qualifire API key to enable integration:",
+						m.config.QualifireAPIKey,
+					)
+					// Customize the buttons for this specific use case
+					dialog.Buttons = []components.DialogButton{
+						{Label: "Save", Action: "save_qualifire", Style: components.PrimaryButton},
+					}
+					// Position cursor at end of existing key if there is one
+					dialog.InputCursor = len(m.config.QualifireAPIKey)
+					dialog.SelectedBtn = 0
+					m.dialog = &dialog
+					return m, nil
+				}
+			case "dont_show_again":
+				// Handle "Don't Show Again" from report persistence dialog
+				if m.dialog != nil && m.dialog.Title == "Preserve Evaluation Report" {
+					// Save the preference and exit to dashboard
+					m.config.DontShowQualifirePrompt = true
+					m.saveConfig()
+					m.dialog = nil
+					m.currentScreen = DashboardScreen
+					m.commandInput.SetFocus(true)
+					m.commandInput.SetValue("")
+					return m, nil
 				}
 			case "ok":
 				// Handle OK action based on dialog context
@@ -560,6 +592,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			case "cancel":
 				// Handle cancel action
+				if m.dialog != nil && m.dialog.Title == "Preserve Evaluation Report" {
+					// Close dialog and stay on evaluation screen
+					m.dialog = nil
+					return m, nil
+				}
 				// Close LLM dialog if it was cancelled
 				if m.llmDialog != nil {
 					m.llmDialog = nil
@@ -706,6 +743,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// go back to the evaluation view screen
 				m.currentScreen = EvaluationDetailScreen
 				return m, nil
+			}
+			if m.currentScreen == EvaluationDetailScreen {
+				// Check if we should show the Qualifire persistence dialog
+				shouldShowDialog := m.evalState != nil &&
+					m.evalState.Completed &&
+					m.config.QualifireAPIKey == "" &&
+					!m.config.DontShowQualifirePrompt
+
+				if shouldShowDialog {
+					// Show report persistence dialog
+					dialog := components.NewReportPersistenceDialog()
+					m.dialog = &dialog
+					return m, nil
+				}
+				// If no dialog needed, proceed to dashboard
 			}
 			// Default ESC behavior: back to dashboard
 			m.currentScreen = DashboardScreen
@@ -923,6 +975,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.currentScreen == EvaluationDetailScreen && m.evalState != nil {
 			switch msg.String() {
 			case "b":
+				// Check if we should show the Qualifire persistence dialog
+				shouldShowDialog := m.evalState.Completed &&
+					m.config.QualifireAPIKey == "" &&
+					!m.config.DontShowQualifirePrompt
+
+				if shouldShowDialog {
+					// Show report persistence dialog
+					dialog := components.NewReportPersistenceDialog()
+					m.dialog = &dialog
+					return m, nil
+				}
+				// If no dialog needed, proceed to dashboard
 				m.currentScreen = DashboardScreen
 				// Reset viewport focus when leaving detail screen
 				m.focusedViewport = 0
