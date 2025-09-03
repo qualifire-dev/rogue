@@ -56,6 +56,6 @@ runs:
       uses: pypa/gh-action-pypi-publish@release/v1.11.0
       with:
         packages_dir: ${{ inputs.dist_dir }}
-        user: __token__
-        password: ${{ inputs.pypi_token }}
+        # user: __token__
+        # password: ${{ inputs.pypi_token }}
         verbose: true
