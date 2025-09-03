@@ -31,14 +31,14 @@ jobs:
       - name: Run uv build - main package
         uses: ./.github/actions/uv-build
         with:
-          dist_dir: "/opt/dist/rogue-ai"
+          dist_dir: "./dist/rogue-ai"
       
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          packages-dir: "/opt/dist/rogue-ai"
-          user: __token__
-          password: ${{ secrets.PYPI_API_TOKEN }}
+          packages-dir: "./dist/rogue-ai"
+          # user: __token__
+          # password: ${{ secrets.PYPI_API_TOKEN }}
           verbose: true
 
       # - name: Publish to PyPI - main package
