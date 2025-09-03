@@ -11,9 +11,36 @@ inputs:
   package_name:
     description: "Name of the package on PyPI"
     required: true
+outputs:
+  version_exists:
+    description: "Whether the version already exists on PyPI"
+    value: ${{ steps.check_version.outputs.version_exists }}
 runs:
   using: "composite"
   steps:
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version-file: ".python-version"
+
+    - name: Validate wheel with twine check
+      if: steps.check_version.outputs.version_exists == 'false'
+      shell: bash
+      run: |
+        # Install twine for validation
+        uv venv 
+        source .venv/bin/activate
+        uv pip install twine
+
+        # Check the wheel for common issues
+        cd "${{ inputs.dist_dir }}"
+        # Convert hyphens to underscores for wheel filename (uv build converts - to _)
+        wheel_package_name=$(echo "${{ inputs.package_name }}" | sed 's/-/_/g')
+        twine check ${wheel_package_name}*.whl
+
     - name: Check if wheel version changed
       id: check_version
       shell: bash
@@ -32,18 +59,3 @@ runs:
           echo "version_exists=true" >> $GITHUB_OUTPUT
           echo "Version $CURRENT_VERSION already exists on PyPI, skipping publish"
         fi
-
-    - name: Validate wheel with twine check
-      if: steps.check_version.outputs.version_exists == 'false'
-      shell: bash
-      run: |
-        # Install twine for validation
-        uv venv 
-        source .venv/bin/activate
-        uv pip install twine
-
-        # Check the wheel for common issues
-        cd "${{ inputs.dist_dir }}"
-        # Convert hyphens to underscores for wheel filename (uv build converts - to _)
-        wheel_package_name=$(echo "${{ inputs.package_name }}" | sed 's/-/_/g')
-        twine check ${wheel_package_name}*.whl

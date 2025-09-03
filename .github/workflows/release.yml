@@ -7,12 +7,10 @@ on:
   workflow_dispatch:
 
 jobs:
-  release:
+  build:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      id-token: write
-      packages: read
+      contents: read
     concurrency:
       group: release-${{ github.ref }}
       cancel-in-progress: true
@@ -32,53 +30,25 @@ jobs:
         uses: ./.github/actions/uv-build
         with:
           dist_dir: "./dist/rogue-ai"
-      
-      - name: Prepare Pypi release - main package
-        uses: ./.github/actions/prepare-pypi
-        with:
-          dist_dir: "./dist/rogue-ai"
-          package_name: "rogue-ai"
-
-      - name: Publish to PyPI - main package
-        uses: pypa/gh-action-pypi-publish@release/v1
-        env:
-          name: "pypi"
-          url: "https://pypi.org/p/rogue-ai"
-        with:
-          packages-dir: "./dist/rogue-ai"
 
       - name: Run uv build - sdk package
         uses: ./.github/actions/uv-build
         with:
           workdir: "sdks/python"
           dist_dir: "./dist/rogue-ai-sdk"
-          
-      - name: Prepare Pypi release - sdk package
-        uses: ./.github/actions/prepare-pypi
-        with:
-          dist_dir: "./dist/rogue-ai-sdk"
-          package_name: "rogue-ai"
-  
-      - name: Publish to PyPI - sdk package
-        uses: pypa/gh-action-pypi-publish@release/v1
-        env:
-          name: "pypi"
-          url: "https://pypi.org/p/rogue-ai-sdk"
-        with:
-          packages-dir: "./dist/rogue-ai-sdk"
 
       - name: Build tui
         uses: ./.github/actions/tui-build
         with:
           build_all: "true"
-          build_dir: "/opt/dist/rogue-tui"
+          build_dir: "./dist/rogue-tui"
 
       - name: Create release zip
         id: create_zip
         run: |
-          cd /opt/dist
+          cd ./dist
           zip -9r rogue-release-${{ github.ref_name }}.zip ./rogue-tui/* ./rogue-ai/* ./rogue-ai-sdk/*
-          echo "zip_path=/opt/dist/rogue-release-${{ github.ref_name }}.zip" >> $GITHUB_OUTPUT
+          echo "zip_path=./dist/rogue-release-${{ github.ref_name }}.zip" >> $GITHUB_OUTPUT
 
       - name: Upload release artifacts
         uses: actions/upload-artifact@v4
@@ -87,10 +57,91 @@ jobs:
           path: ${{ steps.create_zip.outputs.zip_path }}
           retention-days: 365  # TODO: how much time do we need to keep the release artifacts?
 
+  publish_rogue_ai_sdk:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+      id-token: write
+      packages: read
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: rogue-release
+          path: ./dist
+
+      - name: Prepare Pypi release - sdk package
+        id: prepare_pypi_sdk
+        uses: ./.github/actions/prepare-pypi
+        with:
+          dist_dir: "./dist/rogue-ai-sdk"
+          package_name: "rogue-ai-sdk"
+
+      - name: Publish to PyPI - sdk package
+        if: steps.prepare_pypi_sdk.outputs.version_exists == 'false'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        env:
+          name: "pypi"
+          url: "https://pypi.org/p/rogue-ai-sdk"
+        with:
+          packages-dir: "./dist/rogue-ai-sdk"
+
+  publish_rogue_ai:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+      id-token: write
+      packages: read
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: rogue-release
+          path: ./dist
+
+      - name: Prepare Pypi release - main package
+        id: prepare_pypi_main
+        uses: ./.github/actions/prepare-pypi
+        with:
+          dist_dir: "./dist/rogue-ai"
+          package_name: "rogue-ai"
+
+      - name: Publish to PyPI - main package
+        if: steps.prepare_pypi_main.outputs.version_exists == 'false'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        env:
+          name: "pypi"
+          url: "https://pypi.org/p/rogue-ai"
+        with:
+          packages-dir: "./dist/rogue-ai"
+
+  create_github_release:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: rogue-release
+          path: ./dist
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ steps.create_zip.outputs.zip_path }}
+          files: ./dist/rogue-release-${{ github.ref_name }}.zip
           tag_name: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}
           draft: false
