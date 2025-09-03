@@ -181,21 +181,25 @@ type Scenario struct {
 
 // Config represents application configuration
 type Config struct {
-	ServerURL        string            `toml:"server_url"`
-	Theme            string            `toml:"theme"`
-	APIKeys          map[string]string `toml:"api_keys"`
-	SelectedModel    string            `toml:"selected_model"`
-	SelectedProvider string            `toml:"selected_provider"`
+	ServerURL               string            `toml:"server_url"`
+	Theme                   string            `toml:"theme"`
+	APIKeys                 map[string]string `toml:"api_keys"`
+	SelectedModel           string            `toml:"selected_model"`
+	SelectedProvider        string            `toml:"selected_provider"`
+	QualifireAPIKey         string            `toml:"qualifire_api_key"`
+	QualifireEnabled        bool              `toml:"qualifire_enabled"`
+	DontShowQualifirePrompt bool              `toml:"dont_show_qualifire_prompt"`
 }
 
 // ConfigState represents the configuration screen state
 type ConfigState struct {
-	ActiveField ConfigField
-	ServerURL   string
-	CursorPos   int
-	ThemeIndex  int
-	IsEditing   bool
-	HasChanges  bool
+	ActiveField      ConfigField
+	ServerURL        string
+	CursorPos        int
+	ThemeIndex       int
+	IsEditing        bool
+	HasChanges       bool
+	QualifireEnabled bool
 }
 
 // NewApp creates a new TUI application
@@ -403,12 +407,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.currentScreen = ConfigurationScreen
 			// Initialize config state when entering configuration screen
 			m.configState = &ConfigState{
-				ActiveField: ConfigFieldServerURL,
-				ServerURL:   m.config.ServerURL,
-				CursorPos:   len(m.config.ServerURL), // Start cursor at end of existing text
-				ThemeIndex:  m.findCurrentThemeIndex(),
-				IsEditing:   true, // Automatically start editing the server URL field
-				HasChanges:  false,
+				ActiveField:      ConfigFieldServerURL,
+				ServerURL:        m.config.ServerURL,
+				CursorPos:        len(m.config.ServerURL), // Start cursor at end of existing text
+				ThemeIndex:       m.findCurrentThemeIndex(),
+				IsEditing:        true, // Automatically start editing the server URL field
+				HasChanges:       false,
+				QualifireEnabled: m.config.QualifireAPIKey != "" && m.config.QualifireEnabled, // Set based on API key and enabled flag
 			}
 		case "help":
 			m.currentScreen = HelpScreen
@@ -480,6 +485,84 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Handle dialog closure
 		if m.dialog != nil {
 			switch msg.Action {
+			case "save_qualifire":
+				// Handle Qualifire API key save
+				if m.dialog != nil && m.dialog.Title == "Configure Qualifire API Key" {
+					// Save the API key to config (allow empty to clear the key)
+					m.config.QualifireAPIKey = msg.Input
+					// Only enable integration if there's an API key
+					if msg.Input != "" {
+						m.config.QualifireEnabled = true
+						if m.configState != nil {
+							m.configState.QualifireEnabled = true
+							m.configState.HasChanges = true
+						}
+					} else {
+						// If API key is cleared, disable integration
+						m.config.QualifireEnabled = false
+						if m.configState != nil {
+							m.configState.QualifireEnabled = false
+							m.configState.HasChanges = true
+						}
+					}
+
+					// Save config to file
+					err := m.saveConfig()
+					if err != nil {
+						// Show error dialog
+						errorDialog := components.ShowErrorDialog(
+							"Configuration Error",
+							fmt.Sprintf("Failed to save Qualifire configuration: %v", err),
+						)
+						m.dialog = &errorDialog
+						return m, nil
+					} else {
+						// Show appropriate success dialog
+						var message string
+						if msg.Input != "" {
+							message = "Qualifire API key has been successfully saved and integration is now enabled. Your evaluation report will now be automatically persisted."
+						} else {
+							message = "Qualifire API key has been cleared and integration is now disabled."
+						}
+						successDialog := components.NewInfoDialog(
+							"Qualifire Configured",
+							message,
+						)
+						m.dialog = &successDialog
+						return m, nil
+					}
+				}
+			case "configure_qualifire":
+				// Handle "Configure Qualifire" from report persistence dialog
+				if m.dialog != nil && m.dialog.Title == "Preserve Evaluation Report" {
+					// Close current dialog and open Qualifire API key dialog
+					dialog := components.NewInputDialog(
+						"Configure Qualifire API Key",
+						"Enter your Qualifire API key to enable integration:",
+						m.config.QualifireAPIKey,
+					)
+					// Customize the buttons for this specific use case
+					dialog.Buttons = []components.DialogButton{
+						{Label: "Save", Action: "save_qualifire", Style: components.PrimaryButton},
+					}
+					// Position cursor at end of existing key if there is one
+					dialog.InputCursor = len(m.config.QualifireAPIKey)
+					dialog.SelectedBtn = 0
+					m.dialog = &dialog
+					return m, nil
+				}
+			case "dont_show_again":
+				// Handle "Don't Show Again" from report persistence dialog
+				if m.dialog != nil && m.dialog.Title == "Preserve Evaluation Report" {
+					// Save the preference and exit to dashboard
+					m.config.DontShowQualifirePrompt = true
+					m.saveConfig()
+					m.dialog = nil
+					m.currentScreen = DashboardScreen
+					m.commandInput.SetFocus(true)
+					m.commandInput.SetValue("")
+					return m, nil
+				}
 			case "ok":
 				// Handle OK action based on dialog context
 				if m.dialog.Title == "Quit Application" {
@@ -509,6 +592,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			case "cancel":
 				// Handle cancel action
+				if m.dialog != nil && m.dialog.Title == "Preserve Evaluation Report" {
+					// Close dialog and return to main screen
+					m.dialog = nil
+					m.currentScreen = DashboardScreen
+					m.commandInput.SetFocus(true)
+					m.commandInput.SetValue("")
+					return m, nil
+				}
 				// Close LLM dialog if it was cancelled
 				if m.llmDialog != nil {
 					m.llmDialog = nil
@@ -587,12 +678,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.currentScreen = ConfigurationScreen
 			// Initialize config state when entering configuration screen
 			m.configState = &ConfigState{
-				ActiveField: ConfigFieldServerURL,
-				ServerURL:   m.config.ServerURL,
-				CursorPos:   len(m.config.ServerURL), // Start cursor at end of existing text
-				ThemeIndex:  m.findCurrentThemeIndex(),
-				IsEditing:   true, // Automatically start editing the server URL field
-				HasChanges:  false,
+				ActiveField:      ConfigFieldServerURL,
+				ServerURL:        m.config.ServerURL,
+				CursorPos:        len(m.config.ServerURL), // Start cursor at end of existing text
+				ThemeIndex:       m.findCurrentThemeIndex(),
+				IsEditing:        true, // Automatically start editing the server URL field
+				HasChanges:       false,
+				QualifireEnabled: m.config.QualifireAPIKey != "" && m.config.QualifireEnabled, // Set based on API key and enabled flag
 			}
 			return m, nil
 
@@ -655,6 +747,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.currentScreen = EvaluationDetailScreen
 				return m, nil
 			}
+			if m.currentScreen == EvaluationDetailScreen {
+				// Check if we should show the Qualifire persistence dialog
+				shouldShowDialog := m.evalState != nil &&
+					m.evalState.Completed &&
+					m.config.QualifireAPIKey == "" &&
+					!m.config.DontShowQualifirePrompt
+
+				if shouldShowDialog {
+					// Show report persistence dialog
+					dialog := components.NewReportPersistenceDialog()
+					m.dialog = &dialog
+					return m, nil
+				}
+				// If no dialog needed, proceed to dashboard
+			}
 			// Default ESC behavior: back to dashboard
 			m.currentScreen = DashboardScreen
 			m.commandInput.SetFocus(true) // Keep focused when returning to dashboard
@@ -677,12 +784,43 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.handleConfigSave()
 					return m, nil
 				} else {
-					// Start editing the active field
-					m.configState.IsEditing = true
-					if m.configState.ActiveField == ConfigFieldServerURL {
-						m.configState.CursorPos = len(m.configState.ServerURL)
+					// Handle field-specific actions
+					if m.configState.ActiveField == ConfigFieldQualifire {
+						// Toggle Qualifire integration
+						if !m.configState.QualifireEnabled {
+							// Show API key input dialog (pre-populate with existing key if available)
+							dialog := components.NewInputDialog(
+								"Configure Qualifire API Key",
+								"Enter your Qualifire API key to enable integration:",
+								m.config.QualifireAPIKey,
+							)
+							// Customize the buttons for this specific use case
+							dialog.Buttons = []components.DialogButton{
+								{Label: "Save", Action: "save_qualifire", Style: components.PrimaryButton},
+							}
+							// Position cursor at end of existing key if there is one
+							dialog.InputCursor = len(m.config.QualifireAPIKey)
+							// Set the selected button to 0 since there's only one button now
+							dialog.SelectedBtn = 0
+							m.dialog = &dialog
+							return m, nil
+						} else {
+							// Toggle the enabled state (keep API key stored)
+							m.configState.QualifireEnabled = !m.configState.QualifireEnabled
+							m.config.QualifireEnabled = m.configState.QualifireEnabled
+							m.configState.HasChanges = true
+							// Save the updated enabled state
+							m.saveConfig()
+							return m, nil
+						}
+					} else {
+						// Start editing the active field
+						m.configState.IsEditing = true
+						if m.configState.ActiveField == ConfigFieldServerURL {
+							m.configState.CursorPos = len(m.configState.ServerURL)
+						}
+						return m, nil
 					}
-					return m, nil
 				}
 			}
 			// Forward enter to the active screen if needed
@@ -840,6 +978,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.currentScreen == EvaluationDetailScreen && m.evalState != nil {
 			switch msg.String() {
 			case "b":
+				// Check if we should show the Qualifire persistence dialog
+				shouldShowDialog := m.evalState.Completed &&
+					m.config.QualifireAPIKey == "" &&
+					!m.config.DontShowQualifirePrompt
+
+				if shouldShowDialog {
+					// Show report persistence dialog
+					dialog := components.NewReportPersistenceDialog()
+					m.dialog = &dialog
+					return m, nil
+				}
+				// If no dialog needed, proceed to dashboard
 				m.currentScreen = DashboardScreen
 				// Reset viewport focus when leaving detail screen
 				m.focusedViewport = 0
@@ -1098,6 +1248,13 @@ func (m *Model) handleConfigSave() {
 		}
 	}
 
+	// Save Qualifire integration state if it changed
+	if m.configState.ActiveField == ConfigFieldQualifire {
+		// Update config enabled state to match the UI state
+		m.config.QualifireEnabled = m.configState.QualifireEnabled
+		m.configState.HasChanges = true
+	}
+
 	// Exit editing mode
 	m.configState.IsEditing = false
 
@@ -1131,6 +1288,9 @@ func (m Model) handleConfigInput(msg tea.KeyMsg) (Model, tea.Cmd) {
 				if m.configState.IsEditing {
 					m.configState.IsEditing = false
 				}
+				m.configState.ActiveField = ConfigFieldQualifire
+				// Qualifire field doesn't auto-enter edit mode
+			} else if m.configState.ActiveField == ConfigFieldQualifire {
 				m.configState.ActiveField = ConfigFieldServerURL
 				// Automatically enter edit mode for server URL field
 				m.configState.IsEditing = true
@@ -1155,6 +1315,9 @@ func (m Model) handleConfigInput(msg tea.KeyMsg) (Model, tea.Cmd) {
 				if m.configState.IsEditing {
 					m.configState.IsEditing = false
 				}
+				m.configState.ActiveField = ConfigFieldQualifire
+				// Qualifire field doesn't auto-enter edit mode
+			} else if m.configState.ActiveField == ConfigFieldQualifire {
 				m.configState.ActiveField = ConfigFieldTheme
 				// Theme field doesn't auto-enter edit mode - user must press Enter to select themes
 			}
@@ -1186,6 +1349,40 @@ func (m Model) handleConfigInput(msg tea.KeyMsg) (Model, tea.Cmd) {
 			}
 		}
 		return m, nil
+
+	case "space", " ":
+		// Handle space key for Qualifire toggle
+		if m.configState.ActiveField == ConfigFieldQualifire && !m.configState.IsEditing {
+			// Toggle Qualifire integration (same logic as Enter key)
+			if !m.configState.QualifireEnabled {
+				// Show API key input dialog (pre-populate with existing key if available)
+				dialog := components.NewInputDialog(
+					"Configure Qualifire API Key",
+					"Enter your Qualifire API key to enable integration:",
+					m.config.QualifireAPIKey,
+				)
+				// Customize the buttons for this specific use case
+				dialog.Buttons = []components.DialogButton{
+					{Label: "Save", Action: "save_qualifire", Style: components.PrimaryButton},
+				}
+				// Position cursor at end of existing key if there is one
+				dialog.InputCursor = len(m.config.QualifireAPIKey)
+				// Set the selected button to 0 since there's only one button now
+				dialog.SelectedBtn = 0
+				m.dialog = &dialog
+				return m, nil
+			} else {
+				// Toggle the enabled state (keep API key stored)
+				m.configState.QualifireEnabled = !m.configState.QualifireEnabled
+				m.config.QualifireEnabled = m.configState.QualifireEnabled
+				m.configState.HasChanges = true
+				// Save the updated enabled state
+				m.saveConfig()
+				return m, nil
+			}
+		}
+		// Fall through to default for other cases
+		fallthrough
 
 	default:
 		// Handle character input for server URL

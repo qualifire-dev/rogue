@@ -13,6 +13,7 @@ type ConfigField int
 const (
 	ConfigFieldServerURL ConfigField = iota
 	ConfigFieldTheme
+	ConfigFieldQualifire
 )
 
 // RenderConfiguration renders the configuration screen
@@ -89,7 +90,7 @@ func (m Model) RenderConfiguration() string {
 	var sections []string
 
 	// Title
-	sections = append(sections, titleStyle.Render("⚙️ Configuration"))
+	sections = append(sections, titleStyle.Render("⚙️  Configuration"))
 
 	// Server Configuration Section
 	sections = append(sections, sectionHeaderStyle.Render("🌐 Server Settings"))
@@ -142,6 +143,38 @@ func (m Model) RenderConfiguration() string {
 	)
 	sections = append(sections, "  "+serverURLLine)
 
+	// Qualifire Integration field
+	var qualifireDisplay string
+	if m.configState != nil && m.configState.ActiveField == ConfigFieldQualifire {
+		// Show toggle state with highlight when active
+		if m.configState.QualifireEnabled {
+			qualifireDisplay = activeValueStyle.Width(20).Render("✅ Enabled")
+		} else {
+			qualifireDisplay = activeValueStyle.Width(20).Render("❌ Disabled")
+		}
+	} else {
+		// Show current state based on both API key and enabled flag
+		if m.config.QualifireAPIKey != "" && m.config.QualifireEnabled {
+			qualifireDisplay = valueStyle.Width(20).Render("✅ Enabled")
+			// Update config state if not initialized
+			if m.configState != nil {
+				m.configState.QualifireEnabled = true
+			}
+		} else {
+			qualifireDisplay = valueStyle.Width(20).Render("❌ Disabled")
+			// Update config state if not initialized
+			if m.configState != nil {
+				m.configState.QualifireEnabled = false
+			}
+		}
+	}
+
+	qualifireLine := lipgloss.JoinHorizontal(lipgloss.Left,
+		labelStyle.Render("Qualifire Integration:"),
+		qualifireDisplay,
+	)
+	sections = append(sections, "  "+qualifireLine)
+
 	// Theme Configuration Section
 	sections = append(sections, sectionHeaderStyle.Render("🎨 Theme Settings"))
 
@@ -182,7 +215,7 @@ func (m Model) RenderConfiguration() string {
 	sections = append(sections, strings.Join(themeLines, "\n"))
 
 	// Footer
-	sections = append(sections, footerStyle.Render("↑/↓: Navigate • Enter: Edit/Save • Esc: Cancel/Back"))
+	sections = append(sections, footerStyle.Render("↑/↓: Navigate • Enter/Space: Edit/Toggle • Esc: Cancel/Back"))
 
 	content := strings.Join(sections, "\n")
 	return containerStyle.Render(content)

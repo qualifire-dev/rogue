@@ -126,6 +126,24 @@ func NewCustomDialog(title string, customView func() string, buttons []DialogBut
 	}
 }
 
+// NewReportPersistenceDialog creates a dialog prompting about report persistence
+func NewReportPersistenceDialog() Dialog {
+	return Dialog{
+		Type:    ConfirmationDialog,
+		Title:   "Preserve Evaluation Report",
+		Message: "Your evaluation report will be lost when you exit. Enable Qualifire integration to automatically persist reports for future reference.",
+		Buttons: []DialogButton{
+			{Label: "Configure Qualifire", Action: "configure_qualifire", Style: PrimaryButton},
+			{Label: "Cancel", Action: "cancel", Style: SecondaryButton},
+			{Label: "Don't Show Again", Action: "dont_show_again", Style: SecondaryButton},
+		},
+		Width:       80,
+		Height:      12,
+		Focused:     true,
+		SelectedBtn: 0, // Default to "Configure Qualifire"
+	}
+}
+
 // Update handles dialog input and updates
 func (d Dialog) Update(msg tea.Msg) (Dialog, tea.Cmd) {
 	if !d.Focused {
@@ -391,16 +409,16 @@ func (d Dialog) renderButtons(t theme.Theme) string {
 			if i == d.SelectedBtn {
 				buttonStyle = buttonStyle.
 					Background(t.Border()).
-					Foreground(t.Background()).
+					Foreground(t.Text()).
 					BorderForeground(t.Border()).
-					BorderBackground(t.Background()).
+					BorderBackground(t.BackgroundPanel()).
 					Bold(true)
 			} else {
 				buttonStyle = buttonStyle.
 					Background(t.BackgroundElement()).
 					Foreground(t.Text()).
 					BorderForeground(t.Border()).
-					BorderBackground(t.Background())
+					BorderBackground(t.BackgroundPanel())
 			}
 
 		case DangerButton:
