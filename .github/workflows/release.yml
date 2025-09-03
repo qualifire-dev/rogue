@@ -29,24 +29,24 @@ jobs:
       - name: Run uv build - main package
         uses: ./.github/actions/uv-build
         with:
-          dist_dir: "./dist/rogue-ai"
+          dist_dir: "/opt/dist/rogue-ai"
 
       - name: Run uv build - sdk package
         uses: ./.github/actions/uv-build
         with:
           workdir: "sdks/python"
-          dist_dir: "./dist/rogue-ai-sdk"
+          dist_dir: "/opt/dist/rogue-ai-sdk"
 
       - name: Build tui
         uses: ./.github/actions/tui-build
         with:
           build_all: "true"
-          build_dir: "./dist/rogue-tui"
+          build_dir: "/opt/dist/rogue-tui"
 
       - name: Create release zip
         id: create_zip
         run: |
-          cd ./dist
+          cd /opt/dist
           zip -9r rogue-release-${{ github.ref_name }}.zip ./rogue-tui/* ./rogue-ai/* ./rogue-ai-sdk/*
           echo "zip_path=./dist/rogue-release-${{ github.ref_name }}.zip" >> $GITHUB_OUTPUT
 
@@ -55,7 +55,7 @@ jobs:
         with:
           name: rogue-release
           path: ${{ steps.create_zip.outputs.zip_path }}
-          retention-days: 365  # TODO: how much time do we need to keep the release artifacts?
+          retention-days: 90  # TODO: how much time do we need to keep the release artifacts?
 
   publish_rogue_ai_sdk:
     runs-on: ubuntu-latest
@@ -73,6 +73,12 @@ jobs:
         with:
           name: rogue-release
           path: ./dist
+
+      - name: Extract SDK package files
+        run: |
+          cd ./dist
+          unzip -j rogue-release-${{ github.ref_name }}.zip "rogue-ai-sdk/*" -d ./rogue-ai-sdk
+          ls -la ./rogue-ai-sdk/
 
       - name: Prepare Pypi release - sdk package
         id: prepare_pypi_sdk
@@ -106,6 +112,12 @@ jobs:
         with:
           name: rogue-release
           path: ./dist
+
+      - name: Extract main package files
+        run: |
+          cd ./dist
+          unzip -j rogue-release-${{ github.ref_name }}.zip "rogue-ai/*" -d ./rogue-ai
+          ls -la ./rogue-ai/
 
       - name: Prepare Pypi release - main package
         id: prepare_pypi_main
