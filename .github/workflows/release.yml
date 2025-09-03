@@ -133,7 +133,9 @@ jobs:
 
   create_github_release:
     runs-on: ubuntu-latest
-    needs: build
+    needs:
+      - publish_rogue_ai
+      - publish_rogue_ai_sdk
     permissions:
       contents: write
     steps:
