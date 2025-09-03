@@ -8,9 +8,6 @@ inputs:
   dist_dir:
     description: "Directory containing built packages"
     required: true
-  pypi_token:
-    description: "PyPI API token for authentication"
-    required: true
   package_name:
     description: "Name of the package on PyPI"
     required: true
@@ -50,12 +47,3 @@ runs:
         # Convert hyphens to underscores for wheel filename (uv build converts - to _)
         wheel_package_name=$(echo "${{ inputs.package_name }}" | sed 's/-/_/g')
         twine check ${wheel_package_name}*.whl
-
-    - name: Publish to PyPI
-      if: steps.check_version.outputs.version_exists == 'false'
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        packages_dir: ${{ inputs.dist_dir }}
-        # user: __token__
-        # password: ${{ inputs.pypi_token }}
-        verbose: true

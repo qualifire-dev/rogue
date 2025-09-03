@@ -33,35 +33,39 @@ jobs:
         with:
           dist_dir: "./dist/rogue-ai"
       
-      - name: Publish to PyPI
+      - name: Prepare Pypi release - main package
+        uses: ./.github/actions/prepare-pypi
+        with:
+          dist_dir: "./dist/rogue-ai"
+          package_name: "rogue-ai"
+
+      - name: Publish to PyPI - main package
         uses: pypa/gh-action-pypi-publish@release/v1
+        env:
+          name: "pypi"
+          url: "https://pypi.org/p/rogue-ai"
         with:
           packages-dir: "./dist/rogue-ai"
-          # user: __token__
-          # password: ${{ secrets.PYPI_API_TOKEN }}
-          verbose: true
 
-      # - name: Publish to PyPI - main package
-      #   uses: ./.github/actions/publish-pypi
-      #   with:
-      #     workdir: "."
-      #     dist_dir: "/opt/dist/rogue-ai"
-      #     pypi_token: ${{ secrets.PYPI_API_TOKEN }}
-      #     package_name: "rogue-ai"
-
-      # - name: Run uv build - sdk package
-      #   uses: ./.github/actions/uv-build
-      #   with:
-      #     workdir: "sdks/python"
-      #     dist_dir: "/opt/dist/rogue-ai-sdk"
-
-      # - name: Publish to PyPI - sdk package
-      #   uses: ./.github/actions/publish-pypi
-      #   with:
-      #     workdir: "sdks/python"
-      #     dist_dir: "/opt/dist/rogue-ai-sdk"
-      #     pypi_token: ${{ secrets.PYPI_API_TOKEN }}
-      #     package_name: "rogue-ai-sdk"
+      - name: Run uv build - sdk package
+        uses: ./.github/actions/uv-build
+        with:
+          workdir: "sdks/python"
+          dist_dir: "./dist/rogue-ai-sdk"
+          
+      - name: Prepare Pypi release - sdk package
+        uses: ./.github/actions/prepare-pypi
+        with:
+          dist_dir: "./dist/rogue-ai-sdk"
+          package_name: "rogue-ai"
+  
+      - name: Publish to PyPI - sdk package
+        uses: pypa/gh-action-pypi-publish@release/v1
+        env:
+          name: "pypi"
+          url: "https://pypi.org/p/rogue-ai-sdk"
+        with:
+          packages-dir: "./dist/rogue-ai-sdk"
 
       - name: Build tui
         uses: ./.github/actions/tui-build
