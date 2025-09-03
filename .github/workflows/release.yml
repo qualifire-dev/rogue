@@ -33,27 +33,35 @@ jobs:
         with:
           dist_dir: "/opt/dist/rogue-ai"
       
-      - name: Publish to PyPI - main package
-        uses: ./.github/actions/publish-pypi
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          workdir: "."
-          dist_dir: "/opt/dist/rogue-ai"
-          pypi_token: ${{ secrets.PYPI_API_TOKEN }}
-          package_name: "rogue-ai"
+          packages-dir: "/opt/dist/rogue-ai"
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
+          verbose: true
 
-      - name: Run uv build - sdk package
-        uses: ./.github/actions/uv-build
-        with:
-          workdir: "sdks/python"
-          dist_dir: "/opt/dist/rogue-ai-sdk"
+      # - name: Publish to PyPI - main package
+      #   uses: ./.github/actions/publish-pypi
+      #   with:
+      #     workdir: "."
+      #     dist_dir: "/opt/dist/rogue-ai"
+      #     pypi_token: ${{ secrets.PYPI_API_TOKEN }}
+      #     package_name: "rogue-ai"
 
-      - name: Publish to PyPI - sdk package
-        uses: ./.github/actions/publish-pypi
-        with:
-          workdir: "sdks/python"
-          dist_dir: "/opt/dist/rogue-ai-sdk"
-          pypi_token: ${{ secrets.PYPI_API_TOKEN }}
-          package_name: "rogue-ai-sdk"
+      # - name: Run uv build - sdk package
+      #   uses: ./.github/actions/uv-build
+      #   with:
+      #     workdir: "sdks/python"
+      #     dist_dir: "/opt/dist/rogue-ai-sdk"
+
+      # - name: Publish to PyPI - sdk package
+      #   uses: ./.github/actions/publish-pypi
+      #   with:
+      #     workdir: "sdks/python"
+      #     dist_dir: "/opt/dist/rogue-ai-sdk"
+      #     pypi_token: ${{ secrets.PYPI_API_TOKEN }}
+      #     package_name: "rogue-ai-sdk"
 
       - name: Build tui
         uses: ./.github/actions/tui-build
