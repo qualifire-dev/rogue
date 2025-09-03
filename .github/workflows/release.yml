@@ -140,14 +140,23 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Download all release artifacts
+      - name: Download main package artifacts
         uses: actions/download-artifact@v4
         with:
-          name: |
-            rogue-ai-package
-            rogue-ai-sdk-package
-            rogue-tui-package
-          path: ./dist
+          name: rogue-ai-package
+          path: ./dist/rogue-ai-package
+
+      - name: Download SDK package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: rogue-ai-sdk-package
+          path: ./dist/rogue-ai-sdk-package
+
+      - name: Download TUI artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: rogue-tui-package
+          path: ./dist/rogue-tui-package
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
