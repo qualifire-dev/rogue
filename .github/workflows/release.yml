@@ -29,26 +29,26 @@ jobs:
       - name: Run uv build - main package
         uses: ./.github/actions/uv-build
         with:
-          dist_dir: "/opt/dist/rogue-ai"
+          dist_dir: "${{ runner.temp }}/dist/rogue-ai"
 
       - name: Run uv build - sdk package
         uses: ./.github/actions/uv-build
         with:
           workdir: "sdks/python"
-          dist_dir: "/opt/dist/rogue-ai-sdk"
+          dist_dir: "${{ runner.temp }}/dist/rogue-ai-sdk"
 
       - name: Build tui
         uses: ./.github/actions/tui-build
         with:
           build_all: "true"
-          build_dir: "/opt/dist/rogue-tui"
+          build_dir: "${{ runner.temp }}/dist/rogue-tui"
 
       - name: Create release zip
         id: create_zip
         run: |
-          cd /opt/dist
+          cd ${{ runner.temp }}/dist
           zip -9r rogue-release-${{ github.ref_name }}.zip ./rogue-tui/* ./rogue-ai/* ./rogue-ai-sdk/*
-          echo "zip_path=/opt/dist/rogue-release-${{ github.ref_name }}.zip" >> $GITHUB_OUTPUT
+          echo "zip_path=${{ runner.temp }}/dist/rogue-release-${{ github.ref_name }}.zip" >> $GITHUB_OUTPUT
 
       - name: Upload release artifacts
         uses: actions/upload-artifact@v4

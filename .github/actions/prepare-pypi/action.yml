@@ -1,5 +1,5 @@
-name: "publish-pypi"
-description: "Publishes Python package to PyPI if version is new, with validation"
+name: "prepare-pypi"
+description: "Prepares Python package for PyPI upload. Validates the wheel and makes sure that the version does not overlap"
 inputs:
   workdir:
     description: "Working directory containing pyproject.toml"
@@ -26,21 +26,6 @@ runs:
       with:
         python-version-file: ".python-version"
 
-    - name: Validate wheel with twine check
-      if: steps.check_version.outputs.version_exists == 'false'
-      shell: bash
-      run: |
-        # Install twine for validation
-        uv venv 
-        source .venv/bin/activate
-        uv pip install twine
-
-        # Check the wheel for common issues
-        cd "${{ inputs.dist_dir }}"
-        # Convert hyphens to underscores for wheel filename (uv build converts - to _)
-        wheel_package_name=$(echo "${{ inputs.package_name }}" | sed 's/-/_/g')
-        twine check ${wheel_package_name}*.whl
-
     - name: Check if wheel version changed
       id: check_version
       shell: bash
@@ -59,3 +44,18 @@ runs:
           echo "version_exists=true" >> $GITHUB_OUTPUT
           echo "Version $CURRENT_VERSION already exists on PyPI, skipping publish"
         fi
+
+    - name: Validate wheel with twine check
+      if: steps.check_version.outputs.version_exists == 'false'
+      shell: bash
+      run: |
+        # Install twine for validation
+        uv venv 
+        source .venv/bin/activate
+        uv pip install twine
+
+        # Check the wheel for common issues
+        cd "${{ inputs.dist_dir }}"
+        # Convert hyphens to underscores for wheel filename (uv build converts - to _)
+        wheel_package_name=$(echo "${{ inputs.package_name }}" | sed 's/-/_/g')
+        twine check ${wheel_package_name}*.whl
