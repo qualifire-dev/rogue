@@ -53,7 +53,7 @@ runs:
 
     - name: Publish to PyPI
       if: steps.check_version.outputs.version_exists == 'false'
-      uses: pypa/gh-action-pypi-publish@release/v1.11.0
+      uses: pypa/gh-action-pypi-publish@release/v1
       with:
         packages_dir: ${{ inputs.dist_dir }}
         # user: __token__
