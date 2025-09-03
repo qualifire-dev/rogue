@@ -17,6 +17,7 @@ dependencies = [
     "pydantic-yaml==1.5.1",
     "python-dotenv==1.1.1",
     "rich>=14.0.0",
+    "rogue-ai-sdk>=0.1.0",
     "uvicorn>=0.32.0",
 ]
 
