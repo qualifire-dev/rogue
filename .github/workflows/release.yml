@@ -1,4 +1,4 @@
-name: Release
+name: Release (No Zip)
 
 on:
   push:
@@ -43,19 +43,27 @@ jobs:
           build_all: "true"
           build_dir: "${{ runner.temp }}/dist/rogue-tui"
 
-      - name: Create release zip
-        id: create_zip
-        run: |
-          cd ${{ runner.temp }}/dist
-          zip -9r rogue-release-${{ github.ref_name }}.zip ./rogue-tui/* ./rogue-ai/* ./rogue-ai-sdk/*
-          echo "zip_path=${{ runner.temp }}/dist/rogue-release-${{ github.ref_name }}.zip" >> $GITHUB_OUTPUT
-
-      - name: Upload release artifacts
+      # Upload each artifact separately
+      - name: Upload main package artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: rogue-release
-          path: ${{ steps.create_zip.outputs.zip_path }}
-          retention-days: 90  # TODO: how much time do we need to keep the release artifacts?
+          name: rogue-ai-package
+          path: ${{ runner.temp }}/dist/rogue-ai
+          retention-days: 90
+
+      - name: Upload SDK package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rogue-ai-sdk-package
+          path: ${{ runner.temp }}/dist/rogue-ai-sdk
+          retention-days: 90
+
+      - name: Upload TUI artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rogue-tui-package
+          path: ${{ runner.temp }}/dist/rogue-tui
+          retention-days: 90
 
   publish_rogue_ai_sdk:
     runs-on: ubuntu-latest
@@ -68,17 +76,11 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Download build artifacts
+      - name: Download SDK package artifacts
         uses: actions/download-artifact@v4
         with:
-          name: rogue-release
-          path: ./dist
-
-      - name: Extract SDK package files
-        run: |
-          cd ./dist
-          unzip -j rogue-release-${{ github.ref_name }}.zip "rogue-ai-sdk/*" -d ./rogue-ai-sdk
-          ls -la ./rogue-ai-sdk/
+          name: rogue-ai-sdk-package
+          path: ./dist/rogue-ai-sdk
 
       - name: Prepare Pypi release - sdk package
         id: prepare_pypi_sdk
@@ -107,17 +109,11 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Download build artifacts
+      - name: Download main package artifacts
         uses: actions/download-artifact@v4
         with:
-          name: rogue-release
-          path: ./dist
-
-      - name: Extract main package files
-        run: |
-          cd ./dist
-          unzip -j rogue-release-${{ github.ref_name }}.zip "rogue-ai/*" -d ./rogue-ai
-          ls -la ./rogue-ai/
+          name: rogue-ai-package
+          path: ./dist/rogue-ai
 
       - name: Prepare Pypi release - main package
         id: prepare_pypi_main
@@ -144,16 +140,22 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Download release artifacts
+      - name: Download all release artifacts
         uses: actions/download-artifact@v4
         with:
-          name: rogue-release
+          name: |
+            rogue-ai-package
+            rogue-ai-sdk-package
+            rogue-tui-package
           path: ./dist
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: ./dist/rogue-release-${{ github.ref_name }}.zip
+          files: |
+            ./dist/rogue-ai-package/*
+            ./dist/rogue-ai-sdk-package/*
+            ./dist/rogue-tui-package/*
           tag_name: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}
           draft: false
