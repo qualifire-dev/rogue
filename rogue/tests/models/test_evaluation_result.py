@@ -173,9 +173,9 @@ class TestEvaluationResults:
 
         api_format = convert_to_api_format(
             evaluation_results=results,
-            summary="Test summary",
-            key_findings="Key finding 1",
-            recommendation="Test recommendation",
+            summary="Test summary for overall evaluation",
+            key_findings="• Key finding 1\n• Key finding 2",
+            recommendation="• Recommendation 1\n• Recommendation 2",
             deep_test=True,
             judge_model="openai/gpt-4o-mini",
         )
@@ -197,9 +197,9 @@ class TestEvaluationResults:
         assert isinstance(message.timestamp, datetime)
 
         # Test new fields
-        assert api_format.summary == "Test summary"
-        assert api_format.keyFindings == "Key finding 1"
-        assert api_format.recommendation == "Test recommendation"
+        assert api_format.summary == "Test summary for overall evaluation"
+        assert api_format.keyFindings == "• Key finding 1\n• Key finding 2"
+        assert api_format.recommendation == "• Recommendation 1\n• Recommendation 2"
         assert api_format.deepTest is True
         assert api_format.judgeModel == "openai/gpt-4o-mini"
         assert isinstance(api_format.startTime, datetime)

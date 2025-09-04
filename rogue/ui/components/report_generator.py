@@ -7,6 +7,90 @@ from loguru import logger
 from rogue_sdk.types import EvaluationResults
 from pydantic import BaseModel
 from typing import List, Optional
+import re
+
+
+def parse_summary_sections(full_summary: str) -> tuple[str, str, str]:
+    """Parse a comprehensive summary into separate sections.
+
+    Args:
+        full_summary: The comprehensive summary text
+
+    Returns:
+        Tuple of (summary, key_findings, recommendations)
+    """
+    if not full_summary:
+        return None, None, None
+
+    # Extract the main summary section (everything before Key Findings)
+    summary_match = re.search(
+        r"(.*?)(?=---\s*##?\s+Key Findings|##?\s+Key Findings)",
+        full_summary,
+        re.DOTALL | re.IGNORECASE,
+    )
+    summary_section = ""
+    if summary_match:
+        summary_section = summary_match.group(1).strip()
+        # Clean up extra dashes and formatting
+        summary_section = re.sub(r"---+\s*$", "", summary_section).strip()
+
+    # Extract Key Findings section
+    key_findings_match = re.search(
+        r"##?\s+Key Findings\s*[-]*\s*(.*?)(?=---\s*##?\s+Recommendations|##?\s+Recommendations|##?\s+Detailed Breakdown|$)",  # noqa: E501
+        full_summary,
+        re.DOTALL | re.IGNORECASE,
+    )
+    key_findings_section = ""
+    if key_findings_match:
+        key_findings_section = key_findings_match.group(1).strip()
+        # Clean up bullet points and formatting
+        key_findings_section = re.sub(
+            r"^-\s*",
+            "",
+            key_findings_section,
+            flags=re.MULTILINE,
+        )
+        key_findings_section = re.sub(r"---+\s*$", "", key_findings_section).strip()
+        # Fix bullet point formatting
+        key_findings_section = re.sub(r"\s*-\s*\*\*", "\n• **", key_findings_section)
+        if not key_findings_section.startswith(
+            "•",
+        ) and not key_findings_section.startswith("-"):
+            key_findings_section = "• " + key_findings_section
+
+    # Extract Recommendations section
+    recommendations_match = re.search(
+        r"##?\s+Recommendations\s*[-]*\s*(.*?)(?=---\s*##?\s+Detailed Breakdown|##?\s+Detailed Breakdown|$)",  # noqa: E501
+        full_summary,
+        re.DOTALL | re.IGNORECASE,
+    )
+    recommendations_section = ""
+    if recommendations_match:
+        recommendations_section = recommendations_match.group(1).strip()
+        # Clean up formatting
+        recommendations_section = re.sub(
+            r"---+\s*$",
+            "",
+            recommendations_section,
+        ).strip()
+        # Convert all numbered items to bullet points
+        recommendations_section = re.sub(
+            r"^\d+\.\s*",
+            "• ",
+            recommendations_section,
+            flags=re.MULTILINE,
+        )
+        recommendations_section = re.sub(
+            r"\s+\d+\.\s*",
+            "\n• ",
+            recommendations_section,
+        )
+
+    return (
+        summary_section if summary_section else None,
+        key_findings_section if key_findings_section else None,
+        recommendations_section if recommendations_section else None,
+    )
 
 
 # New API Format Types for report display
@@ -191,11 +275,21 @@ def setup_report_generator_logic(
             # Extract configuration and additional metadata from state
             config = state.get("config", {})
 
+            # Parse the summary to extract separate sections
+            if summary and summary != "No summary available.":
+                parsed_summary, parsed_key_findings, parsed_recommendations = (
+                    parse_summary_sections(summary)
+                )
+            else:
+                parsed_summary = None
+                parsed_key_findings = None
+                parsed_recommendations = None
+
             api_format_results = convert_to_api_format(
                 evaluation_results=results,
-                summary=summary if summary != "No summary available." else None,
-                key_findings=state.get("key_findings"),
-                recommendation=state.get("recommendation"),
+                summary=parsed_summary,
+                key_findings=parsed_key_findings or state.get("key_findings"),
+                recommendation=parsed_recommendations or state.get("recommendation"),
                 deep_test=config.get("deep_test_mode", False),
                 start_time=state.get("start_time"),
                 judge_model=config.get("judge_llm"),
