@@ -171,7 +171,14 @@ class TestEvaluationResults:
         result = self.get_evaluation_result(self.scenario_1, self.conversation_1_passed)
         results.add_result(result)
 
-        api_format = convert_to_api_format(results)
+        api_format = convert_to_api_format(
+            evaluation_results=results,
+            summary="Test summary",
+            key_findings="Key finding 1",
+            recommendation="Test recommendation",
+            deep_test=True,
+            judge_model="openai/gpt-4o-mini",
+        )
 
         assert isinstance(api_format, ApiEvaluationResult)
         assert len(api_format.scenarios) == 1
@@ -188,3 +195,11 @@ class TestEvaluationResults:
         assert message.role == "user"
         assert message.content == "message 1"
         assert isinstance(message.timestamp, datetime)
+
+        # Test new fields
+        assert api_format.summary == "Test summary"
+        assert api_format.keyFindings == "Key finding 1"
+        assert api_format.recommendation == "Test recommendation"
+        assert api_format.deepTest is True
+        assert api_format.judgeModel == "openai/gpt-4o-mini"
+        assert isinstance(api_format.startTime, datetime)

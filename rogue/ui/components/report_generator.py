@@ -39,10 +39,40 @@ class ApiEvaluationResult(BaseModel):
     """New API format for evaluation results."""
 
     scenarios: List[ApiScenarioResult]
+    summary: Optional[str] = None
+    keyFindings: Optional[str] = None
+    recommendation: Optional[str] = None
+    deepTest: bool = False
+    startTime: datetime
+    judgeModel: Optional[str] = None
 
 
-def convert_to_api_format(evaluation_results: EvaluationResults) -> ApiEvaluationResult:
-    """Convert legacy EvaluationResults to new API format."""
+def convert_to_api_format(
+    evaluation_results: EvaluationResults,
+    summary: Optional[str] = None,
+    key_findings: Optional[str] = None,
+    recommendation: Optional[str] = None,
+    deep_test: bool = False,
+    start_time: Optional[datetime] = None,
+    judge_model: Optional[str] = None,
+) -> ApiEvaluationResult:
+    """Convert legacy EvaluationResults to new API format.
+
+    Args:
+        evaluation_results: Legacy evaluation results to convert
+        summary: Generated summary of the evaluation
+        key_findings: Key findings from the evaluation
+        recommendation: Recommendations based on the evaluation
+        deep_test: Whether deep test mode was enabled
+        start_time: When the evaluation started (defaults to current time)
+        judge_model: The LLM judge model used
+
+    Returns:
+        ApiEvaluationResult: New format evaluation result with additional metadata
+    """
+    if start_time is None:
+        start_time = datetime.now(timezone.utc)
+
     api_scenarios = []
 
     for result in evaluation_results.results:
@@ -91,7 +121,15 @@ def convert_to_api_format(evaluation_results: EvaluationResults) -> ApiEvaluatio
             ),
         )
 
-    return ApiEvaluationResult(scenarios=api_scenarios)
+    return ApiEvaluationResult(
+        scenarios=api_scenarios,
+        summary=summary,
+        keyFindings=key_findings,
+        recommendation=recommendation,
+        deepTest=deep_test,
+        startTime=start_time,
+        judgeModel=judge_model,
+    )
 
 
 def _load_report_data_from_files(
@@ -150,7 +188,18 @@ def setup_report_generator_logic(
 
         # Convert to new API format for display
         try:
-            api_format_results = convert_to_api_format(results)
+            # Extract configuration and additional metadata from state
+            config = state.get("config", {})
+
+            api_format_results = convert_to_api_format(
+                evaluation_results=results,
+                summary=summary if summary != "No summary available." else None,
+                key_findings=state.get("key_findings"),
+                recommendation=state.get("recommendation"),
+                deep_test=config.get("deep_test_mode", False),
+                start_time=state.get("start_time"),
+                judge_model=config.get("judge_llm"),
+            )
             results_json = api_format_results.model_dump_json(
                 indent=2,
                 exclude_none=True,
