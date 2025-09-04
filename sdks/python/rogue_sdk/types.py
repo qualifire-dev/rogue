@@ -85,7 +85,7 @@ class AgentConfig(BaseModel):
 
         if auth_type and auth_type != AuthType.NO_AUTH and not auth_credentials:
             raise ValueError(
-                "Authentication Credentials cannot be empty for the selected auth type.",  # noqa: E501
+                "Authentication Credentials cannot be empty for the selected auth type."
             )
         return self
 
@@ -110,7 +110,7 @@ class Scenario(BaseModel):
         if dataset_required and self.dataset is None:
             raise ValueError(
                 f"`dataset` must be provided when scenario_type is "
-                f"'{self.scenario_type.value}'",
+                f"'{self.scenario_type.value}'"
             )
         elif not dataset_required and self.dataset is not None:
             logger.info(
@@ -143,7 +143,7 @@ class Scenarios(BaseModel):
                 scenario
                 for scenario in self.scenarios
                 if scenario.scenario_type == scenario_type
-            ],
+            ]
         )
 
     def get_policy_scenarios(self) -> "Scenarios":
@@ -205,101 +205,6 @@ class EvaluationResults(BaseModel):
         if other and other.results:
             for result in other.results:
                 self.add_result(result)
-
-
-# New API Format Types
-
-
-class ApiChatMessage(BaseModel):
-    """Chat message for new API format with datetime timestamp."""
-
-    role: str
-    content: str
-    timestamp: datetime
-
-
-class ApiConversationEvaluation(BaseModel):
-    """Conversation evaluation for new API format."""
-
-    passed: bool
-    messages: List[ApiChatMessage]
-    reason: Optional[str] = None
-
-
-class ApiScenarioResult(BaseModel):
-    """Result of evaluating a single scenario in new API format."""
-
-    description: Optional[str] = None
-    totalConversations: Optional[int] = None
-    flaggedConversations: Optional[int] = None
-    conversations: List[ApiConversationEvaluation]
-
-
-class ApiEvaluationResult(BaseModel):
-    """New API format for evaluation results."""
-
-    scenarios: List[ApiScenarioResult]
-
-
-# Conversion functions for new API format
-def convert_to_api_format(evaluation_results: EvaluationResults) -> ApiEvaluationResult:
-    """Convert legacy EvaluationResults to new API format.
-
-    Args:
-        evaluation_results: Legacy evaluation results to convert
-
-    Returns:
-        ApiEvaluationResult: New format evaluation result
-    """
-    api_scenarios = []
-
-    for result in evaluation_results.results:
-        # Convert conversations to new format
-        api_conversations = []
-        for conv_eval in result.conversations:
-            # Convert ChatHistory messages to ApiChatMessage
-            api_messages = []
-            for msg in conv_eval.messages.messages:
-                timestamp = datetime.now(timezone.utc)
-                if msg.timestamp:
-                    try:
-                        if isinstance(msg.timestamp, str):
-                            timestamp = datetime.fromisoformat(
-                                msg.timestamp.replace("Z", "+00:00"),
-                            )
-                        else:
-                            timestamp = msg.timestamp
-                    except (ValueError, AttributeError):
-                        timestamp = datetime.now(timezone.utc)
-
-                api_messages.append(
-                    ApiChatMessage(
-                        role=msg.role,
-                        content=msg.content,
-                        timestamp=timestamp,
-                    ),
-                )
-
-            api_conversations.append(
-                ApiConversationEvaluation(
-                    passed=conv_eval.passed,
-                    messages=api_messages,
-                    reason=conv_eval.reason if conv_eval.reason else None,
-                ),
-            )
-
-        api_scenarios.append(
-            ApiScenarioResult(
-                description=result.scenario.scenario,
-                totalConversations=len(api_conversations),
-                flaggedConversations=len(
-                    [c for c in api_conversations if not c.passed],
-                ),
-                conversations=api_conversations,
-            ),
-        )
-
-    return ApiEvaluationResult(scenarios=api_scenarios)
 
 
 # Interview Types
