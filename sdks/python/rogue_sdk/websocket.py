@@ -164,7 +164,7 @@ class RogueWebSocketClient:
                             )
                             if t.exception()
                             else None
-                        )
+                        ),
                     )
                 else:
                     handler(event, data)
@@ -180,7 +180,7 @@ class RogueWebSocketClient:
         delay = self.reconnect_delay * (2 ** (self.reconnect_attempts - 1))
 
         logger.info(
-            f"Scheduling reconnect attempt {self.reconnect_attempts} in {delay}s"
+            f"Scheduling reconnect attempt {self.reconnect_attempts} in {delay}s",
         )
         await asyncio.sleep(delay)
 

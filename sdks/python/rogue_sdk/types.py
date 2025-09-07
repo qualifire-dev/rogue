@@ -433,10 +433,19 @@ class SummaryGenerationRequest(BaseModel):
     api_key: Optional[str] = None
 
 
+class StructuredSummary(BaseModel):
+    """Structured summary response from LLM."""
+
+    overall_summary: str
+    key_findings: List[str]
+    recommendations: List[str]
+    detailed_breakdown: List[dict]  # Table rows for scenario breakdown
+
+
 class SummaryGenerationResponse(BaseModel):
     """Response containing generated summary."""
 
-    summary: str
+    summary: StructuredSummary
     message: str
 
 

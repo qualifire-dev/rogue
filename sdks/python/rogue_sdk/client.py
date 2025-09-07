@@ -24,6 +24,7 @@ from .types import (
     SendMessageResponse,
     StartInterviewRequest,
     StartInterviewResponse,
+    StructuredSummary,
     SummaryGenerationRequest,
     SummaryGenerationResponse,
 )
@@ -162,7 +163,27 @@ class RogueHttpClient:
             "/api/v1/llm/summary",
             json=data.model_dump(mode="json"),
         )
-        return SummaryGenerationResponse(**response)
+
+        # Handle server's structured summary response
+        summary_data = response.get("summary", {})
+        if isinstance(summary_data, dict) and "overall_summary" in summary_data:
+            # Server returned StructuredSummary - convert to our expected format
+            structured_summary = StructuredSummary(**summary_data)
+            return SummaryGenerationResponse(
+                summary=structured_summary,
+                message=response.get("message", "Successfully generated summary"),
+            )
+        else:
+            # Fallback for legacy string response
+            return SummaryGenerationResponse(
+                summary=StructuredSummary(
+                    overall_summary=str(summary_data),
+                    key_findings=[],
+                    recommendations=[],
+                    detailed_breakdown=[],
+                ),
+                message=response.get("message", "Successfully generated summary"),
+            )
 
     async def start_interview(
         self,
@@ -237,7 +258,7 @@ class RogueHttpClient:
             elapsed = asyncio.get_running_loop().time() - start_time
             if elapsed >= max_wait_time:
                 raise TimeoutError(
-                    f"Evaluation {job_id} did not complete within {max_wait_time}s"
+                    f"Evaluation {job_id} did not complete within {max_wait_time}s",
                 )
 
             await asyncio.sleep(poll_interval)

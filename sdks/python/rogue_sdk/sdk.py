@@ -114,7 +114,7 @@ class RogueSDK:
         """Add WebSocket event handler."""
         if not self.ws_client:
             raise RuntimeError(
-                "WebSocket not connected. Call connect_websocket() first."
+                "WebSocket not connected. Call connect_websocket() first.",
             )
         self.ws_client.on(event, handler)
 
@@ -192,7 +192,7 @@ class RogueSDK:
                                 result_future.set_result(result)
                             else:
                                 result_future.set_exception(
-                                    Exception("Failed to retrieve final job result")
+                                    Exception("Failed to retrieve final job result"),
                                 )
                         except Exception as e:
                             result_future.set_exception(e)
@@ -210,7 +210,7 @@ class RogueSDK:
         def handle_error(event, data):
             if not result_future.done():
                 result_future.set_exception(
-                    Exception(f"WebSocket error: {data.get('error')}")
+                    Exception(f"WebSocket error: {data.get('error')}"),
                 )
 
         # Connect WebSocket for updates
@@ -228,7 +228,7 @@ class RogueSDK:
             return result
         except asyncio.TimeoutError:
             raise TimeoutError(
-                f"Evaluation {job_id} did not complete within {timeout}s"
+                f"Evaluation {job_id} did not complete within {timeout}s",
             )
         finally:
             await self.disconnect_websocket()
@@ -296,7 +296,32 @@ class RogueSDK:
             api_key=api_key,
         )
 
-        return response_data.summary
+        # Convert structured summary back to string format for backward compatibility
+        structured_summary = response_data.summary
+        if hasattr(structured_summary, "overall_summary"):
+            # Format as markdown string for UI display
+            summary_parts = [
+                f"# Evaluation Results Summary\n\n## Overall Summary\n"
+                f"{structured_summary.overall_summary}",
+            ]
+
+            if structured_summary.key_findings:
+                findings = "\n".join(
+                    f"- {finding}" for finding in structured_summary.key_findings
+                )
+                summary_parts.append(f"\n---\n\n## Key Findings\n{findings}")
+
+            if structured_summary.recommendations:
+                recommendations = "\n".join(
+                    f"{i + 1}. {rec}"
+                    for i, rec in enumerate(structured_summary.recommendations)
+                )
+                summary_parts.append(f"\n---\n\n## Recommendations\n{recommendations}")
+
+            return "\n".join(summary_parts)
+        else:
+            # Fallback for string response
+            return str(structured_summary)
 
     async def start_interview(
         self,

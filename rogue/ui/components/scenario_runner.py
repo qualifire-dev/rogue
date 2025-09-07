@@ -481,6 +481,7 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
         # final_output_path.write_text(all_results.model_dump_json(indent=2))
 
         # Generate summary using SDK (server-based)
+        summary = "Summary generation failed."
         try:
             sdk_config = RogueClientConfig(
                 base_url=state.get("rogue_server_url", "http://localhost:8000"),

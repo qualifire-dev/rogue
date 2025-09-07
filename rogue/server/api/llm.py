@@ -9,8 +9,9 @@ from rogue_sdk.types import (
     ScenarioGenerationRequest,
     ScenarioGenerationResponse,
     SummaryGenerationRequest,
-    SummaryGenerationResponse,
 )
+
+from ..models.api_format import ServerSummaryGenerationResponse
 
 from ...common.logging import get_logger
 from ..services.llm_service import LLMService
@@ -57,8 +58,10 @@ async def generate_scenarios(request: ScenarioGenerationRequest):
         )
 
 
-@router.post("/summary", response_model=SummaryGenerationResponse)
-async def generate_summary(request: SummaryGenerationRequest):
+@router.post("/summary", response_model=ServerSummaryGenerationResponse)
+async def generate_summary(
+    request: SummaryGenerationRequest,
+) -> ServerSummaryGenerationResponse:
     """
     Generate evaluation summary from results.
 
@@ -81,7 +84,7 @@ async def generate_summary(request: SummaryGenerationRequest):
 
         logger.info("Successfully generated evaluation summary")
 
-        return SummaryGenerationResponse(
+        return ServerSummaryGenerationResponse(
             summary=summary,
             message="Successfully generated evaluation summary",
         )

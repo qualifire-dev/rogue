@@ -8,10 +8,8 @@ from rogue_sdk.types import (
     EvaluationResults,
     Scenario,
 )
-from rogue.ui.components.report_generator import (
-    convert_to_api_format,
-    ApiEvaluationResult,
-)
+from rogue.server.services.api_format_service import convert_to_api_format
+from rogue.server.models.api_format import ApiEvaluationResult, StructuredSummary
 
 
 class TestEvaluationResults:
@@ -171,11 +169,19 @@ class TestEvaluationResults:
         result = self.get_evaluation_result(self.scenario_1, self.conversation_1_passed)
         results.add_result(result)
 
+        # Create structured summary for testing
+        structured_summary = StructuredSummary(
+            overall_summary="Test summary for overall evaluation",
+            key_findings=["Key finding 1", "Key finding 2"],
+            recommendations=["Recommendation 1", "Recommendation 2"],
+            detailed_breakdown=[
+                {"scenario": "Test", "status": "✅", "outcome": "Passed"},
+            ],
+        )
+
         api_format = convert_to_api_format(
             evaluation_results=results,
-            summary="Test summary for overall evaluation",
-            key_findings="• Key finding 1\n• Key finding 2",
-            recommendation="• Recommendation 1\n• Recommendation 2",
+            structured_summary=structured_summary,
             deep_test=True,
             judge_model="openai/gpt-4o-mini",
         )
@@ -186,6 +192,13 @@ class TestEvaluationResults:
         assert api_format.scenarios[0].totalConversations == 1
         assert api_format.scenarios[0].flaggedConversations == 0
         assert len(api_format.scenarios[0].conversations) == 1
+
+        # Test structured summary fields
+        assert api_format.summary == "Test summary for overall evaluation"
+        assert api_format.keyFindings == "• Key finding 1\n• Key finding 2"
+        assert api_format.recommendation == "• Recommendation 1\n• Recommendation 2"
+        assert api_format.deepTest is True
+        assert api_format.judgeModel == "openai/gpt-4o-mini"
         assert api_format.scenarios[0].conversations[0].passed is True
         assert api_format.scenarios[0].conversations[0].reason == "reason"
         assert len(api_format.scenarios[0].conversations[0].messages) == 1

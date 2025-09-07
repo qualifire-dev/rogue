@@ -10,6 +10,15 @@ from typing import List, Optional
 from pydantic import BaseModel
 
 
+class StructuredSummary(BaseModel):
+    """Structured summary response from LLM."""
+
+    overall_summary: str
+    key_findings: List[str]
+    recommendations: List[str]
+    detailed_breakdown: List[dict]  # Table rows for scenario breakdown
+
+
 class ApiChatMessage(BaseModel):
     """Chat message for new API format with datetime timestamp."""
 
@@ -45,3 +54,10 @@ class ApiEvaluationResult(BaseModel):
     deepTest: bool = False
     startTime: datetime
     judgeModel: Optional[str] = None
+
+
+class ServerSummaryGenerationResponse(BaseModel):
+    """Server response for summary generation with structured summary."""
+
+    summary: StructuredSummary
+    message: str

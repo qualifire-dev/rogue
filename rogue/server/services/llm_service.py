@@ -1,8 +1,11 @@
+import json
 from typing import Optional
 
 from litellm import completion
 from loguru import logger
 from rogue_sdk.types import EvaluationResults, Scenario, Scenarios, ScenarioType
+
+from ..models.api_format import StructuredSummary
 
 SCENARIO_GENERATION_SYSTEM_PROMPT = """
 # Test Scenario Designer
@@ -98,7 +101,7 @@ SUMMARY_GENERATION_SYSTEM_PROMPT = """
 # Evaluation Results Summarizer
 
 You are a test results summarizer. Your task is to analyze the provided evaluation results
-and generate a concise, insightful, and human-readable summary in Markdown format.
+and generate a structured JSON response with the summary components.
 
 ## Evaluation Results (JSON)
 <evaluation_results>
@@ -106,22 +109,47 @@ and generate a concise, insightful, and human-readable summary in Markdown forma
 </evaluation_results>
 
 ## Your Task
-Based on the JSON data above, create a summary that includes:
+Based on the JSON data above, create a structured summary that includes:
 
-1.  **Overall Summary**: A brief, high-level overview of the agent's performance,
-    highlighting the pass/fail ratio and any critical issues discovered.
-2.  **Key Findings**: Bullet points detailing the most significant discoveries, both
-    positive and negative. Focus on patterns of failure or notable successes.
-3.  **Recommendations**: Suggest concrete next steps for improving the agent. These
+1.  **overall_summary**: A brief, high-level overview of the agent's performance,
+    highlighting the pass/fail ratio and any critical issues discovered. Return as a single string.
+2.  **key_findings**: List of the most significant discoveries, both positive and negative.
+    Focus on patterns of failure or notable successes. Return as an array of strings.
+3.  **recommendations**: List of concrete next steps for improving the agent. These
     could include fixing specific bugs, improving training data, or clarifying policies.
-4.  **Detailed Breakdown**: A table that provides a granular look at each
-    scenario that was tested, including the pass/fail with the appropriate emoji ✅/❌ status and a brief note on the outcome.
+    Return as an array of strings.
+4.  **detailed_breakdown**: Array of objects representing a table that provides a granular
+    look at each scenario tested. Each object should have: scenario, status (✅/❌), outcome.
+
+## Output Format
+You MUST respond with valid JSON in exactly this format:
+
+```json
+{
+  "overall_summary": "Brief overview text here...",
+  "key_findings": [
+    "First key finding",
+    "Second key finding"
+  ],
+  "recommendations": [
+    "First recommendation",
+    "Second recommendation"
+  ],
+  "detailed_breakdown": [
+    {
+      "scenario": "Scenario name",
+      "status": "✅",
+      "outcome": "Brief outcome description"
+    }
+  ]
+}
+```
 
 ## Guidelines
 - Use clear and professional language.
-- Format the output using Markdown for readability (headings, bold text, lists, etc.).
 - Be objective and base your summary strictly on the provided data.
-- Ensure the summary is well-organized and easy to navigate.
+- Return ONLY valid JSON - no markdown, no explanations, no additional text.
+- Ensure all strings are properly escaped for JSON.
 """  # noqa: E501
 
 
@@ -142,13 +170,18 @@ class LLMService:
         context: str,
         llm_provider_api_key: Optional[str] = None,
     ) -> Scenarios:
-        """
-        Generates scenarios for the given business context using the given model.
-        :param model: LLM model to use for scenario generation.
-        :param context: Business context to use for scenario generation.
-        :param llm_provider_api_key: api key for the LLM provider
-            (if applicable, env can also be used instead).
-        :return: The generated scenarios
+        """Generate test scenarios from business context using LLM.
+
+        Args:
+            model: LLM model to use for generation
+            context: Business context description for scenario generation
+            llm_provider_api_key: API key for the LLM provider
+
+        Returns:
+            Scenarios: Generated test scenarios
+
+        Raises:
+            Exception: If scenario generation fails
         """
         system_prompt = SCENARIO_GENERATION_SYSTEM_PROMPT.replace(
             r"{$BUSINESS_CONTEXT}",
@@ -188,7 +221,7 @@ class LLMService:
         model: str,
         results: EvaluationResults,
         llm_provider_api_key: Optional[str] = None,
-    ) -> str:
+    ) -> StructuredSummary:
         system_prompt = SUMMARY_GENERATION_SYSTEM_PROMPT.replace(
             r"{$EVALUATION_RESULTS}",
             results.model_dump_json(indent=2),
@@ -198,7 +231,10 @@ class LLMService:
             {"role": "system", "content": system_prompt},
             {
                 "role": "user",
-                "content": "Please generate the summary based on the provided results.",
+                "content": (
+                    "Please generate the structured summary based on the "
+                    "provided results."
+                ),
             },
         ]
 
@@ -210,7 +246,38 @@ class LLMService:
                 messages=messages,
                 api_key=api_key,
             )
-            return response.choices[0].message.content
+
+            # Parse the JSON response from the LLM
+            content = response.choices[0].message.content.strip()
+
+            # Remove markdown code blocks if present
+            if content.startswith("```json"):
+                content = content[7:]
+            if content.endswith("```"):
+                content = content[:-3]
+            content = content.strip()
+
+            # Parse JSON and create StructuredSummary
+            summary_data = json.loads(content)
+            return StructuredSummary(**summary_data)
+
+        except json.JSONDecodeError as e:
+            logger.exception(f"Failed to parse JSON response from LLM: {e}")
+            # Return a fallback structured summary
+            return StructuredSummary(
+                overall_summary="Error: Could not parse summary response from LLM.",
+                key_findings=["Unable to generate key findings due to parsing error."],
+                recommendations=["Please review the evaluation results manually."],
+                detailed_breakdown=[],
+            )
         except Exception:
             logger.exception("Failed to generate summary from results")
-            return "Error: Could not generate a summary for the evaluation results."
+            # Return a fallback structured summary
+            return StructuredSummary(
+                overall_summary=(
+                    "Error: Could not generate a summary for the evaluation results."
+                ),
+                key_findings=["Unable to generate key findings due to system error."],
+                recommendations=["Please review the evaluation results manually."],
+                detailed_breakdown=[],
+            )

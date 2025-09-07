@@ -1,219 +1,11 @@
 from pathlib import Path
 from typing import Tuple
-from datetime import datetime, timezone
 
 import gradio as gr
 from loguru import logger
 from rogue_sdk.types import EvaluationResults
-from pydantic import BaseModel
-from typing import List, Optional
-import re
 
-
-def parse_summary_sections(full_summary: str) -> tuple[str, str, str]:
-    """Parse a comprehensive summary into separate sections.
-
-    Args:
-        full_summary: The comprehensive summary text
-
-    Returns:
-        Tuple of (summary, key_findings, recommendations)
-    """
-    if not full_summary:
-        return None, None, None
-
-    # Extract the main summary section (everything before Key Findings)
-    summary_match = re.search(
-        r"(.*?)(?=---\s*##?\s+Key Findings|##?\s+Key Findings)",
-        full_summary,
-        re.DOTALL | re.IGNORECASE,
-    )
-    summary_section = ""
-    if summary_match:
-        summary_section = summary_match.group(1).strip()
-        # Clean up extra dashes and formatting
-        summary_section = re.sub(r"---+\s*$", "", summary_section).strip()
-
-    # Extract Key Findings section
-    key_findings_match = re.search(
-        r"##?\s+Key Findings\s*[-]*\s*(.*?)(?=---\s*##?\s+Recommendations|##?\s+Recommendations|##?\s+Detailed Breakdown|$)",  # noqa: E501
-        full_summary,
-        re.DOTALL | re.IGNORECASE,
-    )
-    key_findings_section = ""
-    if key_findings_match:
-        key_findings_section = key_findings_match.group(1).strip()
-        # Clean up bullet points and formatting
-        key_findings_section = re.sub(
-            r"^-\s*",
-            "",
-            key_findings_section,
-            flags=re.MULTILINE,
-        )
-        key_findings_section = re.sub(r"---+\s*$", "", key_findings_section).strip()
-        # Fix bullet point formatting
-        key_findings_section = re.sub(r"\s*-\s*\*\*", "\n• **", key_findings_section)
-        if not key_findings_section.startswith(
-            "•",
-        ) and not key_findings_section.startswith("-"):
-            key_findings_section = "• " + key_findings_section
-
-    # Extract Recommendations section
-    recommendations_match = re.search(
-        r"##?\s+Recommendations\s*[-]*\s*(.*?)(?=---\s*##?\s+Detailed Breakdown|##?\s+Detailed Breakdown|$)",  # noqa: E501
-        full_summary,
-        re.DOTALL | re.IGNORECASE,
-    )
-    recommendations_section = ""
-    if recommendations_match:
-        recommendations_section = recommendations_match.group(1).strip()
-        # Clean up formatting
-        recommendations_section = re.sub(
-            r"---+\s*$",
-            "",
-            recommendations_section,
-        ).strip()
-        # Convert all numbered items to bullet points
-        recommendations_section = re.sub(
-            r"^\d+\.\s*",
-            "• ",
-            recommendations_section,
-            flags=re.MULTILINE,
-        )
-        recommendations_section = re.sub(
-            r"\s+\d+\.\s*",
-            "\n• ",
-            recommendations_section,
-        )
-
-    return (
-        summary_section if summary_section else None,
-        key_findings_section if key_findings_section else None,
-        recommendations_section if recommendations_section else None,
-    )
-
-
-# New API Format Types for report display
-class ApiChatMessage(BaseModel):
-    """Chat message for new API format with datetime timestamp."""
-
-    role: str
-    content: str
-    timestamp: datetime
-
-
-class ApiConversationEvaluation(BaseModel):
-    """Conversation evaluation for new API format."""
-
-    passed: bool
-    messages: List[ApiChatMessage]
-    reason: Optional[str] = None
-
-
-class ApiScenarioResult(BaseModel):
-    """Result of evaluating a single scenario in new API format."""
-
-    description: Optional[str] = None
-    totalConversations: Optional[int] = None
-    flaggedConversations: Optional[int] = None
-    conversations: List[ApiConversationEvaluation]
-
-
-class ApiEvaluationResult(BaseModel):
-    """New API format for evaluation results."""
-
-    scenarios: List[ApiScenarioResult]
-    summary: Optional[str] = None
-    keyFindings: Optional[str] = None
-    recommendation: Optional[str] = None
-    deepTest: bool = False
-    startTime: datetime
-    judgeModel: Optional[str] = None
-
-
-def convert_to_api_format(
-    evaluation_results: EvaluationResults,
-    summary: Optional[str] = None,
-    key_findings: Optional[str] = None,
-    recommendation: Optional[str] = None,
-    deep_test: bool = False,
-    start_time: Optional[datetime] = None,
-    judge_model: Optional[str] = None,
-) -> ApiEvaluationResult:
-    """Convert legacy EvaluationResults to new API format.
-
-    Args:
-        evaluation_results: Legacy evaluation results to convert
-        summary: Generated summary of the evaluation
-        key_findings: Key findings from the evaluation
-        recommendation: Recommendations based on the evaluation
-        deep_test: Whether deep test mode was enabled
-        start_time: When the evaluation started (defaults to current time)
-        judge_model: The LLM judge model used
-
-    Returns:
-        ApiEvaluationResult: New format evaluation result with additional metadata
-    """
-    if start_time is None:
-        start_time = datetime.now(timezone.utc)
-
-    api_scenarios = []
-
-    for result in evaluation_results.results:
-        # Convert conversations to new format
-        api_conversations = []
-        for conv_eval in result.conversations:
-            # Convert ChatHistory messages to ApiChatMessage
-            api_messages = []
-            for msg in conv_eval.messages.messages:
-                timestamp = datetime.now(timezone.utc)
-                if msg.timestamp:
-                    try:
-                        if isinstance(msg.timestamp, str):
-                            timestamp = datetime.fromisoformat(
-                                msg.timestamp.replace("Z", "+00:00"),
-                            )
-                        else:
-                            timestamp = msg.timestamp
-                    except (ValueError, AttributeError):
-                        timestamp = datetime.now(timezone.utc)
-
-                api_messages.append(
-                    ApiChatMessage(
-                        role=msg.role,
-                        content=msg.content,
-                        timestamp=timestamp,
-                    ),
-                )
-
-            api_conversations.append(
-                ApiConversationEvaluation(
-                    passed=conv_eval.passed,
-                    messages=api_messages,
-                    reason=conv_eval.reason if conv_eval.reason else None,
-                ),
-            )
-
-        api_scenarios.append(
-            ApiScenarioResult(
-                description=result.scenario.scenario,
-                totalConversations=len(api_conversations),
-                flaggedConversations=len(
-                    [c for c in api_conversations if not c.passed],
-                ),
-                conversations=api_conversations,
-            ),
-        )
-
-    return ApiEvaluationResult(
-        scenarios=api_scenarios,
-        summary=summary,
-        keyFindings=key_findings,
-        recommendation=recommendation,
-        deepTest=deep_test,
-        startTime=start_time,
-        judgeModel=judge_model,
-    )
+from ...server.services.api_format_service import convert_with_structured_summary
 
 
 def _load_report_data_from_files(
@@ -270,26 +62,17 @@ def setup_report_generator_logic(
             )
             results = EvaluationResults()
 
-        # Convert to new API format for display
+        # Convert to new API format for display using server service
         try:
             # Extract configuration and additional metadata from state
             config = state.get("config", {})
 
-            # Parse the summary to extract separate sections
-            if summary and summary != "No summary available.":
-                parsed_summary, parsed_key_findings, parsed_recommendations = (
-                    parse_summary_sections(summary)
-                )
-            else:
-                parsed_summary = None
-                parsed_key_findings = None
-                parsed_recommendations = None
-
-            api_format_results = convert_to_api_format(
+            # For now, pass None for structured_summary since UI still uses
+            # string summaries. This will be updated when the UI summary generation
+            # is converted to structured format
+            api_format_results = convert_with_structured_summary(
                 evaluation_results=results,
-                summary=parsed_summary,
-                key_findings=parsed_key_findings or state.get("key_findings"),
-                recommendation=parsed_recommendations or state.get("recommendation"),
+                structured_summary=None,  # TODO: Convert UI to use structured summaries
                 deep_test=config.get("deep_test_mode", False),
                 start_time=state.get("start_time"),
                 judge_model=config.get("judge_llm"),
