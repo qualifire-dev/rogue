@@ -6,12 +6,10 @@ from pathlib import Path
 from dotenv import load_dotenv
 from loguru import logger
 
-from rogue.server.main import start_server, start_server_in_background
-
 from .common.configure_logger import configure_logger
 from .common.tui_installer import RogueTuiInstaller
 from .run_cli import run_cli, set_cli_args
-from .run_server import set_server_args
+from .run_server import run_server, set_server_args
 from .run_tui import run_rogue_tui
 from .run_ui import run_ui, set_ui_args
 
@@ -90,7 +88,7 @@ def main():
             sys.exit(1)
 
         # Step 2: Start the server in background
-        if not start_server_in_background(args.host, args.port):
+        if not run_server(args, background=True):
             logger.error("Failed to start rogue server. Exiting.")
             sys.exit(1)
 
@@ -108,7 +106,7 @@ def main():
         exit_code = asyncio.run(run_cli(args))
         sys.exit(exit_code)
     elif args.mode == "server":
-        success = start_server(args.host, args.port)
+        success = run_server(args, background=False)
         sys.exit(0 if success else 1)
     elif args.mode == "tui":
         exit_code = run_rogue_tui()

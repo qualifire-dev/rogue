@@ -12,7 +12,6 @@ Environment Variables:
     RELOAD: Enable auto-reload for development (default: False)
 """
 
-import multiprocessing
 import os
 import sys
 from contextlib import asynccontextmanager
@@ -71,7 +70,11 @@ def create_app() -> FastAPI:
     return app
 
 
-def start_server(host: str, port: int, reload: bool = False):
+def start_server(
+    host: str,
+    port: int,
+    reload: bool = False,
+):
     logger.info(
         "Starting Rogue Agent Evaluator Server",
         extra={
@@ -99,19 +102,6 @@ def start_server(host: str, port: int, reload: bool = False):
     except Exception:
         logger.exception("Server failed to start")
         sys.exit(1)
-
-
-def start_server_in_background(
-    host: str,
-    port: int,
-    reload: bool = False,
-) -> multiprocessing.Process:
-    proccess = multiprocessing.Process(
-        target=start_server,
-        args=(host, port, reload),
-    )
-    proccess.start()
-    return proccess
 
 
 if __name__ == "__main__":

@@ -13,7 +13,7 @@ from loguru import logger
 
 
 class RogueTuiInstaller:
-    def __init__(self, repo: str = "qualifire-dev/rogue-ai"):
+    def __init__(self, repo: str = "qualifire-dev/rogue-private"):
         self._repo = repo
         self._github_token = os.getenv("GITHUB_TOKEN")
         self._headers = (
@@ -95,7 +95,10 @@ class RogueTuiInstaller:
         response = requests.get(
             download_url,
             timeout=60,
-            headers=self._headers,
+            headers={
+                "Accept": "application/octet-stream",
+                **self._headers,
+            },
         )
         response.raise_for_status()
 
