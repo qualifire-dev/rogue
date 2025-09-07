@@ -8,6 +8,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
+import platformdirs
 import requests
 from loguru import logger
 
@@ -118,18 +119,10 @@ class RogueTuiInstaller:
         install_path = Path.home()
         if self._os == "windows":
             install_path = (
-                install_path
-                / "AppData"
-                / "Local"
-                / "Microsoft"
-                / "WinGet"
-                / "Packages"
-                / "rogue-tui"
-                / "rogue-tui.exe"
+                Path(platformdirs.user_data_dir("rogue")) / "bin" / "rogue-tui.exe"
             )
-
         else:
-            install_path = install_path / ".local" / "bin" / "rogue-tui"
+            install_path = Path.home() / ".local" / "bin" / "rogue-tui"
 
         install_path.parent.mkdir(parents=True, exist_ok=True)
 
