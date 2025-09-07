@@ -15,6 +15,7 @@ Environment Variables:
 import os
 import sys
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI
@@ -27,8 +28,6 @@ from .api.interview import router as interview_router
 from .api.llm import router as llm_router
 from .websocket.manager import websocket_router
 
-# Configure logging first
-configure_logger()
 logger = get_logger(__name__)
 
 
@@ -74,7 +73,9 @@ def start_server(
     host: str,
     port: int,
     reload: bool = False,
+    log_file: Path | None = None,
 ):
+    configure_logger(file_path=log_file)
     logger.info(
         "Starting Rogue Agent Evaluator Server",
         extra={
@@ -95,6 +96,8 @@ def start_server(
             host=host,
             port=port,
             reload=reload,
+            log_config=None,  # We are intercepting uvicorn logging to loguru
+            log_level=None,  # We are intercepting uvicorn logging to loguru
         )
     except KeyboardInterrupt:
         logger.info("^C Server stopped by user")

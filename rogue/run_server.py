@@ -1,6 +1,10 @@
 import multiprocessing
 import os
+import time
 from argparse import ArgumentParser, Namespace
+from pathlib import Path
+
+import requests
 
 from .server.main import start_server
 
@@ -23,16 +27,43 @@ def run_server_in_background(
     host: str,
     port: int,
     reload: bool = False,
+    log_file: Path | None = None,
 ) -> multiprocessing.Process:
     proccess = multiprocessing.Process(
         target=start_server,
-        args=(host, port, reload),
+        args=(host, port, reload, log_file),
     )
     proccess.start()
     return proccess
 
 
-def run_server(args: Namespace, background: bool = False) -> None:
+def wait_until_server_ready(
+    process: multiprocessing.Process,
+    host: str,
+    port: int,
+    timeout: float = 10.0,
+) -> bool:
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        if not process.is_alive():
+            return False
+        try:
+            response = requests.get(f"http://{host}:{port}/api/v1/health")  # nosec B113
+            if response.status_code == 200:
+                return True
+        except requests.RequestException:
+            pass
+        time.sleep(0.5)
+
+    return False
+
+
+def run_server(
+    args: Namespace,
+    background: bool = False,
+    background_wait_for_ready: bool = True,
+    log_file: Path | None = None,
+) -> multiprocessing.Process | None:
     # The host/port are missing when running `rogue-ai` without any args.
     # They are only included in the `args` object when running `rogue-ai server`
     try:
@@ -45,14 +76,20 @@ def run_server(args: Namespace, background: bool = False) -> None:
         port = int(os.getenv("PORT", "8000"))
 
     if background:
-        run_server_in_background(
+        process = run_server_in_background(
             host=host,
             port=port,
             reload=False,
+            log_file=log_file,
         )
+        if background_wait_for_ready:
+            if not wait_until_server_ready(process, host, port):
+                raise Exception("Server failed to start")
+        return process
     else:
-        start_server(
+        return start_server(
             host=host,
             port=port,
             reload=False,
+            log_file=log_file,
         )

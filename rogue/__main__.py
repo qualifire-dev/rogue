@@ -6,7 +6,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from loguru import logger
 
-from .common.configure_logger import configure_logger
+from .common.logging.config import configure_logger
 from .common.tui_installer import RogueTuiInstaller
 from .run_cli import run_cli, set_cli_args
 from .run_server import run_server, set_server_args
@@ -36,6 +36,7 @@ def common_parser():
 def parse_args():
     parser = ArgumentParser(
         description="Rogue agent evaluator",
+        parents=[common_parser()],
     )
 
     subparsers = parser.add_subparsers(dest="mode")
@@ -77,6 +78,15 @@ def parse_args():
 def main():
     args = parse_args()
 
+    tui_mode = args.mode == "tui" or args.mode is None
+
+    log_file_path = None
+    if tui_mode:
+        log_file_path = args.workdir / "rogue.log"
+        log_file_path = str(log_file_path.resolve())
+
+    configure_logger(args.debug, file_path=log_file_path)
+
     # Handle default behavior (no mode specified)
     if args.mode is None:
         # Default behavior: install TUI, start server, run TUI
@@ -87,28 +97,39 @@ def main():
             logger.error("Failed to install rogue-tui. Exiting.")
             sys.exit(1)
 
+        server_process = run_server(
+            args,
+            background=True,
+            log_file=log_file_path,
+        )
+
         # Step 2: Start the server in background
-        if not run_server(args, background=True):
+        if not server_process:
             logger.error("Failed to start rogue server. Exiting.")
             sys.exit(1)
 
         # Step 3: Run the TUI
-        exit_code = run_rogue_tui()
+        try:
+            exit_code = run_rogue_tui()
+        finally:
+            server_process.terminate()
+            server_process.join()
         sys.exit(exit_code)
 
     # Handle regular modes (ui, cli, server, tui)
-    configure_logger(args.debug)
     args.workdir.mkdir(exist_ok=True, parents=True)
 
     if args.mode == "ui":
         run_ui(args)
+    elif args.mode == "server":
+        run_server(args, background=False)
     elif args.mode == "cli":
         exit_code = asyncio.run(run_cli(args))
         sys.exit(exit_code)
-    elif args.mode == "server":
-        success = run_server(args, background=False)
-        sys.exit(0 if success else 1)
     elif args.mode == "tui":
+        if not RogueTuiInstaller().install_rogue_tui():
+            logger.error("Failed to install rogue-tui. Exiting.")
+            sys.exit(1)
         exit_code = run_rogue_tui()
         sys.exit(exit_code)
     else:
