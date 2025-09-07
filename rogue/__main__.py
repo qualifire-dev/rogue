@@ -112,6 +112,9 @@ def main():
         # Step 3: Run the TUI
         try:
             exit_code = run_rogue_tui()
+        except KeyboardInterrupt:
+            logger.info("Keyboard interrupt received. Exiting.")
+            exit_code = 0
         finally:
             server_process.terminate()
             server_process.join()
