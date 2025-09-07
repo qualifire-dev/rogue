@@ -5,7 +5,7 @@ Combines HTTP client and WebSocket client for complete functionality.
 """
 
 import asyncio
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Tuple
 
 from loguru import logger
 from pydantic import HttpUrl
@@ -25,6 +25,7 @@ from .types import (
     RogueClientConfig,
     Scenarios,
     SendMessageResponse,
+    StructuredSummary,
     WebSocketEventType,
 )
 from .websocket import RogueWebSocketClient
@@ -288,7 +289,7 @@ class RogueSDK:
         results: EvaluationResults,
         model: str = "openai/gpt-4o-mini",
         api_key: Optional[str] = None,
-    ) -> str:
+    ) -> Tuple[str, StructuredSummary]:
         """Generate evaluation summary from results."""
         response_data = await self.http_client.generate_summary(
             results=results,
@@ -318,10 +319,19 @@ class RogueSDK:
                 )
                 summary_parts.append(f"\n---\n\n## Recommendations\n{recommendations}")
 
-            return "\n".join(summary_parts)
+            if structured_summary.detailed_breakdown:
+                breakdown = "\n".join(
+                    f"{i + 1}. {row}"
+                    for i, row in enumerate(structured_summary.detailed_breakdown)
+                )
+                summary_parts.append(f"\n---\n\n## Detailed Breakdown\n{breakdown}")
+
+            summary_parts.append("\n---\n")
+
+            return "\n".join(summary_parts), structured_summary
         else:
             # Fallback for string response
-            return str(structured_summary)
+            return str(structured_summary), structured_summary
 
     async def start_interview(
         self,

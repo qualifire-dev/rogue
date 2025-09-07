@@ -203,7 +203,7 @@ async def create_report(
     sdk = RogueSDK(sdk_config)
 
     try:
-        summary = await sdk.generate_summary(
+        summary, structured_summary = await sdk.generate_summary(
             results=results,
             model=judge_llm,
             api_key=judge_llm_api_key,

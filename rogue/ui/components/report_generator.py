@@ -72,7 +72,7 @@ def setup_report_generator_logic(
             # is converted to structured format
             api_format_results = convert_with_structured_summary(
                 evaluation_results=results,
-                structured_summary=None,  # TODO: Convert UI to use structured summaries
+                structured_summary=state.get("structured_summary"),
                 deep_test=config.get("deep_test_mode", False),
                 start_time=state.get("start_time"),
                 judge_model=config.get("judge_llm"),

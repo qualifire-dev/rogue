@@ -489,11 +489,13 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
             )
             sdk = RogueSDK(sdk_config)
 
-            summary = await sdk.generate_summary(
+            summary, structured_summary = await sdk.generate_summary(
                 results=all_results,
                 model=config.get("service_llm"),
                 api_key=config.get("judge_llm_api_key"),
             )
+
+            state["structured_summary"] = structured_summary
 
             await sdk.close()
         except Exception:
