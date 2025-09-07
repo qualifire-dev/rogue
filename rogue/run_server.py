@@ -4,9 +4,47 @@ import time
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
+import psutil
 import requests
 
 from .server.main import start_server
+
+
+def is_pid_listening_on_port(pid: int, port: int, host: str = "127.0.0.1") -> bool:
+    """
+    Check if a specific PID is listening on a specific port.
+
+    Args:
+        pid: Process ID to check
+        port: Port number to check
+        host: Host address to check (default: 127.0.0.1)
+
+    Returns:
+        True if the PID is listening on the specified port, False otherwise
+    """
+    # First check if the process is alive
+    try:
+        process = psutil.Process(pid)
+        if not process.is_running():
+            return False
+
+        # Get all network connections for this process
+        connections = process.net_connections(kind="inet")
+
+        for conn in connections:
+            if (
+                conn.status == psutil.CONN_LISTEN
+                and conn.laddr.port == port
+                and (
+                    host == "0.0.0.0"  # nosec B104
+                    or conn.laddr.ip == host
+                    or conn.laddr.ip == "0.0.0.0"  # nosec B104
+                )
+            ):
+                return True
+        return False
+    except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+        return False
 
 
 def set_server_args(parser: ArgumentParser) -> None:
@@ -47,13 +85,23 @@ def wait_until_server_ready(
     while time.time() - start_time < timeout:
         if not process.is_alive():
             return False
-        try:
-            response = requests.get(f"http://{host}:{port}/api/v1/health")  # nosec B113
-            if response.status_code == 200:
-                return True
-        except requests.RequestException:
-            pass
-        time.sleep(0.5)
+
+        # Check if the server subprocess is listening on the port
+        pid = process.pid
+        if pid is not None and is_pid_listening_on_port(int(pid), port, host):
+            # Double-check with HTTP request to ensure the server is fully ready
+            try:
+                response = requests.get(
+                    f"http://{host}:{port}/api/v1/health",
+                    timeout=1.0,
+                )  # nosec B113
+                if response.status_code == 200:
+                    return True
+            except requests.RequestException:
+                # Port is listening but server not ready yet, continue waiting
+                pass
+
+        time.sleep(0.3)
 
     return False
 

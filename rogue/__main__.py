@@ -3,6 +3,7 @@ import sys
 from argparse import ArgumentParser
 from pathlib import Path
 
+import platformdirs
 from dotenv import load_dotenv
 from loguru import logger
 
@@ -82,7 +83,7 @@ def main():
 
     log_file_path = None
     if tui_mode:
-        log_file_path = args.workdir / "rogue.log"
+        log_file_path = platformdirs.user_log_path(appname="rogue") / "rogue.log"
         log_file_path = str(log_file_path.resolve())
 
     configure_logger(args.debug, file_path=log_file_path)

@@ -44,7 +44,7 @@ def _add_context_vars_filter(record: Dict[str, Any]) -> bool:
     return True
 
 
-def intercept_uvicorn_logging() -> None:
+def intercept_uvicorn_logging(debug: bool = False) -> None:
     # Disable Uvicorn's default loggers
     loggers = (
         "uvicorn",
@@ -55,6 +55,8 @@ def intercept_uvicorn_logging() -> None:
     for logger_name in loggers:
         logging_logger = logging.getLogger(logger_name)
         logging_logger.handlers = [uvicorn_handler]
+        logging_logger.propagate = False
+        logging_logger.setLevel(logging.DEBUG if debug else logging.INFO)
 
 
 def configure_logger(
@@ -63,32 +65,39 @@ def configure_logger(
 ) -> None:
     logger.remove(None)
 
+    level = "DEBUG" if debug else "INFO"
+
     if file_path:
+        # log to file
         logger.add(
             sink=file_path,
-            level="DEBUG" if debug else "INFO",
+            level=level,
             format="{time:YYYY-MM-DD HH:mm:ss} | "
             "{level: <8} | "
             "{name}:{function}:{line} - "
             "{message} - {extra}",
-            backtrace=True,
+            backtrace=debug,
             rotation="10 MB",
             colorize=False,
             filter=_add_context_vars_filter,  # type: ignore[arg-type]
         )
-    else:
-        logger.add(
-            sink=sys.stdout,
-            level="DEBUG" if debug else "INFO",
-            format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
-            "<level>{level: <8}</level> | "
-            "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
-            "<level>{message}</level> - {extra}",
-            backtrace=True,
-            colorize=True,
-            filter=_add_context_vars_filter,  # type: ignore[arg-type]
-        )
-    intercept_uvicorn_logging()
+
+        # Because we also want to log errors to stdout,
+        # changing the level before configuring the stdout logger.
+        level = "ERROR"
+
+    logger.add(
+        sink=sys.stdout,
+        level=level,
+        format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
+        "<level>{level: <8}</level> | "
+        "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
+        "<level>{message}</level> - {extra}",
+        backtrace=debug,
+        colorize=True,
+        filter=_add_context_vars_filter,  # type: ignore[arg-type]
+    )
+    intercept_uvicorn_logging(debug)
 
 
 def get_logger(name: str | None = None):

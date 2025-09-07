@@ -1,6 +1,6 @@
 [project]
 name = "rogue-ai"
-version = "0.1.1"
+version = "0.1.2"
 description = "Rogue agent evaluator by Qualifire"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -13,6 +13,8 @@ dependencies = [
     "gradio==5.35.0",
     "litellm==1.76.1",
     "loguru==0.7.3",
+    "platformdirs>=4.3.8",
+    "psutil>=7.0.0",
     "pydantic==2.11.7",
     "pydantic-yaml==1.5.1",
     "python-dotenv==1.1.1",
