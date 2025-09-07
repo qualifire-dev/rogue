@@ -88,6 +88,7 @@ jobs:
         with:
           dist_dir: "./dist/rogue-ai-sdk"
           package_name: "rogue-ai-sdk"
+          workdir: "sdks/python"
 
       - name: Publish to PyPI - sdk package
         if: steps.prepare_pypi_sdk.outputs.version_exists == 'false'

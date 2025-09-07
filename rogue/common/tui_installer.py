@@ -74,12 +74,11 @@ class RogueTuiInstaller:
 
         return None
 
-    def _download_rogue_tui_to_temp(self):
+    def _download_rogue_tui_to_temp(self) -> str:
         # Get latest release
         release_data = self._get_latest_github_release()
         if not release_data:
-            logger.error("Failed to fetch latest release information.")
-            return False
+            raise Exception("Failed to fetch latest release information.")
 
         # Find appropriate asset
         download_url = self._find_asset_for_platform(release_data)
@@ -88,7 +87,7 @@ class RogueTuiInstaller:
                 f"No suitable binary found for {self._os}-{self._architecture}.",
                 extra={"available_assets": release_data["assets"]},
             )
-            return False
+            raise Exception("No suitable binary found for current platform.")
 
         logger.info(f"Downloading: {download_url}")
 
