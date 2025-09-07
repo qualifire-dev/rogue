@@ -8,7 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/v2/table"
 	tea "github.com/charmbracelet/bubbletea/v2"
+
 	"github.com/pelletier/go-toml/v2"
 	"github.com/rogue/tui/internal/components"
 	"github.com/rogue/tui/internal/theme"
@@ -85,7 +87,31 @@ func (m *Model) summaryGenerationCmd() tea.Cmd {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 		defer cancel()
 
-		summary, err := sdk.GenerateSummary(ctx, m.evalState.JobID, judgeModel, apiKey)
+		structuredSummary, err := sdk.GenerateSummary(ctx, m.evalState.JobID, judgeModel, apiKey)
+
+		overallSummary := structuredSummary.Summary.OverallSummary
+		keyFindings := structuredSummary.Summary.KeyFindings
+		parsedKeyFindings := ""
+		for _, finding := range keyFindings {
+			parsedKeyFindings += "- " + finding + "\n"
+		}
+		recommendations := structuredSummary.Summary.Recommendations
+		parsedRecommendations := ""
+		for _, recommendation := range recommendations {
+			parsedRecommendations += "- " + recommendation + "\n"
+		}
+
+		detailedBreakdown := structuredSummary.Summary.DetailedBreakdown
+		parsedDetailedBreakdown := ""
+		for _, breakdown := range detailedBreakdown {
+			parsedDetailedBreakdown += "- " + breakdown.Scenario + " - " + breakdown.Status + " - " + breakdown.Outcome + "\n"
+		}
+
+		summary := "## Overall Summary\n\n" + overallSummary +
+			"\n\n" + "## Key Findings\n\n" + parsedKeyFindings +
+			"\n\n" + "## Recommendations\n\n" + parsedRecommendations +
+			"\n\n" + "## Detailed Breakdown\n\n" + parsedDetailedBreakdown
+
 		return SummaryGeneratedMsg{
 			Summary: summary,
 			Err:     err,
@@ -131,20 +157,21 @@ type App struct {
 
 // Model represents the main application state
 type Model struct {
-	currentScreen  Screen
-	width          int
-	height         int
-	input          string
-	cursor         int
-	evaluations    []Evaluation
-	scenarios      []Scenario
-	config         Config
-	version        string
-	commandInput   components.CommandInput
-	dialog         *components.Dialog
-	dialogStack    []components.Dialog
-	llmDialog      *components.LLMConfigDialog
-	scenarioEditor components.ScenarioEditor
+	currentScreen     Screen
+	width             int
+	height            int
+	input             string
+	cursor            int
+	evaluations       []Evaluation
+	scenarios         []Scenario
+	config            Config
+	version           string
+	commandInput      components.CommandInput
+	dialog            *components.Dialog
+	dialogStack       []components.Dialog
+	llmDialog         *components.LLMConfigDialog
+	scenarioEditor    components.ScenarioEditor
+	detailedBreakdown []table.Row
 
 	// Spinners for loading states
 	healthSpinner  components.Spinner
@@ -238,7 +265,7 @@ func (a *App) Run() error {
 		// Initialize viewports
 		eventsViewport:   components.NewViewport(1, 80, 20),
 		summaryViewport:  components.NewViewport(2, 80, 20),
-		reportViewport:   components.NewViewport(3, 80, 20),
+		reportViewport:   components.NewViewport(3, 80, 15),
 		focusedViewport:  0,    // Start with events viewport focused
 		eventsAutoScroll: true, // Start with auto-scroll enabled
 	}

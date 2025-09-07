@@ -22,7 +22,7 @@ func (m Model) renderReport() string {
 	// Main container style with full width and height background
 	mainStyle := lipgloss.NewStyle().
 		Width(m.width).
-		Height(m.height - 1). // -1 for footer
+		Height(m.height - 12).
 		Background(t.Background())
 
 	// Title style
@@ -58,12 +58,12 @@ func (m Model) renderReport() string {
 	}
 
 	// Calculate viewport dimensions
-	viewportWidth := m.width - 4   // Leave margins
-	viewportHeight := m.height - 8 // title(3) + help(1) + margins(4)
+	viewportWidth := m.width - 8   // Leave margins
+	viewportHeight := m.height - 4 // title(3) + help(1) + margins(4)
 
 	// Create a temporary copy of the viewport to avoid modifying the original
 	viewport := m.reportViewport
-	viewport.SetSize(viewportWidth, viewportHeight)
+	viewport.SetSize(viewportWidth, viewportHeight-2)
 	viewport.SetContent(reportContent)
 
 	// Style the viewport with border
@@ -71,14 +71,14 @@ func (m Model) renderReport() string {
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(t.Border()).
 		BorderBackground(t.BackgroundPanel()).
-		Background(t.BackgroundPanel()).
-		Width(viewportWidth + 2).  // +2 for border
-		Height(viewportHeight + 2) // +2 for border
+		Background(t.BackgroundPanel())
 
 	// Apply viewport styling
 	viewport.Style = lipgloss.NewStyle().
 		Foreground(t.Text()).
 		Background(t.BackgroundPanel()).
+		Width(viewportWidth).
+		Height(viewportHeight-8).
 		Padding(1, 2)
 
 	// Help text style
@@ -102,13 +102,13 @@ func (m Model) renderReport() string {
 	// Center the viewport in the available space
 	contentArea := lipgloss.NewStyle().
 		Width(m.width).
-		Height(viewportHeight + 2).
+		Height(viewportHeight).
 		Background(t.Background())
 
 	centeredViewport := contentArea.Render(
 		lipgloss.Place(
 			m.width,
-			viewportHeight+2,
+			viewportHeight,
 			lipgloss.Center,
 			lipgloss.Top,
 			viewportContent,

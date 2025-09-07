@@ -92,6 +92,20 @@ type RogueSDK struct {
 	ws         *websocket.Conn
 }
 
+type SummaryResp struct {
+	Summary struct {
+		OverallSummary    string   `json:"overall_summary"`
+		KeyFindings       []string `json:"key_findings"`
+		Recommendations   []string `json:"recommendations"`
+		DetailedBreakdown []struct {
+			Scenario string `json:"scenario"`
+			Status   string `json:"status"`
+			Outcome  string `json:"outcome"`
+		} `json:"detailed_breakdown"`
+	} `json:"summary"`
+	Message string `json:"message"`
+}
+
 // NewRogueSDK creates a new SDK instance
 func NewRogueSDK(baseURL string) *RogueSDK {
 	return &RogueSDK{
@@ -438,15 +452,15 @@ func (m *Model) StartEvaluation(ctx context.Context, serverURL, agentURL string,
 }
 
 // GenerateSummary generates a markdown summary from evaluation results
-func (sdk *RogueSDK) GenerateSummary(ctx context.Context, jobID, model, apiKey string) (string, error) {
+func (sdk *RogueSDK) GenerateSummary(ctx context.Context, jobID, model, apiKey string) (*SummaryResp, error) {
 	// First get the evaluation job to extract results
 	job, err := sdk.GetEvaluation(ctx, jobID)
 	if err != nil {
-		return "", fmt.Errorf("failed to get evaluation results: %w", err)
+		return nil, fmt.Errorf("failed to get evaluation results: %w", err)
 	}
 
 	if job.Results == nil {
-		return "", fmt.Errorf("no results available for job %s", jobID)
+		return nil, fmt.Errorf("no results available for job %s", jobID)
 	}
 
 	// Prepare summary request - match server's SummaryGenerationRequest format
@@ -460,12 +474,12 @@ func (sdk *RogueSDK) GenerateSummary(ctx context.Context, jobID, model, apiKey s
 
 	body, err := json.Marshal(summaryReq)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "POST", sdk.baseURL+"/api/v1/llm/summary", bytes.NewReader(body))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 
@@ -476,24 +490,22 @@ func (sdk *RogueSDK) GenerateSummary(ctx context.Context, jobID, model, apiKey s
 
 	resp, err := longTimeoutClient.Do(req)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("summary generation failed: %d %s", resp.StatusCode, string(body))
+		return nil, fmt.Errorf("summary generation failed: %d %s", resp.StatusCode, string(body))
 	}
 
-	var summaryResp struct {
-		Summary string `json:"summary"`
-		Message string `json:"message"`
-	}
+	var summaryResp SummaryResp
+
 	if err := json.NewDecoder(resp.Body).Decode(&summaryResp); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return summaryResp.Summary, nil
+	return &summaryResp, nil
 }
 
 // CheckServerHealth calls GET /health and returns the status string
