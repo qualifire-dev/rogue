@@ -23,8 +23,14 @@ jobs:
         with:
           python-version-file: ".python-version"
 
-      - name: Install rogue
-        run: uv pip install -e . --system
+      - name: Create venv
+        run: uv venv
+
+      - name: Install rogue sdk
+        run: source .venv/bin/activate && uv pip install -e sdks/python
+
+      - name: Install rogue server
+        run: source .venv/bin/activate && uv pip install -e .
 
       - name: Run rogue
         shell: bash

@@ -2,7 +2,9 @@ import json
 from pathlib import Path
 
 import gradio as gr
+from rogue_sdk.types import AuthType
 
+from ..common.workdir_utils import load_config
 from .components.config_screen import create_config_screen
 from .components.interviewer import create_interviewer_screen
 from .components.report_generator import (
@@ -12,11 +14,9 @@ from .components.report_generator import (
 from .components.scenario_generator import create_scenario_generator_screen
 from .components.scenario_runner import create_scenario_runner_screen
 from .config.theme import theme
-from ..common.workdir_utils import load_config
-from ..models.config import AuthType
 
 
-def get_app(workdir: Path):
+def get_app(workdir: Path, rogue_server_url: str):
     with gr.Blocks(theme=theme, title="Qualifire Agent Evaluator") as app:
         shared_state = gr.State(
             {
@@ -25,7 +25,8 @@ def get_app(workdir: Path):
                 "scenarios": [],
                 "results": [],
                 "workdir": workdir,
-            }
+                "rogue_server_url": rogue_server_url,
+            },
         )
 
         with gr.Tabs() as tabs:
@@ -63,7 +64,6 @@ def get_app(workdir: Path):
                 (
                     evaluation_results_display,
                     summary_display,
-                    refresh_button,
                 ) = create_report_generator_screen(shared_state)
 
         # --- Event Handlers ---
@@ -71,7 +71,6 @@ def get_app(workdir: Path):
             tabs,
             evaluation_results_display,
             summary_display,
-            refresh_button,
             shared_state,
         )
 
@@ -105,26 +104,30 @@ def get_app(workdir: Path):
                 "scenarios": [],
                 "results": [],
                 "workdir": workdir,
+                "rogue_server_url": rogue_server_url,
             }
             config = load_config(state)
             state["config"] = config
 
-            auth_type_val = config.get("auth_type", AuthType.NO_AUTH.value)
+            auth_type_val = config.get(
+                "evaluated_agent_auth_type",
+                AuthType.NO_AUTH.value,
+            )
             return {
                 shared_state: state,
                 agent_url: gr.update(
-                    value=config.get("agent_url", "http://localhost:10001")
+                    value=config.get("evaluated_agent_url", "http://localhost:10001"),
                 ),
                 interview_mode: gr.update(value=config.get("interview_mode", True)),
                 deep_test_mode: gr.update(value=config.get("deep_test_mode", False)),
                 parallel_runs: gr.update(value=config.get("parallel_runs", 1)),
                 auth_type: gr.update(value=auth_type_val),
                 auth_credentials: gr.update(
-                    value=config.get("auth_credentials", ""),
+                    value=config.get("evaluated_agent_credentials", ""),
                     visible=auth_type_val != AuthType.NO_AUTH.value,
                 ),
                 service_llm: gr.update(
-                    value=config.get("service_llm", "openai/gpt-4.1")
+                    value=config.get("service_llm", "openai/gpt-4.1"),
                 ),
                 judge_llm: gr.update(value=config.get("judge_llm", "openai/o4-mini")),
                 judge_llm_api_key: gr.update(value=config.get("judge_llm_api_key", "")),

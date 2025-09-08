@@ -1,9 +1,7 @@
 from pathlib import Path
 
-from pydantic import BaseModel, model_validator, SecretStr, HttpUrl
-
-from .config import AuthType
-from .scenario import Scenarios
+from pydantic import BaseModel, Field, HttpUrl, SecretStr, model_validator
+from rogue_sdk.types import AuthType, Scenarios
 
 
 class CLIInput(BaseModel):
@@ -15,7 +13,7 @@ class CLIInput(BaseModel):
     evaluated_agent_url: HttpUrl
     evaluated_agent_auth_type: AuthType = AuthType.NO_AUTH
     evaluated_agent_credentials: SecretStr | None = None
-    judge_llm_model: str
+    judge_llm: str
     judge_llm_api_key: SecretStr | None = None
     input_scenarios_file: Path = workdir / "scenarios.json"
     output_report_file: Path = workdir / "report.md"
@@ -25,11 +23,11 @@ class CLIInput(BaseModel):
     def get_scenarios_from_file(self) -> Scenarios:
         if not self.input_scenarios_file.exists():
             raise ValueError(
-                f"Input scenarios file does not exist: {self.input_scenarios_file}"
+                f"Input scenarios file does not exist: {self.input_scenarios_file}",
             )
         if not self.input_scenarios_file.is_file():
             raise ValueError(
-                f"Input scenarios file is not a file: {self.input_scenarios_file}"
+                f"Input scenarios file is not a file: {self.input_scenarios_file}",
             )
 
         return Scenarios.model_validate_json(self.input_scenarios_file.read_text())
@@ -41,7 +39,7 @@ class CLIInput(BaseModel):
 
         if auth_type != AuthType.NO_AUTH and not auth_credentials:
             raise ValueError(
-                "Authentication Credentials cannot be empty for the selected auth type."
+                "Authentication Credentials cannot be empty for the selected auth type.",  # noqa: E501
             )
         return self
 
@@ -53,10 +51,10 @@ class PartialCLIInput(BaseModel):
     """
 
     workdir: Path = Path(".") / ".rogue"
-    evaluated_agent_url: HttpUrl | None = None
-    evaluated_agent_auth_type: AuthType = AuthType.NO_AUTH
-    evaluated_agent_credentials: SecretStr | None = None
-    judge_llm_model: str | None = None
+    evaluated_agent_url: HttpUrl | None = Field(default=None)
+    evaluated_agent_auth_type: AuthType = Field(default=AuthType.NO_AUTH)
+    evaluated_agent_credentials: SecretStr | None = Field(default=None)
+    judge_llm: str | None = None
     judge_llm_api_key: SecretStr | None = None
     business_context: str | None = None
     business_context_file: Path = None  # type: ignore # fixed in model_post_init

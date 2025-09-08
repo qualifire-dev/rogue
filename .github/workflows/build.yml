@@ -22,5 +22,16 @@ jobs:
         with:
           python-version-file: ".python-version"
 
-      - name: Run uv build
+      - name: Run uv build - main package
         uses: ./.github/actions/uv-build
+      
+      - name: Run uv build - sdk package
+        uses: ./.github/actions/uv-build
+        with:
+          workdir: "sdks/python"
+          dist_dir: "dist/sdk"
+
+      - name: Build tui
+        uses: ./.github/actions/tui-build
+        with:
+          build_all: "false"  # We will build for all platforms on the release

@@ -5,9 +5,9 @@ from pathlib import Path
 import pytest
 from pydantic import HttpUrl, SecretStr
 from pytest_mock import MockerFixture
+from rogue_sdk.types import AuthType
 
 from rogue.models.cli_input import CLIInput
-from rogue.models.config import AuthType
 from rogue.run_cli import get_cli_input
 
 
@@ -19,14 +19,14 @@ from rogue.run_cli import get_cli_input
             Namespace(
                 evaluated_agent_url="https://localhost:10001",
                 business_context="my business",
-                judge_llm_model="openai/o4-mini",
+                judge_llm="openai/o4-mini",
             ),
             CLIInput(
                 workdir=Path(".") / ".rogue",
                 evaluated_agent_url=HttpUrl("https://localhost:10001"),
                 evaluated_agent_auth_type=AuthType.NO_AUTH,
                 evaluated_agent_credentials=None,
-                judge_llm_model="openai/o4-mini",
+                judge_llm="openai/o4-mini",
                 judge_llm_api_key=None,
                 input_scenarios_file=Path(".") / ".rogue" / "scenarios.json",
                 output_report_file=Path(".") / ".rogue" / "report.md",
@@ -36,9 +36,9 @@ from rogue.run_cli import get_cli_input
         ),
         (  # Only config file
             {
-                "agent_url": "https://localhost:10001",
-                "auth_type": "api_key",
-                "auth_credentials": "abc123",
+                "evaluated_agent_url": "https://localhost:10001",
+                "evaluated_agent_auth_type": "api_key",
+                "evaluated_agent_credentials": "abc123",
             },
             # business context isn't in the config file,
             # so it must be provided using a file or hardcoded string
@@ -48,7 +48,7 @@ from rogue.run_cli import get_cli_input
                 evaluated_agent_url=HttpUrl("https://localhost:10001"),
                 evaluated_agent_auth_type=AuthType.API_KEY,
                 evaluated_agent_credentials=SecretStr("abc123"),
-                judge_llm_model="openai/o4-mini",
+                judge_llm="openai/o4-mini",
                 judge_llm_api_key=None,
                 input_scenarios_file=Path(".") / ".rogue" / "scenarios.json",
                 output_report_file=Path(".") / ".rogue" / "report.md",
@@ -58,7 +58,7 @@ from rogue.run_cli import get_cli_input
         ),
         (  # Both config file and CLI args
             {
-                "agent_url": "https://localhost:10001",
+                "evaluated_agent_url": "https://localhost:10001",
             },
             Namespace(
                 evaluated_agent_url="https://overriden_agent_url:10001",
@@ -69,7 +69,7 @@ from rogue.run_cli import get_cli_input
                 evaluated_agent_url=HttpUrl("https://overriden_agent_url:10001"),
                 evaluated_agent_auth_type=AuthType.NO_AUTH,
                 evaluated_agent_credentials=None,
-                judge_llm_model="openai/o4-mini",
+                judge_llm="openai/o4-mini",
                 judge_llm_api_key=None,
                 input_scenarios_file=Path(".") / ".rogue" / "scenarios.json",
                 output_report_file=Path(".") / ".rogue" / "report.md",

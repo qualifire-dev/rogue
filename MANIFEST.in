@@ -1,0 +1,22 @@
+# Include the main package
+recursive-include rogue *.py *.yaml *.yml *.json *.txt *.md
+
+# Include project metadata
+include README.md
+include LICENSE.md
+include pyproject.toml
+
+# Exclude SDK and frontend packages from the main distribution
+prune sdks
+prune packages
+prune examples
+prune .github
+prune .git
+prune .mypy_cache
+prune .rogue
+
+# Exclude test files
+global-exclude *.pyc
+global-exclude __pycache__
+global-exclude .pytest_cache
+global-exclude test_*.py

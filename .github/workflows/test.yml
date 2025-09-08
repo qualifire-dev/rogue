@@ -30,6 +30,15 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Create venv
+        run: uv venv
+
+      - name: Install rogue sdk
+        run: source .venv/bin/activate && uv pip install -e sdks/python
+          
+      - name: Install rogue server
+        run: source .venv/bin/activate && uv pip install -e .
+
       - name: Run tests
         uses: ./.github/actions/run-tests
         with:

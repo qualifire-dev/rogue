@@ -5,16 +5,19 @@ repos:
       - id: check-yaml
       - id: end-of-file-fixer
         exclude: LICENSE
-  - repo: https://github.com/pycqa/flake8
-    rev: "7.3.0"
+  - repo: https://github.com/asottile/add-trailing-comma
+    rev: v3.2.0
     hooks:
-      - id: flake8
+      - id: add-trailing-comma
   - repo: https://github.com/psf/black-pre-commit-mirror
     rev: "25.1.0"
     hooks:
       - id: black
-        args:
-          [--exclude, .venv]
+        args: [--exclude, .venv]
+  - repo: https://github.com/pycqa/flake8
+    rev: "7.3.0"
+    hooks:
+      - id: flake8
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: "v1.16.1"
     hooks:
@@ -25,8 +28,7 @@ repos:
     rev: "1.8.5"
     hooks:
       - id: bandit
-        args:
-          [-c, .bandit.yaml]
+        args: [-c, .bandit.yaml]
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.24.2
     hooks:

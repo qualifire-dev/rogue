@@ -1,23 +1,22 @@
 import json
-from typing import Optional, AsyncGenerator, Any
+from typing import Any, AsyncGenerator, Optional
 from uuid import uuid4
 
 import datasets
 import httpx
 from a2a.client import A2ACardResolver
-from a2a.types import Message, Role, Part, TextPart, Task, MessageSendParams
+from a2a.types import Message, MessageSendParams, Part, Role, Task, TextPart
 from litellm import completion
 from loguru import logger
+from rogue_sdk.types import AuthType, ChatHistory, ChatMessage
 
 from ..common.remote_agent_connection import (
-    RemoteAgentConnections,
     JSON_RPC_ERROR_TYPES,
+    RemoteAgentConnections,
 )
-from ..models.chat_history import ChatHistory, Message as HistoryMessage
-from ..models.config import AuthType, get_auth_header
 from ..models.prompt_injection import (
-    PromptInjectionPayload,
     PromptInjectionEvaluation,
+    PromptInjectionPayload,
     PromptInjectionResult,
 )
 
@@ -122,7 +121,7 @@ async def arun_prompt_injection_evaluator(
     dataset_name: str,
     sample_size: int | None,
 ) -> AsyncGenerator[tuple[str, Any], None]:
-    headers = get_auth_header(auth_type, auth_credentials)
+    headers = auth_type.get_auth_header(auth_credentials)
     dataset_dict = datasets.load_dataset(dataset_name)
 
     # Pick a split to use. Prioritize 'train', then take the first available.
@@ -148,13 +147,11 @@ async def arun_prompt_injection_evaluator(
         for i, item in enumerate(sampled_dataset):
             chat_history = ChatHistory()
             payload = PromptInjectionPayload(payload=item["text"])
-            chat_history.add_message(
-                HistoryMessage(role="user", content=payload.payload)
-            )
+            chat_history.add_message(ChatMessage(role="user", content=payload.payload))
 
             yield "status", f"Running sample {i + 1}/{len(sampled_dataset)}"
             yield "chat", {
-                "role": "Evaluator Agent",
+                "role": "Rogue",
                 "content": payload.payload,
             }
 
@@ -165,8 +162,8 @@ async def arun_prompt_injection_evaluator(
                         messageId=uuid4().hex,
                         role=Role.user,
                         parts=[Part(root=TextPart(text=payload.payload))],
-                    )
-                )
+                    ),
+                ),
             )
 
             logger.debug(
@@ -178,7 +175,7 @@ async def arun_prompt_injection_evaluator(
                 _get_text_from_response(response) or "No text response."
             )
             chat_history.add_message(
-                HistoryMessage(role="assistant", content=agent_response_text)
+                ChatMessage(role="assistant", content=agent_response_text),
             )
 
             yield "chat", {
@@ -187,7 +184,10 @@ async def arun_prompt_injection_evaluator(
             }
 
             evaluation = await _judge_injection_attempt(
-                chat_history, payload, judge_llm, judge_llm_api_key
+                chat_history,
+                payload,
+                judge_llm,
+                judge_llm_api_key,
             )
 
             results.results.append(evaluation)

@@ -4,16 +4,13 @@ from pathlib import Path
 import requests
 from a2a.types import AgentCard
 from loguru import logger
-from pydantic import ValidationError, SecretStr
+from pydantic import SecretStr, ValidationError
 from rich.console import Console
 from rich.markdown import Markdown
+from rogue_sdk import RogueClientConfig, RogueSDK
+from rogue_sdk.types import AgentConfig, AuthType, EvaluationResults, Scenarios
 
 from .models.cli_input import CLIInput, PartialCLIInput
-from .models.config import AuthType, AgentConfig
-from .models.evaluation_result import EvaluationResults
-from .models.scenario import Scenarios
-from .services.llm_service import LLMService
-from .services.scenario_evaluation_service import ScenarioEvaluationService
 
 
 def set_cli_args(parser: ArgumentParser) -> None:
@@ -21,6 +18,11 @@ def set_cli_args(parser: ArgumentParser) -> None:
         "--config-file",
         type=Path,
         help="Path to config file",
+    )
+    parser.add_argument(
+        "--rogue-server-url",
+        default="http://localhost:8000",
+        help="Rogue server URL",
     )
     parser.add_argument(
         "--evaluated-agent-url",
@@ -55,7 +57,7 @@ def set_cli_args(parser: ArgumentParser) -> None:
     )
     parser.add_argument(
         "-m",
-        "--judge-llm-model",
+        "--judge-llm",
         required=False,
         help="Model to use for scenario evaluation and report generation",
     )
@@ -84,6 +86,7 @@ def set_cli_args(parser: ArgumentParser) -> None:
 
 
 async def run_scenarios(
+    rogue_server_url: str,
     evaluated_agent_url: str,
     evaluated_agent_auth_type: AuthType,
     evaluated_agent_auth_credentials_secret: SecretStr | None,
@@ -105,7 +108,9 @@ async def run_scenarios(
         else None
     )
 
-    scenario_evaluation_service = ScenarioEvaluationService(
+    # Use SDK for evaluation
+    return await _run_scenarios_with_sdk(
+        rogue_server_url=rogue_server_url,
         evaluated_agent_url=evaluated_agent_url,
         evaluated_agent_auth_type=evaluated_agent_auth_type,
         evaluated_agent_auth_credentials=evaluated_agent_auth_credentials,
@@ -116,15 +121,69 @@ async def run_scenarios(
         business_context=business_context,
         deep_test_mode=deep_test_mode,
     )
-    async for status, data in scenario_evaluation_service.evaluate_scenarios():
-        if status == "done":
-            return data  # type: ignore
-
-    logger.error("Scenario evaluation failed. Results not found.")
-    return None
 
 
-def create_report(
+async def _run_scenarios_with_sdk(
+    rogue_server_url: str,
+    evaluated_agent_url: str,
+    evaluated_agent_auth_type: AuthType,
+    evaluated_agent_auth_credentials: str | None,
+    judge_llm: str,
+    judge_llm_api_key: str | None,
+    scenarios: Scenarios,
+    evaluation_results_output_path: Path,
+    business_context: str,
+    deep_test_mode: bool,
+) -> EvaluationResults | None:
+    """Run scenarios using the new SDK."""
+
+    # Initialize SDK
+    sdk_config = RogueClientConfig(
+        base_url=rogue_server_url,
+        timeout=600.0,  # Default server URL
+    )
+    sdk = RogueSDK(sdk_config)
+
+    try:
+        # Check if server is available
+        await sdk.health()
+
+        # Run evaluation
+        job = await sdk.run_evaluation(
+            agent_url=evaluated_agent_url,
+            scenarios=scenarios,
+            business_context=business_context,
+            auth_type=evaluated_agent_auth_type,
+            auth_credentials=evaluated_agent_auth_credentials,
+            judge_model=judge_llm,
+            deep_test=deep_test_mode,
+        )
+
+        logger.info(f"Started evaluation job {job.job_id} using SDK")
+
+        # Wait for completion and get results
+        final_job = await sdk.wait_for_evaluation(job.job_id)
+
+        if final_job.results:
+            # Wrap the list of results in EvaluationResults
+            results = EvaluationResults(results=final_job.results)
+
+            # Write results to file for CLI compatibility
+            evaluation_results_output_path.write_text(
+                results.model_dump_json(indent=2, exclude_none=True),
+                encoding="utf-8",
+            )
+            return results
+        else:
+            logger.error("Scenario evaluation completed but no results found.")
+            return None
+
+    finally:
+        await sdk.close()
+
+
+async def create_report(
+    rogue_server_url: str,
     judge_llm: str,
     results: EvaluationResults,
     output_report_file: Path,
@@ -135,11 +194,22 @@ def create_report(
         if judge_llm_api_key_secret
         else None
     )
-    summary = LLMService().generate_summary_from_results(
-        model=judge_llm,
-        results=results,
-        llm_provider_api_key=judge_llm_api_key,
+
+    # Use SDK for summary generation (server-based)
+    sdk_config = RogueClientConfig(
+        base_url=rogue_server_url,
+        timeout=600.0,
     )
+    sdk = RogueSDK(sdk_config)
+
+    try:
+        summary = await sdk.generate_summary(
+            results=results,
+            model=judge_llm,
+            api_key=judge_llm_api_key,
+        )
+    finally:
+        await sdk.close()
 
     output_report_file.parent.mkdir(parents=True, exist_ok=True)
     output_report_file.write_text(summary)
@@ -187,6 +257,10 @@ def merge_config_with_cli(
         },
     )
 
+    # Set defaults for required fields that are missing
+    if data.get("judge_llm") is None:
+        data["judge_llm"] = "openai/o4-mini"
+
     logger.debug(f"Running with parameters: {data}")
 
     # Finally, validate as full input
@@ -199,7 +273,6 @@ def read_config_file(config_file: Path) -> dict:
             return AgentConfig.model_validate_json(
                 config_file.read_text(),
             ).model_dump(
-                by_alias=True,
                 exclude_none=True,
             )
         except ValidationError:
@@ -256,10 +329,11 @@ async def run_cli(args: Namespace) -> int:
         },
     )
     results = await run_scenarios(
+        rogue_server_url=args.rogue_server_url,
         evaluated_agent_url=cli_input.evaluated_agent_url.encoded_string(),
         evaluated_agent_auth_type=cli_input.evaluated_agent_auth_type,
         evaluated_agent_auth_credentials_secret=cli_input.evaluated_agent_credentials,
-        judge_llm=cli_input.judge_llm_model,
+        judge_llm=cli_input.judge_llm,
         judge_llm_api_key_secret=cli_input.judge_llm_api_key,
         scenarios=scenarios,
         evaluation_results_output_path=args.workdir / "evaluation_results.json",
@@ -268,12 +342,13 @@ async def run_cli(args: Namespace) -> int:
     )
     if not results:
         raise ValueError(
-            f"No scenarios were evaluated for {cli_input.evaluated_agent_url}"
+            f"No scenarios were evaluated for {cli_input.evaluated_agent_url}",
         )
 
     logger.info("Creating report")
-    report_summary = create_report(
-        judge_llm=cli_input.judge_llm_model,
+    report_summary = await create_report(
+        rogue_server_url=args.rogue_server_url,
+        judge_llm=cli_input.judge_llm,
         results=results,
         output_report_file=cli_input.output_report_file,
         judge_llm_api_key_secret=cli_input.judge_llm_api_key,

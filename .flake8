@@ -8,3 +8,4 @@ exclude =
 ignore =
     W503
     E712
+    E203

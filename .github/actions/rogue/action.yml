@@ -1,0 +1,84 @@
+name: "rogue"
+description: "Runs rogue against the given agent"
+inputs:
+  workdir:
+    description: "working directory"
+    required: false
+    default: ".rogue"
+  evaluated_agent_url:
+    description: "URL of the agent to evaluate"
+    required: true
+  evaluated_agent_auth_type:
+    description: "How to authenticate with the evaluated agent (if needed)"
+    required: false
+  evaluated_agent_credentials:
+    description: "Credentials to use when authenticating with the evaluated agent (if needed)"
+    required: false
+  input_scenarios_file:
+    description: "Path to input scenarios file"
+    required: false
+  output_report_file:
+    description: "Path to output report file"
+    required: false
+  judge_llm:
+    description: "Model to use for scenario evaluation and report generation"
+    required: false
+  judge_llm_api_key:
+    description: "API key to use when communicating with the LLM provider. Can be left unset if env is used."
+    required: false
+  deep_test_mode:
+    description: "Enable deep test mode"
+    required: false
+  business_context_file:
+    description: "A file containing a description of the business context of the evaluated agent"
+    required: false
+runs:
+  using: "composite"
+  steps:
+    # TODO once repo is public, uncomment this
+    #    - name: "Install rogue"
+    #      shell: bash
+    #      run: uv install git+https://github.com/qualifire-dev/rogue.git
+    - name: "Run rogue"
+      shell: bash
+      run: |
+        ARGS=()
+
+        ARGS+=(--workdir "${{ inputs.workdir }}")
+        ARGS+=(--evaluated-agent-url "${{ inputs.evaluated_agent_url }}")
+          
+
+        if [[ -n "${{ inputs.evaluated_agent_auth_type }}" ]]; then
+          ARGS+=(--evaluated-agent-auth-type "${{ inputs.evaluated_agent_auth_type }}")
+        fi
+
+        if [[ -n "${{ inputs.evaluated_agent_credentials }}" ]]; then
+          ARGS+=(--evaluated-agent-credentials "${{ inputs.evaluated_agent_credentials }}")
+        fi
+
+        if [[ -n "${{ inputs.input_scenarios_file }}" ]]; then
+          ARGS+=(--input-scenarios-file "${{ inputs.input_scenarios_file }}")
+        fi
+
+        if [[ -n "${{ inputs.output_report_file }}" ]]; then
+          ARGS+=(--output-report-file "${{ inputs.output_report_file }}")
+        fi
+
+        if [[ -n "${{ inputs.judge_llm }}" ]]; then
+          ARGS+=(--judge-llm "${{ inputs.judge_llm }}")
+        fi
+
+        if [[ -n "${{ inputs.judge_llm_api_key }}" ]]; then
+          ARGS+=(--judge-llm-api-key "${{ inputs.judge_llm_api_key }}")
+        fi
+
+        if [[ -n "${{ inputs.deep_test_mode }}" ]]; then
+          ARGS+=(--deep-test-mode "${{ inputs.deep_test_mode }}")
+        fi
+
+        if [[ -n "${{ inputs.business_context_file }}" ]]; then
+          ARGS+=(--business-context-file "${{ inputs.business_context_file }}")
+        fi
+
+        echo "Running: 'uv run -m rogue cli "${ARGS[@]}"'"
+        uv run -m rogue cli "${ARGS[@]}"
