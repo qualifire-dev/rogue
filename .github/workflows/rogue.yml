@@ -51,5 +51,5 @@ jobs:
           uv run -m rogue cli \
             --debug \
             --evaluated-agent-url http://localhost:10001 \
-            --judge-llm-model openai/o4-mini \
+            --judge-llm openai/o4-mini \
             --workdir './examples/tshirt_store_agent/.rogue'
