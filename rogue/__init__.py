@@ -44,6 +44,6 @@ __all__ = [
 ]
 
 # Version info
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 __author__ = "Qualifire"
 __description__ = "Library for evaluating AI agents against scenarios"
