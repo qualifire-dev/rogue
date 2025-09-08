@@ -81,7 +81,7 @@ def wait_until_server_ready(
     process: multiprocessing.Process,
     host: str,
     port: int,
-    timeout: float = 10.0,
+    timeout: float = 30.0,
 ) -> bool:
     start_time = time.time()
     while time.time() - start_time < timeout:
