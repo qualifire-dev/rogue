@@ -59,7 +59,7 @@ func (m Model) renderReport() string {
 
 	// Calculate viewport dimensions
 	viewportWidth := m.width - 8   // Leave margins
-	viewportHeight := m.height - 4 // title(3) + help(1) + margins(4)
+	viewportHeight := m.height - 8 // title(3) + help(1) + margins(4)
 
 	// Create a temporary copy of the viewport to avoid modifying the original
 	viewport := m.reportViewport
@@ -68,6 +68,7 @@ func (m Model) renderReport() string {
 
 	// Style the viewport with border
 	viewportStyle := lipgloss.NewStyle().
+		Height(viewportHeight - 8).
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(t.Border()).
 		BorderBackground(t.BackgroundPanel()).
@@ -102,13 +103,13 @@ func (m Model) renderReport() string {
 	// Center the viewport in the available space
 	contentArea := lipgloss.NewStyle().
 		Width(m.width).
-		Height(viewportHeight).
+		Height(viewportHeight - 8).
 		Background(t.Background())
 
 	centeredViewport := contentArea.Render(
 		lipgloss.Place(
 			m.width,
-			viewportHeight,
+			viewportHeight-8,
 			lipgloss.Center,
 			lipgloss.Top,
 			viewportContent,
