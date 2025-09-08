@@ -2,6 +2,7 @@ import multiprocessing
 import os
 import time
 from argparse import ArgumentParser, Namespace
+from ipaddress import ip_address
 from pathlib import Path
 
 import psutil
@@ -91,8 +92,19 @@ def wait_until_server_ready(
         if pid is not None and is_pid_listening_on_port(int(pid), port, host):
             # Double-check with HTTP request to ensure the server is fully ready
             try:
+                # Normalize host for HTTP requests (handle 0.0.0.0/:: and IPv6)
+                http_host = host
+                if host in ("0.0.0.0", "::"):  # nosec B104
+                    http_host = "127.0.0.1"
+                else:
+                    try:
+                        if ip_address(host).version == 6:
+                            http_host = f"[{host}]"
+                    except ValueError:
+                        pass  # hostname, leave as-is
+
                 response = requests.get(
-                    f"http://{host}:{port}/api/v1/health",
+                    f"http://{http_host}:{port}/api/v1/health",
                     timeout=1.0,
                 )  # nosec B113
                 if response.status_code == 200:
