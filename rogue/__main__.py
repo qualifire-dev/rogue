@@ -1,6 +1,6 @@
 import asyncio
 import sys
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
 import platformdirs
@@ -17,7 +17,7 @@ from .run_ui import run_ui, set_ui_args
 load_dotenv()
 
 
-def common_parser():
+def common_parser() -> ArgumentParser:
     parent_parser = ArgumentParser(add_help=False)
     parent_parser.add_argument(
         "--workdir",
@@ -34,7 +34,7 @@ def common_parser():
     return parent_parser
 
 
-def parse_args():
+def parse_args() -> Namespace:
     parser = ArgumentParser(
         description="Rogue agent evaluator",
         parents=[common_parser()],
@@ -76,15 +76,16 @@ def parse_args():
     return parser.parse_args()
 
 
-def main():
+def main() -> None:
     args = parse_args()
 
     tui_mode = args.mode == "tui" or args.mode is None
 
-    log_file_path = None
+    log_file_path: Path | None = None
     if tui_mode:
         log_file_path = platformdirs.user_log_path(appname="rogue") / "rogue.log"
-        log_file_path = str(log_file_path.resolve())
+        log_file_path.parent.mkdir(parents=True, exist_ok=True)
+        log_file_path = log_file_path.resolve()
 
     configure_logger(args.debug, file_path=log_file_path)
 
