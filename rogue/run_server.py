@@ -7,6 +7,7 @@ from pathlib import Path
 
 import psutil
 import requests
+from loguru import logger
 
 from .server.main import start_server
 
@@ -145,6 +146,7 @@ def run_server(
         if background_wait_for_ready:
             if not wait_until_server_ready(process, host, port):
                 raise Exception("Server failed to start")
+            logger.info("Rogue server ready", extra={"host": host, "port": port})
         return process
     else:
         return start_server(
