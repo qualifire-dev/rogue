@@ -1,4 +1,4 @@
-name: Release (No Zip)
+name: Release
 
 on:
   push:
