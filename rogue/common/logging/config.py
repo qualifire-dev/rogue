@@ -5,34 +5,15 @@ Provides centralized logging configuration with context variable support
 and structured logging using the extra= pattern.
 """
 
+import logging
 import sys
-import os
-from typing import Dict, Any, Optional
+from pathlib import Path
+from typing import Any, Dict
+
 from loguru import logger
 
 from .context import get_all_context_vars
-
-
-class LogConfig:
-    """Logging configuration settings."""
-
-    # Log levels
-    STDOUT_LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
-
-    # Format settings
-    ENABLE_COLORS = os.getenv("LOG_COLORS", "true").lower() in ("true", "1", "yes")
-    ENABLE_BACKTRACE = os.getenv("LOG_BACKTRACE", "true").lower() in (
-        "true",
-        "1",
-        "yes",
-    )
-
-    # Development vs Production
-    DEVELOPMENT_MODE = os.getenv("DEVELOPMENT_MODE", "false").lower() in (
-        "true",
-        "1",
-        "yes",
-    )
+from .intercept_handler import InterceptHandler
 
 
 def _add_context_vars_filter(record: Dict[str, Any]) -> bool:
@@ -63,96 +44,63 @@ def _add_context_vars_filter(record: Dict[str, Any]) -> bool:
     return True
 
 
-def _format_extra_data(extra: Dict[str, Any]) -> str:
-    """
-    Format extra data for display in logs.
-
-    Args:
-        extra: Extra data dictionary
-
-    Returns:
-        Formatted string representation
-    """
-    if not extra:
-        return ""
-
-    # Handle nested extra structure
-    if "extra" in extra and isinstance(extra["extra"], dict):
-        extra_data = extra["extra"]
-    else:
-        extra_data = extra
-
-    if not extra_data:
-        return ""
-
-    # Format as key=value pairs
-    formatted_pairs = []
-    for key, value in extra_data.items():
-        if key in ["extra"]:  # Skip meta keys
-            continue
-        formatted_pairs.append(f"{key}={value}")
-
-    return f"[{', '.join(formatted_pairs)}]" if formatted_pairs else ""
+def intercept_uvicorn_logging(debug: bool = False) -> None:
+    # Disable Uvicorn's default loggers
+    loggers = (
+        "uvicorn",
+        "uvicorn.access",
+        "uvicorn.error",
+    )
+    uvicorn_handler = InterceptHandler()
+    for logger_name in loggers:
+        logging_logger = logging.getLogger(logger_name)
+        logging_logger.handlers = [uvicorn_handler]
+        logging_logger.propagate = False
+        logging_logger.setLevel(logging.DEBUG if debug else logging.INFO)
 
 
-def configure_logger() -> None:
-    """
-    Configure loguru logger with structured logging support.
+def configure_logger(
+    debug: bool = False,
+    file_path: Path | str | None = None,
+) -> None:
+    logger.remove(None)
 
-    Sets up:
-    - Stdout sink with colored output
-    - Context variable injection
-    - Structured logging with extra data
-    - Development vs production formatting
-    """
-    # Remove default logger
-    logger.remove()
+    level = "DEBUG" if debug else "INFO"
 
-    # Determine format based on environment
-    if LogConfig.DEVELOPMENT_MODE:
-        # Development format - more readable
-        log_format = (
-            "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
-            "<level>{level: <8}</level> | "
-            "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
-            "<level>{message}</level>"
-        )
-        if LogConfig.ENABLE_COLORS:
-            log_format += " <dim>{extra}</dim>"
-        else:
-            log_format += " {extra}"
-    else:
-        # Production format - more structured
-        log_format = (
-            "{time:YYYY-MM-DD HH:mm:ss} | "
+    if file_path:
+        # log to file
+        logger.add(
+            sink=file_path,
+            level=level,
+            format="{time:YYYY-MM-DD HH:mm:ss} | "
             "{level: <8} | "
             "{name}:{function}:{line} - "
-            "{message} {extra}"
+            "{message} - {extra}",
+            backtrace=debug,
+            rotation="10 MB",
+            colorize=False,
+            filter=_add_context_vars_filter,  # type: ignore[arg-type]
         )
 
-    # Add stdout sink
+        # Because we also want to log errors to stdout,
+        # changing the level before configuring the stdout logger.
+        level = "ERROR"
+
     logger.add(
         sink=sys.stdout,
-        level=LogConfig.STDOUT_LOG_LEVEL,
-        format=log_format,
-        colorize=LogConfig.ENABLE_COLORS,
-        backtrace=LogConfig.ENABLE_BACKTRACE,
+        level=level,
+        format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
+        "<level>{level: <8}</level> | "
+        "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
+        "<level>{message}</level> - {extra}",
+        backtrace=debug,
+        colorize=True,
         filter=_add_context_vars_filter,  # type: ignore[arg-type]
     )
-
-    # Log configuration
-    logger.info(
-        "Logger configured",
-        extra={
-            "log_level": LogConfig.STDOUT_LOG_LEVEL,
-            "development_mode": LogConfig.DEVELOPMENT_MODE,
-            "colors_enabled": LogConfig.ENABLE_COLORS,
-            "backtrace_enabled": LogConfig.ENABLE_BACKTRACE,
-        },
-    )
+    intercept_uvicorn_logging(debug)
 
 
-def get_logger(name: Optional[str] = None):
+def get_logger(name: str | None = None):
     """
     Get a logger instance.
 

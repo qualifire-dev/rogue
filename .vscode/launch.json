@@ -45,6 +45,15 @@
             "envFile": "${workspaceFolder}/.env"
         },
         {
+            "name": "Rogue AIO",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "./.venv/bin/python",
+            "module": "rogue",
+            "args": [],
+            "envFile": "${workspaceFolder}/.env"
+        },
+        {
             "name": "shirtify agent",
             "type": "debugpy",
             "request": "launch",

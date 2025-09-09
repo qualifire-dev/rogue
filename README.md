@@ -11,22 +11,56 @@
 
 Rogue is a powerful tool designed to evaluate the performance, compliance, and reliability of AI agents. It pits a dynamic `EvaluatorAgent` against your agent using Google's A2A protocol, testing it with a range of scenarios to ensure it behaves exactly as intended.
 
+## Architecture
+
+Rogue operates on a **client-server architecture**:
+
+- **Rogue Server**: Contains the core evaluation logic
+- **Client Interfaces**: Multiple interfaces that connect to the server:
+  - **TUI (Terminal UI)**: Modern terminal interface built with Go and Bubble Tea
+  - **Web UI**: Gradio-based web interface
+  - **CLI**: Command-line interface for automated evaluation and CI/CD
+
+This architecture allows for flexible deployment and usage patterns, where the server can run independently and multiple clients can connect to it simultaneously.
+
 https://github.com/user-attachments/assets/b5c04772-6916-4aab-825b-6a7476d77787
 
 ## 🔥 Quick Start
 
 ### Prerequisites
 
+- `uvx` - If not installed, follow [uv installation guide](https://docs.astral.sh/uv/getting-started/installation/)
 - Python 3.10+
 - An API key for an LLM provider (e.g., OpenAI, Google, Anthropic).
 
 ### Installation
 
+#### Option 1: Quick Install (Recommended)
+
+Use our automated install script to get up and running quickly:
+
+```bash
+# Unix/Linux/macOS
+curl -fsSL https://raw.githubusercontent.com/qualifire-dev/rogue-private/main/install.sh | bash
+
+# Windows (PowerShell)
+Invoke-Expression (Invoke-WebRequest -Uri "https://raw.githubusercontent.com/qualifire-dev/rogue-private/main/install.ps1").Content
+```
+
+The install script automatically:
+- Downloads the latest release (or specific version with `-v` flag, or explicitly with `-v latest`)
+- Updates your PATH
+- Provides both `rogue` and `rogue-tui` commands
+
+**Note**: Use `install.sh` for Unix/Linux/macOS and `install.ps1` for Windows PowerShell.
+
+#### Option 2: Manual Installation
+
 1.  **Clone the repository:**
 
     ```bash
-    git clone https://github.com/qualifire-dev/rogue.git
-    cd rogue
+    git clone https://github.com/qualifire-dev/rogue-private.git
+    cd rogue-private
     ```
 
 2.  **Install dependencies:**
@@ -53,21 +87,85 @@ https://github.com/user-attachments/assets/b5c04772-6916-4aab-825b-6a7476d77787
 
 ### Running Rogue
 
-Launch the Gradio web UI with the following command:
+Rogue operates on a client-server architecture where the core evaluation logic runs in a backend server, and various clients connect to it for different interfaces.
 
-If you are using uv:
+#### Default Behavior
+
+When you run `uvx rogue-ai` without any mode specified, it:
+1. Starts the Rogue server in the background
+2. Launches the TUI (Terminal User Interface) client
 
 ```bash
-uv run -m rogue
+uvx rogue-ai
 ```
 
-If not:
+#### Available Modes
+
+- **Default (Server + TUI)**: `uvx rogue-ai` - Starts server in background + TUI client
+- **Server**: `uvx rogue-ai server` - Runs only the backend server
+- **TUI**: `uvx rogue-ai tui` - Runs only the TUI client (requires server running)
+- **Web UI**: `uvx rogue-ai ui` - Runs only the Gradio web interface client (requires server running)
+- **CLI**: `uvx rogue-ai cli` - Runs non-interactive command-line evaluation (requires server running, ideal for CI/CD)
+
+#### Mode Arguments
+
+##### Server Mode
+```bash
+uvx rogue-ai server [OPTIONS]
+```
+
+**Options:**
+- `--host HOST` - Host to run the server on (default: 127.0.0.1 or HOST env var)
+- `--port PORT` - Port to run the server on (default: 8000 or PORT env var)
+- `--debug` - Enable debug logging
+
+##### TUI Mode
+```bash
+uvx rogue-ai tui [OPTIONS]
+```
+
+##### Web UI Mode
+```bash
+uvx rogue-ai ui [OPTIONS]
+```
+
+**Options:**
+- `--rogue-server-url URL` - Rogue server URL (default: http://localhost:8000)
+- `--port PORT` - Port to run the UI on
+- `--workdir WORKDIR` - Working directory (default: ./.rogue)
+- `--debug` - Enable debug logging
+
+##### CLI Mode
+```bash
+uvx rogue-ai cli [OPTIONS]
+```
+
+**Options:**
+- `--config-file FILE` - Path to config file
+- `--rogue-server-url URL` - Rogue server URL (default: http://localhost:8000)
+- `--evaluated-agent-url URL` - URL of the agent to evaluate
+- `--evaluated-agent-auth-type TYPE` - Auth method (no_auth, api_key, bearer_token, basic)
+- `--evaluated-agent-credentials CREDS` - Credentials for the agent
+- `--input-scenarios-file FILE` - Path to scenarios file (default: <workdir>/scenarios.json)
+- `--output-report-file FILE` - Path to output report file
+- `--judge-llm MODEL` - Model for evaluation and report generation
+- `--judge-llm-api-key KEY` - API key for LLM provider
+- `--business-context TEXT` - Business context description
+- `--business-context-file FILE` - Path to business context file
+- `--deep-test-mode` - Enable deep test mode
+- `--workdir WORKDIR` - Working directory (default: ./.rogue)
+- `--debug` - Enable debug logging
+
+#### Web UI Mode
+
+To launch the Gradio web UI specifically:
 
 ```bash
-python -m rogue
+uvx rogue-ai ui
 ```
 
 Navigate to the URL displayed in your terminal (usually `http://127.0.0.1:7860`) to begin.
+
 
 ---
 
@@ -112,24 +210,34 @@ This repository includes a simple example agent that sells T-shirts. You can use
 
 4. **Run the evaluation** and watch Rogue test the T-Shirt agent's policies!
 
+   You can use either the TUI (`uvx rogue-ai`) or Web UI (`uvx rogue-ai ui`) mode.
+
 ---
 
-## 🔧 CLI
+## 🔧 CLI Mode
 
-This tool allows you to evaluate AI agents against a set of predefined scenarios via the command line.
+The CLI mode provides a **non-interactive** command-line interface for evaluating AI agents against predefined scenarios. It connects to the Rogue server to perform evaluations and is **ideal for CI/CD pipelines** and automated testing workflows.
 
 ### 🚀 Usage
 
-Clone the repo:
+The CLI mode requires the Rogue server to be running. You can either:
+
+1. **Start server separately:**
+   ```bash
+   # Terminal 1: Start the server
+   uvx rogue-ai server
+   
+   # Terminal 2: Run CLI evaluation
+   uvx rogue-ai cli [OPTIONS]
+   ```
+
+2. **Use the default mode (starts server + TUI, then use TUI for evaluation)**
+
+For development or if you prefer to install locally:
 
 ```bash
-git clone https://github.com/qualifire-dev/rogue.git
-cd rogue
-```
-
-1. Run using uv:
-
-```bash
+git clone https://github.com/qualifire-dev/rogue-private.git
+cd rogue-private
 uv sync
 uv run -m rogue cli [OPTIONS]
 ```
@@ -137,6 +245,8 @@ uv run -m rogue cli [OPTIONS]
 Or, if you are using pip:
 
 ```bash
+git clone https://github.com/qualifire-dev/rogue-private.git
+cd rogue-private
 pip install -e .
 uv run -m rogue cli [OPTIONS]
 ```
@@ -145,10 +255,13 @@ uv run -m rogue cli [OPTIONS]
 
 ### 📓 CLI Arguments
 
+> **Note**: CLI mode is **non-interactive** and designed for automated evaluation workflows, making it perfect for CI/CD pipelines.
+
 | Argument                      | Required                                               | Default Value                   | Description                                                                                                                                             |
 | ----------------------------- | ------------------------------------------------------ | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | --workdir                     | No                                                     | `./.rogue`                      | Directory to store outputs and defaults.                                                                                                                |
 | --config-file                 | No                                                     | `<workdir>/user_config.json`    | Path to a config file generated by the UI. Values from this file are used unless overridden via CLI. If the file does not exist, only cli will be used. |
+| --rogue-server-url            | No                                                     | `http://localhost:8000`         | URL of the Rogue server to connect to.                                                                                                                  |
 | --evaluated-agent-url         | Yes                                                    |                                 | The URL of the agent to evaluate.                                                                                                                       |
 | --evaluated-agent-auth-type   | No                                                     | `no_auth`                       | Auth method. Can be one of: `no_auth`, `api_key`, `bearer_token`, `basic`.                                                                              |
 | --evaluated-agent-credentials | Yes\*<br/>if `auth_type` is not `no_auth`              |                                 | Credentials for the agent (if required).                                                                                                                |
@@ -194,7 +307,7 @@ with our business context located at `./.rogue/business_context.md`
 #### Execution
 
 ```bash
-uv run -m rogue cli
+uvx rogue-ai cli
 ```
 
 ### Same example without a config file:
@@ -202,7 +315,7 @@ uv run -m rogue cli
 #### Execution
 
 ```bash
-uv run -m rogue cli \
+uvx rogue-ai cli \
     --evaluated-agent-url http://localhost:10001 \
     --judge-llm openai/o4-mini \
     --business-context-file './.rogue/business_context.md'
