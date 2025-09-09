@@ -312,6 +312,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, tea.Batch(cmds...)
 		}
+
+		if m.dialog != nil {
+			clipboardText, err := components.GetClipboardContent()
+			if err != nil {
+				// If clipboard reading fails, just return without error
+				return m, nil
+			}
+
+			// Clean the clipboard text (remove newlines and trim whitespace)
+			cleanText := strings.TrimSpace(strings.ReplaceAll(clipboardText, "\n", ""))
+
+			if cleanText == "" {
+				return m, nil
+			}
+
+			m.dialog.Input += cleanText
+			m.dialog.InputCursor = len(m.dialog.Input)
+			return m, nil
+		}
 	case components.SpinnerTickMsg:
 		// Update spinners
 		m.healthSpinner, cmd = m.healthSpinner.Update(msg)
