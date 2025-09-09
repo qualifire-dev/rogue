@@ -3,7 +3,7 @@
 <div align="center">
 
 [![License: ELASTIC](https://img.shields.io/badge/License-elastic-yellow.svg)](https://www.elastic.co/licensing/elastic-license)
-![Tests](https://github.com/qualifire-dev/rogue-private/actions/workflows/test.yml/badge.svg?branch=main)
+![Tests](https://github.com/qualifire-dev/rogue/actions/workflows/test.yml/badge.svg?branch=main)
 
 <img src="./freddy-rogue.png" width="200"/>
 
@@ -56,8 +56,8 @@ uvx rogue-ai cli
 1.  **Clone the repository:**
 
     ```bash
-    git clone https://github.com/qualifire-dev/rogue-private.git
-    cd rogue-private
+    git clone https://github.com/qualifire-dev/rogue.git
+    cd rogue
     ```
 
 2.  **Install dependencies:**
@@ -233,8 +233,8 @@ The CLI mode requires the Rogue server to be running. You can either:
 For development or if you prefer to install locally:
 
 ```bash
-git clone https://github.com/qualifire-dev/rogue-private.git
-cd rogue-private
+git clone https://github.com/qualifire-dev/rogue.git
+cd rogue
 uv sync
 uv run -m rogue cli [OPTIONS]
 ```
@@ -242,8 +242,8 @@ uv run -m rogue cli [OPTIONS]
 Or, if you are using pip:
 
 ```bash
-git clone https://github.com/qualifire-dev/rogue-private.git
-cd rogue-private
+git clone https://github.com/qualifire-dev/rogue.git
+cd rogue
 pip install -e .
 uv run -m rogue cli [OPTIONS]
 ```
