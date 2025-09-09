@@ -493,6 +493,9 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
                 results=all_results,
                 model=config.get("service_llm"),
                 api_key=config.get("judge_llm_api_key"),
+                qualifire_api_key=config.get("qualifire_api_key"),
+                deep_test=config.get("deep_test_mode", False),
+                judge_model=config.get("judge_llm"),
             )
 
             state["structured_summary"] = structured_summary

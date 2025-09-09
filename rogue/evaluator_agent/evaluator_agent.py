@@ -122,6 +122,7 @@ You have these tools at your disposal:
 - `scenario`: The entire scenario json object being tested. The json-object contains:
     - "scenario": The scenario text.
     - "scenario_type": The scenario type.
+    - "expected_outcome": The expected outcome of the scenario.
 - `context_id`: The conversation's context ID
 - `evaluation_passed`: Boolean indicating whether the agent complied with the policy. You should determine this based on the conversation.
 - `reason`: A brief explanation of your decision
@@ -363,6 +364,7 @@ class EvaluatorAgent:
         context_id: str,
         evaluation_passed: bool,
         reason: str,
+        scenario_type: Optional[str],
     ) -> None:
         """
         Logs the evaluation of the given scenario and test case.
@@ -370,6 +372,7 @@ class EvaluatorAgent:
             This is the scenario dictionary containing both the scenario text and type:
             - scenario: The scenario text.
             - scenario_type: The scenario type.
+            - expected_outcome: The expected outcome of the scenario.
         :param context_id: The conversation's context_id.
             This allows us to distinguish which conversation is being evaluated.
         :param evaluation_passed: A boolean value with the evaluation result. This is
@@ -391,6 +394,7 @@ class EvaluatorAgent:
                 ),
                 "evaluation_passed (from agent)": evaluation_passed,
                 "reason (from agent)": reason,
+                "scenario_type": scenario_type,
             },
         )
 

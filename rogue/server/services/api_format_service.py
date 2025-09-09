@@ -7,14 +7,13 @@ to the new enhanced API format with structured summary data.
 from datetime import datetime, timezone
 from typing import Optional
 
-from rogue_sdk.types import EvaluationResults
+from rogue_sdk.types import EvaluationResults, StructuredSummary
 
 from ..models.api_format import (
     ApiChatMessage,
     ApiConversationEvaluation,
     ApiEvaluationResult,
     ApiScenarioResult,
-    StructuredSummary,
 )
 
 
@@ -80,6 +79,7 @@ def convert_to_api_format(
         api_scenarios.append(
             ApiScenarioResult(
                 description=result.scenario.scenario,
+                expectedOutcome=result.scenario.expected_outcome,
                 totalConversations=len(api_conversations),
                 flaggedConversations=len(
                     [c for c in api_conversations if not c.passed],

@@ -42,8 +42,9 @@ type AgentConfig struct {
 }
 
 type EvalScenario struct {
-	Scenario     string       `json:"scenario"`
-	ScenarioType ScenarioType `json:"scenario_type"`
+	Scenario        string       `json:"scenario"`
+	ScenarioType    ScenarioType `json:"scenario_type"`
+	ExpectedOutcome string       `json:"expected_outcome,omitempty"`
 }
 
 type EvaluationRequest struct {
@@ -415,7 +416,7 @@ func (sdk *RogueSDK) CancelEvaluation(ctx context.Context, jobID string) error {
 }
 
 // StartEvaluation is the main entry point used by the TUI
-func (m *Model) StartEvaluation(ctx context.Context, serverURL, agentURL string, scenarios []string, judgeModel string, parallelRuns int, deepTest bool) (<-chan EvaluationEvent, func() error, error) {
+func (m *Model) StartEvaluation(ctx context.Context, serverURL, agentURL string, scenarios []EvalScenario, judgeModel string, parallelRuns int, deepTest bool) (<-chan EvaluationEvent, func() error, error) {
 	sdk := NewRogueSDK(serverURL)
 
 	// Validate URLs
@@ -443,8 +444,9 @@ func (m *Model) StartEvaluation(ctx context.Context, serverURL, agentURL string,
 	// Convert scenarios
 	for _, s := range scenarios {
 		request.Scenarios = append(request.Scenarios, EvalScenario{
-			Scenario:     s,
-			ScenarioType: ScenarioTypePolicy,
+			Scenario:        s.Scenario,
+			ScenarioType:    s.ScenarioType,
+			ExpectedOutcome: s.ExpectedOutcome,
 		})
 	}
 
@@ -452,7 +454,7 @@ func (m *Model) StartEvaluation(ctx context.Context, serverURL, agentURL string,
 }
 
 // GenerateSummary generates a markdown summary from evaluation results
-func (sdk *RogueSDK) GenerateSummary(ctx context.Context, jobID, model, apiKey string) (*SummaryResp, error) {
+func (sdk *RogueSDK) GenerateSummary(ctx context.Context, jobID, model, apiKey string, qualifireAPIKey *string) (*SummaryResp, error) {
 	// First get the evaluation job to extract results
 	job, err := sdk.GetEvaluation(ctx, jobID)
 	if err != nil {
@@ -470,6 +472,9 @@ func (sdk *RogueSDK) GenerateSummary(ctx context.Context, jobID, model, apiKey s
 		"results": map[string]interface{}{
 			"results": job.Results,
 		},
+		"job_id":            jobID,
+		"qualifire_api_key": *qualifireAPIKey,
+		"qualifire_url":     "http://localhost:3000",
 	}
 
 	body, err := json.Marshal(summaryReq)

@@ -4,8 +4,8 @@ from typing import Optional
 from litellm import completion
 from loguru import logger
 from rogue_sdk.types import EvaluationResults, Scenario, Scenarios, ScenarioType
+from rogue_sdk.types import StructuredSummary
 
-from ..models.api_format import StructuredSummary
 
 SCENARIO_GENERATION_SYSTEM_PROMPT = """
 # Test Scenario Designer

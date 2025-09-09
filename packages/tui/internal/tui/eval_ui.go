@@ -14,7 +14,7 @@ type EvaluationViewState struct {
 	JudgeModel   string
 	ParallelRuns int
 	DeepTest     bool
-	Scenarios    []string
+	Scenarios    []EvalScenario
 
 	// Runtime
 	Running  bool
@@ -35,7 +35,7 @@ type EvaluationViewState struct {
 }
 
 // loadScenariosFromWorkdir reads .rogue/scenarios.json upward from CWD
-func loadScenariosFromWorkdir() []string {
+func loadScenariosFromWorkdir() []EvalScenario {
 	wd, _ := os.Getwd()
 	dir := wd
 	for {
@@ -43,14 +43,20 @@ func loadScenariosFromWorkdir() []string {
 		if b, err := os.ReadFile(p); err == nil {
 			var v struct {
 				Scenarios []struct {
-					Scenario string `json:"scenario"`
+					Scenario        string `json:"scenario"`
+					ScenarioType    string `json:"scenario_type"`
+					ExpectedOutcome string `json:"expected_outcome"`
 				} `json:"scenarios"`
 			}
 			if json.Unmarshal(b, &v) == nil {
-				out := make([]string, 0, len(v.Scenarios))
+				out := make([]EvalScenario, 0, len(v.Scenarios))
 				for _, s := range v.Scenarios {
 					if s.Scenario != "" {
-						out = append(out, s.Scenario)
+						out = append(out, EvalScenario{
+							Scenario:        s.Scenario,
+							ScenarioType:    ScenarioType(s.ScenarioType),
+							ExpectedOutcome: s.ExpectedOutcome,
+						})
 					}
 				}
 				return out

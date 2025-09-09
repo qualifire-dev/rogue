@@ -8,15 +8,7 @@ from datetime import datetime
 from typing import List, Optional
 
 from pydantic import BaseModel
-
-
-class StructuredSummary(BaseModel):
-    """Structured summary response from LLM."""
-
-    overall_summary: str
-    key_findings: List[str]
-    recommendations: List[str]
-    detailed_breakdown: List[dict]  # Table rows for scenario breakdown
+from rogue_sdk.types import StructuredSummary
 
 
 class ApiChatMessage(BaseModel):
@@ -39,6 +31,7 @@ class ApiScenarioResult(BaseModel):
     """Result of evaluating a single scenario in new API format."""
 
     description: Optional[str] = None
+    expectedOutcome: Optional[str] = None
     totalConversations: Optional[int] = None
     flaggedConversations: Optional[int] = None
     conversations: List[ApiConversationEvaluation]

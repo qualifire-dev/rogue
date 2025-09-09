@@ -289,12 +289,20 @@ class RogueSDK:
         results: EvaluationResults,
         model: str = "openai/gpt-4o-mini",
         api_key: Optional[str] = None,
+        qualifire_api_key: Optional[str] = None,
+        job_id: Optional[str] = None,
+        deep_test: bool = False,
+        judge_model: Optional[str] = None,
     ) -> Tuple[str, StructuredSummary]:
         """Generate evaluation summary from results."""
         response_data = await self.http_client.generate_summary(
             results=results,
             model=model,
             api_key=api_key,
+            qualifire_api_key=qualifire_api_key,
+            job_id=job_id,
+            deep_test=deep_test,
+            judge_model=judge_model,
         )
 
         # Convert structured summary back to string format for backward compatibility

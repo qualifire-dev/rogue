@@ -77,6 +77,7 @@ class AgentConfig(BaseModel):
     parallel_runs: int = 1
     judge_llm_api_key: Optional[str] = None
     business_context: str = ""
+    qualifire_api_key: Optional[str] = None
 
     @model_validator(mode="after")
     def check_auth_credentials(self) -> "AgentConfig":
@@ -385,6 +386,8 @@ class EvaluationJob(BaseModel):
     results: Optional[List[EvaluationResult]] = None
     error_message: Optional[str] = None
     progress: float = 0.0
+    deep_test: bool = False
+    judge_model: Optional[str] = None
 
 
 class EvaluationResponse(BaseModel):
@@ -431,6 +434,11 @@ class SummaryGenerationRequest(BaseModel):
     results: EvaluationResults
     model: str = "openai/gpt-4.1"
     api_key: Optional[str] = None
+    qualifire_api_key: Optional[str] = None
+    job_id: str = ""
+    deep_test: bool = False
+    judge_model: Optional[str] = None
+    qualifire_url: Optional[str] = "https://app.qualifire.ai"
 
 
 class StructuredSummary(BaseModel):
@@ -488,3 +496,21 @@ class RogueClientConfig(BaseModel):
         if isinstance(v, str):
             return HttpUrl(v)
         return v
+
+
+class ReportSummaryRequest(BaseModel):
+    """Request to report a summary."""
+
+    job_id: str
+    structured_summary: Optional[StructuredSummary] = None
+    deep_test: bool = False
+    start_time: Optional[datetime] = None
+    judge_model: Optional[str] = None
+    qualifire_api_key: Optional[str] = None
+    qualifire_url: Optional[str] = "https://app.qualifire.ai"
+
+
+class ReportSummaryResponse(BaseModel):
+    """Response to report a summary."""
+
+    success: bool

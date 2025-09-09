@@ -59,6 +59,8 @@ async def create_evaluation(
         status=EvaluationStatus.PENDING,
         created_at=datetime.now(timezone.utc),
         request=request,
+        deep_test=request.agent_config.deep_test_mode,
+        judge_model=request.agent_config.judge_llm,
     )
 
     await evaluation_service.add_job(job)

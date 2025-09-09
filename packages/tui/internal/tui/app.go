@@ -87,7 +87,7 @@ func (m *Model) summaryGenerationCmd() tea.Cmd {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 		defer cancel()
 
-		structuredSummary, err := sdk.GenerateSummary(ctx, m.evalState.JobID, judgeModel, apiKey)
+		structuredSummary, err := sdk.GenerateSummary(ctx, m.evalState.JobID, judgeModel, apiKey, &m.config.QualifireAPIKey)
 
 		overallSummary := structuredSummary.Summary.OverallSummary
 		keyFindings := structuredSummary.Summary.KeyFindings
