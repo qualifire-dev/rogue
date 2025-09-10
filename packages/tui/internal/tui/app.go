@@ -86,16 +86,18 @@ func (m *Model) summaryGenerationCmd() tea.Cmd {
 		// Create a context with longer timeout for summary generation
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 		defer cancel()
-
+		parsedAPIKey := &m.config.QualifireAPIKey
+		if m.config.QualifireEnabled == false {
+			parsedAPIKey = nil
+		}
 		structuredSummary, err := sdk.GenerateSummary(
 			ctx,
 			m.evalState.JobID,
 			judgeModel,
 			apiKey,
-			&m.config.QualifireAPIKey,
+			parsedAPIKey,
 			m.evalState.DeepTest,
 			judgeModel,
-			m.config.ServerURL,
 		)
 
 		if err != nil {
@@ -565,6 +567,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 					// immediately report the summary
 					if m.evalState != nil && m.evalState.Completed {
+						parsedAPIKey := m.config.QualifireAPIKey
+						if m.config.QualifireEnabled == false {
+							parsedAPIKey = ""
+						}
+
 						sdk := NewRogueSDK(m.config.ServerURL)
 						err := sdk.ReportSummary(
 							context.Background(),
@@ -572,7 +579,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							m.evalState.StructuredSummary,
 							m.evalState.DeepTest,
 							m.evalState.JudgeModel,
-							m.config.QualifireAPIKey,
+							parsedAPIKey,
 						)
 						if err != nil {
 							// Show error dialog

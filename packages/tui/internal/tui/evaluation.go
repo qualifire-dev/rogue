@@ -469,7 +469,6 @@ func (sdk *RogueSDK) GenerateSummary(
 	qualifireAPIKey *string,
 	deepTest bool,
 	judgeModel string,
-	qualifireURL string,
 ) (*SummaryResp, error) {
 	// First get the evaluation job to extract results
 	job, err := sdk.GetEvaluation(ctx, jobID)
@@ -490,7 +489,6 @@ func (sdk *RogueSDK) GenerateSummary(
 		},
 		"job_id":            jobID,
 		"qualifire_api_key": *qualifireAPIKey,
-		"qualifire_url":     qualifireURL,
 		"deep_test":         deepTest,
 		"judge_model":       judgeModel,
 	}
