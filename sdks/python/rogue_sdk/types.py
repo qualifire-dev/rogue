@@ -507,8 +507,7 @@ class ReportSummaryRequest(BaseModel):
     judge_model: Optional[str] = None
     start_time: Optional[datetime] = None
     qualifire_api_key: Optional[str] = None
-    # qualifire_url: Optional[str] = "https://app.qualifire.ai"
-    qualifire_url: Optional[str] = "http://localhost:3000"
+    qualifire_url: Optional[str] = "https://app.qualifire.ai"
 
 
 class ReportSummaryResponse(BaseModel):
