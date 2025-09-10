@@ -395,6 +395,10 @@ class EvaluatorAgent:
                 "evaluation_passed (from agent)": evaluation_passed,
                 "reason (from agent)": reason,
                 "scenario_type": scenario_type,
+                "expected_outcome": scenario.get(
+                    "expected_outcome",
+                    "None",
+                ),
             },
         )
 

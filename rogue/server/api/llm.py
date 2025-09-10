@@ -7,6 +7,7 @@ This module provides REST API endpoints for LLM operations.
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from rogue_sdk.types import (
+    EvaluationResults,
     ScenarioGenerationRequest,
     ScenarioGenerationResponse,
     SummaryGenerationRequest,
@@ -185,7 +186,7 @@ async def report_summary_handler(
 
         QualifireService.report_summary(
             request,
-            evaluation_result=results[0],
+            evaluation_result=EvaluationResults(results=results),
         )
 
         return ReportSummaryResponse(
@@ -194,6 +195,6 @@ async def report_summary_handler(
     except Exception as e:
         logger.exception("Failed to report summary")
         raise HTTPException(
-            status_code=500,
+            status_code=e.status_code if hasattr(e, "status_code") else 500,
             detail=f"Failed to report summary: {str(e)}",
         )
