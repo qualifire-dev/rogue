@@ -28,6 +28,7 @@ type EvaluationViewState struct {
 	JobID            string // For tracking the evaluation job
 	Completed        bool   // Whether evaluation finished successfully
 	SummaryGenerated bool   // Whether summary generation was already attempted
+	StructuredSummary StructuredSummary
 
 	// Editing state for New Evaluation
 	currentField int // 0: AgentURL, 1: JudgeModel, 2: DeepTest, 3: StartButton

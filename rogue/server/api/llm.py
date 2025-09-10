@@ -185,7 +185,15 @@ async def report_summary_handler(
             )
 
         QualifireService.report_summary(
-            request,
+            ReportSummaryRequest(
+                job_id=request.job_id,
+                structured_summary=request.structured_summary,
+                deep_test=request.deep_test,
+                start_time=job.created_at,
+                judge_model=job.judge_model,
+                qualifire_api_key=request.qualifire_api_key,
+                qualifire_url=request.qualifire_url,
+            ),
             evaluation_result=EvaluationResults(results=results),
         )
 

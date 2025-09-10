@@ -504,10 +504,11 @@ class ReportSummaryRequest(BaseModel):
     job_id: str
     structured_summary: Optional[StructuredSummary] = None
     deep_test: bool = False
-    start_time: Optional[datetime] = None
     judge_model: Optional[str] = None
+    start_time: Optional[datetime] = None
     qualifire_api_key: Optional[str] = None
-    qualifire_url: Optional[str] = "https://app.qualifire.ai"
+    # qualifire_url: Optional[str] = "https://app.qualifire.ai"
+    qualifire_url: Optional[str] = "http://localhost:3000"
 
 
 class ReportSummaryResponse(BaseModel):

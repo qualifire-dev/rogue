@@ -93,18 +93,19 @@ type RogueSDK struct {
 	ws         *websocket.Conn
 }
 
+type StructuredSummary struct {
+	OverallSummary    string   `json:"overall_summary"`
+	KeyFindings       []string `json:"key_findings"`
+	Recommendations   []string `json:"recommendations"`
+	DetailedBreakdown []struct {
+		Scenario string `json:"scenario"`
+		Status   string `json:"status"`
+		Outcome  string `json:"outcome"`
+	} `json:"detailed_breakdown"`
+}
 type SummaryResp struct {
-	Summary struct {
-		OverallSummary    string   `json:"overall_summary"`
-		KeyFindings       []string `json:"key_findings"`
-		Recommendations   []string `json:"recommendations"`
-		DetailedBreakdown []struct {
-			Scenario string `json:"scenario"`
-			Status   string `json:"status"`
-			Outcome  string `json:"outcome"`
-		} `json:"detailed_breakdown"`
-	} `json:"summary"`
-	Message string `json:"message"`
+	Summary StructuredSummary `json:"summary"`
+	Message string            `json:"message"`
 }
 
 // NewRogueSDK creates a new SDK instance
@@ -416,7 +417,15 @@ func (sdk *RogueSDK) CancelEvaluation(ctx context.Context, jobID string) error {
 }
 
 // StartEvaluation is the main entry point used by the TUI
-func (m *Model) StartEvaluation(ctx context.Context, serverURL, agentURL string, scenarios []EvalScenario, judgeModel string, parallelRuns int, deepTest bool) (<-chan EvaluationEvent, func() error, error) {
+func (m *Model) StartEvaluation(
+	ctx context.Context,
+	serverURL string,
+	agentURL string,
+	scenarios []EvalScenario,
+	judgeModel string,
+	parallelRuns int,
+	deepTest bool,
+) (<-chan EvaluationEvent, func() error, error) {
 	sdk := NewRogueSDK(serverURL)
 
 	// Validate URLs
@@ -454,7 +463,14 @@ func (m *Model) StartEvaluation(ctx context.Context, serverURL, agentURL string,
 }
 
 // GenerateSummary generates a markdown summary from evaluation results
-func (sdk *RogueSDK) GenerateSummary(ctx context.Context, jobID, model, apiKey string, qualifireAPIKey *string) (*SummaryResp, error) {
+func (sdk *RogueSDK) GenerateSummary(
+	ctx context.Context,
+	jobID, model, apiKey string,
+	qualifireAPIKey *string,
+	deepTest bool,
+	judgeModel string,
+	qualifireURL string,
+) (*SummaryResp, error) {
 	// First get the evaluation job to extract results
 	job, err := sdk.GetEvaluation(ctx, jobID)
 	if err != nil {
@@ -474,7 +490,9 @@ func (sdk *RogueSDK) GenerateSummary(ctx context.Context, jobID, model, apiKey s
 		},
 		"job_id":            jobID,
 		"qualifire_api_key": *qualifireAPIKey,
-		"qualifire_url":     "http://localhost:3000",
+		"qualifire_url":     qualifireURL,
+		"deep_test":         deepTest,
+		"judge_model":       judgeModel,
 	}
 
 	body, err := json.Marshal(summaryReq)
@@ -511,6 +529,48 @@ func (sdk *RogueSDK) GenerateSummary(ctx context.Context, jobID, model, apiKey s
 	}
 
 	return &summaryResp, nil
+}
+
+// ReportSummary reports a summary to Qualifire
+func (sdk *RogueSDK) ReportSummary(
+	ctx context.Context,
+	jobID string,
+	summary StructuredSummary,
+	deepTest bool,
+	judgeModel string,
+	qualifireAPIKey string,
+) error {
+	reportReq := map[string]interface{}{
+		"job_id":             jobID,
+		"structured_summary": summary,
+		"deep_test":          deepTest,
+		"judge_model":        judgeModel,
+		"qualifire_api_key":  qualifireAPIKey,
+	}
+
+	body, err := json.Marshal(reportReq)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", sdk.baseURL+"/api/v1/llm/report_summary", bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := sdk.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("report summary failed: %d %s", resp.StatusCode, string(body))
+	}
+
+	return nil
 }
 
 // CheckServerHealth calls GET /health and returns the status string

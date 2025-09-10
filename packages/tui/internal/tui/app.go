@@ -87,7 +87,25 @@ func (m *Model) summaryGenerationCmd() tea.Cmd {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 		defer cancel()
 
-		structuredSummary, err := sdk.GenerateSummary(ctx, m.evalState.JobID, judgeModel, apiKey, &m.config.QualifireAPIKey)
+		structuredSummary, err := sdk.GenerateSummary(
+			ctx,
+			m.evalState.JobID,
+			judgeModel,
+			apiKey,
+			&m.config.QualifireAPIKey,
+			m.evalState.DeepTest,
+			judgeModel,
+			m.config.ServerURL,
+		)
+
+		if err != nil {
+			return SummaryGeneratedMsg{
+				Summary: "",
+				Err:     err,
+			}
+		}
+
+		m.evalState.StructuredSummary = structuredSummary.Summary
 
 		overallSummary := structuredSummary.Summary.OverallSummary
 		keyFindings := structuredSummary.Summary.KeyFindings
@@ -531,6 +549,66 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Handle dialog closure
 		if m.dialog != nil {
 			switch msg.Action {
+			case "save_qualifire_and_report":
+				// Handle Qualifire API key save and report persistence
+				if m.dialog != nil && m.dialog.Title == "Configure Qualifire API Key" {
+					// Save the API key to config (allow empty to clear the key)
+					m.config.QualifireAPIKey = msg.Input
+					// Only enable integration if there's an API key
+					if msg.Input != "" {
+						m.config.QualifireEnabled = true
+						if m.configState != nil {
+							m.configState.QualifireEnabled = true
+							m.configState.HasChanges = true
+						}
+					}
+
+					// immediately report the summary
+					if m.evalState != nil && m.evalState.Completed {
+						sdk := NewRogueSDK(m.config.ServerURL)
+						err := sdk.ReportSummary(
+							context.Background(),
+							m.evalState.JobID,
+							m.evalState.StructuredSummary,
+							m.evalState.DeepTest,
+							m.evalState.JudgeModel,
+							m.config.QualifireAPIKey,
+						)
+						if err != nil {
+							// Show error dialog
+							errorDialog := components.ShowErrorDialog(
+								"Report Summary Error",
+								fmt.Sprintf("Failed to report summary: %v", err),
+							)
+							m.dialog = &errorDialog
+						}
+
+						err = m.saveConfig()
+						if err != nil {
+							// Show error dialog
+							errorDialog := components.ShowErrorDialog(
+								"Configuration Error",
+								fmt.Sprintf("Failed to save Qualifire configuration: %v", err),
+							)
+							m.dialog = &errorDialog
+							return m, nil
+						} else {
+							// Show appropriate success dialog
+							var message string
+							if msg.Input != "" {
+								message = "Qualifire API key has been successfully saved and integration is now enabled. Your evaluation report will now be automatically persisted."
+							} else {
+								message = "Qualifire API key has been cleared and integration is now disabled."
+							}
+							successDialog := components.NewInfoDialog(
+								"Qualifire Configured",
+								message,
+							)
+							m.dialog = &successDialog
+							return m, nil
+						}
+					}
+				}
 			case "save_qualifire":
 				// Handle Qualifire API key save
 				if m.dialog != nil && m.dialog.Title == "Configure Qualifire API Key" {
@@ -589,7 +667,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					)
 					// Customize the buttons for this specific use case
 					dialog.Buttons = []components.DialogButton{
-						{Label: "Save", Action: "save_qualifire", Style: components.PrimaryButton},
+						{Label: "Save", Action: "save_qualifire_and_report", Style: components.PrimaryButton},
 					}
 					// Position cursor at end of existing key if there is one
 					dialog.InputCursor = len(m.config.QualifireAPIKey)
