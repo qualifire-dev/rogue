@@ -60,7 +60,6 @@ jobs:
           
           echo "🚀 Running rogue..."
           uv run -m rogue cli \
-            --debug \
             --evaluated-agent-url http://localhost:10001 \
             --judge-llm openai/o4-mini \
             --workdir './examples/tshirt_store_agent/.rogue'
