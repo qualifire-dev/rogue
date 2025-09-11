@@ -42,7 +42,10 @@ class TestScenario:
         ],
     )
     def test_validate_dataset_sample_size(
-        self, dataset, dataset_sample_size, should_raise
+        self,
+        dataset,
+        dataset_sample_size,
+        should_raise,
     ):
         input_data = {
             "scenario": "Test Scenario",
@@ -55,7 +58,8 @@ class TestScenario:
 
         if should_raise:
             with pytest.raises(
-                ValidationError, match="`dataset_sample_size` must be set"
+                ValidationError,
+                match="`dataset_sample_size` must be set",
             ):
                 Scenario(**input_data)
         else:
