@@ -5,6 +5,7 @@ This module provides REST API endpoints for LLM operations.
 """
 
 from datetime import datetime, timezone
+import os
 from fastapi import APIRouter, Depends, HTTPException
 from rogue_sdk.types import (
     EvaluationResults,
@@ -96,19 +97,6 @@ async def generate_summary(
 
         logger.info("Successfully generated evaluation summary")
 
-        logger.info(
-            "Qualifire API key",
-            extra={"qualifire_api_key": request.qualifire_api_key},
-        )
-        logger.info(
-            "Job ID",
-            extra={"job_id": request.job_id},
-        )
-        logger.info(
-            "Qualifire URL",
-            extra={"qualifire_url": request.qualifire_url},
-        )
-
         if request.qualifire_api_key and request.job_id:
 
             logger.info(
@@ -128,6 +116,11 @@ async def generate_summary(
                 "Summary",
                 extra={"summary": summary, "results": request.results},
             )
+
+            if not request.qualifire_api_key:
+                env_api_key = os.getenv("QUALIFIRE_API_KEY")
+                if env_api_key:
+                    request.qualifire_api_key = env_api_key
 
             QualifireService.report_summary(
                 ReportSummaryRequest(
@@ -183,6 +176,11 @@ async def report_summary_handler(
                 status_code=404,
                 detail="Evaluation results not found or empty",
             )
+
+        if not request.qualifire_api_key:
+            env_api_key = os.getenv("QUALIFIRE_API_KEY")
+            if env_api_key:
+                request.qualifire_api_key = env_api_key
 
         QualifireService.report_summary(
             ReportSummaryRequest(
