@@ -206,7 +206,6 @@ async def create_report(
     sdk = RogueSDK(sdk_config)
 
     try:
-    try:
         qualifire_api_key = (
             qualifire_api_key_secret.get_secret_value()
             if qualifire_api_key_secret
