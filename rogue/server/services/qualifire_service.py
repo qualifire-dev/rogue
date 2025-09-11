@@ -2,21 +2,21 @@ import requests
 from loguru import logger
 
 from .api_format_service import convert_with_structured_summary
-from rogue_sdk.types import EvaluationResult, ReportSummaryRequest
+from rogue_sdk.types import EvaluationResults, ReportSummaryRequest
 
 
 class QualifireService:
     @staticmethod
     def report_summary(
         request: ReportSummaryRequest,
-        evaluation_result: EvaluationResult,
+        evaluation_results: EvaluationResults,
     ):
         logger.info(
             "Reporting summary to Qualifire",
         )
 
         api_evaluation_result = convert_with_structured_summary(
-            evaluation_results=evaluation_result,
+            evaluation_results=evaluation_results,
             structured_summary=request.structured_summary,
             deep_test=request.deep_test,
             start_time=request.start_time,

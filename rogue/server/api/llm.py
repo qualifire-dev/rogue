@@ -143,7 +143,7 @@ async def generate_summary(
                     qualifire_url=request.qualifire_url,
                     qualifire_api_key=request.qualifire_api_key,
                 ),
-                evaluation_result=request.results,
+                evaluation_results=request.results,
             )
 
         return ServerSummaryGenerationResponse(
@@ -194,7 +194,7 @@ async def report_summary_handler(
                 qualifire_api_key=request.qualifire_api_key,
                 qualifire_url=request.qualifire_url,
             ),
-            evaluation_result=EvaluationResults(results=results),
+            evaluation_results=EvaluationResults(results=results),
         )
 
         return ReportSummaryResponse(
