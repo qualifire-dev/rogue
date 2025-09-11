@@ -206,11 +206,17 @@ async def create_report(
     sdk = RogueSDK(sdk_config)
 
     try:
+    try:
+        qualifire_api_key = (
+            qualifire_api_key_secret.get_secret_value()
+            if qualifire_api_key_secret
+            else None
+        )
         summary, _ = await sdk.generate_summary(
             results=results,
             model=judge_llm,
             api_key=judge_llm_api_key,
-            qualifire_api_key=qualifire_api_key_secret,
+            qualifire_api_key=qualifire_api_key,
             deep_test=deep_test_mode,
             judge_model=judge_model,
         )
