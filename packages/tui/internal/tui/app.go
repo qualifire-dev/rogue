@@ -8,7 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/v2/table"
 	tea "github.com/charmbracelet/bubbletea/v2"
+
 	"github.com/pelletier/go-toml/v2"
 	"github.com/rogue/tui/internal/components"
 	"github.com/rogue/tui/internal/theme"
@@ -84,8 +86,52 @@ func (m *Model) summaryGenerationCmd() tea.Cmd {
 		// Create a context with longer timeout for summary generation
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 		defer cancel()
+		parsedAPIKey := &m.config.QualifireAPIKey
+		if m.config.QualifireEnabled == false {
+			parsedAPIKey = nil
+		}
+		structuredSummary, err := sdk.GenerateSummary(
+			ctx,
+			m.evalState.JobID,
+			judgeModel,
+			apiKey,
+			parsedAPIKey,
+			m.evalState.DeepTest,
+			judgeModel,
+		)
 
-		summary, err := sdk.GenerateSummary(ctx, m.evalState.JobID, judgeModel, apiKey)
+		if err != nil {
+			return SummaryGeneratedMsg{
+				Summary: "",
+				Err:     err,
+			}
+		}
+
+		m.evalState.StructuredSummary = structuredSummary.Summary
+
+		overallSummary := structuredSummary.Summary.OverallSummary
+		keyFindings := structuredSummary.Summary.KeyFindings
+		parsedKeyFindings := ""
+		for _, finding := range keyFindings {
+			parsedKeyFindings += "- " + finding + "\n"
+		}
+		recommendations := structuredSummary.Summary.Recommendations
+		parsedRecommendations := ""
+		for _, recommendation := range recommendations {
+			parsedRecommendations += "- " + recommendation + "\n"
+		}
+
+		detailedBreakdown := structuredSummary.Summary.DetailedBreakdown
+		parsedDetailedBreakdown := ""
+		for _, breakdown := range detailedBreakdown {
+			parsedDetailedBreakdown += "- " + breakdown.Scenario + " - " + breakdown.Status + " - " + breakdown.Outcome + "\n"
+		}
+
+		summary := "## Overall Summary\n\n" + overallSummary +
+			"\n\n" + "## Key Findings\n\n" + parsedKeyFindings +
+			"\n\n" + "## Recommendations\n\n" + parsedRecommendations +
+			"\n\n" + "## Detailed Breakdown\n\n" + parsedDetailedBreakdown
+
 		return SummaryGeneratedMsg{
 			Summary: summary,
 			Err:     err,
@@ -131,20 +177,21 @@ type App struct {
 
 // Model represents the main application state
 type Model struct {
-	currentScreen  Screen
-	width          int
-	height         int
-	input          string
-	cursor         int
-	evaluations    []Evaluation
-	scenarios      []Scenario
-	config         Config
-	version        string
-	commandInput   components.CommandInput
-	dialog         *components.Dialog
-	dialogStack    []components.Dialog
-	llmDialog      *components.LLMConfigDialog
-	scenarioEditor components.ScenarioEditor
+	currentScreen     Screen
+	width             int
+	height            int
+	input             string
+	cursor            int
+	evaluations       []Evaluation
+	scenarios         []Scenario
+	config            Config
+	version           string
+	commandInput      components.CommandInput
+	dialog            *components.Dialog
+	dialogStack       []components.Dialog
+	llmDialog         *components.LLMConfigDialog
+	scenarioEditor    components.ScenarioEditor
+	detailedBreakdown []table.Row
 
 	// Spinners for loading states
 	healthSpinner  components.Spinner
@@ -238,7 +285,7 @@ func (a *App) Run() error {
 		// Initialize viewports
 		eventsViewport:   components.NewViewport(1, 80, 20),
 		summaryViewport:  components.NewViewport(2, 80, 20),
-		reportViewport:   components.NewViewport(3, 80, 20),
+		reportViewport:   components.NewViewport(3, 80, 15),
 		focusedViewport:  0,    // Start with events viewport focused
 		eventsAutoScroll: true, // Start with auto-scroll enabled
 	}
@@ -284,6 +331,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds = append(cmds, cmd)
 			}
 			return m, tea.Batch(cmds...)
+		}
+
+		if m.dialog != nil {
+			clipboardText, err := components.GetClipboardContent()
+			if err != nil {
+				// If clipboard reading fails, just return without error
+				return m, nil
+			}
+
+			// Clean the clipboard text (remove newlines and trim whitespace)
+			cleanText := strings.TrimSpace(strings.ReplaceAll(clipboardText, "\n", ""))
+
+			if cleanText == "" {
+				return m, nil
+			}
+
+			m.dialog.Input += cleanText
+			m.dialog.InputCursor = len(m.dialog.Input)
+			return m, nil
 		}
 	case components.SpinnerTickMsg:
 		// Update spinners
@@ -485,6 +551,71 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Handle dialog closure
 		if m.dialog != nil {
 			switch msg.Action {
+			case "save_qualifire_and_report":
+				// Handle Qualifire API key save and report persistence
+				if m.dialog != nil && m.dialog.Title == "Configure Qualifire API Key" {
+					// Save the API key to config (allow empty to clear the key)
+					m.config.QualifireAPIKey = msg.Input
+					// Only enable integration if there's an API key
+					if msg.Input != "" {
+						m.config.QualifireEnabled = true
+						if m.configState != nil {
+							m.configState.QualifireEnabled = true
+							m.configState.HasChanges = true
+						}
+					}
+
+					// immediately report the summary
+					if m.evalState != nil && m.evalState.Completed {
+						parsedAPIKey := m.config.QualifireAPIKey
+						if m.config.QualifireEnabled == false {
+							parsedAPIKey = ""
+						}
+
+						sdk := NewRogueSDK(m.config.ServerURL)
+						err := sdk.ReportSummary(
+							context.Background(),
+							m.evalState.JobID,
+							m.evalState.StructuredSummary,
+							m.evalState.DeepTest,
+							m.evalState.JudgeModel,
+							parsedAPIKey,
+						)
+						if err != nil {
+							// Show error dialog
+							errorDialog := components.ShowErrorDialog(
+								"Report Summary Error",
+								fmt.Sprintf("Failed to report summary: %v", err),
+							)
+							m.dialog = &errorDialog
+						}
+
+						err = m.saveConfig()
+						if err != nil {
+							// Show error dialog
+							errorDialog := components.ShowErrorDialog(
+								"Configuration Error",
+								fmt.Sprintf("Failed to save Qualifire configuration: %v", err),
+							)
+							m.dialog = &errorDialog
+							return m, nil
+						} else {
+							// Show appropriate success dialog
+							var message string
+							if msg.Input != "" {
+								message = "Qualifire API key has been successfully saved and integration is now enabled. Your evaluation report will now be automatically persisted."
+							} else {
+								message = "Qualifire API key has been cleared and integration is now disabled."
+							}
+							successDialog := components.NewInfoDialog(
+								"Qualifire Configured",
+								message,
+							)
+							m.dialog = &successDialog
+							return m, nil
+						}
+					}
+				}
 			case "save_qualifire":
 				// Handle Qualifire API key save
 				if m.dialog != nil && m.dialog.Title == "Configure Qualifire API Key" {
@@ -543,7 +674,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					)
 					// Customize the buttons for this specific use case
 					dialog.Buttons = []components.DialogButton{
-						{Label: "Save", Action: "save_qualifire", Style: components.PrimaryButton},
+						{Label: "Save", Action: "save_qualifire_and_report", Style: components.PrimaryButton},
 					}
 					// Position cursor at end of existing key if there is one
 					dialog.InputCursor = len(m.config.QualifireAPIKey)

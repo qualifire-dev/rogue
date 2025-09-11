@@ -188,6 +188,9 @@ async def create_report(
     results: EvaluationResults,
     output_report_file: Path,
     judge_llm_api_key_secret: SecretStr | None = None,
+    qualifire_api_key_secret: SecretStr | None = None,
+    deep_test_mode: bool = False,
+    judge_model: str | None = None,
 ) -> str:
     judge_llm_api_key = (
         judge_llm_api_key_secret.get_secret_value()
@@ -203,11 +206,22 @@ async def create_report(
     sdk = RogueSDK(sdk_config)
 
     try:
-        summary = await sdk.generate_summary(
+        qualifire_api_key = (
+            qualifire_api_key_secret.get_secret_value()
+            if qualifire_api_key_secret
+            else None
+        )
+        summary, _ = await sdk.generate_summary(
             results=results,
             model=judge_llm,
             api_key=judge_llm_api_key,
+            qualifire_api_key=qualifire_api_key,
+            deep_test=deep_test_mode,
+            judge_model=judge_model,
         )
+    except Exception as e:
+        logger.exception("Failed to generate summary")
+        raise e
     finally:
         await sdk.close()
 
@@ -352,6 +366,8 @@ async def run_cli(args: Namespace) -> int:
         results=results,
         output_report_file=cli_input.output_report_file,
         judge_llm_api_key_secret=cli_input.judge_llm_api_key,
+        deep_test_mode=cli_input.deep_test_mode,
+        judge_model=cli_input.judge_llm,
     )
 
     logger.info("Report saved", extra={"report_file": cli_input.output_report_file})

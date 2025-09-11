@@ -81,7 +81,7 @@ class RemoteAgentConnections:
                 SendStreamingMessageRequest(
                     id=uuid4().hex,
                     params=request,
-                )
+                ),
             ):
                 logger.debug(
                     "received stream response from remote agent",
@@ -110,7 +110,7 @@ class RemoteAgentConnections:
                 SendMessageRequest(
                     id=uuid4().hex,
                     params=request,
-                )
+                ),
             )
 
             logger.debug(

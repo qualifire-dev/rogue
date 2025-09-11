@@ -549,7 +549,7 @@ func (d LLMConfigDialog) handleEnter() (LLMConfigDialog, tea.Cmd) {
 // handlePaste handles clipboard paste operation for API key input
 func (d LLMConfigDialog) handlePaste() (LLMConfigDialog, tea.Cmd) {
 	// Get clipboard content based on the operating system
-	clipboardText, err := getClipboardContent()
+	clipboardText, err := GetClipboardContent()
 	if err != nil {
 		// If clipboard reading fails, just return without error
 		return d, nil
@@ -569,8 +569,8 @@ func (d LLMConfigDialog) handlePaste() (LLMConfigDialog, tea.Cmd) {
 	return d, nil
 }
 
-// getClipboardContent reads content from the system clipboard
-func getClipboardContent() (string, error) {
+// GetClipboardContent reads content from the system clipboard
+func GetClipboardContent() (string, error) {
 	var cmd *exec.Cmd
 
 	switch runtime.GOOS {

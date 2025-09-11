@@ -481,6 +481,7 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
         # final_output_path.write_text(all_results.model_dump_json(indent=2))
 
         # Generate summary using SDK (server-based)
+        summary = "Summary generation failed."
         try:
             sdk_config = RogueClientConfig(
                 base_url=state.get("rogue_server_url", "http://localhost:8000"),
@@ -488,11 +489,16 @@ def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tab
             )
             sdk = RogueSDK(sdk_config)
 
-            summary = await sdk.generate_summary(
+            summary, structured_summary = await sdk.generate_summary(
                 results=all_results,
                 model=config.get("service_llm"),
                 api_key=config.get("judge_llm_api_key"),
+                qualifire_api_key=config.get("qualifire_api_key"),
+                deep_test=config.get("deep_test_mode", False),
+                judge_model=config.get("judge_llm"),
             )
+
+            state["structured_summary"] = structured_summary
 
             await sdk.close()
         except Exception:

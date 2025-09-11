@@ -5,6 +5,8 @@ import gradio as gr
 from loguru import logger
 from rogue_sdk.types import EvaluationResults
 
+from ...server.services.api_format_service import convert_with_structured_summary
+
 
 def _load_report_data_from_files(
     evaluation_results_output_path: Path | None,
@@ -60,13 +62,36 @@ def setup_report_generator_logic(
             )
             results = EvaluationResults()
 
+        # Convert to new API format for display using server service
+        try:
+            # Extract configuration and additional metadata from state
+            config = state.get("config", {})
+
+            # For now, pass None for structured_summary since UI still uses
+            # string summaries. This will be updated when the UI summary generation
+            # is converted to structured format
+            api_format_results = convert_with_structured_summary(
+                evaluation_results=results,
+                structured_summary=state.get("structured_summary"),
+                deep_test=config.get("deep_test_mode", False),
+                start_time=state.get("start_time"),
+                judge_model=config.get("judge_llm"),
+            )
+            results_json = api_format_results.model_dump_json(
+                indent=2,
+                exclude_none=True,
+            )
+        except Exception as e:
+            logger.warning(
+                f"Failed to convert results to API format: {e}",
+                extra={
+                    "results": results,
+                },
+            )
+            results_json = str(results)
+
         return {
-            evaluation_results_display: gr.update(
-                value=results.model_dump_json(
-                    indent=2,
-                    exclude_none=True,
-                ),
-            ),
+            evaluation_results_display: gr.update(value=results_json),
             summary_display: gr.update(value=summary),
         }
 

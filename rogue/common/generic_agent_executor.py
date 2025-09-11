@@ -128,7 +128,7 @@ class GenericAgentExecutor(AgentExecutor):
         if session is None:
             logger.error(
                 f"Critical error: Session is None even after "
-                f"create_session for session_id: {session_id}"
+                f"create_session for session_id: {session_id}",
             )
             raise RuntimeError(
                 f"Failed to get or create session: {session_id}",
@@ -150,15 +150,16 @@ def convert_a2a_part_to_genai(part: Part) -> types.Part:
         if isinstance(part.file, FileWithUri):
             return types.Part(
                 file_data=types.FileData(
-                    file_uri=part.file.uri, mime_type=part.file.mimeType
-                )
+                    file_uri=part.file.uri,
+                    mime_type=part.file.mimeType,
+                ),
             )
         if isinstance(part.file, FileWithBytes):
             return types.Part(
                 inline_data=types.Blob(
                     data=base64.b64decode(part.file.bytes),
                     mime_type=part.file.mimeType,
-                )
+                ),
             )
         raise ValueError(f"Unsupported file type: {type(part.file)}")
     raise ValueError(f"Unsupported part type: {type(part)}")
@@ -184,8 +185,8 @@ def convert_genai_part_to_a2a(part: types.Part) -> Part:
                 file=FileWithUri(
                     uri=part.file_data.file_uri or "",
                     mimeType=part.file_data.mime_type,
-                )
-            )
+                ),
+            ),
         )
     if part.inline_data:
         return Part(
@@ -195,7 +196,7 @@ def convert_genai_part_to_a2a(part: types.Part) -> Part:
                         part.inline_data.data,  # type: ignore
                     ).decode(),
                     mimeType=part.inline_data.mime_type,
-                )
-            )
+                ),
+            ),
         )
     raise ValueError(f"Unsupported part type: {part}")
