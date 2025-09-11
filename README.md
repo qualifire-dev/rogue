@@ -40,19 +40,16 @@ https://github.com/user-attachments/assets/b5c04772-6916-4aab-825b-6a7476d77787
 Use our automated install script to get up and running quickly:
 
 ```bash
-# Unix/Linux/macOS
-curl -fsSL https://raw.githubusercontent.com/qualifire-dev/rogue-private/main/install.sh | bash
+# TUI
+uvx rogue-ai
 
-# Windows (PowerShell)
-Invoke-Expression (Invoke-WebRequest -Uri "https://raw.githubusercontent.com/qualifire-dev/rogue-private/main/install.ps1").Content
+# Web UI
+uvx rogue-ai ui
+
+# CLI / CI/CD
+uvx rogue-ai cli
 ```
 
-The install script automatically:
-- Downloads the latest release (or specific version with `-v` flag, or explicitly with `-v latest`)
-- Updates your PATH
-- Provides both `rogue` and `rogue-tui` commands
-
-**Note**: Use `install.sh` for Unix/Linux/macOS and `install.ps1` for Windows PowerShell.
 
 #### Option 2: Manual Installation
 
