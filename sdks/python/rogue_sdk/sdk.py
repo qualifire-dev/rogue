@@ -5,7 +5,7 @@ Combines HTTP client and WebSocket client for complete functionality.
 """
 
 import asyncio
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Tuple
 
 from loguru import logger
 from pydantic import HttpUrl
@@ -25,6 +25,7 @@ from .types import (
     RogueClientConfig,
     Scenarios,
     SendMessageResponse,
+    StructuredSummary,
     WebSocketEventType,
 )
 from .websocket import RogueWebSocketClient
@@ -114,7 +115,7 @@ class RogueSDK:
         """Add WebSocket event handler."""
         if not self.ws_client:
             raise RuntimeError(
-                "WebSocket not connected. Call connect_websocket() first."
+                "WebSocket not connected. Call connect_websocket() first.",
             )
         self.ws_client.on(event, handler)
 
@@ -192,7 +193,7 @@ class RogueSDK:
                                 result_future.set_result(result)
                             else:
                                 result_future.set_exception(
-                                    Exception("Failed to retrieve final job result")
+                                    Exception("Failed to retrieve final job result"),
                                 )
                         except Exception as e:
                             result_future.set_exception(e)
@@ -210,7 +211,7 @@ class RogueSDK:
         def handle_error(event, data):
             if not result_future.done():
                 result_future.set_exception(
-                    Exception(f"WebSocket error: {data.get('error')}")
+                    Exception(f"WebSocket error: {data.get('error')}"),
                 )
 
         # Connect WebSocket for updates
@@ -228,7 +229,7 @@ class RogueSDK:
             return result
         except asyncio.TimeoutError:
             raise TimeoutError(
-                f"Evaluation {job_id} did not complete within {timeout}s"
+                f"Evaluation {job_id} did not complete within {timeout}s",
             )
         finally:
             await self.disconnect_websocket()
@@ -288,15 +289,57 @@ class RogueSDK:
         results: EvaluationResults,
         model: str = "openai/gpt-4o-mini",
         api_key: Optional[str] = None,
-    ) -> str:
+        qualifire_api_key: Optional[str] = None,
+        job_id: Optional[str] = None,
+        deep_test: bool = False,
+        judge_model: Optional[str] = None,
+    ) -> Tuple[str, StructuredSummary]:
         """Generate evaluation summary from results."""
         response_data = await self.http_client.generate_summary(
             results=results,
             model=model,
             api_key=api_key,
+            qualifire_api_key=qualifire_api_key,
+            job_id=job_id,
+            deep_test=deep_test,
+            judge_model=judge_model,
         )
 
-        return response_data.summary
+        # Convert structured summary back to string format for backward compatibility
+        structured_summary = response_data.summary
+        if hasattr(structured_summary, "overall_summary"):
+            # Format as markdown string for UI display
+            summary_parts = [
+                f"# Evaluation Results Summary\n\n## Overall Summary\n"
+                f"{structured_summary.overall_summary}",
+            ]
+
+            if structured_summary.key_findings:
+                findings = "\n".join(
+                    f"- {finding}" for finding in structured_summary.key_findings
+                )
+                summary_parts.append(f"\n---\n\n## Key Findings\n{findings}")
+
+            if structured_summary.recommendations:
+                recommendations = "\n".join(
+                    f"{i + 1}. {rec}"
+                    for i, rec in enumerate(structured_summary.recommendations)
+                )
+                summary_parts.append(f"\n---\n\n## Recommendations\n{recommendations}")
+
+            if structured_summary.detailed_breakdown:
+                breakdown = "\n".join(
+                    f"{i + 1}. {row}"
+                    for i, row in enumerate(structured_summary.detailed_breakdown)
+                )
+                summary_parts.append(f"\n---\n\n## Detailed Breakdown\n{breakdown}")
+
+            summary_parts.append("\n---\n")
+
+            return "\n".join(summary_parts), structured_summary
+        else:
+            # Fallback for string response
+            return str(structured_summary), structured_summary
 
     async def start_interview(
         self,

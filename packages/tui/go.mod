@@ -14,7 +14,6 @@ require (
 )
 
 require (
-	github.com/charmbracelet/x/exp/golden v0.0.0-20250207160936-21c02780d27a // indirect
 	github.com/charmbracelet/x/input v0.3.7 // indirect
 	github.com/charmbracelet/x/windows v0.2.1 // indirect
 	github.com/dlclark/regexp2 v1.11.5 // indirect
@@ -23,6 +22,7 @@ require (
 
 require (
 	github.com/alecthomas/chroma/v2 v2.20.0
+	github.com/charmbracelet/bubbles/v2 v2.0.0-beta.1
 	github.com/charmbracelet/colorprofile v0.3.1 // indirect
 	github.com/charmbracelet/x/cellbuf v0.0.14-0.20250505150409-97991a1f17d1 // indirect
 	github.com/charmbracelet/x/term v0.2.1 // indirect

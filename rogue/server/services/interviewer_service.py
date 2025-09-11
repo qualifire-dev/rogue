@@ -71,7 +71,7 @@ class InterviewerService:
             {
                 "role": "user",
                 "content": user_input,
-            }
+            },
         )
 
         # Copying the messages to avoid modifying the original list
@@ -87,7 +87,7 @@ class InterviewerService:
                         "You have asked 3 questions. Now, provide a concise summary of "
                         "the agent's business context based on the conversation."
                     ),
-                }
+                },
             )
 
         try:
@@ -101,7 +101,7 @@ class InterviewerService:
                 {
                     "role": "assistant",
                     "content": response.choices[0].message.content,
-                }
+                },
             )
             return response.choices[0].message.content
 

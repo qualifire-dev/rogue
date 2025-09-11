@@ -32,7 +32,8 @@ class TestCLIInput:
 
         if should_raise:
             with pytest.raises(
-                ValidationError, match="Authentication Credentials cannot be empty"
+                ValidationError,
+                match="Authentication Credentials cannot be empty",
             ):
                 CLIInput(**input_data)
         else:

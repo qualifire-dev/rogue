@@ -36,7 +36,7 @@ def create_config_screen(
         )
         gr.Markdown(
             "When enabled, you'll be guided through an AI-powered interview to "
-            "extract your agent's business context. Turn off to skip this step."
+            "extract your agent's business context. Turn off to skip this step.",
         )
 
         gr.Markdown("**Deep Test Mode**")
@@ -46,7 +46,7 @@ def create_config_screen(
         )
         gr.Markdown(
             "When enabled, the evaluator will "
-            "approach each scenario from different angles"
+            "approach each scenario from different angles",
         )
 
         gr.Markdown("### Parallel Runs")
@@ -76,7 +76,8 @@ def create_config_screen(
             ),
         )
         auth_credentials_error = gr.Markdown(
-            visible=False, elem_classes=["error-label"]
+            visible=False,
+            elem_classes=["error-label"],
         )
 
         gr.Markdown("## Evaluator Configuration")
@@ -84,12 +85,12 @@ def create_config_screen(
             "Specify the models for the evaluation process. "
             "The **Service LLM** will be used to interview, "
             "generate scenarios and summaries. The **Judge LLM** is used by the "
-            "evaluator agent to score the agent's performance against those scenarios."
+            "evaluator agent to score the agent's performance against those scenarios.",
         )
         gr.Markdown(
             "ℹ️ Under the hood we're using `litellm`. See the "
             "[list of supported models](https://docs.litellm.ai/docs/providers). "
-            "You can use environment variables for API keys."
+            "You can use environment variables for API keys.",
         )
 
         service_llm = gr.Textbox(
@@ -226,7 +227,8 @@ def create_config_screen(
                 msg = error["msg"]
                 if loc in error_labels:
                     error_updates[error_labels[loc]] = gr.update(
-                        value=f"**Error:** {msg}", visible=True
+                        value=f"**Error:** {msg}",
+                        visible=True,
                     )
                 else:
                     logger.exception("Unhandled validation error")
