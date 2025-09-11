@@ -214,6 +214,9 @@ async def create_report(
             deep_test=deep_test_mode,
             judge_model=judge_model,
         )
+    except Exception as e:
+        logger.exception("Failed to generate summary")
+        raise e
     finally:
         await sdk.close()
 
