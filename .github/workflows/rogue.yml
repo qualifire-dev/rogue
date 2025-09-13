@@ -32,29 +32,34 @@ jobs:
       - name: Install rogue server
         run: source .venv/bin/activate && uv pip install -e .
 
-      - name: Run shirtify agent in background
-        uses: JarvusInnovations/background-action@v1
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        with:
-          run: uv run examples/tshirt_store_agent --host 0.0.0.0 --port 10001 &
-          wait-on: http-get://localhost:10001/.well-known/agent.json
-          tail: true
-
-      - name: Start Rogue server in background
-        uses: JarvusInnovations/background-action@v1
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        with:
-          run: uv run -m rogue server --host 0.0.0.0 --port 8000 &
-          wait-on: http-get://localhost:8000/api/v1/health
-          tail: true
-
       - name: Run rogue
-        uses: ./.github/actions/rogue
+        shell: bash
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        with:
-          evaluated_agent_url: "http://localhost:10001"
-          judge_llm: "openai/gpt-4.1"
-          workdir: "./examples/tshirt_store_agent/.rogue"
+        run: |
+          echo "🚀 Starting AI agent..."
+          uv run examples/tshirt_store_agent --host 0.0.0.0 --port 10001 &
+          AGENT_PID=$!
+          echo "Agent started with PID: $AGENT_PID"
+          trap 'echo "🛑 Stopping agent..."; kill $AGENT_PID' EXIT
+
+          echo "⏳ Waiting for agent to be ready..."
+          curl --retry 10 --retry-delay 5 --retry-connrefused -s --fail -o /dev/null \
+            http://localhost:10001/.well-known/agent.json
+
+          echo "🚀 Starting rogue server..."
+          uv run -m rogue server --host 0.0.0.0 --port 8000 &
+          ROGUE_PID=$!
+          echo "Rogue server started with PID: $ROGUE_PID"
+          trap 'echo "🛑 Stopping rogue server..."; kill $ROGUE_PID' EXIT
+
+          echo "⏳ Waiting for rogue server to be ready..."
+          curl --retry 10 --retry-delay 5 --retry-connrefused -s --fail -o /dev/null \
+            http://localhost:8000/api/v1/health
+          echo "🚀 Rogue server ready"
+          
+          echo "🚀 Running rogue..."
+          uv run -m rogue cli \
+            --evaluated-agent-url http://localhost:10001 \
+            --judge-llm openai/o4-mini \
+            --workdir './examples/tshirt_store_agent/.rogue'
