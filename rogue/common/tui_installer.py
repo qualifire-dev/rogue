@@ -14,7 +14,7 @@ from loguru import logger
 
 
 class RogueTuiInstaller:
-    def __init__(self, repo: str = "qualifire-dev/rogue-private"):
+    def __init__(self, repo: str = "qualifire-dev/rogue"):
         self._repo = repo
         self._github_token = os.getenv("GITHUB_TOKEN")
         self._headers = (
