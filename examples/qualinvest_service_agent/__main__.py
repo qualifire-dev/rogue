@@ -29,28 +29,35 @@ logging.basicConfig()
 @click.option("--port", "port", default=10001)
 def main(host: str, port: int) -> None:
     skill = AgentSkill(
-        id="sell_tshirt",
-        name="Sell T-Shirt",
-        description="Helps with selling T-Shirts",
-        tags=["sell"],
-        examples=["sell a T-Shirt"],
+        id="buy_stocks",
+        name="buy stocks",
+        description="buy stocks for the user",
+        tags=["buy"],
+        examples=["buy aapl for 10000$"],
+    )
+    skill2 = AgentSkill(
+        id="check_balance",
+        name="check balance",
+        description="check user's balance",
+        tags=["balance"],
+        examples=["do I have available 10000$ to invest in shitcoins"],
     )
 
     agent_card = AgentCard(
-        name="Shirtify TShirt Store Agent",
-        description="Sells Shirtify T-Shirts",
+        name="investify service agent",
+        description="customer service for investify finance",
         url=f"http://{host}:{port}/",
         version="1.0.0",
         defaultInputModes=["text"],
         defaultOutputModes=["text"],
         capabilities=AgentCapabilities(streaming=True),
-        skills=[skill],
+        skills=[skill, skill2],
     )
 
-    tshirt_store_agent = create_investify_service_agent()
+    investify_service_agent = create_investify_service_agent()
     runner = Runner(
         app_name=agent_card.name,
-        agent=tshirt_store_agent,
+        agent=investify_service_agent,
         artifact_service=InMemoryArtifactService(),
         session_service=InMemorySessionService(),
         memory_service=InMemoryMemoryService(),
