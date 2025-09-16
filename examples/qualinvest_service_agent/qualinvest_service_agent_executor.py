@@ -1,4 +1,5 @@
 import base64
+import os
 from logging import getLogger
 from typing import AsyncGenerator
 
@@ -19,6 +20,11 @@ from a2a.utils.errors import ServerError
 from google.adk import Runner
 from google.adk.events import Event
 from google.genai import types
+import qualifire
+
+qualifire.init(
+    api_key=os.environ.get("QUALIFIRE_API_KEY")
+)
 
 logger = getLogger(__name__)
 
@@ -33,9 +39,9 @@ class investifyAgentExecutor(AgentExecutor):
         self._running_sessions = {}  # type: ignore
 
     def _run_agent(
-        self,
-        session_id,
-        new_message: types.Content,
+            self,
+            session_id,
+            new_message: types.Content,
     ) -> AsyncGenerator[Event, None]:
         return self.runner.run_async(
             session_id=session_id,
@@ -44,10 +50,10 @@ class investifyAgentExecutor(AgentExecutor):
         )
 
     async def _process_request(
-        self,
-        new_message: types.Content,
-        session_id: str,
-        task_updater: TaskUpdater,
+            self,
+            new_message: types.Content,
+            session_id: str,
+            task_updater: TaskUpdater,
     ) -> None:
         # The call to self._upsert_session was returning a coroutine object,
         # leading to an AttributeError when trying to access .id on it directly.
@@ -79,9 +85,9 @@ class investifyAgentExecutor(AgentExecutor):
                 logger.debug("Skipping event")
 
     async def execute(
-        self,
-        context: RequestContext,
-        event_queue: EventQueue,
+            self,
+            context: RequestContext,
+            event_queue: EventQueue,
     ):
         # Run the agent until either complete or the task is suspended.
         updater = TaskUpdater(
