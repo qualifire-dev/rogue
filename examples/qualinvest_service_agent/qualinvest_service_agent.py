@@ -264,7 +264,8 @@ def get_rate_tool(product: str = "savings_apr"):
 
 
 def place_order_tool(account_id: str = "1", symbol: str = "aapl", side: str = "2", quantity: float = 1.3,
-                     order_type: str = "buy", time_in_force: str = "good until cancelled", limit_price: float = 100.0, stop_price: float = 10.0):
+                     order_type: str = "buy", time_in_force: str = "good until cancelled", limit_price: float = 100.0,
+                     stop_price: float = 10.0):
     """
     Preview an order for confirmation.
     """
@@ -307,7 +308,7 @@ def transfer_funds_tool(from_account_id: str = "1", to_account_id: str = "2", am
     }
 
 
-def confirm_transfer_tool(transfer_preview_id: str  = "1"):
+def confirm_transfer_tool(transfer_preview_id: str = "1"):
     """
     Confirm a previously previewed transfer.
     """
