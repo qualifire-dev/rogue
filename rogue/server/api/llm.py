@@ -97,6 +97,11 @@ async def generate_summary(
 
         logger.info("Successfully generated evaluation summary")
 
+        if not request.qualifire_api_key:
+            env_api_key = os.getenv("QUALIFIRE_API_KEY")
+            if env_api_key:
+                request.qualifire_api_key = env_api_key
+
         if request.qualifire_api_key and request.job_id:
 
             logger.info(
@@ -116,11 +121,6 @@ async def generate_summary(
                 "Summary",
                 extra={"summary": summary, "results": request.results},
             )
-
-            if not request.qualifire_api_key:
-                env_api_key = os.getenv("QUALIFIRE_API_KEY")
-                if env_api_key:
-                    request.qualifire_api_key = env_api_key
 
             QualifireService.report_summary(
                 ReportSummaryRequest(
