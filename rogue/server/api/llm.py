@@ -94,21 +94,6 @@ async def generate_summary(
             llm_provider_api_key=request.api_key,
         )
 
-        logger.info("Successfully generated evaluation summary")
-
-        logger.info(
-            "Qualifire API key",
-            extra={"qualifire_api_key": request.qualifire_api_key},
-        )
-        logger.info(
-            "Job ID",
-            extra={"job_id": request.job_id},
-        )
-        logger.info(
-            "Qualifire URL",
-            extra={"qualifire_url": request.qualifire_url},
-        )
-
         if request.qualifire_api_key and request.job_id:
 
             logger.info(
