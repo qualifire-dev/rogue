@@ -15,6 +15,7 @@ class CLIInput(BaseModel):
     evaluated_agent_credentials: SecretStr | None = None
     judge_llm: str
     judge_llm_api_key: SecretStr | None = None
+    qualifire_api_key: SecretStr | None = None
     input_scenarios_file: Path = workdir / "scenarios.json"
     output_report_file: Path = workdir / "report.md"
     business_context: str

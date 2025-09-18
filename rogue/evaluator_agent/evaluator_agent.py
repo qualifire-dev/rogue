@@ -117,7 +117,7 @@ You have these tools at your disposal:
 - Returns: A dictionary containing the other agent's response:
     - "response": A string containing the other agent's response. If there is no response from the other agent, the string is empty.
 
-3. `_log_evaluation(scenario: dict, context_id: str, evaluation_passed: bool, reason: str)`
+3. `_log_evaluation(scenario: dict, context_id: str, evaluation_passed: bool, reason: str)` NOTE: THE SCENARIO IS A DICTIONARY NOT A STRING
 - Parameters:
 - `scenario`: The entire scenario json object being tested. The json-object contains:
     - "scenario": The scenario text.

@@ -96,7 +96,7 @@ async def run_scenarios(
     evaluation_results_output_path: Path,
     business_context: str,
     deep_test_mode: bool,
-) -> EvaluationResults | None:
+) -> tuple[EvaluationResults | None, str | None]:
     evaluated_agent_auth_credentials = (
         evaluated_agent_auth_credentials_secret.get_secret_value()
         if evaluated_agent_auth_credentials_secret
@@ -134,7 +134,7 @@ async def _run_scenarios_with_sdk(
     evaluation_results_output_path: Path,
     business_context: str,
     deep_test_mode: bool,
-) -> EvaluationResults | None:
+) -> tuple[EvaluationResults | None, str | None]:
     """Run scenarios using the new SDK."""
 
     # Initialize SDK
@@ -173,10 +173,10 @@ async def _run_scenarios_with_sdk(
                 results.model_dump_json(indent=2, exclude_none=True),
                 encoding="utf-8",
             )
-            return results
+            return results, final_job.job_id
         else:
             logger.error("Scenario evaluation completed but no results found.")
-            return None
+            return None, None
 
     finally:
         await sdk.close()
@@ -187,6 +187,7 @@ async def create_report(
     judge_llm: str,
     results: EvaluationResults,
     output_report_file: Path,
+    job_id: str | None = None,
     judge_llm_api_key_secret: SecretStr | None = None,
     qualifire_api_key_secret: SecretStr | None = None,
     deep_test_mode: bool = False,
@@ -216,6 +217,7 @@ async def create_report(
             model=judge_llm,
             api_key=judge_llm_api_key,
             qualifire_api_key=qualifire_api_key,
+            job_id=job_id,
             deep_test=deep_test_mode,
             judge_model=judge_model,
         )
@@ -342,7 +344,7 @@ async def run_cli(args: Namespace) -> int:
             "scenarios_length": len(scenarios.scenarios),
         },
     )
-    results = await run_scenarios(
+    results, job_id = await run_scenarios(
         rogue_server_url=args.rogue_server_url,
         evaluated_agent_url=cli_input.evaluated_agent_url.encoded_string(),
         evaluated_agent_auth_type=cli_input.evaluated_agent_auth_type,
@@ -364,6 +366,7 @@ async def run_cli(args: Namespace) -> int:
         rogue_server_url=args.rogue_server_url,
         judge_llm=cli_input.judge_llm,
         results=results,
+        job_id=job_id,
         output_report_file=cli_input.output_report_file,
         judge_llm_api_key_secret=cli_input.judge_llm_api_key,
         deep_test_mode=cli_input.deep_test_mode,
