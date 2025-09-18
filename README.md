@@ -1,5 +1,7 @@
 # Rogue - The AI Agent Evaluator
 
+![](https://pixel.qualifire.ai/api/record/rogue)
+
 <div align="center">
 
 [![License: ELASTIC](https://img.shields.io/badge/License-elastic-yellow.svg)](https://www.elastic.co/licensing/elastic-license)
@@ -50,7 +52,6 @@ uvx rogue-ai ui
 uvx rogue-ai cli
 ```
 
-
 #### Option 2: Manual Installation
 
 1.  **Clone the repository:**
@@ -89,6 +90,7 @@ Rogue operates on a client-server architecture where the core evaluation logic r
 #### Default Behavior
 
 When you run `uvx rogue-ai` without any mode specified, it:
+
 1. Starts the Rogue server in the background
 2. Launches the TUI (Terminal User Interface) client
 
@@ -107,37 +109,44 @@ uvx rogue-ai
 #### Mode Arguments
 
 ##### Server Mode
+
 ```bash
 uvx rogue-ai server [OPTIONS]
 ```
 
 **Options:**
+
 - `--host HOST` - Host to run the server on (default: 127.0.0.1 or HOST env var)
 - `--port PORT` - Port to run the server on (default: 8000 or PORT env var)
 - `--debug` - Enable debug logging
 
 ##### TUI Mode
+
 ```bash
 uvx rogue-ai tui [OPTIONS]
 ```
 
 ##### Web UI Mode
+
 ```bash
 uvx rogue-ai ui [OPTIONS]
 ```
 
 **Options:**
+
 - `--rogue-server-url URL` - Rogue server URL (default: http://localhost:8000)
 - `--port PORT` - Port to run the UI on
 - `--workdir WORKDIR` - Working directory (default: ./.rogue)
 - `--debug` - Enable debug logging
 
 ##### CLI Mode
+
 ```bash
 uvx rogue-ai cli [OPTIONS]
 ```
 
 **Options:**
+
 - `--config-file FILE` - Path to config file
 - `--rogue-server-url URL` - Rogue server URL (default: http://localhost:8000)
 - `--evaluated-agent-url URL` - URL of the agent to evaluate
@@ -162,7 +171,6 @@ uvx rogue-ai ui
 ```
 
 Navigate to the URL displayed in your terminal (usually `http://127.0.0.1:7860`) to begin.
-
 
 ---
 
@@ -220,10 +228,11 @@ The CLI mode provides a **non-interactive** command-line interface for evaluatin
 The CLI mode requires the Rogue server to be running. You can either:
 
 1. **Start server separately:**
+
    ```bash
    # Terminal 1: Start the server
    uvx rogue-ai server
-   
+
    # Terminal 2: Run CLI evaluation
    uvx rogue-ai cli [OPTIONS]
    ```

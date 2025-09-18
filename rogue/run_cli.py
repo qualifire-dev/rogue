@@ -73,6 +73,14 @@ def set_cli_args(parser: ArgumentParser) -> None:
         action="store_true",
         help="Enable deep test mode",
     )
+
+    parser.add_argument(
+        "--qualifire-api-key",
+        required=False,
+        help="API key to use when reporting summary to Qualifire. "
+        "Can be left unset if env is used.",
+    )
+
     business_context_group = parser.add_mutually_exclusive_group(required=False)
     business_context_group.add_argument(
         "--business-context",
@@ -198,6 +206,12 @@ async def create_report(
         else None
     )
 
+    qualifire_api_key = (
+        qualifire_api_key_secret.get_secret_value()
+        if qualifire_api_key_secret
+        else None
+    )
+
     # Use SDK for summary generation (server-based)
     sdk_config = RogueClientConfig(
         base_url=rogue_server_url,
@@ -273,7 +287,7 @@ def merge_config_with_cli(
 
     # Set defaults for required fields that are missing
     if data.get("judge_llm") is None:
-        data["judge_llm"] = "openai/o4-mini"
+        data["judge_llm"] = "openai/gpt-5"
 
     logger.debug(f"Running with parameters: {data}")
 
@@ -374,5 +388,11 @@ async def run_cli(args: Namespace) -> int:
 
     console = Console()
     console.print(Markdown(report_summary))
+
+    if cli_input.qualifire_api_key is None:
+        console.print(
+            """[red]Qualifire API key is not set. This report will not persist, it if highly recommended set it using the --qualifire-api-key flag or the QUALIFIRE_API_KEY environment variable.[/red] """,  # noqa: E501
+        )
+        return 1
 
     return get_exit_code(results)
