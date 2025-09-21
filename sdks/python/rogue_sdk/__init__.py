@@ -71,4 +71,9 @@ __all__ = [
     "HealthResponse",
     "JobListResponse",
     "WebSocketMessage",
+    "StructuredSummary",
+    "SummaryGenerationRequest",
+    "SummaryGenerationResponse",
+    "ReportSummaryRequest",
+    "ReportSummaryResponse",
 ]
