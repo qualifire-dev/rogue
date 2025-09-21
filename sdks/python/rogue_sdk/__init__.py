@@ -74,6 +74,6 @@ __all__ = [
     "StructuredSummary",
     "SummaryGenerationRequest",
     "SummaryGenerationResponse",
-    "ReportSummaryRequest",
     "ReportSummaryResponse",
+    "ReportSummaryRequest",
 ]
