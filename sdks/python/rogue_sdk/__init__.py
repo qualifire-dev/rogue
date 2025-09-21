@@ -48,6 +48,8 @@ from .sdk import RogueSDK
 
 # All types
 from .types import *
+from . import types
+
 from .websocket import RogueWebSocketClient
 
 # Version
