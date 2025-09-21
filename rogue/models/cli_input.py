@@ -15,11 +15,11 @@ class CLIInput(BaseModel):
     evaluated_agent_credentials: SecretStr | None = None
     judge_llm: str
     judge_llm_api_key: SecretStr | None = None
+    qualifire_api_key: SecretStr | None = None
     input_scenarios_file: Path = workdir / "scenarios.json"
     output_report_file: Path = workdir / "report.md"
     business_context: str
     deep_test_mode: bool = False
-    qualifire_api_key: SecretStr | None = None
 
     def get_scenarios_from_file(self) -> Scenarios:
         if not self.input_scenarios_file.exists():

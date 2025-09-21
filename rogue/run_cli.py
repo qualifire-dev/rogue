@@ -182,7 +182,7 @@ async def _run_scenarios_with_sdk(
                 results.model_dump_json(indent=2, exclude_none=True),
                 encoding="utf-8",
             )
-            return results, job.job_id
+            return results, final_job.job_id
         else:
             logger.error("Scenario evaluation completed but no results found.")
             return None, None
@@ -196,11 +196,11 @@ async def create_report(
     judge_llm: str,
     results: EvaluationResults,
     output_report_file: Path,
+    job_id: str | None = None,
     judge_llm_api_key_secret: SecretStr | None = None,
     qualifire_api_key_secret: SecretStr | None = None,
     deep_test_mode: bool = False,
     judge_model: str | None = None,
-    job_id: str | None = None,
 ) -> str:
     judge_llm_api_key = (
         judge_llm_api_key_secret.get_secret_value()
@@ -227,9 +227,9 @@ async def create_report(
             model=judge_llm,
             api_key=judge_llm_api_key,
             qualifire_api_key=qualifire_api_key,
+            job_id=job_id,
             deep_test=deep_test_mode,
             judge_model=judge_model,
-            job_id=job_id,
         )
     except Exception as e:
         logger.exception("Failed to generate summary")
@@ -376,12 +376,12 @@ async def run_cli(args: Namespace) -> int:
         rogue_server_url=args.rogue_server_url,
         judge_llm=cli_input.judge_llm,
         results=results,
+        job_id=job_id,
         output_report_file=cli_input.output_report_file,
         judge_llm_api_key_secret=cli_input.judge_llm_api_key,
         deep_test_mode=cli_input.deep_test_mode,
         judge_model=cli_input.judge_llm,
         qualifire_api_key_secret=cli_input.qualifire_api_key,
-        job_id=job_id,
     )
 
     logger.info("Report saved", extra={"report_file": cli_input.output_report_file})
