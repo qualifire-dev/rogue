@@ -34,7 +34,7 @@ jobs:
         run: uv venv
 
       - name: Install rogue sdk
-        run: source .venv/bin/activate && uv pip install -e sdks/python
+        run: source .venv/bin/activate && uv pip install -e sdks/python --force-reinstall
           
       - name: Install rogue server
         run: source .venv/bin/activate && uv pip install -e .

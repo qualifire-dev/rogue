@@ -27,7 +27,7 @@ jobs:
         run: uv venv
 
       - name: Install rogue sdk
-        run: source .venv/bin/activate && uv pip install -e sdks/python
+        run: source .venv/bin/activate && uv pip install -e sdks/python --force-reinstall
 
       - name: Install rogue server
         run: source .venv/bin/activate && uv pip install -e .
@@ -57,7 +57,7 @@ jobs:
           curl --retry 10 --retry-delay 5 --retry-connrefused -s --fail -o /dev/null \
             http://localhost:8000/api/v1/health
           echo "🚀 Rogue server ready"
-          
+
           echo "🚀 Running rogue..."
           uv run -m rogue cli \
             --evaluated-agent-url http://localhost:10001 \
