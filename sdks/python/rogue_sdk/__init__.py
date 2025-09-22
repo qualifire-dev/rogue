@@ -55,11 +55,8 @@ from .websocket import RogueWebSocketClient
 # Version
 __version__ = "1.0.0"
 
-CONST_FROM_SDK = "CONST_FROM_SDK"  # Debugging
-
 # Default export
 __all__ = [
-    "CONST_FROM_SDK",  # Debugging
     "RogueSDK",
     "RogueHttpClient",
     "RogueWebSocketClient",

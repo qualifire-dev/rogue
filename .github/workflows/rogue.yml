@@ -39,6 +39,8 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           echo "🚀 Starting AI agent..."
+
+          # Not using uv because it will reinstall the sdk from pypi
           source .venv/bin/activate && python examples/tshirt_store_agent --host 0.0.0.0 --port 10001 &
           AGENT_PID=$!
           echo "Agent started with PID: $AGENT_PID"
@@ -49,6 +51,7 @@ jobs:
             http://localhost:10001/.well-known/agent.json
 
           echo "🚀 Starting rogue server..."
+          # Not using uv because it will reinstall the sdk from pypi
           source .venv/bin/activate && python -m rogue server --host 0.0.0.0 --port 8000 &
           ROGUE_PID=$!
           echo "Rogue server started with PID: $ROGUE_PID"
@@ -60,6 +63,7 @@ jobs:
           echo "🚀 Rogue server ready"
 
           echo "🚀 Running rogue..."
+          # Not using uv because it will reinstall the sdk from pypi
           source .venv/bin/activate && python -m rogue cli \
             --evaluated-agent-url http://localhost:10001 \
             --judge-llm openai/o4-mini \
