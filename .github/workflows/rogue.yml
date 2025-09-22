@@ -48,7 +48,7 @@ jobs:
             http://localhost:10001/.well-known/agent.json
 
           echo "🚀 Starting rogue server..."
-          uv run -m rogue server --host 0.0.0.0 --port 8000 &
+          source .venv/bin/activate && python -m rogue server --host 0.0.0.0 --port 8000 &
           ROGUE_PID=$!
           echo "Rogue server started with PID: $ROGUE_PID"
           trap 'echo "🛑 Stopping rogue server..."; kill $ROGUE_PID' EXIT
@@ -59,7 +59,7 @@ jobs:
           echo "🚀 Rogue server ready"
 
           echo "🚀 Running rogue..."
-          uv run -m rogue cli \
+          source .venv/bin/activate && python -m rogue cli \
             --evaluated-agent-url http://localhost:10001 \
             --judge-llm openai/o4-mini \
             --workdir './examples/tshirt_store_agent/.rogue'
