@@ -3582,7 +3582,7 @@ requires-dist = [
     { name = "python-dotenv", specifier = "==1.1.1" },
     { name = "requests", specifier = ">=2.32.4" },
     { name = "rich", specifier = ">=14.0.0" },
-    { name = "rogue-ai-sdk", specifier = ">=0.1.0" },
+    { name = "rogue-ai-sdk", specifier = ">=0.1.3" },
     { name = "uvicorn", specifier = ">=0.32.0" },
 ]
 
@@ -3609,7 +3609,7 @@ examples = [
 
 [[package]]
 name = "rogue-ai-sdk"
-version = "0.1.0"
+version = "0.1.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
@@ -3617,9 +3617,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b8/59/2f1ab358c3e860978832e0df489d82c5c21555218fc53792c0fe4e629253/rogue_ai_sdk-0.1.0.tar.gz", hash = "sha256:24a5ee52abbf38362137c3efacd847d3c1b9e5488f4e5e68907b75d67f8adb91", size = 49452, upload-time = "2025-09-03T09:31:07.684Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3b/74/793861d6440d73ffcbd9413bc48a06b0d141c1b6a78972fa5cdd20882d4c/rogue_ai_sdk-0.1.3.tar.gz", hash = "sha256:a52f58edd2a611faa1aebede8bd2168d20c6d462b299c570f21ec7c2b251b964", size = 50868, upload-time = "2025-09-22T08:49:11.941Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0e/dc/b45fd20575fce537944a1425ed2a1b9d766171150c78929309053e31e0cc/rogue_ai_sdk-0.1.0-py3-none-any.whl", hash = "sha256:5a7615da876c806f516af449fc270e2f21de63656e0aa3df5c891befe4ac011e", size = 18776, upload-time = "2025-09-03T09:31:06.255Z" },
+    { url = "https://files.pythonhosted.org/packages/39/98/1ad1f5b5bf09e85202a5a70e7c913e35ad1e0ac8212b37f7159260f8b738/rogue_ai_sdk-0.1.3-py3-none-any.whl", hash = "sha256:f71cd934f3818d2c5d69815b38df9504ea9c975427945764293240250fef3399", size = 20383, upload-time = "2025-09-22T08:49:10.722Z" },
 ]
 
 [[package]]
