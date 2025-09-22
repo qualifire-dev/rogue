@@ -39,7 +39,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           echo "🚀 Starting AI agent..."
-          uv run examples/tshirt_store_agent --host 0.0.0.0 --port 10001 &
+          source .venv/bin/activate && python examples/tshirt_store_agent --host 0.0.0.0 --port 10001 &
           AGENT_PID=$!
           echo "Agent started with PID: $AGENT_PID"
           trap 'echo "🛑 Stopping agent..."; kill $AGENT_PID' EXIT
