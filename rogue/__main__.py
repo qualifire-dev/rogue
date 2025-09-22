@@ -6,6 +6,7 @@ from pathlib import Path
 import platformdirs
 from dotenv import load_dotenv
 from loguru import logger
+from rogue_sdk import CONST_FROM_SDK  # Debugging
 
 from .common.logging.config import configure_logger
 from .common.tui_installer import RogueTuiInstaller
@@ -77,6 +78,8 @@ def parse_args() -> Namespace:
 
 
 def main() -> None:
+    print(CONST_FROM_SDK)  # Debugging
+
     args = parse_args()
 
     tui_mode = args.mode == "tui" or args.mode is None
