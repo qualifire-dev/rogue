@@ -62,6 +62,7 @@ class PartialCLIInput(BaseModel):
     input_scenarios_file: Path = None  # type: ignore # fixed in model_post_init
     output_report_file: Path = None  # type: ignore # fixed in model_post_init
     deep_test_mode: bool = False
+    qualifire_api_key: SecretStr | None = None
 
     def model_post_init(self, __context):
         # Set defaults based on workdir if not provided
