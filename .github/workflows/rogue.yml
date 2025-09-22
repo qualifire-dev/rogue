@@ -30,7 +30,7 @@ jobs:
         run: source .venv/bin/activate && uv pip install -e .
       
       - name: Install rogue sdk
-        run: source .venv/bin/activate && uv pip uninstall -y rogue-ai-sdk && uv pip install -e sdks/python --force-reinstall
+        run: source .venv/bin/activate && uv pip uninstall rogue-ai-sdk && uv pip install -e sdks/python --force-reinstall
 
       - name: Run rogue
         shell: bash
