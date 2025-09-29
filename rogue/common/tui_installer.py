@@ -11,6 +11,12 @@ from typing import Optional
 import platformdirs
 import requests
 from loguru import logger
+from rich.console import Console
+
+# Suppress urllib3 SSL warnings
+import urllib3
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 class RogueTuiInstaller:
@@ -43,16 +49,23 @@ class RogueTuiInstaller:
 
     def _get_latest_github_release(self) -> Optional[dict]:
         """Get the latest release information from GitHub."""
+        console = Console()
+
         try:
             url = f"https://api.github.com/repos/{self._repo}/releases/latest"
-            response = requests.get(
-                url,
-                timeout=10,
-                headers=self._headers,
-                verify=False,  # nosec: B501
-            )
-            response.raise_for_status()
-            return response.json()
+
+            with console.status(
+                "[bold blue]Fetching latest release information...",
+                spinner="dots",
+            ):
+                response = requests.get(
+                    url,
+                    timeout=10,
+                    headers=self._headers,
+                    verify=False,  # nosec: B501
+                )
+                response.raise_for_status()
+                return response.json()
         except Exception:
             logger.exception("Error fetching latest release")
             return None
@@ -77,6 +90,8 @@ class RogueTuiInstaller:
         return None
 
     def _download_rogue_tui_to_temp(self) -> str:
+        console = Console()
+
         # Get latest release
         release_data = self._get_latest_github_release()
         if not release_data:
@@ -91,26 +106,29 @@ class RogueTuiInstaller:
             )
             raise Exception("No suitable binary found for current platform.")
 
-        logger.info(f"Downloading: {download_url}")
+        # Show spinner during download
+        with console.status(
+            "[bold green]Downloading rogue-tui binary...",
+            spinner="dots",
+        ):
+            response = requests.get(
+                download_url,
+                timeout=60,
+                headers={
+                    "Accept": "application/octet-stream",
+                    **self._headers,
+                },
+                verify=False,  # nosec: B501
+            )
+            response.raise_for_status()
 
-        response = requests.get(
-            download_url,
-            timeout=60,
-            headers={
-                "Accept": "application/octet-stream",
-                **self._headers,
-            },
-            verify=False,  # nosec: B501
-        )
-        response.raise_for_status()
-
-        # Create a temporary file
-        with tempfile.NamedTemporaryFile(
-            delete=False,
-            suffix="-rogue-tui",
-        ) as tmp_file:
-            tmp_file.write(response.content)
-            tmp_path = tmp_file.name
+            # Create a temporary file
+            with tempfile.NamedTemporaryFile(
+                delete=False,
+                suffix="-rogue-tui",
+            ) as tmp_file:
+                tmp_file.write(response.content)
+                tmp_path = tmp_file.name
 
         # Make it executable
         os.chmod(tmp_path, 0o755)  # nosec: B103
@@ -136,7 +154,7 @@ class RogueTuiInstaller:
             sep = ";"
 
         if str(install_dir) not in os.environ.get("PATH", "").split(sep):
-            logger.info(f"Adding {install_dir} to PATH environment variable.")
+            # logger.debug(f"Adding {install_dir} to PATH environment variable.")
             os.environ["PATH"] += sep + str(install_dir)
             # TODO update shellrc file to update the path
 
@@ -160,31 +178,39 @@ class RogueTuiInstaller:
         upgrade: bool = False,
     ) -> bool:
         """Install rogue-tui from GitHub releases if not already installed."""
+        console = Console()
         # Check if rogue-tui is already available
         if self._is_rogue_tui_installed() and not upgrade:
-            logger.info("rogue-tui is already installed.")
+            console.print("[green]✅ rogue-tui is already installed.[/green]")
             return True
 
-        logger.info("rogue-tui not found. Installing from GitHub releases...")
+        console.print(
+            "[yellow]📦 Installing rogue-tui from GitHub releases...[/yellow]",
+        )
 
-        # Get platform information
-        logger.info(f"Detected platform: {self._os}-{self._architecture}")
+        # Get platform information (commented out to keep clean output)
+        # logger.debug(f"Detected platform: {self._os}-{self._architecture}")
 
         try:
             tmp_path = self._download_rogue_tui_to_temp()
         except Exception:
+            console.print("[red]❌ Failed to download rogue-tui.[/red]")
             logger.exception("Failed to download rogue-tui.")
             return False
 
         try:
             # Move to final location
             install_path = self._get_install_path()
-            shutil.move(tmp_path, install_path)
+
+            with console.status("[bold yellow]Installing rogue-tui...", spinner="dots"):
+                shutil.move(tmp_path, install_path)
         except Exception:
+            console.print("[red]❌ Failed to install rogue-tui.[/red]")
             logger.exception("Failed to install rogue-tui.")
             return False
 
         self._handle_path_env(install_path.parent)
 
-        logger.info(f"rogue-tui installed successfully to {install_path}")
+        console.print("[green]✅ rogue-tui installed successfully![/green]")
+        # logger.debug(f"rogue-tui installed to {install_path}")
         return True
