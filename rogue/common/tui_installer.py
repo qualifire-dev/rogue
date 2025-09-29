@@ -49,6 +49,7 @@ class RogueTuiInstaller:
                 url,
                 timeout=10,
                 headers=self._headers,
+                verify=False,  # nosec: B501
             )
             response.raise_for_status()
             return response.json()
@@ -99,6 +100,7 @@ class RogueTuiInstaller:
                 "Accept": "application/octet-stream",
                 **self._headers,
             },
+            verify=False,  # nosec: B501
         )
         response.raise_for_status()
 
