@@ -1,5 +1,6 @@
 import asyncio
 import json
+import subprocess  # nosec: B404
 import sys
 from argparse import ArgumentParser, Namespace
 from datetime import datetime, timedelta
@@ -12,6 +13,7 @@ from dotenv import load_dotenv
 from loguru import logger
 from rich.console import Console
 from rich.panel import Panel
+from rich.prompt import Confirm
 from rich.text import Text
 
 from .common.logging.config import configure_logger
@@ -265,7 +267,7 @@ def _is_newer_version(latest: str, current: str) -> bool:
 
 
 def _show_update_prompt(latest_version: str) -> None:
-    """Display the update prompt with rich formatting."""
+    """Display the update prompt with rich formatting and interactive option."""
     console = Console()
 
     # Create the update message
@@ -277,8 +279,10 @@ def _show_update_prompt(latest_version: str) -> None:
     content.append(f"{__version__}\n", style="red")
     content.append("Latest version:  ", style="dim")
     content.append(f"{latest_version}\n\n", style="green bold")
-    content.append("To update, run: ", style="dim")
-    content.append("uvx --force rogue-ai", style="cyan bold")
+    content.append("To update manually, run: ", style="dim")
+    content.append("uv tool upgrade rogue-ai", style="cyan bold")
+    content.append(" or ", style="dim")
+    content.append("uvx --refresh rogue-ai", style="cyan bold")
 
     # Create a panel with the update message
     panel = Panel(
@@ -291,7 +295,93 @@ def _show_update_prompt(latest_version: str) -> None:
     # Print with some spacing
     console.print()
     console.print(panel)
+
+    # Ask user if they want to update now
+    try:
+        should_update = Confirm.ask(
+            "[bold cyan]Would you like to update now?[/bold cyan]",
+            default=True,
+        )
+
+        if should_update:
+            _run_update_command()
+        else:
+            console.print(
+                "[dim]Update skipped. Run 'uv tool upgrade rogue-ai' or "
+                "'uvx --refresh rogue-ai' later to update.[/dim]",
+            )
+    except (KeyboardInterrupt, EOFError):
+        # Handle Ctrl+C or input interruption gracefully
+        console.print("\n[dim]Update skipped.[/dim]")
+
     console.print()
+
+
+def _run_update_command() -> None:
+    """Execute the appropriate update command based on installation method."""
+    console = Console()
+
+    try:
+        console.print("[yellow]Updating rogue-ai...[/yellow]")
+        console.print(
+            "[dim]This may take a few minutes to download and install "
+            "dependencies...[/dim]",
+        )
+
+        # First, try to upgrade using uv tool
+        # (for users who installed with uv tool install)
+        result = subprocess.run(
+            ["uv", "tool", "install", "-U", "rogue-ai"],
+            capture_output=True,
+            text=True,
+            timeout=600,  # 10 minute timeout for the update
+        )  # nosec: B607 B603
+
+        # If that fails because it's not installed as a tool, try uvx method
+        if result.returncode != 0 and "is not installed" in result.stderr:
+            console.print("[dim]Trying alternative update method...[/dim]")
+            # For uvx installations, we need to reinstall
+            result = subprocess.run(  # nosec: B607 B603
+                ["uvx", "--refresh", "rogue-ai", "--version"],
+                capture_output=True,
+                text=True,
+                timeout=600,  # 10 minute timeout for the update
+            )
+
+        if result.returncode == 0:
+            # install TUI
+            RogueTuiInstaller().install_rogue_tui(
+                upgrade=True,
+            )
+
+            console.print("[bold green]✅ Update completed successfully![/bold green]")
+            console.print(
+                "[dim]Restart any running rogue-ai processes to use the "
+                "new version.[/dim]",
+            )
+        else:
+            console.print("[bold red]❌ Update failed![/bold red]")
+            if result.stderr:
+                console.print(f"[red]Error: {result.stderr.strip()}[/red]")
+            console.print(
+                "[dim]Please try running 'uv tool upgrade rogue-ai' or "
+                "'uvx --refresh rogue-ai' manually.[/dim]",
+            )
+    except subprocess.TimeoutExpired:
+        console.print("[bold red]❌ Update timed out after 10 minutes![/bold red]")
+        console.print(
+            "[dim]This may indicate a network issue. Please try running "
+            "'uv tool upgrade rogue-ai' or 'uvx --refresh rogue-ai' manually.[/dim]",
+        )
+    except FileNotFoundError:
+        console.print("[bold red]❌ uv command not found![/bold red]")
+        console.print("[dim]Please ensure uv is installed and in your PATH.[/dim]")
+    except Exception as e:
+        console.print(f"[bold red]❌ Update failed: {e}[/bold red]")
+        console.print(
+            "[dim]Please try running 'uv tool upgrade rogue-ai' or "
+            "'uvx --refresh rogue-ai' manually.[/dim]",
+        )
 
 
 if __name__ == "__main__":
