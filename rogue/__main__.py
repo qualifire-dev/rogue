@@ -1,11 +1,18 @@
 import asyncio
+import json
 import sys
 from argparse import ArgumentParser, Namespace
+from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any, Dict, Optional
 
 import platformdirs
+import requests
 from dotenv import load_dotenv
 from loguru import logger
+from rich.console import Console
+from rich.panel import Panel
+from rich.text import Text
 
 from .common.logging.config import configure_logger
 from .common.tui_installer import RogueTuiInstaller
@@ -154,5 +161,139 @@ def main() -> None:
         raise ValueError(f"Unknown mode: {args.mode}")
 
 
+def check_for_updates() -> None:
+    """
+    Check for available updates and prompt user if a newer version is available.
+    Similar to oh-my-zsh update experience.
+    """
+    try:
+        # Don't check for updates if we've checked recently
+        cache_info = _get_update_cache()
+        if _should_skip_update_check(cache_info):
+            return
+
+        # Get latest version from PyPI
+        latest_version = _get_latest_version_from_pypi()
+        if not latest_version:
+            return
+
+        # Save the check info
+        _save_update_cache(latest_version)
+
+        # Compare versions and show update prompt if needed
+        if _is_newer_version(latest_version, __version__):
+            _show_update_prompt(latest_version)
+    except Exception:
+        # Silently handle any errors - update checking shouldn't break the app
+        logger.debug("Error checking for updates", exc_info=True)
+
+
+def _get_update_cache() -> Dict[str, Any]:
+    """Get cached update information."""
+    cache_file = platformdirs.user_cache_path(appname="rogue") / "update_cache.json"
+
+    if not cache_file.exists():
+        return {}
+
+    try:
+        with open(cache_file, "r") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, IOError):
+        return {}
+
+
+def _should_skip_update_check(cache_info: Dict[str, Any]) -> bool:
+    """Check if we should skip the update check based on cache."""
+    if not cache_info:
+        return False
+
+    last_check = cache_info.get("last_check")
+    if not last_check:
+        return False
+
+    # Skip if we've checked in the last 24 hours
+    last_check_time = datetime.fromisoformat(last_check)
+    return datetime.now() - last_check_time < timedelta(hours=24)
+
+
+def _get_latest_version_from_pypi() -> Optional[str]:
+    """Fetch the latest version from PyPI."""
+    try:
+        response = requests.get(
+            "https://pypi.org/pypi/rogue-ai/json",
+            timeout=5,
+            headers={"User-Agent": f"rogue-ai/{__version__}"},
+        )
+        response.raise_for_status()
+
+        data = response.json()
+        return data["info"]["version"]
+    except (requests.RequestException, KeyError, json.JSONDecodeError):
+        return None
+
+
+def _save_update_cache(latest_version: str) -> None:
+    """Save update check information to cache."""
+    cache_file = platformdirs.user_cache_path(appname="rogue") / "update_cache.json"
+    cache_file.parent.mkdir(parents=True, exist_ok=True)
+
+    cache_data = {
+        "last_check": datetime.now().isoformat(),
+        "latest_version": latest_version,
+        "current_version": __version__,
+    }
+
+    try:
+        with open(cache_file, "w") as f:
+            json.dump(cache_data, f, indent=2)
+    except IOError:
+        pass  # Silently handle write errors
+
+
+def _is_newer_version(latest: str, current: str) -> bool:
+    """Compare version strings to determine if latest is newer than current."""
+
+    def version_tuple(v: str) -> tuple:
+        """Convert version string to tuple for comparison."""
+        try:
+            return tuple(map(int, v.split(".")))
+        except ValueError:
+            # Handle non-standard version formats gracefully
+            return (0, 0, 0)
+
+    return version_tuple(latest) > version_tuple(current)
+
+
+def _show_update_prompt(latest_version: str) -> None:
+    """Display the update prompt with rich formatting."""
+    console = Console()
+
+    # Create the update message
+    title = Text("🚀 Update Available!", style="bold yellow")
+
+    content = Text()
+    content.append("A new version of rogue-ai is available!\n\n", style="")
+    content.append("Current version: ", style="dim")
+    content.append(f"{__version__}\n", style="red")
+    content.append("Latest version:  ", style="dim")
+    content.append(f"{latest_version}\n\n", style="green bold")
+    content.append("To update, run: ", style="dim")
+    content.append("uvx --force rogue-ai", style="cyan bold")
+
+    # Create a panel with the update message
+    panel = Panel(
+        content,
+        title=title,
+        border_style="yellow",
+        padding=(1, 2),
+    )
+
+    # Print with some spacing
+    console.print()
+    console.print(panel)
+    console.print()
+
+
 if __name__ == "__main__":
+    check_for_updates()
     main()
