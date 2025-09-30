@@ -182,7 +182,7 @@ def run_update_command() -> None:
     console = Console()
 
     try:
-        console.print(
+        console.status(
             "[yellow]Updating rogue-ai...[/yellow]",
             spinner="dots",
         )
