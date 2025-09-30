@@ -6,9 +6,11 @@ versions and allow users to update immediately.
 """
 
 import json
+import shutil
 import subprocess  # nosec: B404
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
+from packaging import version
 
 import platformdirs
 import requests
@@ -118,16 +120,11 @@ def _save_update_cache(latest_version: str, current_version: str) -> None:
 
 def _is_newer_version(latest: str, current: str) -> bool:
     """Compare version strings to determine if latest is newer than current."""
-
-    def version_tuple(v: str) -> tuple:
-        """Convert version string to tuple for comparison."""
-        try:
-            return tuple(map(int, v.split(".")))
-        except ValueError:
-            # Handle non-standard version formats gracefully
-            return (0, 0, 0)
-
-    return version_tuple(latest) > version_tuple(current)
+    try:
+        return version.parse(latest) > version.parse(current)
+    except version.InvalidVersion:
+        # Handle non-standard version formats gracefully
+        return False
 
 
 def _show_update_prompt(latest_version: str, current_version: str) -> None:
@@ -191,6 +188,15 @@ def run_update_command() -> None:
             "[dim]This may take a few minutes to download and install "
             "dependencies...[/dim]",
         )
+
+        if not shutil.which("uv"):
+            console.print(
+                "[dim]uv not found. please update manually using[/dim]"
+                "[dim]- uv tool upgrade rogue-ai[/dim]"
+                "[dim]or[/dim]"
+                "[dim]- pip install -e . (if you cloned the repo)[/dim]",
+            )
+            return
 
         # First, try to upgrade using uv tool
         # (for users who installed with uv tool install)

@@ -183,9 +183,6 @@ class RogueTuiInstaller:
             "[yellow]📦 Installing rogue-tui from GitHub releases...[/yellow]",
         )
 
-        # Get platform information (commented out to keep clean output)
-        # logger.debug(f"Detected platform: {self._os}-{self._architecture}")
-
         try:
             tmp_path = self._download_rogue_tui_to_temp()
         except Exception:
