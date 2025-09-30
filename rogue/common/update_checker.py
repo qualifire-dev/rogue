@@ -88,15 +88,14 @@ def _get_latest_version_from_pypi() -> Optional[str]:
         response = requests.get(
             "https://pypi.org/pypi/rogue-ai/json",
             timeout=5,
-            headers={"User-Agent": "rogue-ai/update-checker"},
             verify=False,  # nosec: B501
         )
         response.raise_for_status()
 
         data = response.json()
-        return data["info"]["version"]
+        return data.get("info", {}).get("version")
 
-    except (requests.RequestException, KeyError, json.JSONDecodeError):
+    except Exception:
         return None
 
 
@@ -183,7 +182,10 @@ def run_update_command() -> None:
     console = Console()
 
     try:
-        console.print("[yellow]Updating rogue-ai...[/yellow]")
+        console.print(
+            "[yellow]Updating rogue-ai...[/yellow]",
+            spinner="dots",
+        )
         console.print(
             "[dim]This may take a few minutes to download and install "
             "dependencies...[/dim]",

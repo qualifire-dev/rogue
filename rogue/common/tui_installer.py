@@ -149,7 +149,6 @@ class RogueTuiInstaller:
             sep = ";"
 
         if str(install_dir) not in os.environ.get("PATH", "").split(sep):
-            # logger.debug(f"Adding {install_dir} to PATH environment variable.")
             os.environ["PATH"] += sep + str(install_dir)
             # TODO update shellrc file to update the path
 
