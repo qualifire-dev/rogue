@@ -13,11 +13,6 @@ import requests
 from loguru import logger
 from rich.console import Console
 
-# Suppress urllib3 SSL warnings
-import urllib3
-
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
 
 class RogueTuiInstaller:
     def __init__(self, repo: str = "qualifire-dev/rogue"):
