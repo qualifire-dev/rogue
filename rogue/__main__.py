@@ -9,10 +9,13 @@ from loguru import logger
 
 from .common.logging.config import configure_logger
 from .common.tui_installer import RogueTuiInstaller
+from .common.update_checker import check_for_updates
 from .run_cli import run_cli, set_cli_args
 from .run_server import run_server, set_server_args
 from .run_tui import run_rogue_tui
 from .run_ui import run_ui, set_ui_args
+from . import __version__
+
 
 load_dotenv()
 
@@ -31,6 +34,13 @@ def common_parser() -> ArgumentParser:
         default=False,
         help="Enable debug logging",
     )
+    parent_parser.add_argument(
+        "--version",
+        action="store_true",
+        default=False,
+        help="Show version",
+    )
+
     return parent_parser
 
 
@@ -78,6 +88,10 @@ def parse_args() -> Namespace:
 
 def main() -> None:
     args = parse_args()
+
+    if args.version:
+        print(f"Rogue AI version: {__version__}")
+        sys.exit(0)
 
     tui_mode = args.mode == "tui" or args.mode is None
 
@@ -142,4 +156,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    check_for_updates(__version__)
     main()
