@@ -196,7 +196,7 @@ def run_update_command() -> None:
                 "[dim]uv not found. please update manually using[/dim]"
                 "[dim]- uv tool upgrade rogue-ai[/dim]"
                 "[dim]or[/dim]"
-                "[dim]- pip install -e . (if you cloned the repo)[/dim]",
+                "[dim]- pip install rogue-ai -U[/dim]",
             )
             return
 
