@@ -182,10 +182,6 @@ def run_update_command() -> None:
     console = Console()
 
     try:
-        console.status(
-            "[yellow]Updating rogue-ai...[/yellow]",
-            spinner="dots",
-        )
         console.print(
             "[dim]This may take a few minutes to download and install "
             "dependencies...[/dim]",
@@ -200,32 +196,33 @@ def run_update_command() -> None:
             )
             return
 
-        # First, try to upgrade using uv tool
-        # (for users who installed with uv tool install)
-        result = subprocess.run(  # nosec: B607 B603
-            ["uv", "tool", "install", "-U", "rogue-ai"],
-            capture_output=True,
-            text=True,
-            timeout=600,  # 10 minute timeout for the update
-        )
-
-        # If that fails because it's not installed as a tool, try uvx method
-        if result.returncode != 0 and "is not installed" in result.stderr:
-            console.print("[dim]Trying alternative update method...[/dim]")
-            # For uvx installations, we need to reinstall
+        with console.status("[yellow]Updating rogue-ai...[/yellow]", spinner="dots"):
+            # First, try to upgrade using uv tool
+            # (for users who installed with uv tool install)
             result = subprocess.run(  # nosec: B607 B603
-                ["uvx", "--refresh", "rogue-ai", "--version"],
+                ["uv", "tool", "install", "-U", "rogue-ai"],
                 capture_output=True,
                 text=True,
                 timeout=600,  # 10 minute timeout for the update
             )
 
-        if result.returncode == 0:
-            # Install TUI
-            RogueTuiInstaller().install_rogue_tui(
-                upgrade=True,
-            )
+            # If that fails because it's not installed as a tool, try uvx method
+            if result.returncode != 0 and "is not installed" in result.stderr:
+                # For uvx installations, we need to reinstall
+                result = subprocess.run(  # nosec: B607 B603
+                    ["uvx", "--refresh", "rogue-ai", "--version"],
+                    capture_output=True,
+                    text=True,
+                    timeout=600,  # 10 minute timeout for the update
+                )
 
+            if result.returncode == 0:
+                # Install TUI
+                RogueTuiInstaller().install_rogue_tui(
+                    upgrade=True,
+                )
+
+        if result.returncode == 0:
             console.print("[bold green]✅ Update completed successfully![/bold green]")
             console.print(
                 "[dim]Restart any running rogue-ai processes to use the "
