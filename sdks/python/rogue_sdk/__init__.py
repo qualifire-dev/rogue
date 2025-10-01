@@ -40,6 +40,8 @@ Example:
     ```
 """
 
+from . import types
+
 # HTTP and WebSocket clients
 from .client import RogueHttpClient
 
@@ -48,8 +50,6 @@ from .sdk import RogueSDK
 
 # All types
 from .types import *
-from . import types
-
 from .websocket import RogueWebSocketClient
 
 # Version
