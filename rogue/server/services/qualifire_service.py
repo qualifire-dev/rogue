@@ -28,7 +28,6 @@ class QualifireService:
             headers={"X-qualifire-key": request.qualifire_api_key},
             json=api_evaluation_result.model_dump(mode="json"),
             timeout=300,
-            verify=False,  # nosec: B501
         )
 
         if not response.ok:

@@ -4,7 +4,8 @@ This file provides instructions for AI agents working in this repository.
 
 ## Dependencies
 
-- **Install**: `uv sync --dev --examples`
+- **Install**: `uv sync --all-groups`
+- **Install (specific groups)**: `uv sync --group dev --group examples`
 
 ## Build, Lint, and Test
 
@@ -42,10 +43,14 @@ This file provides instructions for AI agents working in this repository.
 
 - **CLI**: `uv run python -m rogue`
 - **UI**: `uv run gradio rogue/ui/app.py`
+- **With Example Agent**: `uv run rogue-ai --example=tshirt_store` (starts rogue with the t-shirt store example agent running on port 10001)
 
 ## Running the examples
 
 - **T-Shirt Store**: `uv run python -m examples.tshirt_store_agent`
+- **T-Shirt Store (via script)**: `uv run rogue-ai-example-tshirt` (or `uvx rogue-ai-example-tshirt` if installed)
+- **T-Shirt Store (all-in-one)**: `uv run rogue-ai --example=tshirt_store` (starts rogue with the agent running automatically)
+  - Custom host/port: `uv run rogue-ai --example=tshirt_store --example-host localhost --example-port 10001`
 - **T-Shirt Store (LangGraph)**: `uv run python -m examples.tshirt_store_langgraph_agent`
 
 ## Running the evaluator

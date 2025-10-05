@@ -202,6 +202,7 @@ type Model struct {
 	eventsViewport   components.Viewport
 	summaryViewport  components.Viewport
 	reportViewport   components.Viewport
+	helpViewport     components.Viewport
 	focusedViewport  int  // 0 = events, 1 = summary
 	eventsAutoScroll bool // Track if events should auto-scroll to bottom
 
@@ -273,7 +274,7 @@ func (a *App) Run() error {
 			Theme:     "aura",
 			APIKeys:   make(map[string]string),
 		},
-		version:        "v0.1.5",
+		version:        "v0.1.6",
 		commandInput:   components.NewCommandInput(),
 		scenarioEditor: components.NewScenarioEditor(),
 
@@ -286,6 +287,7 @@ func (a *App) Run() error {
 		eventsViewport:   components.NewViewport(1, 80, 20),
 		summaryViewport:  components.NewViewport(2, 80, 20),
 		reportViewport:   components.NewViewport(3, 80, 15),
+		helpViewport:     components.NewViewport(4, 80, 20),
 		focusedViewport:  0,    // Start with events viewport focused
 		eventsAutoScroll: true, // Start with auto-scroll enabled
 	}
@@ -423,6 +425,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.eventsViewport.SetSize(viewportWidth, viewportHeight)
 		m.summaryViewport.SetSize(viewportWidth, viewportHeight)
 		m.reportViewport.SetSize(viewportWidth, viewportHeight)
+		m.helpViewport.SetSize(viewportWidth, viewportHeight)
 		return m, nil
 
 	case AutoRefreshMsg:
@@ -1222,6 +1225,28 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					cmds = append(cmds, cmd)
 				}
 				m.reportViewport = *reportViewportPtr
+				return m, tea.Batch(cmds...)
+			}
+		}
+
+		// Help screen keys
+		if m.currentScreen == HelpScreen {
+			switch msg.String() {
+			case "home":
+				// Go to top of help content
+				m.helpViewport.GotoTop()
+				return m, nil
+			case "end":
+				// Go to bottom of help content
+				m.helpViewport.GotoBottom()
+				return m, nil
+			default:
+				// Update the help viewport for scrolling
+				helpViewportPtr, cmd := m.helpViewport.Update(msg)
+				if cmd != nil {
+					cmds = append(cmds, cmd)
+				}
+				m.helpViewport = *helpViewportPtr
 				return m, tea.Batch(cmds...)
 			}
 		}

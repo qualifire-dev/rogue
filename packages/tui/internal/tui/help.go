@@ -7,35 +7,33 @@ import (
 	"github.com/rogue/tui/internal/theme"
 )
 
-// RenderHelp renders the help screen
+// RenderHelp renders the help screen with viewport for scrollable content
 func (m Model) RenderHelp() string {
 	t := theme.CurrentTheme()
 
-	// Main container style
-	containerStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(t.Border()).
-		BorderBackground(t.BackgroundPanel()).
-		Padding(1, 2).
-		Width(m.width - 4).
-		Height(m.height - 4).
-		Background(t.BackgroundPanel())
+	// Main container style with full width and height background
+	mainStyle := lipgloss.NewStyle().
+		Width(m.width).
+		Height(m.height - 1).
+		Background(t.Background())
 
 	// Title style
 	titleStyle := lipgloss.NewStyle().
 		Foreground(t.Primary()).
-		Background(t.BackgroundPanel()).
+		Background(t.Background()).
 		Bold(true).
+		Width(m.width).
 		Align(lipgloss.Center).
-		Width(m.width - 8)
+		Padding(1, 0)
+
+	header := titleStyle.Render("❓ Rogue")
 
 	// Section header style
 	sectionHeaderStyle := lipgloss.NewStyle().
 		Foreground(t.Accent()).
 		Background(t.BackgroundPanel()).
 		Bold(true).
-		MarginTop(1).
-		MarginBottom(1)
+		MarginTop(1)
 
 	// Content style
 	contentStyle := lipgloss.NewStyle().
@@ -60,11 +58,8 @@ func (m Model) RenderHelp() string {
 		Background(t.BackgroundPanel()).
 		Bold(true)
 
-	// Build content sections
+	// Build content sections for viewport
 	var sections []string
-
-	// Title
-	sections = append(sections, titleStyle.Render("❓ Rogue"))
 
 	// About section
 	sections = append(sections, sectionHeaderStyle.Render("📖 About Rogue"))
@@ -117,15 +112,74 @@ Key Features:
 4. View Report - Review detailed Markdown report with findings and recommendations`
 	sections = append(sections, contentStyle.Render(workflowText))
 
-	// Footer
-	footerStyle := lipgloss.NewStyle().
-		Foreground(t.TextMuted()).
-		Background(t.BackgroundPanel()).
-		Align(lipgloss.Center).
-		MarginTop(2).
-		Width(m.width - 8)
-	sections = append(sections, footerStyle.Render("Press Esc to return to dashboard"))
+	helpContent := strings.Join(sections, "\n")
 
-	content := strings.Join(sections, "\n")
-	return containerStyle.Render(content)
+	// Calculate viewport dimensions
+	viewportWidth := m.width - 8
+	viewportHeight := m.height - 6
+
+	// Create a temporary copy of the viewport to avoid modifying the original
+	viewport := m.helpViewport
+	viewport.SetSize(viewportWidth-4, viewportHeight-4)
+	viewport.SetContent(helpContent)
+
+	// Style the viewport with border
+	viewportStyle := lipgloss.NewStyle().
+		Height(viewportHeight).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(t.Border()).
+		BorderBackground(t.BackgroundPanel()).
+		Background(t.BackgroundPanel())
+
+	// Apply viewport styling
+	viewport.Style = lipgloss.NewStyle().
+		Foreground(t.Text()).
+		Background(t.BackgroundPanel()).
+		Width(viewportWidth-4).
+		Height(viewportHeight-4).
+		Padding(1, 2)
+
+	// Help text style
+	helpStyle := lipgloss.NewStyle().
+		Foreground(t.TextMuted()).
+		Background(t.Background()).
+		Width(m.width).
+		Align(lipgloss.Center).
+		Padding(0, 1)
+
+	// Include scroll indicators in help text
+	scrollInfo := ""
+	if !viewport.AtTop() || !viewport.AtBottom() {
+		scrollInfo = "↑↓ Scroll   "
+	}
+	helpText := helpStyle.Render(scrollInfo + "Esc Back to Dashboard")
+
+	// Create the viewport content area
+	viewportContent := viewportStyle.Render(viewport.View())
+
+	// Center the viewport in the available space
+	contentArea := lipgloss.NewStyle().
+		Width(m.width).
+		Height(viewportHeight).
+		Background(t.Background())
+
+	centeredViewport := contentArea.Render(
+		lipgloss.Place(
+			m.width,
+			viewportHeight,
+			lipgloss.Center,
+			lipgloss.Top,
+			viewportContent,
+			lipgloss.WithWhitespaceStyle(lipgloss.NewStyle().Background(t.Background())),
+		),
+	)
+
+	// Combine all sections
+	fullLayout := lipgloss.JoinVertical(lipgloss.Left,
+		header,
+		centeredViewport,
+		helpText,
+	)
+
+	return mainStyle.Render(fullLayout)
 }

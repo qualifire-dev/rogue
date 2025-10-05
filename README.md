@@ -178,12 +178,36 @@ Navigate to the URL displayed in your terminal (usually `http://127.0.0.1:7860`)
 
 This repository includes a simple example agent that sells T-shirts. You can use it to see Rogue in action.
 
-1. **Install exmaple dependencies:**
+### Option 1: All-in-One (Recommended)
+
+The easiest way to try Rogue with the example agent is to use the `--example` flag, which starts both Rogue and the example agent automatically:
+
+```bash
+uvx rogue-ai --example=tshirt_store
+```
+
+This will:
+
+- Start the T-Shirt Store agent on `http://localhost:10001`
+- Launch Rogue with the TUI interface
+- Automatically clean up when you exit
+
+You can customize the host and port:
+
+```bash
+uvx rogue-ai --example=tshirt_store --example-host localhost --example-port 10001
+```
+
+### Option 2: Manual Setup
+
+If you prefer to run the example agent separately:
+
+1. **Install example dependencies:**
 
    If you are using uv:
 
    ```bash
-    uv sync --group examples
+   uv sync --group examples
    ```
 
    or, if you are using pip:
@@ -197,13 +221,19 @@ This repository includes a simple example agent that sells T-shirts. You can use
    If you are using uv:
 
    ```bash
-   uv run examples/tshirt_store_agent
+   uv run python -m examples.tshirt_store_agent
    ```
 
-   If not:
+   Or using the script command:
 
    ```bash
-   python examples/tshirt_store_agent
+   uv run rogue-ai-example-tshirt
+   ```
+
+   Or if installed:
+
+   ```bash
+   uvx rogue-ai-example-tshirt
    ```
 
    This will start the agent on `http://localhost:10001`.
