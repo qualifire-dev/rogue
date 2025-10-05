@@ -481,16 +481,22 @@ func (sdk *RogueSDK) GenerateSummary(
 	}
 
 	// Prepare summary request - match server's SummaryGenerationRequest format
+
 	summaryReq := map[string]interface{}{
 		"model":   model,
 		"api_key": apiKey,
 		"results": map[string]interface{}{
 			"results": job.Results,
 		},
-		"job_id":            jobID,
-		"qualifire_api_key": *qualifireAPIKey,
-		"deep_test":         deepTest,
-		"judge_model":       judgeModel,
+		"job_id": jobID,
+		"qualifire_api_key": func() string {
+			if qualifireAPIKey == nil {
+				return ""
+			}
+			return *qualifireAPIKey
+		}(),
+		"deep_test":   deepTest,
+		"judge_model": judgeModel,
 	}
 
 	body, err := json.Marshal(summaryReq)
