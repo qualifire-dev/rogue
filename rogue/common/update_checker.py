@@ -88,7 +88,6 @@ def _get_latest_version_from_pypi() -> Optional[str]:
         response = requests.get(
             "https://pypi.org/pypi/rogue-ai/json",
             timeout=5,
-            verify=False,  # nosec: B501
         )
         response.raise_for_status()
 

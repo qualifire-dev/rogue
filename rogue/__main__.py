@@ -1,5 +1,7 @@
 import asyncio
+import subprocess  # nosec: B404
 import sys
+import time
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
@@ -39,6 +41,24 @@ def common_parser() -> ArgumentParser:
         action="store_true",
         default=False,
         help="Show version",
+    )
+    parent_parser.add_argument(
+        "--example",
+        type=str,
+        choices=["tshirt_store"],
+        help="Run with an example agent (e.g., tshirt_store)",
+    )
+    parent_parser.add_argument(
+        "--example-host",
+        type=str,
+        default="localhost",
+        help="Host for the example agent (default: localhost)",
+    )
+    parent_parser.add_argument(
+        "--example-port",
+        type=int,
+        default=10001,
+        help="Port for the example agent (default: 10001)",
     )
 
     return parent_parser
@@ -86,6 +106,64 @@ def parse_args() -> Namespace:
     return parser.parse_args()
 
 
+def start_example_agent(
+    example_name: str,
+    host: str,
+    port: int,
+) -> subprocess.Popen | None:
+    """Start an example agent in a background subprocess."""
+    logger.info(
+        f"Starting example agent '{example_name}' on {host}:{port}...",
+    )
+
+    if example_name == "tshirt_store":
+        # Use subprocess to run the example agent
+        cmd = [
+            sys.executable,
+            "-m",
+            "examples.tshirt_store_agent",
+            "--host",
+            host,
+            "--port",
+            str(port),
+        ]
+    else:
+        logger.error(f"Unknown example: {example_name}")
+        return None
+
+    try:
+        process = subprocess.Popen(  # nosec: B603
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
+        # Give it a moment to start
+        time.sleep(2)
+
+        # Check if it's still running
+        if process.poll() is None:
+            logger.info(
+                f"Example agent '{example_name}' started successfully at "
+                f"http://{host}:{port}",
+            )
+            return process
+        else:
+            stdout, stderr = process.communicate()
+            logger.error(
+                f"Failed to start example agent '{example_name}'. "
+                f"Exit code: {process.returncode}",
+            )
+            if stderr:
+                logger.error(f"Error output: {stderr.decode()}")
+            return None
+    except Exception as e:
+        logger.error(
+            f"Failed to start example agent '{example_name}': {e}",
+        )
+        return None
+
+
 def main() -> None:
     args = parse_args()
 
@@ -103,6 +181,18 @@ def main() -> None:
 
     configure_logger(args.debug, file_path=log_file_path)
 
+    # Start example agent if requested
+    example_process = None
+    if args.example:
+        example_process = start_example_agent(
+            args.example,
+            args.example_host,
+            args.example_port,
+        )
+        if not example_process:
+            logger.error("Failed to start example agent. Exiting.")
+            sys.exit(1)
+
     # Handle default behavior (no mode specified)
     if args.mode is None:
         # Default behavior: install TUI, start server, run TUI
@@ -111,6 +201,9 @@ def main() -> None:
         # Step 1: Install rogue-tui if needed
         if not RogueTuiInstaller().install_rogue_tui():
             logger.error("Failed to install rogue-tui. Exiting.")
+            if example_process:
+                example_process.terminate()
+                example_process.wait()
             sys.exit(1)
 
         server_process = run_server(
@@ -122,6 +215,9 @@ def main() -> None:
         # Step 2: Start the server in background
         if not server_process:
             logger.error("Failed to start rogue server. Exiting.")
+            if example_process:
+                example_process.terminate()
+                example_process.wait()
             sys.exit(1)
 
         # Step 3: Run the TUI
@@ -133,26 +229,35 @@ def main() -> None:
         finally:
             server_process.terminate()
             server_process.join()
+            if example_process:
+                example_process.terminate()
+                example_process.wait()
         sys.exit(exit_code)
 
     # Handle regular modes (ui, cli, server, tui)
     args.workdir.mkdir(exist_ok=True, parents=True)
 
-    if args.mode == "ui":
-        run_ui(args)
-    elif args.mode == "server":
-        run_server(args, background=False)
-    elif args.mode == "cli":
-        exit_code = asyncio.run(run_cli(args))
-        sys.exit(exit_code)
-    elif args.mode == "tui":
-        if not RogueTuiInstaller().install_rogue_tui():
-            logger.error("Failed to install rogue-tui. Exiting.")
-            sys.exit(1)
-        exit_code = run_rogue_tui()
-        sys.exit(exit_code)
-    else:
-        raise ValueError(f"Unknown mode: {args.mode}")
+    try:
+        if args.mode == "ui":
+            run_ui(args)
+        elif args.mode == "server":
+            run_server(args, background=False)
+        elif args.mode == "cli":
+            exit_code = asyncio.run(run_cli(args))
+            sys.exit(exit_code)
+        elif args.mode == "tui":
+            if not RogueTuiInstaller().install_rogue_tui():
+                logger.error("Failed to install rogue-tui. Exiting.")
+                sys.exit(1)
+            exit_code = run_rogue_tui()
+            sys.exit(exit_code)
+        else:
+            raise ValueError(f"Unknown mode: {args.mode}")
+    finally:
+        # Clean up example agent if it was started
+        if example_process:
+            example_process.terminate()
+            example_process.wait()
 
 
 if __name__ == "__main__":

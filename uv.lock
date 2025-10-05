@@ -3527,6 +3527,7 @@ source = { editable = "." }
 dependencies = [
     { name = "a2a-sdk" },
     { name = "backoff" },
+    { name = "click" },
     { name = "datasets" },
     { name = "fastapi" },
     { name = "google-adk" },
@@ -3559,7 +3560,6 @@ dev = [
     { name = "types-requests" },
 ]
 examples = [
-    { name = "click" },
     { name = "langchain" },
     { name = "langchain-openai" },
     { name = "langgraph" },
@@ -3569,6 +3569,7 @@ examples = [
 requires-dist = [
     { name = "a2a-sdk", specifier = "==0.2.10" },
     { name = "backoff", specifier = ">=2.2.1" },
+    { name = "click", specifier = ">=8.0.0" },
     { name = "datasets", specifier = "==3.6.0" },
     { name = "fastapi", specifier = ">=0.115.0" },
     { name = "google-adk", specifier = "==1.5.0" },
@@ -3601,7 +3602,6 @@ dev = [
     { name = "types-requests", specifier = ">=2.32.4.20250611" },
 ]
 examples = [
-    { name = "click", specifier = "==8.2.1" },
     { name = "langchain", specifier = "==0.3.26" },
     { name = "langchain-openai", specifier = "==0.3.27" },
     { name = "langgraph", specifier = "==0.5.2" },
