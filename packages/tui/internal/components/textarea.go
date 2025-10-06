@@ -571,6 +571,21 @@ func (t *TextArea) Update(msg tea.Msg) (*TextArea, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
+	case tea.PasteMsg:
+		clipboardText, err := GetClipboardContent()
+		if err != nil {
+			return t, nil
+		}
+
+		cleanText := strings.TrimSpace(clipboardText)
+
+		if cleanText == "" {
+			return t, nil
+		}
+
+		t.InsertString(cleanText)
+		return t, nil
+
 	case tea.KeyMsg:
 		switch {
 		case keyMatches(msg, t.KeyMap.CharacterForward):

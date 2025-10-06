@@ -193,6 +193,30 @@ func (e *ScenarioEditor) calculateVisibleItems() {
 // Update handles input for the scenario editor
 func (e ScenarioEditor) Update(msg tea.Msg) (ScenarioEditor, tea.Cmd) {
 	switch m := msg.(type) {
+	case tea.PasteMsg:
+		// Forward paste message to the appropriate TextArea based on mode
+		switch e.mode {
+		case BusinessContextMode:
+			if e.bizTextArea != nil {
+				updatedTextArea, cmd := e.bizTextArea.Update(msg)
+				*e.bizTextArea = *updatedTextArea
+				return e, cmd
+			}
+		case EditMode, AddMode:
+			// Forward to the currently focused TextArea
+			var cmd tea.Cmd
+			if e.currentField == 0 && e.scenarioTextArea != nil {
+				updatedTextArea, taCmd := e.scenarioTextArea.Update(msg)
+				*e.scenarioTextArea = *updatedTextArea
+				cmd = taCmd
+			} else if e.currentField == 1 && e.expectedOutcomeTextArea != nil {
+				updatedTextArea, taCmd := e.expectedOutcomeTextArea.Update(msg)
+				*e.expectedOutcomeTextArea = *updatedTextArea
+				cmd = taCmd
+			}
+			return e, cmd
+		}
+		return e, nil
 	case tea.KeyMsg:
 		switch e.mode {
 		case ListMode:

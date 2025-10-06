@@ -274,7 +274,7 @@ func (a *App) Run() error {
 			Theme:     "aura",
 			APIKeys:   make(map[string]string),
 		},
-		version:        "v0.1.6",
+		version:        "v0.1.7",
 		commandInput:   components.NewCommandInput(),
 		scenarioEditor: components.NewScenarioEditor(),
 
@@ -352,6 +352,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.dialog.Input += cleanText
 			m.dialog.InputCursor = len(m.dialog.Input)
 			return m, nil
+		}
+
+		// Forward paste to scenario editor if on scenarios screen
+		if m.currentScreen == ScenariosScreen {
+			m.scenarioEditor, cmd = m.scenarioEditor.Update(msg)
+			if cmd != nil {
+				cmds = append(cmds, cmd)
+			}
+			return m, tea.Batch(cmds...)
 		}
 	case components.SpinnerTickMsg:
 		// Update spinners
