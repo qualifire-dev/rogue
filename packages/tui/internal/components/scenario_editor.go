@@ -874,9 +874,20 @@ func (e ScenarioEditor) renderInterviewView(t theme.Theme) string {
 			availableWidth = 40
 		}
 
-		// Wrap text to fit width
-		wrapped := wrapText(msg.Content, availableWidth)
-		lines := strings.Split(wrapped, "\n")
+		// Preserve newlines by processing each paragraph separately
+		paragraphs := strings.Split(msg.Content, "\n")
+		var allLines []string
+		for _, para := range paragraphs {
+			if strings.TrimSpace(para) == "" {
+				// Preserve empty lines
+				allLines = append(allLines, "")
+			} else {
+				// Wrap non-empty paragraphs
+				wrapped := wrapText(para, availableWidth)
+				allLines = append(allLines, strings.Split(wrapped, "\n")...)
+			}
+		}
+		lines := allLines
 
 		for i, line := range lines {
 			if i == 0 {
