@@ -63,15 +63,17 @@ type ScenarioEditor struct {
 	expectedOutcomeTextArea *TextArea
 
 	// Interview mode
-	interviewMode      bool               // true when in interview mode
-	interviewSessionID string             // current interview session
-	interviewMessages  []InterviewMessage // conversation history
-	interviewInput     *TextArea          // multi-line input for user responses
-	interviewViewport  *Viewport          // scrollable message history
-	interviewLoading   bool               // waiting for AI response
-	interviewError     string             // error message
-	lastUserMessage    string             // track last user message for display
-	interviewSpinner   Spinner            // spinner for loading state
+	interviewMode               bool               // true when in interview mode
+	interviewSessionID          string             // current interview session
+	interviewMessages           []InterviewMessage // conversation history
+	interviewInput              *TextArea          // multi-line input for user responses
+	interviewViewport           *Viewport          // scrollable message history
+	interviewLoading            bool               // waiting for AI response
+	interviewError              string             // error message
+	lastUserMessage             string             // track last user message for display
+	interviewSpinner            Spinner            // spinner for loading state
+	awaitingBusinessCtxApproval bool               // waiting for user to approve/edit business context
+	proposedBusinessContext     string             // the AI-generated business context for review
 
 	// Configuration (set by parent app) - exported so app.go can access
 	ServerURL       string // Rogue server URL
@@ -295,6 +297,8 @@ func (e ScenarioEditor) Update(msg tea.Msg) (ScenarioEditor, tea.Cmd) {
 			e.interviewMessages = nil
 			e.interviewLoading = false
 			e.interviewError = ""
+			e.awaitingBusinessCtxApproval = false
+			e.proposedBusinessContext = ""
 			e.lastUserMessage = ""
 			e.infoMsg = "Interview cancelled"
 		}
@@ -919,6 +923,22 @@ func (e ScenarioEditor) renderInterviewView(t theme.Theme) string {
 
 	// Input section
 	inputLabel := "Your Response:"
+	var help string
+
+	// Different UI for business context approval
+	if e.awaitingBusinessCtxApproval {
+		inputLabel = "Business Context (Review and Approve):"
+		help = lipgloss.NewStyle().
+			Background(t.Background()).
+			Foreground(t.TextMuted()).
+			Render("a approve & generate  e request changes  Esc cancel")
+	} else {
+		help = lipgloss.NewStyle().
+			Background(t.Background()).
+			Foreground(t.TextMuted()).
+			Render("Enter send  Esc cancel  Shift+Enter new line")
+	}
+
 	inputLabelStyled := lipgloss.NewStyle().
 		Background(t.Background()).
 		Foreground(t.Accent()).
@@ -928,12 +948,6 @@ func (e ScenarioEditor) renderInterviewView(t theme.Theme) string {
 	if e.interviewInput != nil {
 		inputArea = e.interviewInput.View()
 	}
-
-	// Help text
-	help := lipgloss.NewStyle().
-		Background(t.Background()).
-		Foreground(t.TextMuted()).
-		Render("Enter send  Esc cancel  Shift+Enter new line")
 
 	// Error display
 	errorLine := ""
@@ -951,7 +965,7 @@ func (e ScenarioEditor) renderInterviewView(t theme.Theme) string {
 			Background(t.Background()).
 			Foreground(t.Success()).
 			Bold(true).
-			Render("✓ Interview complete! Generating scenarios...")
+			Render("✓ Interview complete!")
 	}
 
 	// Build the view
@@ -1539,6 +1553,47 @@ func (e ScenarioEditor) handleInterviewStarted(msg InterviewStartedMsg) (Scenari
 }
 
 func (e ScenarioEditor) handleInterviewMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd) {
+	// Handle business context approval state
+	if e.awaitingBusinessCtxApproval {
+		switch msg.String() {
+		case "a", "A":
+			// Approve and generate scenarios
+			e.awaitingBusinessCtxApproval = false
+			e.infoMsg = "Generating scenarios..."
+			e.interviewLoading = true
+			e.interviewSpinner.SetActive(true)
+			return e, tea.Batch(
+				e.generateScenariosCmd(e.proposedBusinessContext),
+				e.interviewSpinner.Start(),
+			)
+
+		case "e", "E":
+			// Request changes - continue interview
+			e.awaitingBusinessCtxApproval = false
+			e.infoMsg = "You can request changes or ask for more details."
+
+			// Pre-fill input with a suggestion
+			if e.interviewInput != nil {
+				e.interviewInput.Focus()
+			}
+
+			return e, nil
+
+		case "escape", "esc":
+			// Exit interview with confirmation
+			if !e.interviewLoading {
+				dialog := NewConfirmationDialog(
+					"Exit Interview",
+					"Are you sure you want to cancel the interview? Progress will be lost.",
+				)
+				return e, func() tea.Msg { return DialogOpenMsg{Dialog: dialog} }
+			}
+			return e, nil
+		}
+		return e, nil
+	}
+
+	// Normal interview mode handling
 	switch msg.String() {
 	case "escape", "esc":
 		// Exit interview with confirmation
@@ -1642,18 +1697,17 @@ func (e ScenarioEditor) handleInterviewResponse(msg InterviewResponseMsg) (Scena
 
 	// Check if interview is complete
 	if msg.IsComplete {
-		// Extract business context from final AI message
-		businessContext := msg.Response
+		// Store proposed business context for user review
+		e.proposedBusinessContext = msg.Response
+		e.awaitingBusinessCtxApproval = true
+		e.infoMsg = "Review the business context below. Press 'a' to approve or 'e' to request changes."
 
-		// Trigger scenario generation
-		e.infoMsg = "Interview complete! Generating scenarios..."
-		e.interviewLoading = true // Keep loading state for scenario generation
-		// Keep spinner active for scenario generation
-		e.interviewSpinner.SetActive(true)
-		return e, tea.Batch(
-			e.generateScenariosCmd(businessContext),
-			e.interviewSpinner.Start(),
-		)
+		// Focus input in case user wants to make changes
+		if e.interviewInput != nil {
+			e.interviewInput.Focus()
+		}
+
+		return e, nil
 	}
 
 	// Re-focus input for next response
@@ -1704,6 +1758,8 @@ func (e ScenarioEditor) handleScenariosGenerated(msg ScenariosGeneratedMsg) (Sce
 	e.interviewSessionID = ""
 	e.interviewMessages = nil
 	e.interviewLoading = false
+	e.awaitingBusinessCtxApproval = false
+	e.proposedBusinessContext = ""
 	e.rebuildFilter()
 
 	return e, func() tea.Msg {
