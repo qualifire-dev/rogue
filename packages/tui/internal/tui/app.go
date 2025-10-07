@@ -234,6 +234,8 @@ type Config struct {
 	APIKeys                 map[string]string `toml:"api_keys"`
 	SelectedModel           string            `toml:"selected_model"`
 	SelectedProvider        string            `toml:"selected_provider"`
+	InterviewModel          string            `toml:"interview_model"`
+	InterviewProvider       string            `toml:"interview_provider"`
 	QualifireAPIKey         string            `toml:"qualifire_api_key"`
 	QualifireEnabled        bool              `toml:"qualifire_enabled"`
 	DontShowQualifirePrompt bool              `toml:"dont_show_qualifire_prompt"`
@@ -481,6 +483,28 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case "open_editor":
 			m.currentScreen = ScenariosScreen
+			// Unfocus command input when entering scenarios screen
+			m.commandInput.SetFocus(false)
+			m.commandInput.SetValue("")
+			// Configure scenario editor with interview model settings
+			interviewModel := "openai/gpt-4o" // Default fallback
+			if m.config.InterviewProvider != "" && m.config.InterviewModel != "" {
+				interviewModel = m.config.InterviewProvider + "/" + m.config.InterviewModel
+			} else if m.config.SelectedProvider != "" && m.config.SelectedModel != "" {
+				// Fall back to selected judge model if interview model not set
+				interviewModel = m.config.SelectedProvider + "/" + m.config.SelectedModel
+			}
+			interviewAPIKey := ""
+			if m.config.InterviewProvider != "" {
+				if key, ok := m.config.APIKeys[m.config.InterviewProvider]; ok {
+					interviewAPIKey = key
+				}
+			} else if m.config.SelectedProvider != "" {
+				if key, ok := m.config.APIKeys[m.config.SelectedProvider]; ok {
+					interviewAPIKey = key
+				}
+			}
+			m.scenarioEditor.SetConfig(m.config.ServerURL, interviewModel, interviewAPIKey)
 		case "configuration":
 			m.currentScreen = ConfigurationScreen
 			// Initialize config state when entering configuration screen
@@ -749,6 +773,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				// No further action for other dialogs
 			}
+
+			// Forward DialogClosedMsg to scenario editor if on scenarios screen
+			// This allows the editor to handle its own dialog-specific logic (e.g., exiting interview mode)
+			if m.currentScreen == ScenariosScreen {
+				m.scenarioEditor, cmd = m.scenarioEditor.Update(msg)
+			}
+
 			m.dialog = nil
 		}
 
@@ -757,7 +788,34 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.llmDialog = nil
 		}
 
-		return m, nil
+		return m, cmd
+
+	case components.StartInterviewMsg:
+		// Start interview session
+		return m, m.startInterviewCmd()
+
+	case components.SendInterviewMessageMsg:
+		// Send interview message
+		return m, m.sendInterviewMessageCmd(msg.SessionID, msg.Message)
+
+	case components.GenerateScenariosMsg:
+		// Generate scenarios from business context
+		return m, m.generateScenariosCmd(msg.BusinessContext)
+
+	case components.InterviewStartedMsg:
+		// Forward to scenario editor
+		m.scenarioEditor, cmd = m.scenarioEditor.Update(msg)
+		return m, cmd
+
+	case components.InterviewResponseMsg:
+		// Forward to scenario editor
+		m.scenarioEditor, cmd = m.scenarioEditor.Update(msg)
+		return m, cmd
+
+	case components.ScenariosGeneratedMsg:
+		// Forward to scenario editor
+		m.scenarioEditor, cmd = m.scenarioEditor.Update(msg)
+		return m, cmd
 
 	case components.ScenarioEditorMsg:
 		// Handle scenario editor messages
@@ -767,6 +825,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			dialog := components.NewInfoDialog(
 				"Scenarios Saved",
 				"Scenarios have been successfully saved to scenarios.json",
+			)
+			m.dialog = &dialog
+		case "scenarios_generated":
+			// Show success message for generated scenarios
+			dialog := components.NewInfoDialog(
+				"Scenarios Generated",
+				"AI has successfully generated scenarios from the interview!",
 			)
 			m.dialog = &dialog
 		case "exit":
@@ -815,6 +880,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "ctrl+e":
 			m.currentScreen = ScenariosScreen
+			// Unfocus command input when entering scenarios screen
+			m.commandInput.SetFocus(false)
+			m.commandInput.SetValue("")
 			return m, nil
 
 		case "ctrl+g":
@@ -1567,5 +1635,110 @@ func (m Model) handleConfigInput(msg tea.KeyMsg) (Model, tea.Cmd) {
 			}
 		}
 		return m, nil
+	}
+}
+
+// Interview command handlers
+
+// startInterviewCmd starts a new interview session
+func (m *Model) startInterviewCmd() tea.Cmd {
+	return func() tea.Msg {
+		ctx := context.Background()
+		sdk := NewRogueSDK(m.config.ServerURL)
+
+		// Get interview model and API key from scenario editor config
+		interviewModel := m.scenarioEditor.InterviewModel
+		interviewAPIKey := m.scenarioEditor.InterviewAPIKey
+
+		if interviewModel == "" {
+			// Fall back to judge model if not set
+			interviewModel = "openai/gpt-4o"
+		}
+
+		// Start interview
+		resp, err := sdk.StartInterview(ctx, interviewModel, interviewAPIKey)
+		if err != nil {
+			return components.InterviewStartedMsg{
+				Error: err,
+			}
+		}
+
+		return components.InterviewStartedMsg{
+			SessionID:      resp.SessionID,
+			InitialMessage: resp.InitialMessage,
+			Error:          nil,
+		}
+	}
+}
+
+// sendInterviewMessageCmd sends a message in the interview
+func (m *Model) sendInterviewMessageCmd(sessionID, message string) tea.Cmd {
+	return func() tea.Msg {
+		ctx := context.Background()
+		sdk := NewRogueSDK(m.config.ServerURL)
+
+		// Send message
+		resp, err := sdk.SendInterviewMessage(ctx, sessionID, message)
+		if err != nil {
+			return components.InterviewResponseMsg{
+				Error: err,
+			}
+		}
+
+		return components.InterviewResponseMsg{
+			Response:     resp.Response,
+			IsComplete:   resp.IsComplete,
+			MessageCount: resp.MessageCount,
+			Error:        nil,
+		}
+	}
+}
+
+// generateScenariosCmd generates scenarios from business context
+func (m *Model) generateScenariosCmd(businessContext string) tea.Cmd {
+	return func() tea.Msg {
+		ctx := context.Background()
+		sdk := NewRogueSDK(m.config.ServerURL)
+
+		// Get interview model and API key
+		interviewModel := m.scenarioEditor.InterviewModel
+		interviewAPIKey := m.scenarioEditor.InterviewAPIKey
+
+		if interviewModel == "" {
+			interviewModel = "openai/gpt-4o"
+		}
+
+		// Generate scenarios
+		request := ScenarioGenerationRequest{
+			BusinessContext: businessContext,
+			Model:           interviewModel,
+			APIKey:          interviewAPIKey,
+			Count:           10, // Default to 10 scenarios
+		}
+
+		resp, err := sdk.GenerateScenarios(ctx, request)
+		if err != nil {
+			return components.ScenariosGeneratedMsg{
+				Error: err,
+			}
+		}
+
+		// Convert SDK scenario data to component scenario data
+		var scenarios []components.ScenarioData
+		for _, s := range resp.Scenarios.Scenarios {
+			scenarios = append(scenarios, components.ScenarioData{
+				Scenario:          s.Scenario,
+				ScenarioType:      s.ScenarioType,
+				Dataset:           s.Dataset,
+				ExpectedOutcome:   s.ExpectedOutcome,
+				DatasetSampleSize: s.DatasetSampleSize,
+			})
+		}
+
+		return components.ScenariosGeneratedMsg{
+			Scenarios:       scenarios,
+			BusinessContext: businessContext,
+			Error:           nil,
+		}
 	}
 }

@@ -62,12 +62,33 @@ type ScenarioEditor struct {
 	scenarioTextArea        *TextArea
 	expectedOutcomeTextArea *TextArea
 
+	// Interview mode
+	interviewMode      bool               // true when in interview mode
+	interviewSessionID string             // current interview session
+	interviewMessages  []InterviewMessage // conversation history
+	interviewInput     *TextArea          // multi-line input for user responses
+	interviewViewport  *Viewport          // scrollable message history
+	interviewLoading   bool               // waiting for AI response
+	interviewError     string             // error message
+	lastUserMessage    string             // track last user message for display
+
+	// Configuration (set by parent app) - exported so app.go can access
+	ServerURL       string // Rogue server URL
+	InterviewModel  string // model for interview (e.g., "openai/gpt-4o")
+	InterviewAPIKey string // API key for interview model
+
 	// File management
 	filePath string // path to .rogue/scenarios.json
 
 	// UX
 	errorMsg string
 	infoMsg  string
+}
+
+// InterviewMessage represents a message in the interview conversation
+type InterviewMessage struct {
+	Role    string
+	Content string
 }
 
 // ScenarioEditorMode represents the current mode of the editor
@@ -78,12 +99,35 @@ const (
 	EditMode
 	AddMode
 	BusinessContextMode
+	InterviewMode
 )
 
 // ScenarioEditorMsg represents messages from the scenario editor
 type ScenarioEditorMsg struct {
 	Action string
 	Data   any
+}
+
+// Interview-related message types
+type StartInterviewMsg struct{}
+
+type InterviewStartedMsg struct {
+	SessionID      string
+	InitialMessage string
+	Error          error
+}
+
+type InterviewResponseMsg struct {
+	Response     string
+	IsComplete   bool
+	MessageCount int
+	Error        error
+}
+
+type ScenariosGeneratedMsg struct {
+	Scenarios       []ScenarioData
+	BusinessContext string
+	Error           error
 }
 
 // NewScenarioEditor creates a new scenario editor
@@ -113,11 +157,26 @@ func NewScenarioEditor() ScenarioEditor {
 	outTA.ApplyTheme(theme.CurrentTheme())
 	editor.expectedOutcomeTextArea = &outTA
 
+	// Initialize interview components
+	interviewVP := NewViewport(9995, 80, 15) // Interview message viewport
+	editor.interviewViewport = &interviewVP
+
+	interviewTA := NewTextArea(9994, 80, 5, theme.CurrentTheme()) // Interview input text area
+	interviewTA.ApplyTheme(theme.CurrentTheme())
+	editor.interviewInput = &interviewTA
+
 	// Discover scenarios.json location and load
 	editor.filePath = discoverScenariosFile()
 	_ = editor.loadScenarios()
 	editor.rebuildFilter()
 	return editor
+}
+
+// SetConfig sets the configuration for interview mode
+func (e *ScenarioEditor) SetConfig(serverURL, interviewModel, interviewAPIKey string) {
+	e.ServerURL = serverURL
+	e.InterviewModel = interviewModel
+	e.InterviewAPIKey = interviewAPIKey
 }
 
 // SetSize sets the size of the editor
@@ -148,6 +207,18 @@ func (e *ScenarioEditor) SetSize(width, height int) {
 	}
 	if e.expectedOutcomeTextArea != nil {
 		e.expectedOutcomeTextArea.SetSize(width-4, 8) // Height will be set dynamically in renderEditView
+	}
+
+	// Update interview components size
+	if e.interviewViewport != nil {
+		interviewHistoryHeight := height - 20
+		if interviewHistoryHeight < 10 {
+			interviewHistoryHeight = 10
+		}
+		e.interviewViewport.SetSize(width-4, interviewHistoryHeight)
+	}
+	if e.interviewInput != nil {
+		e.interviewInput.SetSize(width-4, 5) // Fixed height for input, full width
 	}
 }
 
@@ -193,6 +264,28 @@ func (e *ScenarioEditor) calculateVisibleItems() {
 // Update handles input for the scenario editor
 func (e ScenarioEditor) Update(msg tea.Msg) (ScenarioEditor, tea.Cmd) {
 	switch m := msg.(type) {
+	// StartInterviewMsg is NOT handled here - it bubbles up to app.go
+	// app.go will make the API call and send back InterviewStartedMsg
+	case InterviewStartedMsg:
+		return e.handleInterviewStarted(m)
+	case InterviewResponseMsg:
+		return e.handleInterviewResponse(m)
+	case ScenariosGeneratedMsg:
+		return e.handleScenariosGenerated(m)
+	case DialogClosedMsg:
+		// Handle dialog results (e.g., from interview cancellation)
+		if e.mode == InterviewMode && m.Action == "ok" {
+			// User confirmed they want to exit interview - return to list mode
+			e.mode = ListMode
+			e.interviewMode = false
+			e.interviewSessionID = ""
+			e.interviewMessages = nil
+			e.interviewLoading = false
+			e.interviewError = ""
+			e.lastUserMessage = ""
+			e.infoMsg = "Interview cancelled"
+		}
+		return e, nil
 	case tea.PasteMsg:
 		// Forward paste message to the appropriate TextArea based on mode
 		switch e.mode {
@@ -200,6 +293,12 @@ func (e ScenarioEditor) Update(msg tea.Msg) (ScenarioEditor, tea.Cmd) {
 			if e.bizTextArea != nil {
 				updatedTextArea, cmd := e.bizTextArea.Update(msg)
 				*e.bizTextArea = *updatedTextArea
+				return e, cmd
+			}
+		case InterviewMode:
+			if e.interviewInput != nil && !e.interviewLoading {
+				updatedTextArea, cmd := e.interviewInput.Update(msg)
+				*e.interviewInput = *updatedTextArea
 				return e, cmd
 			}
 		case EditMode, AddMode:
@@ -225,6 +324,8 @@ func (e ScenarioEditor) Update(msg tea.Msg) (ScenarioEditor, tea.Cmd) {
 			return e.handleEditMode(m)
 		case BusinessContextMode:
 			return e.handleBusinessContextMode(m)
+		case InterviewMode:
+			return e.handleInterviewMode(m)
 		}
 	}
 	return e, nil
@@ -368,6 +469,24 @@ func (e ScenarioEditor) handleListMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 			e.infoMsg = "Scenarios saved"
 		}
 		return e, func() tea.Msg { return ScenarioEditorMsg{Action: "saved"} }
+
+	case "i":
+		// Start interview mode - enter the mode immediately and trigger API call
+		e.mode = InterviewMode
+		e.interviewLoading = true
+		e.interviewError = ""
+		e.interviewMessages = []InterviewMessage{}
+		e.infoMsg = ""
+
+		if e.interviewInput != nil {
+			e.interviewInput.SetValue("")
+			// Keep input blurred initially since we're loading
+			e.interviewInput.Blur()
+		}
+
+		// Send message to app.go to start the interview API call
+		return e, func() tea.Msg { return StartInterviewMsg{} }
+
 	default:
 		return e, nil
 	}
@@ -677,10 +796,189 @@ func (e ScenarioEditor) View() string {
 			e.renderBusinessContextView(t),
 			styles.WhitespaceStyle(t.Background()),
 		)
+	case InterviewMode:
+		return lipgloss.Place(
+			e.width,
+			e.height-1,
+			lipgloss.Left,
+			lipgloss.Top,
+			e.renderInterviewView(t),
+			styles.WhitespaceStyle(t.Background()),
+		)
 
 	default:
 		return ""
 	}
+}
+
+// renderInterviewView renders the interview chat view
+func (e ScenarioEditor) renderInterviewView(t theme.Theme) string {
+	// Calculate message count (user messages only)
+	userMsgCount := 0
+	for _, msg := range e.interviewMessages {
+		if msg.Role == "user" {
+			userMsgCount++
+		}
+	}
+
+	// Header with progress
+	header := lipgloss.NewStyle().
+		Background(t.Background()).
+		Foreground(t.Primary()).
+		Bold(true).
+		Render(fmt.Sprintf("\n🤖 AI Interview - Understanding Your Agent (%d/3 responses)", userMsgCount))
+
+	// Render message history
+	var messageLines []string
+	for _, msg := range e.interviewMessages {
+		var style lipgloss.Style
+		var prefix string
+
+		if msg.Role == "assistant" {
+			style = lipgloss.NewStyle().
+				Foreground(t.Accent()).
+				Background(t.Background()).
+				Padding(0, 1)
+			prefix = "🤖 AI: "
+		} else {
+			style = lipgloss.NewStyle().
+				Foreground(t.Primary()).
+				Background(t.Background()).
+				Padding(0, 1)
+			prefix = "👤 You: "
+		}
+
+		// Wrap text to fit width
+		wrapped := wrapText(msg.Content, e.width-10)
+		for _, line := range strings.Split(wrapped, "\n") {
+			messageLines = append(messageLines, style.Render(prefix+line))
+			prefix = "    " // Indent continuation lines
+		}
+		messageLines = append(messageLines, "") // Blank line between messages
+	}
+
+	// Update viewport with message history
+	messageHistory := ""
+	if e.interviewViewport != nil {
+		e.interviewViewport.SetContent(strings.Join(messageLines, "\n"))
+		e.interviewViewport.GotoBottom() // Auto-scroll to bottom
+		messageHistory = e.interviewViewport.View()
+	} else {
+		messageHistory = strings.Join(messageLines, "\n")
+	}
+
+	// Message history section with border
+	historyStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(t.Primary()).
+		Background(t.Background()).
+		Padding(1, 1).
+		Width(e.width - 4).
+		Height((e.height - 20)) // Leave room for input and help
+
+	borderedHistory := historyStyle.Render(messageHistory)
+
+	// Input section
+	inputLabel := "Your Response:"
+	if e.interviewLoading {
+		inputLabel = "⏳ AI is thinking..."
+	}
+	inputLabelStyled := lipgloss.NewStyle().
+		Background(t.Background()).
+		Foreground(t.Accent()).
+		Render(inputLabel)
+
+	var inputArea string
+	if e.interviewInput != nil && !e.interviewLoading {
+		inputArea = e.interviewInput.View()
+	} else {
+		inputArea = lipgloss.NewStyle().
+			Background(t.BackgroundPanel()).
+			Foreground(t.TextMuted()).
+			Padding(1, 2).
+			Width(e.width - 8).
+			Render("Please wait...")
+	}
+
+	// Help text
+	help := lipgloss.NewStyle().
+		Background(t.Background()).
+		Foreground(t.TextMuted()).
+		Render("Enter send  Esc cancel  Shift+Enter new line")
+
+	// Error display
+	errorLine := ""
+	if e.interviewError != "" {
+		errorLine = lipgloss.NewStyle().
+			Background(t.Background()).
+			Foreground(t.Error()).
+			Render("⚠ " + e.interviewError)
+	}
+
+	// Completion/status message
+	statusMsg := ""
+	if userMsgCount >= 3 {
+		statusMsg = lipgloss.NewStyle().
+			Background(t.Background()).
+			Foreground(t.Success()).
+			Bold(true).
+			Render("✓ Interview complete! Generating scenarios...")
+	} else if e.interviewLoading {
+		statusMsg = lipgloss.NewStyle().
+			Background(t.Background()).
+			Foreground(t.Accent()).
+			Render("⏳ Waiting for AI response...")
+	}
+
+	// Build the view
+	content := strings.Join([]string{
+		header,
+		"",
+		borderedHistory,
+		"",
+		inputLabelStyled,
+		inputArea,
+		"",
+		help,
+		errorLine,
+		statusMsg,
+	}, "\n")
+
+	return content
+}
+
+// wrapText wraps text to the specified width
+func wrapText(text string, width int) string {
+	if width <= 0 {
+		return text
+	}
+
+	words := strings.Fields(text)
+	if len(words) == 0 {
+		return text
+	}
+
+	var lines []string
+	var currentLine strings.Builder
+
+	for _, word := range words {
+		if currentLine.Len() == 0 {
+			currentLine.WriteString(word)
+		} else if currentLine.Len()+1+len(word) <= width {
+			currentLine.WriteString(" ")
+			currentLine.WriteString(word)
+		} else {
+			lines = append(lines, currentLine.String())
+			currentLine.Reset()
+			currentLine.WriteString(word)
+		}
+	}
+
+	if currentLine.Len() > 0 {
+		lines = append(lines, currentLine.String())
+	}
+
+	return strings.Join(lines, "\n")
 }
 
 // renderBusinessContextView renders the business context editing view
@@ -807,9 +1105,33 @@ func (e ScenarioEditor) renderListView(t theme.Theme) string {
 		bizText = borderStyle.Render(content)
 	}
 
+	// Show empty state banner if no scenarios and no business context
+	var emptyBanner string
+	if len(e.scenarios) == 0 && e.businessContext == nil {
+		bannerWidth := e.width - 12
+		emptyBanner = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(t.Primary()).
+			Background(t.Background()).
+			Padding(1, 2).
+			Width(bannerWidth).
+			Render(lipgloss.JoinVertical(
+				lipgloss.Center,
+				lipgloss.NewStyle().Foreground(t.Primary()).Bold(true).Width(bannerWidth-4).Align(lipgloss.Center).Render("🤖 No scenarios yet"),
+				"",
+				lipgloss.NewStyle().Foreground(t.Text()).Width(bannerWidth-4).Align(lipgloss.Center).Render("Let AI help you create scenarios through a quick interview"),
+				"",
+				lipgloss.NewStyle().Foreground(t.Accent()).Width(bannerWidth-4).Align(lipgloss.Center).Render("Press 'i' to start interview  or  'n' to add manually"),
+			))
+	}
+
 	var body string
 	if len(e.filteredIdx) == 0 {
-		body = lipgloss.NewStyle().Background(t.Background()).Foreground(t.TextMuted()).Render("No scenarios. Press 'n' to add.")
+		if emptyBanner != "" {
+			body = emptyBanner
+		} else {
+			body = lipgloss.NewStyle().Background(t.Background()).Foreground(t.TextMuted()).Render("No scenarios match your search. Press 'n' to add.")
+		}
 	} else {
 		start := e.scrollOffset
 		end := start + e.visibleItems
@@ -903,7 +1225,7 @@ func (e ScenarioEditor) renderListView(t theme.Theme) string {
 
 	// Build lines and push help to bottom (above footer)
 	help := lipgloss.NewStyle().Background(t.Background()).Foreground(t.TextMuted()).Render(
-		"↑/↓ navigate scenarios & business context  Enter edit  n new  d delete  / search  Esc back",
+		"↑/↓ navigate  Enter edit  n new  i interview  d delete  / search  Esc back",
 	)
 
 	errorLine := ""
@@ -1163,6 +1485,184 @@ func (e *ScenarioEditor) ConfirmDelete() {
 	e.rebuildFilter()
 	_ = e.saveScenarios()
 	e.infoMsg = "Deleted scenario"
+}
+
+// Interview mode handlers
+
+func (e ScenarioEditor) handleInterviewStarted(msg InterviewStartedMsg) (ScenarioEditor, tea.Cmd) {
+	e.interviewLoading = false
+
+	if msg.Error != nil {
+		e.interviewError = msg.Error.Error()
+		e.mode = ListMode
+		return e, nil
+	}
+
+	// Store session ID and add initial message
+	e.interviewSessionID = msg.SessionID
+	e.interviewMessages = append(e.interviewMessages, InterviewMessage{
+		Role:    "assistant",
+		Content: msg.InitialMessage,
+	})
+
+	// Focus input for user response
+	if e.interviewInput != nil {
+		e.interviewInput.Focus()
+	}
+
+	return e, nil
+}
+
+func (e ScenarioEditor) handleInterviewMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd) {
+	switch msg.String() {
+	case "escape", "esc":
+		// Exit interview with confirmation
+		if !e.interviewLoading {
+			dialog := NewConfirmationDialog(
+				"Exit Interview",
+				"Are you sure you want to cancel the interview? Progress will be lost.",
+			)
+			// Return to list mode will be handled by dialog result
+			return e, func() tea.Msg { return DialogOpenMsg{Dialog: dialog} }
+		}
+		return e, nil
+
+	case "enter":
+		// Send message if input not empty
+		if e.interviewInput != nil && !e.interviewLoading {
+			message := e.interviewInput.GetValue()
+			if strings.TrimSpace(message) == "" {
+				return e, nil
+			}
+
+			// Store user message for display
+			e.lastUserMessage = message
+
+			// Add user message to history immediately
+			e.interviewMessages = append(e.interviewMessages, InterviewMessage{
+				Role:    "user",
+				Content: message,
+			})
+
+			// Clear input and set loading
+			e.interviewInput.SetValue("")
+			e.interviewLoading = true
+
+			// Send message via command (to be implemented in app.go)
+			return e, e.sendInterviewMessageCmd(message)
+		}
+		return e, nil
+
+	default:
+		// Forward to TextArea for text input
+		if e.interviewInput != nil && !e.interviewLoading {
+			updatedTextArea, cmd := e.interviewInput.Update(msg)
+			*e.interviewInput = *updatedTextArea
+			return e, cmd
+		}
+		return e, nil
+	}
+}
+
+func (e *ScenarioEditor) sendInterviewMessageCmd(message string) tea.Cmd {
+	// This needs to be handled by app.go which has access to the SDK
+	// Store the message in the editor state for app.go to use
+	e.lastUserMessage = message
+
+	// For now, return nil and let app.go handle this through Update
+	// We'll need to add a new message type for this
+	return func() tea.Msg {
+		return SendInterviewMessageMsg{
+			SessionID: e.interviewSessionID,
+			Message:   message,
+		}
+	}
+}
+
+// SendInterviewMessageMsg is sent when user wants to send an interview message
+type SendInterviewMessageMsg struct {
+	SessionID string
+	Message   string
+}
+
+func (e ScenarioEditor) handleInterviewResponse(msg InterviewResponseMsg) (ScenarioEditor, tea.Cmd) {
+	e.interviewLoading = false
+
+	if msg.Error != nil {
+		e.interviewError = msg.Error.Error()
+		return e, nil
+	}
+
+	// Add AI response to history
+	e.interviewMessages = append(e.interviewMessages, InterviewMessage{
+		Role:    "assistant",
+		Content: msg.Response,
+	})
+
+	// Clear error
+	e.interviewError = ""
+
+	// Check if interview is complete
+	if msg.IsComplete {
+		// Extract business context from final AI message
+		businessContext := msg.Response
+
+		// Trigger scenario generation
+		e.infoMsg = "Interview complete! Generating scenarios..."
+		return e, e.generateScenariosCmd(businessContext)
+	}
+
+	// Re-focus input for next response
+	if e.interviewInput != nil {
+		e.interviewInput.Focus()
+	}
+
+	return e, nil
+}
+
+func (e *ScenarioEditor) generateScenariosCmd(businessContext string) tea.Cmd {
+	// This needs to be handled by app.go
+	return func() tea.Msg {
+		return GenerateScenariosMsg{
+			BusinessContext: businessContext,
+		}
+	}
+}
+
+// GenerateScenariosMsg is sent when we need to generate scenarios
+type GenerateScenariosMsg struct {
+	BusinessContext string
+}
+
+func (e ScenarioEditor) handleScenariosGenerated(msg ScenariosGeneratedMsg) (ScenarioEditor, tea.Cmd) {
+	if msg.Error != nil {
+		e.interviewError = msg.Error.Error()
+		e.mode = ListMode
+		return e, nil
+	}
+
+	// Populate editor with generated scenarios
+	e.scenarios = msg.Scenarios
+	e.businessContext = &msg.BusinessContext
+
+	// Save to file
+	if err := e.saveScenarios(); err != nil {
+		e.errorMsg = "Failed to save scenarios: " + err.Error()
+	} else {
+		e.infoMsg = fmt.Sprintf("✓ Generated %d scenarios from interview!", len(msg.Scenarios))
+	}
+
+	// Exit interview mode, return to list view
+	e.mode = ListMode
+	e.interviewMode = false
+	e.interviewSessionID = ""
+	e.interviewMessages = nil
+	e.interviewLoading = false
+	e.rebuildFilter()
+
+	return e, func() tea.Msg {
+		return ScenarioEditorMsg{Action: "scenarios_generated"}
+	}
 }
 
 func ellipsis(s string, max int) string {

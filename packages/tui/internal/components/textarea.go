@@ -310,11 +310,13 @@ func (t *TextArea) GetCursor() (row, col int) {
 // Focus sets the focus state
 func (t *TextArea) Focus() {
 	t.focus = true
+	t.cursorVisible = true
 }
 
 // Blur removes the focus state
 func (t *TextArea) Blur() {
 	t.focus = false
+	t.cursorVisible = false
 }
 
 // IsFocused returns whether the textarea is focused
