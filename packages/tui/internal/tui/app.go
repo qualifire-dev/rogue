@@ -372,6 +372,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 		m.evalSpinner, cmd = m.evalSpinner.Update(msg)
 		cmds = append(cmds, cmd)
+
+		// Forward to scenario editor for interview spinner
+		if m.currentScreen == ScenariosScreen {
+			m.scenarioEditor, cmd = m.scenarioEditor.Update(msg)
+			if cmd != nil {
+				cmds = append(cmds, cmd)
+			}
+		}
+
 		return m, tea.Batch(cmds...)
 
 	case HealthCheckResultMsg:

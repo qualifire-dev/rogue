@@ -71,6 +71,7 @@ type ScenarioEditor struct {
 	interviewLoading   bool               // waiting for AI response
 	interviewError     string             // error message
 	lastUserMessage    string             // track last user message for display
+	interviewSpinner   Spinner            // spinner for loading state
 
 	// Configuration (set by parent app) - exported so app.go can access
 	ServerURL       string // Rogue server URL
@@ -167,6 +168,10 @@ func NewScenarioEditor() ScenarioEditor {
 	interviewTA.ShowLineNumbers = false // Disable line numbers for interview input
 	interviewTA.Focus()                 // Start focused
 	editor.interviewInput = &interviewTA
+
+	// Initialize interview spinner
+	spinner := NewSpinner(9993) // Unique ID for interview spinner
+	editor.interviewSpinner = spinner
 
 	// Discover scenarios.json location and load
 	editor.filePath = discoverScenariosFile()
@@ -267,6 +272,11 @@ func (e *ScenarioEditor) calculateVisibleItems() {
 // Update handles input for the scenario editor
 func (e ScenarioEditor) Update(msg tea.Msg) (ScenarioEditor, tea.Cmd) {
 	switch m := msg.(type) {
+	case SpinnerTickMsg:
+		// Update interview spinner
+		var cmd tea.Cmd
+		e.interviewSpinner, cmd = e.interviewSpinner.Update(msg)
+		return e, cmd
 	// StartInterviewMsg is NOT handled here - it bubbles up to app.go
 	// app.go will make the API call and send back InterviewStartedMsg
 	case InterviewStartedMsg:
@@ -487,8 +497,14 @@ func (e ScenarioEditor) handleListMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 			e.interviewInput.Focus()
 		}
 
+		// Start spinner for loading state
+		e.interviewSpinner.SetActive(true)
+
 		// Send message to app.go to start the interview API call
-		return e, func() tea.Msg { return StartInterviewMsg{} }
+		return e, tea.Batch(
+			func() tea.Msg { return StartInterviewMsg{} },
+			e.interviewSpinner.Start(),
+		)
 
 	default:
 		return e, nil
@@ -870,6 +886,16 @@ func (e ScenarioEditor) renderInterviewView(t theme.Theme) string {
 		messageLines = append(messageLines, "") // Blank line between messages
 	}
 
+	// Add loading indicator with spinner if loading
+	if e.interviewLoading {
+		spinnerView := e.interviewSpinner.View()
+		if spinnerView != "" {
+			textStyle := lipgloss.NewStyle().Foreground(t.Accent()).Background(t.Background())
+			loadingLine := spinnerView + textStyle.Render(" thinking...")
+			messageLines = append(messageLines, loadingLine)
+		}
+	}
+
 	// Update viewport with message history
 	messageHistory := ""
 	if e.interviewViewport != nil {
@@ -893,24 +919,14 @@ func (e ScenarioEditor) renderInterviewView(t theme.Theme) string {
 
 	// Input section
 	inputLabel := "Your Response:"
-	if e.interviewLoading {
-		inputLabel = "⏳ AI is thinking..."
-	}
 	inputLabelStyled := lipgloss.NewStyle().
 		Background(t.Background()).
 		Foreground(t.Accent()).
 		Render(inputLabel)
 
 	var inputArea string
-	if e.interviewInput != nil && !e.interviewLoading {
+	if e.interviewInput != nil {
 		inputArea = e.interviewInput.View()
-	} else {
-		inputArea = lipgloss.NewStyle().
-			Background(t.BackgroundPanel()).
-			Foreground(t.TextMuted()).
-			Padding(1, 2).
-			Width(e.width - 8).
-			Render("Please wait...")
 	}
 
 	// Help text
@@ -928,19 +944,14 @@ func (e ScenarioEditor) renderInterviewView(t theme.Theme) string {
 			Render("⚠ " + e.interviewError)
 	}
 
-	// Completion/status message
+	// Completion/status message (only for generation phase, not loading)
 	statusMsg := ""
-	if userMsgCount >= 3 {
+	if userMsgCount >= 3 && e.interviewLoading {
 		statusMsg = lipgloss.NewStyle().
 			Background(t.Background()).
 			Foreground(t.Success()).
 			Bold(true).
 			Render("✓ Interview complete! Generating scenarios...")
-	} else if e.interviewLoading {
-		statusMsg = lipgloss.NewStyle().
-			Background(t.Background()).
-			Foreground(t.Accent()).
-			Render("⏳ Waiting for AI response...")
 	}
 
 	// Build the view
@@ -1504,6 +1515,7 @@ func (e *ScenarioEditor) ConfirmDelete() {
 
 func (e ScenarioEditor) handleInterviewStarted(msg InterviewStartedMsg) (ScenarioEditor, tea.Cmd) {
 	e.interviewLoading = false
+	e.interviewSpinner.SetActive(false) // Stop spinner
 
 	if msg.Error != nil {
 		e.interviewError = msg.Error.Error()
@@ -1568,9 +1580,13 @@ func (e ScenarioEditor) handleInterviewMode(msg tea.KeyMsg) (ScenarioEditor, tea
 			// Clear input and set loading
 			e.interviewInput.SetValue("")
 			e.interviewLoading = true
+			e.interviewSpinner.SetActive(true) // Start spinner
 
-			// Send message via command (to be implemented in app.go)
-			return e, e.sendInterviewMessageCmd(message)
+			// Send message via command and start spinner animation
+			return e, tea.Batch(
+				e.sendInterviewMessageCmd(message),
+				e.interviewSpinner.Start(),
+			)
 		}
 		return e, nil
 
@@ -1608,6 +1624,7 @@ type SendInterviewMessageMsg struct {
 
 func (e ScenarioEditor) handleInterviewResponse(msg InterviewResponseMsg) (ScenarioEditor, tea.Cmd) {
 	e.interviewLoading = false
+	e.interviewSpinner.SetActive(false) // Stop spinner
 
 	if msg.Error != nil {
 		e.interviewError = msg.Error.Error()
@@ -1630,7 +1647,13 @@ func (e ScenarioEditor) handleInterviewResponse(msg InterviewResponseMsg) (Scena
 
 		// Trigger scenario generation
 		e.infoMsg = "Interview complete! Generating scenarios..."
-		return e, e.generateScenariosCmd(businessContext)
+		e.interviewLoading = true // Keep loading state for scenario generation
+		// Keep spinner active for scenario generation
+		e.interviewSpinner.SetActive(true)
+		return e, tea.Batch(
+			e.generateScenariosCmd(businessContext),
+			e.interviewSpinner.Start(),
+		)
 	}
 
 	// Re-focus input for next response
@@ -1656,6 +1679,8 @@ type GenerateScenariosMsg struct {
 }
 
 func (e ScenarioEditor) handleScenariosGenerated(msg ScenariosGeneratedMsg) (ScenarioEditor, tea.Cmd) {
+	e.interviewSpinner.SetActive(false) // Stop spinner
+
 	if msg.Error != nil {
 		e.interviewError = msg.Error.Error()
 		e.mode = ListMode
