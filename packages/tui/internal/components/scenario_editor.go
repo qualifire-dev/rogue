@@ -834,28 +834,38 @@ func (e ScenarioEditor) renderInterviewView(t theme.Theme) string {
 	// Render message history
 	var messageLines []string
 	for _, msg := range e.interviewMessages {
-		var style lipgloss.Style
 		var prefix string
+		var textStyle lipgloss.Style
 
 		if msg.Role == "assistant" {
-			style = lipgloss.NewStyle().
-				Foreground(t.Accent()).
-				Background(t.Background()).
-				Padding(0, 1)
-			prefix = "🤖 AI: "
+			textStyle = lipgloss.NewStyle().Foreground(t.Accent())
+			prefix = "🤖 AI:  "
 		} else {
-			style = lipgloss.NewStyle().
-				Foreground(t.Primary()).
-				Background(t.Background()).
-				Padding(0, 1)
+			textStyle = lipgloss.NewStyle().Foreground(t.Primary())
 			prefix = "👤 You: "
 		}
 
+		// Calculate available width for text (accounting for visual prefix width and padding)
+		// Emojis + "AI: " or "You: " take about 8 visual characters
+		// Account for border (4) and some padding
+		visualPrefixWidth := 8
+		availableWidth := e.width - visualPrefixWidth - 8
+		if availableWidth < 40 {
+			availableWidth = 40
+		}
+
 		// Wrap text to fit width
-		wrapped := wrapText(msg.Content, e.width-10)
-		for _, line := range strings.Split(wrapped, "\n") {
-			messageLines = append(messageLines, style.Render(prefix+line))
-			prefix = "    " // Indent continuation lines
+		wrapped := wrapText(msg.Content, availableWidth)
+		lines := strings.Split(wrapped, "\n")
+
+		for i, line := range lines {
+			if i == 0 {
+				// First line with prefix
+				messageLines = append(messageLines, textStyle.Render(prefix+line))
+			} else {
+				// Continuation lines with indentation (8 spaces to match visual prefix width)
+				messageLines = append(messageLines, textStyle.Render("        "+line))
+			}
 		}
 		messageLines = append(messageLines, "") // Blank line between messages
 	}
