@@ -683,7 +683,8 @@ func (t *TextArea) View() string {
 	}
 
 	// Apply panel styling (background and padding)
-	return t.Style.Panel.Width(t.Width).Height(t.Height).Render(content)
+	// Don't set Height here - let it size naturally based on content + padding
+	return t.Style.Panel.Width(t.Width).Render(content)
 }
 
 // renderLineWithCursor renders a line with the cursor positioned correctly
@@ -718,29 +719,35 @@ func (t *TextArea) renderLineWithCursor(lineStr string, lineIndex int) string {
 func (t *TextArea) placeholderView() string {
 	var lines []string
 
-	for i := 0; i < t.Height; i++ {
-		line := ""
-		if t.Prompt != "" {
-			line = t.Style.Base.Render(t.Prompt)
-		}
-		if t.ShowLineNumbers {
-			lineNumStr := t.formatLineNumber(1) // Use line 1 for placeholder
-			line = t.Style.Base.Render(lineNumStr) + line
-		}
+	// First line shows placeholder with cursor
+	line := ""
+	if t.Prompt != "" {
+		line = t.Style.Base.Render(t.Prompt)
+	}
+	if t.ShowLineNumbers {
+		lineNumStr := t.formatLineNumber(1) // Use line 1 for placeholder
+		line = t.Style.Base.Render(lineNumStr) + line
+	}
 
-		if i == 0 {
-			// First line shows placeholder with cursor
-			placeholder := t.Placeholder
-			if len(placeholder) > t.Width {
-				placeholder = placeholder[:t.Width]
-			}
-			line += t.Style.Placeholder.Render(placeholder)
-			if len(placeholder) < t.Width {
-				line += t.Style.Cursor.Render(" ")
-			}
-		}
+	placeholder := t.Placeholder
+	if len(placeholder) > t.Width {
+		placeholder = placeholder[:t.Width]
+	}
+	line += t.Style.Placeholder.Render(placeholder)
+	if len(placeholder) < t.Width && t.focus {
+		line += t.Style.Cursor.Render(" ")
+	}
+	lines = append(lines, line)
 
-		lines = append(lines, line)
+	// Add empty lines to match the height of the textarea
+	// Account for Panel padding (1 line top + 1 line bottom)
+	// So we render Height - 2 lines to match the actual content height with padding
+	heightWithPadding := t.Height - 2
+	if heightWithPadding < 1 {
+		heightWithPadding = 1
+	}
+	for i := 1; i < heightWithPadding; i++ {
+		lines = append(lines, "")
 	}
 
 	return t.Style.Base.Render(strings.Join(lines, "\n"))
