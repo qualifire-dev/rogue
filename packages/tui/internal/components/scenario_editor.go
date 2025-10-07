@@ -163,6 +163,9 @@ func NewScenarioEditor() ScenarioEditor {
 
 	interviewTA := NewTextArea(9994, 80, 5, theme.CurrentTheme()) // Interview input text area
 	interviewTA.ApplyTheme(theme.CurrentTheme())
+	interviewTA.Placeholder = "Type your response here..."
+	interviewTA.ShowLineNumbers = false // Disable line numbers for interview input
+	interviewTA.Focus()                 // Start focused
 	editor.interviewInput = &interviewTA
 
 	// Discover scenarios.json location and load
@@ -480,8 +483,8 @@ func (e ScenarioEditor) handleListMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 
 		if e.interviewInput != nil {
 			e.interviewInput.SetValue("")
-			// Keep input blurred initially since we're loading
-			e.interviewInput.Blur()
+			// Focus input immediately so cursor is visible
+			e.interviewInput.Focus()
 		}
 
 		// Send message to app.go to start the interview API call
@@ -1527,6 +1530,14 @@ func (e ScenarioEditor) handleInterviewMode(msg tea.KeyMsg) (ScenarioEditor, tea
 		}
 		return e, nil
 
+	case "shift+enter":
+		// Insert newline in the input
+		if e.interviewInput != nil && !e.interviewLoading {
+			e.interviewInput.InsertNewline()
+			return e, nil
+		}
+		return e, nil
+
 	case "enter":
 		// Send message if input not empty
 		if e.interviewInput != nil && !e.interviewLoading {
@@ -1649,7 +1660,7 @@ func (e ScenarioEditor) handleScenariosGenerated(msg ScenariosGeneratedMsg) (Sce
 	if err := e.saveScenarios(); err != nil {
 		e.errorMsg = "Failed to save scenarios: " + err.Error()
 	} else {
-		e.infoMsg = fmt.Sprintf("✓ Generated %d scenarios from interview!", len(msg.Scenarios))
+		e.infoMsg = fmt.Sprintf("Generated %d scenarios from interview!", len(msg.Scenarios))
 	}
 
 	// Exit interview mode, return to list view

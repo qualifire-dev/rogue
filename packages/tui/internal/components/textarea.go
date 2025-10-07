@@ -543,6 +543,12 @@ func (t *TextArea) deleteWordForward() {
 }
 
 // insertNewline inserts a newline at cursor position
+// InsertNewline inserts a newline at the current cursor position (public method)
+func (t *TextArea) InsertNewline() {
+	t.insertNewline()
+	t.updateViewport()
+}
+
 func (t *TextArea) insertNewline() {
 	if t.MaxHeight > 0 && len(t.value) >= t.MaxHeight {
 		return
