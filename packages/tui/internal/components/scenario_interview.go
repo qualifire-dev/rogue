@@ -501,7 +501,28 @@ func (e ScenarioEditor) renderInterviewView(t theme.Theme) string {
 		errorLine = lipgloss.NewStyle().
 			Background(t.Background()).
 			Foreground(t.Error()).
+			Width(e.width/2 - 4).
 			Render("⚠ " + e.interviewError)
+
+		errorLine = lipgloss.JoinHorizontal(
+			lipgloss.Top,
+			lipgloss.Place(
+				(e.width-4)/2,
+				3,
+				lipgloss.Left,
+				lipgloss.Top,
+				errorLine,
+				styles.WhitespaceStyle(t.Background()),
+			),
+			lipgloss.Place(
+				(e.width-4)/2,
+				3,
+				lipgloss.Right,
+				lipgloss.Top,
+				help,
+				styles.WhitespaceStyle(t.Background()),
+			),
+		)
 	}
 
 	// Completion/status message (only for generation phase, not loading)
@@ -510,8 +531,29 @@ func (e ScenarioEditor) renderInterviewView(t theme.Theme) string {
 		statusMsg = lipgloss.NewStyle().
 			Background(t.Background()).
 			Foreground(t.Success()).
+			Width(e.width/2 - 4).
 			Bold(true).
 			Render("✓ Interview complete!")
+
+		statusMsg = lipgloss.JoinHorizontal(
+			lipgloss.Top,
+			lipgloss.Place(
+				(e.width-4)/2,
+				3,
+				lipgloss.Left,
+				lipgloss.Top,
+				statusMsg,
+				styles.WhitespaceStyle(t.Background()),
+			),
+			lipgloss.Place(
+				(e.width-4)/2,
+				3,
+				lipgloss.Right,
+				lipgloss.Top,
+				help,
+				styles.WhitespaceStyle(t.Background()),
+			),
+		)
 	}
 
 	// Build the view
@@ -521,16 +563,12 @@ func (e ScenarioEditor) renderInterviewView(t theme.Theme) string {
 	if e.awaitingBusinessCtxApproval {
 		// Add button line below input in approval mode
 		contentParts = append(contentParts, buttonLine)
-	} else {
-		// Add help text below input in normal mode
-		contentParts = append(contentParts, help)
-	}
-
-	if errorLine != "" {
-		contentParts = append(contentParts, errorLine)
-	}
-	if statusMsg != "" {
+	} else if statusMsg != "" {
 		contentParts = append(contentParts, statusMsg)
+	} else if errorLine != "" {
+		contentParts = append(contentParts, errorLine)
+	} else {
+		contentParts = append(contentParts, help)
 	}
 
 	content := strings.Join(contentParts, "\n")
