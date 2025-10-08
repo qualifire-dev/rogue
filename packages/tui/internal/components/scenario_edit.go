@@ -159,8 +159,10 @@ func (e *ScenarioEditor) applyEditing() {
 	if e.mode == AddMode {
 		e.scenarios = append(e.scenarios, e.editing)
 	} else if e.mode == EditMode && len(e.filteredIdx) > 0 {
-		idx := e.filteredIdx[e.selectedIndex]
-		e.scenarios[idx] = e.editing
+		if e.selectedIndex >= 0 && e.selectedIndex < len(e.filteredIdx) {
+			idx := e.filteredIdx[e.selectedIndex]
+			e.scenarios[idx] = e.editing
+		}
 	}
 }
 
