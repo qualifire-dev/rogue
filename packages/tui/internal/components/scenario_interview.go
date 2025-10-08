@@ -6,6 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"
+	"github.com/rogue/tui/internal/styles"
 	"github.com/rogue/tui/internal/theme"
 )
 
@@ -41,27 +42,73 @@ func (e ScenarioEditor) handleInterviewMode(msg tea.KeyMsg) (ScenarioEditor, tea
 	// Handle business context approval state
 	if e.awaitingBusinessCtxApproval {
 		switch msg.String() {
-		case "a", "A":
-			// Approve and generate scenarios
-			e.awaitingBusinessCtxApproval = false
-			e.infoMsg = "Generating scenarios..."
-			e.interviewLoading = true
-			e.interviewSpinner.SetActive(true)
-			return e, tea.Batch(
-				e.generateScenariosCmd(e.proposedBusinessContext),
-				e.interviewSpinner.Start(),
-			)
-
-		case "e", "E":
-			// Request changes - continue interview
-			e.awaitingBusinessCtxApproval = false
-			e.infoMsg = "You can request changes or ask for more details."
-
-			// Pre-fill input with a suggestion
-			if e.interviewInput != nil {
-				e.interviewInput.Focus()
+		case "down", "tab":
+			// Move focus to approve button
+			if !e.approveButtonFocused {
+				e.approveButtonFocused = true
+				if e.interviewInput != nil {
+					e.interviewInput.Blur()
+				}
 			}
+			return e, nil
 
+		case "up", "shift+tab":
+			// Move focus to input
+			if e.approveButtonFocused {
+				e.approveButtonFocused = false
+				if e.interviewInput != nil {
+					e.interviewInput.Focus()
+				}
+			}
+			return e, nil
+
+		case "enter":
+			if e.approveButtonFocused {
+				// Approve and generate scenarios
+				e.awaitingBusinessCtxApproval = false
+				e.approveButtonFocused = false
+				e.infoMsg = "Generating scenarios..."
+				e.interviewLoading = true
+				e.interviewSpinner.SetActive(true)
+				return e, tea.Batch(
+					e.generateScenariosCmd(e.proposedBusinessContext),
+					e.interviewSpinner.Start(),
+				)
+			} else {
+				// Send edit request message
+				if e.interviewInput != nil {
+					message := e.interviewInput.GetValue()
+					if strings.TrimSpace(message) != "" {
+						// Request changes - continue interview
+						e.awaitingBusinessCtxApproval = false
+
+						// Add user message to history
+						e.interviewMessages = append(e.interviewMessages, InterviewMessage{
+							Role:    "user",
+							Content: message,
+						})
+
+						// Clear input and set loading
+						e.interviewInput.SetValue("")
+						e.interviewLoading = true
+						e.interviewSpinner.SetActive(true)
+
+						// Send message via command
+						return e, tea.Batch(
+							e.sendInterviewMessageCmd(message),
+							e.interviewSpinner.Start(),
+						)
+					}
+				}
+			}
+			return e, nil
+
+		case "shift+enter":
+			// Insert newline in the input if input is focused
+			if !e.approveButtonFocused && e.interviewInput != nil {
+				e.interviewInput.InsertNewline()
+				return e, nil
+			}
 			return e, nil
 
 		case "escape", "esc":
@@ -74,8 +121,16 @@ func (e ScenarioEditor) handleInterviewMode(msg tea.KeyMsg) (ScenarioEditor, tea
 				return e, func() tea.Msg { return DialogOpenMsg{Dialog: dialog} }
 			}
 			return e, nil
+
+		default:
+			// Forward to TextArea for text input (only if input is focused)
+			if !e.approveButtonFocused && e.interviewInput != nil && !e.interviewLoading {
+				updatedTextArea, cmd := e.interviewInput.Update(msg)
+				*e.interviewInput = *updatedTextArea
+				return e, cmd
+			}
+			return e, nil
 		}
-		return e, nil
 	}
 
 	// Normal interview mode handling
@@ -178,9 +233,10 @@ func (e ScenarioEditor) handleInterviewResponse(msg InterviewResponseMsg) (Scena
 		// Store proposed business context for user review
 		e.proposedBusinessContext = msg.Response
 		e.awaitingBusinessCtxApproval = true
-		e.infoMsg = "Review the business context below. Press 'a' to approve or 'e' to request changes."
+		e.approveButtonFocused = false // Start with input focused
+		e.infoMsg = "Review the business context. Type to request changes or navigate to button to approve."
 
-		// Focus input in case user wants to make changes
+		// Focus input for potential edits
 		if e.interviewInput != nil {
 			e.interviewInput.Focus()
 		}
@@ -235,6 +291,7 @@ func (e ScenarioEditor) handleScenariosGenerated(msg ScenariosGeneratedMsg) (Sce
 	e.interviewLoading = false
 	e.awaitingBusinessCtxApproval = false
 	e.proposedBusinessContext = ""
+	e.approveButtonFocused = false
 	e.rebuildFilter()
 
 	return e, func() tea.Msg {
@@ -343,24 +400,69 @@ func (e ScenarioEditor) renderInterviewView(t theme.Theme) string {
 	// Input section
 	inputLabel := "Your Response:"
 	var help string
+	var buttonLine string
 
 	// Different UI for business context approval
 	if e.awaitingBusinessCtxApproval {
 		inputLabel = "Business Context (Review and Approve):"
+
+		// Create approve button
+		buttonText := "Approve & Generate"
+		buttonStyle := lipgloss.NewStyle().
+			Background(t.BackgroundPanel()).
+			Foreground(t.Text()).
+			Padding(0, 2).
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(t.TextMuted())
+
+		if e.approveButtonFocused {
+			buttonStyle = buttonStyle.
+				Background(t.Primary()).
+				Foreground(t.Background()).
+				BorderForeground(t.Primary()).
+				Bold(true)
+		}
+
+		button := buttonStyle.Render(buttonText)
+
+		// Help text on the right
 		help = lipgloss.NewStyle().
 			Background(t.Background()).
 			Foreground(t.TextMuted()).
-			Render("a approve & generate  e request changes  Esc cancel")
+			Padding(1, 0).
+			Render("↑/↓ navigate  Enter confirm  Shift+Enter new line  Esc cancel")
+
+		buttonLine = lipgloss.JoinHorizontal(
+			lipgloss.Top,
+			lipgloss.Place(
+				(e.width-4)/2,
+				3,
+				lipgloss.Left,
+				lipgloss.Top,
+				button,
+				styles.WhitespaceStyle(t.Background()),
+			),
+			lipgloss.Place(
+				(e.width-4)/2,
+				3,
+				lipgloss.Right,
+				lipgloss.Top,
+				help,
+				styles.WhitespaceStyle(t.Background()),
+			),
+		)
 	} else {
 		help = lipgloss.NewStyle().
 			Background(t.Background()).
 			Foreground(t.TextMuted()).
+			Padding(1, 0).
 			Render("Enter send  Esc cancel  Shift+Enter new line")
 	}
 
 	inputLabelStyled := lipgloss.NewStyle().
 		Background(t.Background()).
 		Foreground(t.Accent()).
+		Padding(1, 0).
 		Render(inputLabel)
 
 	var inputArea string
@@ -388,18 +490,25 @@ func (e ScenarioEditor) renderInterviewView(t theme.Theme) string {
 	}
 
 	// Build the view
-	content := strings.Join([]string{
-		header,
-		"",
-		borderedHistory,
-		"",
-		inputLabelStyled,
-		inputArea,
-		"",
-		help,
-		errorLine,
-		statusMsg,
-	}, "\n")
+	var contentParts []string
+	contentParts = append(contentParts, header, borderedHistory, inputLabelStyled, inputArea)
+
+	if e.awaitingBusinessCtxApproval {
+		// Add button line below input in approval mode
+		contentParts = append(contentParts, buttonLine)
+	} else {
+		// Add help text below input in normal mode
+		contentParts = append(contentParts, help)
+	}
+
+	if errorLine != "" {
+		contentParts = append(contentParts, errorLine)
+	}
+	if statusMsg != "" {
+		contentParts = append(contentParts, statusMsg)
+	}
+
+	content := strings.Join(contentParts, "\n")
 
 	return content
 }

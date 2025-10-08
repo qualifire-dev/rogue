@@ -52,6 +52,7 @@ type ScenarioEditor struct {
 	interviewSpinner            Spinner            // spinner for loading state
 	awaitingBusinessCtxApproval bool               // waiting for user to approve/edit business context
 	proposedBusinessContext     string             // the AI-generated business context for review
+	approveButtonFocused        bool               // true when approve button is focused instead of input
 
 	// Configuration (set by parent app) - exported so app.go can access
 	ServerURL       string // Rogue server URL
@@ -232,6 +233,7 @@ func (e ScenarioEditor) Update(msg tea.Msg) (ScenarioEditor, tea.Cmd) {
 			e.interviewError = ""
 			e.awaitingBusinessCtxApproval = false
 			e.proposedBusinessContext = ""
+			e.approveButtonFocused = false
 			e.lastUserMessage = ""
 			e.infoMsg = "Interview cancelled"
 		}
