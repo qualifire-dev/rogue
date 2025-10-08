@@ -15,7 +15,8 @@ func (e ScenarioEditor) handleInterviewStarted(msg InterviewStartedMsg) (Scenari
 	e.interviewSpinner.SetActive(false) // Stop spinner
 
 	if msg.Error != nil {
-		e.interviewError = msg.Error.Error()
+		// Store error in errorMsg so it's visible in ListMode
+		e.errorMsg = "Failed to start interview: " + msg.Error.Error()
 		e.mode = ListMode
 		return e, nil
 	}
@@ -209,7 +210,8 @@ func (e ScenarioEditor) handleScenariosGenerated(msg ScenariosGeneratedMsg) (Sce
 	e.interviewSpinner.SetActive(false) // Stop spinner
 
 	if msg.Error != nil {
-		e.interviewError = msg.Error.Error()
+		// Store error in errorMsg so it's visible in ListMode
+		e.errorMsg = "Failed to generate scenarios: " + msg.Error.Error()
 		e.mode = ListMode
 		return e, nil
 	}

@@ -155,6 +155,7 @@ func (e ScenarioEditor) handleListMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 		e.interviewError = ""
 		e.interviewMessages = []InterviewMessage{}
 		e.infoMsg = ""
+		e.errorMsg = "" // Clear any previous errors
 
 		if e.interviewInput != nil {
 			e.interviewInput.SetValue("")
