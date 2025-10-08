@@ -733,10 +733,13 @@ func (t *TextArea) placeholderView() string {
 	if len(placeholder) > t.Width {
 		placeholder = placeholder[:t.Width]
 	}
-	line += t.Style.Placeholder.Render(placeholder)
-	if len(placeholder) < t.Width && t.focus {
+	// Show cursor at the start when focused
+	if t.focus {
 		line += t.Style.Cursor.Render(" ")
 	}
+	// Ensure placeholder has consistent background with the panel
+	placeholderStyle := t.Style.Placeholder.Background(t.Style.Panel.GetBackground())
+	line += placeholderStyle.Render(placeholder)
 	lines = append(lines, line)
 
 	// Add empty lines to match the height of the textarea
