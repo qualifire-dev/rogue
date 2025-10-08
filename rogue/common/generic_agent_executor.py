@@ -1,30 +1,34 @@
 import base64
-from typing import AsyncGenerator
+from typing import TYPE_CHECKING, AsyncGenerator
 
-from a2a.server.agent_execution import AgentExecutor, RequestContext
-from a2a.server.events import EventQueue
+from a2a.server.agent_execution import AgentExecutor
 from a2a.server.tasks import TaskUpdater
 from a2a.types import (
     AgentCard,
-    TaskState,
-    UnsupportedOperationError,
-    Part,
-    TextPart,
     FilePart,
-    FileWithUri,
     FileWithBytes,
+    FileWithUri,
+    Part,
+    TaskState,
+    TextPart,
+    UnsupportedOperationError,
 )
 from a2a.utils.errors import ServerError
-from google.adk import Runner
-from google.adk.events import Event
-from google.genai import types
 from loguru import logger
+
+if TYPE_CHECKING:
+    from a2a.server.agent_execution import RequestContext
+    from a2a.server.events import EventQueue
+    from google.adk import Runner
+    from google.adk.events import Event
+    from google.genai.types import Content
+    from google.genai.types import Part as GenAIPart
 
 
 class GenericAgentExecutor(AgentExecutor):
     """An AgentExecutor that runs an ADK-based Agent."""
 
-    def __init__(self, runner: Runner, card: AgentCard):
+    def __init__(self, runner: "Runner", card: AgentCard):
         self.runner = runner
         self._card = card
 
@@ -32,9 +36,9 @@ class GenericAgentExecutor(AgentExecutor):
 
     def _run_agent(
         self,
-        session_id,
-        new_message: types.Content,
-    ) -> AsyncGenerator[Event, None]:
+        session_id: str,
+        new_message: "Content",
+    ) -> AsyncGenerator["Event", None]:
         return self.runner.run_async(
             session_id=session_id,
             user_id="self",
@@ -43,7 +47,7 @@ class GenericAgentExecutor(AgentExecutor):
 
     async def _process_request(
         self,
-        new_message: types.Content,
+        new_message: "Content",
         session_id: str,
         task_updater: TaskUpdater,
     ) -> None:
@@ -79,9 +83,13 @@ class GenericAgentExecutor(AgentExecutor):
 
     async def execute(
         self,
-        context: RequestContext,
-        event_queue: EventQueue,
+        context: "RequestContext",
+        event_queue: "EventQueue",
     ):
+        # google.genai imports take a while,
+        # importing them here to reduce rogue startup time.
+        from google.genai.types import UserContent
+
         # Run the agent until either complete or the task is suspended.
         updater = TaskUpdater(
             event_queue,
@@ -95,7 +103,7 @@ class GenericAgentExecutor(AgentExecutor):
 
         if context.message is not None:
             await self._process_request(
-                types.UserContent(
+                UserContent(
                     parts=convert_a2a_parts_to_genai(context.message.parts),
                 ),
                 context.context_id or "",
@@ -103,7 +111,7 @@ class GenericAgentExecutor(AgentExecutor):
             )
         logger.debug("EvaluatorAgentExecutor execute exiting")
 
-    async def cancel(self, context: RequestContext, event_queue: EventQueue):
+    async def cancel(self, context: "RequestContext", event_queue: "EventQueue"):
         # Ideally: kill any ongoing tasks.
         raise ServerError(error=UnsupportedOperationError())
 
@@ -136,27 +144,32 @@ class GenericAgentExecutor(AgentExecutor):
         return session
 
 
-def convert_a2a_parts_to_genai(parts: list[Part]) -> list[types.Part]:
+def convert_a2a_parts_to_genai(parts: list[Part]) -> list["GenAIPart"]:
     """Convert a list of A2A Part types into a list of Google Gen AI Part types."""
     return [convert_a2a_part_to_genai(part) for part in parts]
 
 
-def convert_a2a_part_to_genai(part: Part) -> types.Part:
+def convert_a2a_part_to_genai(part: Part) -> "GenAIPart":
+    # google.genai imports take a while,
+    # importing them here to reduce rogue startup time.
+    from google.genai.types import Blob, FileData
+    from google.genai.types import Part as GenAIPart
+
     """Convert a single A2A Part type into a Google Gen AI Part type."""
     part = part.root  # type: ignore
     if isinstance(part, TextPart):
-        return types.Part(text=part.text)
+        return GenAIPart(text=part.text)
     if isinstance(part, FilePart):
         if isinstance(part.file, FileWithUri):
-            return types.Part(
-                file_data=types.FileData(
+            return GenAIPart(
+                file_data=FileData(
                     file_uri=part.file.uri,
                     mime_type=part.file.mimeType,
                 ),
             )
         if isinstance(part.file, FileWithBytes):
-            return types.Part(
-                inline_data=types.Blob(
+            return GenAIPart(
+                inline_data=Blob(
                     data=base64.b64decode(part.file.bytes),
                     mime_type=part.file.mimeType,
                 ),
@@ -165,7 +178,7 @@ def convert_a2a_part_to_genai(part: Part) -> types.Part:
     raise ValueError(f"Unsupported part type: {type(part)}")
 
 
-def convert_genai_parts_to_a2a(parts: list[types.Part] | None) -> list[Part]:
+def convert_genai_parts_to_a2a(parts: list["GenAIPart"] | None) -> list[Part]:
     """Convert a list of Google Gen AI Part types into a list of A2A Part types."""
     parts = parts or []
     return [
@@ -175,7 +188,7 @@ def convert_genai_parts_to_a2a(parts: list[types.Part] | None) -> list[Part]:
     ]
 
 
-def convert_genai_part_to_a2a(part: types.Part) -> Part:
+def convert_genai_part_to_a2a(part: "GenAIPart") -> Part:
     """Convert a single Google Gen AI Part type into an A2A Part type."""
     if part.text:
         return Part(root=TextPart(text=part.text))

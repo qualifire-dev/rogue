@@ -1,17 +1,22 @@
 import asyncio
-from typing import List
+from typing import TYPE_CHECKING, List
 
-import gradio as gr
 from loguru import logger
 from rogue_sdk import RogueClientConfig, RogueSDK
 
 from ...common.workdir_utils import dump_business_context
 
+if TYPE_CHECKING:
+    from gradio import State, Tabs
+
 
 def create_interviewer_screen(
-    shared_state: gr.State,
-    tabs_component: gr.Tabs,
+    shared_state: "State",
+    tabs_component: "Tabs",
 ):
+    # gradio import takes a while, importing here to reduce startup time.
+    import gradio as gr
+
     with gr.Column():
         gr.Markdown("## AI-Powered Interviewer")
         gr.Markdown(

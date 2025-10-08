@@ -1,7 +1,6 @@
 import json
 from pathlib import Path
 
-import gradio as gr
 from rogue_sdk.types import AuthType
 
 from ..common.workdir_utils import load_config
@@ -13,11 +12,14 @@ from .components.report_generator import (
 )
 from .components.scenario_generator import create_scenario_generator_screen
 from .components.scenario_runner import create_scenario_runner_screen
-from .config.theme import theme
+from .config.theme import get_theme
 
 
 def get_app(workdir: Path, rogue_server_url: str):
-    with gr.Blocks(theme=theme, title="Qualifire Agent Evaluator") as app:
+    # gradio import takes a while, importing here to reduce startup time.
+    import gradio as gr
+
+    with gr.Blocks(theme=get_theme(), title="Qualifire Agent Evaluator") as app:
         shared_state = gr.State(
             {
                 "config": {},

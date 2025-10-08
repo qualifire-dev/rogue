@@ -1,13 +1,19 @@
 import asyncio
+from typing import TYPE_CHECKING
 
-import gradio as gr
 from loguru import logger
 from rogue_sdk import RogueClientConfig, RogueSDK
 
 from ...common.workdir_utils import dump_business_context, dump_scenarios
 
+if TYPE_CHECKING:
+    from gradio import State, Tabs
 
-def create_scenario_generator_screen(shared_state: gr.State, tabs_component: gr.Tabs):
+
+def create_scenario_generator_screen(shared_state: "State", tabs_component: "Tabs"):
+    # gradio import takes a while, importing here to reduce startup time.
+    import gradio as gr
+
     with gr.Column():
         gr.Markdown("## Scenario Generation")
         business_context_display = gr.Textbox(
