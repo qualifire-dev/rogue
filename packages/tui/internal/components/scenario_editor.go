@@ -162,7 +162,7 @@ func (e *ScenarioEditor) SetSize(width, height int) {
 		e.interviewViewport.SetSize(width-4, interviewHistoryHeight)
 	}
 	if e.interviewInput != nil {
-		e.interviewInput.SetSize(width-4, 5) // Fixed height for input, full width
+		e.interviewInput.SetSize(width-6, 5) // Fixed height for input, account for border
 	}
 }
 
