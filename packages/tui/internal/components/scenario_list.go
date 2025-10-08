@@ -470,6 +470,10 @@ func (e *ScenarioEditor) ConfirmDelete() {
 		e.selectedIndex--
 	}
 	e.rebuildFilter()
-	_ = e.saveScenarios()
+	if err := e.saveScenarios(); err != nil {
+		e.errorMsg = fmt.Sprintf("Save error: %v", err)
+		e.infoMsg = ""
+		return
+	}
 	e.infoMsg = "Deleted scenario"
 }
