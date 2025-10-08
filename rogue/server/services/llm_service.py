@@ -1,11 +1,14 @@
 import json
 from typing import Optional
 
-from litellm import completion
 from loguru import logger
-from rogue_sdk.types import EvaluationResults, Scenario, Scenarios, ScenarioType
-from rogue_sdk.types import StructuredSummary
-
+from rogue_sdk.types import (
+    EvaluationResults,
+    Scenario,
+    Scenarios,
+    ScenarioType,
+    StructuredSummary,
+)
 
 SCENARIO_GENERATION_SYSTEM_PROMPT = """
 # Test Scenario Designer
@@ -170,6 +173,9 @@ class LLMService:
         context: str,
         llm_provider_api_key: Optional[str] = None,
     ) -> Scenarios:
+        # litellm import takes a while, importing here to reduce startup time.
+        from litellm import completion
+
         """Generate test scenarios from business context using LLM.
 
         Args:
@@ -222,6 +228,9 @@ class LLMService:
         results: EvaluationResults,
         llm_provider_api_key: Optional[str] = None,
     ) -> StructuredSummary:
+        # litellm import takes a while, importing here to reduce startup time.
+        from litellm import completion
+
         system_prompt = SUMMARY_GENERATION_SYSTEM_PROMPT.replace(
             r"{$EVALUATION_RESULTS}",
             results.model_dump_json(indent=2),
