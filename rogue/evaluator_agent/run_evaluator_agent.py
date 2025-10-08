@@ -1,10 +1,7 @@
 import asyncio
 from asyncio import Queue
-from typing import Any, AsyncGenerator
+from typing import TYPE_CHECKING, Any, AsyncGenerator
 
-from a2a.types import AgentCapabilities, AgentCard, AgentSkill
-from google.adk.runners import Runner
-from google.adk.sessions import InMemorySessionService, Session
 from google.genai import types
 from httpx import AsyncClient
 from loguru import logger
@@ -13,32 +10,15 @@ from rogue_sdk.types import AuthType, EvaluationResults, Scenarios
 from ..common.agent_sessions import create_session
 from .evaluator_agent import EvaluatorAgent
 
-
-def _get_agent_card(host: str, port: int):
-    skill = AgentSkill(
-        id="evaluate_agent",
-        name="Evaluate Agent",
-        description="Evaluate an agent and provide a report",
-        tags=["evaluate"],
-        examples=["evaluate the agent hosted at http://localhost:10001"],
-    )
-
-    return AgentCard(
-        name="Qualifire Agent Evaluator",
-        description="Evaluates an agent is working as intended and provides a report",
-        url=f"http://{host}:{port}/",
-        version="1.0.0",
-        defaultInputModes=["text"],
-        defaultOutputModes=["text"],
-        capabilities=AgentCapabilities(streaming=True),
-        skills=[skill],
-    )
+if TYPE_CHECKING:
+    from google.adk.runners import Runner
+    from google.adk.sessions import Session
 
 
 async def _run_agent(
-    agent_runner: Runner,
+    agent_runner: "Runner",
     input_text: str,
-    session: Session,
+    session: "Session",
 ) -> str:
     input_text_preview = (
         input_text[:100] + "..." if len(input_text) > 100 else input_text
@@ -102,6 +82,10 @@ async def arun_evaluator_agent(
     business_context: str,
     deep_test_mode: bool,
 ) -> AsyncGenerator[tuple[str, Any], None]:
+    # adk imports take a while, importing them here to reduce rogue startup time.
+    from google.adk.runners import Runner
+    from google.adk.sessions import InMemorySessionService
+
     logger.info(
         "🤖 arun_evaluator_agent starting",
         extra={

@@ -1,13 +1,15 @@
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from google.adk.sessions import Session, BaseSessionService
+if TYPE_CHECKING:
+    from google.adk.sessions import BaseSessionService, Session
 
 
 async def create_session(
     app_name: str,
-    session_service: BaseSessionService,
+    session_service: "BaseSessionService",
     user_id: str | None = None,
-) -> Session:
+) -> "Session":
     user_id = user_id or uuid4().hex
     return await session_service.create_session(
         app_name=app_name,

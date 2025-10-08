@@ -5,16 +5,8 @@ import uvicorn
 from a2a.server.apps import A2AStarletteApplication
 from a2a.server.request_handlers import DefaultRequestHandler
 from a2a.server.tasks import InMemoryTaskStore
-from a2a.types import (
-    AgentCapabilities,
-    AgentCard,
-    AgentSkill,
-)
+from a2a.types import AgentCapabilities, AgentCard, AgentSkill
 from dotenv import load_dotenv
-from google.adk.artifacts import InMemoryArtifactService
-from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
-from google.adk.runners import Runner
-from google.adk.sessions import InMemorySessionService
 
 from .tshirt_store_agent import create_tshirt_store_agent
 from .tshirt_store_agent_executor import TShirtStoreAgentExecutor
@@ -28,6 +20,12 @@ logging.basicConfig()
 @click.option("--host", "host", default="localhost")
 @click.option("--port", "port", default=10001)
 def main(host: str, port: int) -> None:
+    # adk imports take a while, importing them here to reduce rogue startup time.
+    from google.adk.artifacts import InMemoryArtifactService
+    from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
+    from google.adk.runners import Runner
+    from google.adk.sessions import InMemorySessionService
+
     skill = AgentSkill(
         id="sell_tshirt",
         name="Sell T-Shirt",

@@ -1,13 +1,9 @@
 import json
-from typing import Any, Callable, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional
 from uuid import uuid4
 
 from a2a.client import A2ACardResolver
 from a2a.types import Message, MessageSendParams, Part, Role, Task, TextPart
-from google.adk.agents import LlmAgent
-from google.adk.agents.callback_context import CallbackContext
-from google.adk.models import LlmRequest, LlmResponse
-from google.adk.tools import BaseTool, FunctionTool, ToolContext
 from google.genai import types
 from httpx import AsyncClient
 from loguru import logger
@@ -30,6 +26,13 @@ from ..common.remote_agent_connection import (
     RemoteAgentConnections,
 )
 from ..evaluator_agent.policy_evaluation import evaluate_policy
+
+if TYPE_CHECKING:
+    from google.adk.agents import LlmAgent
+    from google.adk.agents.callback_context import CallbackContext
+    from google.adk.models import LlmRequest, LlmResponse
+    from google.adk.tools import BaseTool, ToolContext
+
 
 FAST_MODE_AGENT_INSTRUCTIONS = """
 You are a scenario tester agent. Your task is to test the given scenarios against another agent and
@@ -196,7 +199,11 @@ class EvaluatorAgent:
 
         return self.__evaluated_agent_client
 
-    def get_underlying_agent(self) -> LlmAgent:
+    def get_underlying_agent(self) -> "LlmAgent":
+        # adk imports take a while, importing them here to reduce rogue startup time.
+        from google.adk.agents import LlmAgent
+        from google.adk.tools import FunctionTool
+
         instructions_template = (
             AGENT_INSTRUCTIONS if self._deep_test_mode else FAST_MODE_AGENT_INSTRUCTIONS
         )
@@ -251,9 +258,9 @@ class EvaluatorAgent:
 
     def _before_tool_callback(
         self,
-        tool: BaseTool,
+        tool: "BaseTool",
         args: dict[str, Any],
-        tool_context: ToolContext,
+        tool_context: "ToolContext",
     ) -> Optional[dict]:
         # Always log tool calls, not just in debug mode
         logger.info(
@@ -271,9 +278,9 @@ class EvaluatorAgent:
 
     def _after_tool_callback(
         self,
-        tool: BaseTool,
+        tool: "BaseTool",
         args: dict[str, Any],
-        tool_context: ToolContext,
+        tool_context: "ToolContext",
         tool_response: Optional[dict],
     ) -> Optional[dict]:
         # Always log tool responses, not just in debug mode
@@ -293,8 +300,8 @@ class EvaluatorAgent:
 
     def _before_model_callback(
         self,
-        callback_context: CallbackContext,
-        llm_request: LlmRequest,
+        callback_context: "CallbackContext",
+        llm_request: "LlmRequest",
     ) -> None:
         # Always log LLM requests to see what the judge is being asked
         logger.info(
@@ -308,8 +315,8 @@ class EvaluatorAgent:
 
     def _after_model_callback(
         self,
-        callback_context: CallbackContext,
-        llm_response: LlmResponse,
+        callback_context: "CallbackContext",
+        llm_response: "LlmResponse",
     ) -> None:
         if not self._debug:
             return None
