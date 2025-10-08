@@ -314,7 +314,7 @@ func (e ScenarioEditor) renderInterviewView(t theme.Theme) string {
 		Background(t.Background()).
 		Foreground(t.Primary()).
 		Bold(true).
-		Render(fmt.Sprintf("\n🤖 AI Interview - Understanding Your Agent (%d/3 responses)", userMsgCount))
+		Render(fmt.Sprintf("\n🤖 AI Interview - Understanding Your Agent (%d/%d responses)", userMsgCount, max(3, userMsgCount)))
 
 	// Render message history
 	var messageLines []string
