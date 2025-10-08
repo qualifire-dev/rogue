@@ -1,16 +1,21 @@
 from functools import lru_cache
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
-from google.adk.models import LLMRegistry, BaseLlm
-from google.adk.models.lite_llm import LiteLlm
 from loguru import logger
+
+if TYPE_CHECKING:
+    from google.adk.models import BaseLlm
 
 
 @lru_cache()
 def get_llm_from_model(
     model: str,
     llm_auth: Optional[str] = None,
-) -> BaseLlm:
+) -> "BaseLlm":
+    # adk imports take a while, importing them here to reduce rogue startup time.
+    from google.adk.models import LLMRegistry
+    from google.adk.models.lite_llm import LiteLlm
+
     try:
         llm_cls = LLMRegistry.resolve(model)
     except ValueError:

@@ -1,7 +1,6 @@
 import os
 import re
 
-from litellm import completion
 from loguru import logger
 from pydantic import ValidationError
 from rogue_sdk.types import ChatHistory
@@ -142,6 +141,9 @@ def evaluate_policy(
     expected_outcome: str | None = None,
     api_key: str | None = None,
 ) -> PolicyEvaluationResult:
+    # litellm import takes a while, importing here to reduce startup time.
+    from litellm import completion
+
     if "/" not in model and model.startswith("gemini"):
         if os.getenv("GOOGLE_GENAI_USE_VERTEXAI", "false").lower() == "true":
             model = f"vertex_ai/{model}"

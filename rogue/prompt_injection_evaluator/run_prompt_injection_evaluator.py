@@ -2,11 +2,9 @@ import json
 from typing import Any, AsyncGenerator, Optional
 from uuid import uuid4
 
-import datasets
 import httpx
 from a2a.client import A2ACardResolver
 from a2a.types import Message, MessageSendParams, Part, Role, Task, TextPart
-from litellm import completion
 from loguru import logger
 from rogue_sdk.types import AuthType, ChatHistory, ChatMessage
 
@@ -79,6 +77,9 @@ async def _judge_injection_attempt(
     judge_llm: str,
     judge_llm_api_key: Optional[str],
 ) -> PromptInjectionEvaluation:
+    # litellm import takes a while, importing here to reduce startup time.
+    from litellm import completion
+
     prompt = EVALUATION_PROMPT_TEMPLATE.format(
         conversation_history=chat_history.model_dump_json(indent=2),
         payload=payload.payload,
@@ -121,8 +122,11 @@ async def arun_prompt_injection_evaluator(
     dataset_name: str,
     sample_size: int | None,
 ) -> AsyncGenerator[tuple[str, Any], None]:
+    # datasets import takes a while, importing here to reduce startup time.
+    from datasets import load_dataset
+
     headers = auth_type.get_auth_header(auth_credentials)
-    dataset_dict = datasets.load_dataset(dataset_name)
+    dataset_dict = load_dataset(dataset_name)
 
     # Pick a split to use. Prioritize 'train', then take the first available.
     if "train" in dataset_dict:

@@ -1,7 +1,5 @@
 from typing import Any, Dict, Iterator
 
-from litellm import completion
-
 INTERVIEWER_SYSTEM_PROMPT = """
 You are an AI interviewer tasked with extracting a business context from a user about their AI agent.
 Your goal is to gather enough information to later generate test scenarios,
@@ -67,6 +65,9 @@ class InterviewerService:
         ]
 
     def send_message(self, user_input: str):
+        # litellm import takes a while, importing here to reduce startup time.
+        from litellm import completion
+
         self._messages.append(
             {
                 "role": "user",

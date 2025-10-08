@@ -1,11 +1,13 @@
 from pathlib import Path
-from typing import Tuple
+from typing import TYPE_CHECKING, Tuple
 
-import gradio as gr
 from loguru import logger
 from rogue_sdk.types import EvaluationResults
 
 from ...server.services.api_format_service import convert_with_structured_summary
+
+if TYPE_CHECKING:
+    from gradio import JSON, Markdown, State
 
 
 def _load_report_data_from_files(
@@ -29,8 +31,11 @@ def _load_report_data_from_files(
 
 
 def create_report_generator_screen(
-    shared_state: gr.State,
-) -> Tuple[gr.JSON, gr.Markdown]:
+    shared_state: "State",
+) -> Tuple["JSON", "Markdown"]:
+    # gradio import takes a while, importing here to reduce startup time.
+    import gradio as gr
+
     with gr.Column():
         gr.Markdown("## Summary")
         summary_display = gr.Markdown(
@@ -48,6 +53,9 @@ def setup_report_generator_logic(
     summary_display,
     shared_state,
 ):
+    # gradio import takes a while, importing here to reduce startup time.
+    import gradio as gr
+
     def on_report_tab_select(state):
         results = state.get("results", EvaluationResults())
         summary = state.get("summary", "No summary available.")

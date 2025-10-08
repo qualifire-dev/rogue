@@ -1,24 +1,27 @@
 import base64
 from logging import getLogger
-from typing import AsyncGenerator
+from typing import TYPE_CHECKING, AsyncGenerator
 
 from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.events import EventQueue
 from a2a.server.tasks import TaskUpdater
 from a2a.types import (
     AgentCard,
-    TaskState,
-    UnsupportedOperationError,
-    Part,
-    TextPart,
     FilePart,
-    FileWithUri,
     FileWithBytes,
+    FileWithUri,
+    Part,
+    TaskState,
+    TextPart,
+    UnsupportedOperationError,
 )
 from a2a.utils.errors import ServerError
-from google.adk import Runner
-from google.adk.events import Event
 from google.genai import types
+
+if TYPE_CHECKING:
+    from google.adk import Runner
+    from google.adk.events import Event
+
 
 logger = getLogger(__name__)
 
@@ -26,7 +29,7 @@ logger = getLogger(__name__)
 class TShirtStoreAgentExecutor(AgentExecutor):
     """An AgentExecutor that runs an ADK-based Agent."""
 
-    def __init__(self, runner: Runner, card: AgentCard):
+    def __init__(self, runner: "Runner", card: AgentCard):
         self.runner = runner
         self._card = card
 
@@ -34,9 +37,9 @@ class TShirtStoreAgentExecutor(AgentExecutor):
 
     def _run_agent(
         self,
-        session_id,
+        session_id: str,
         new_message: types.Content,
-    ) -> AsyncGenerator[Event, None]:
+    ) -> AsyncGenerator["Event", None]:
         return self.runner.run_async(
             session_id=session_id,
             user_id="self",

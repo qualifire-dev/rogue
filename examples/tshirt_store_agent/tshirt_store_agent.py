@@ -1,8 +1,9 @@
 import os
+from typing import TYPE_CHECKING
 
-from google.adk.agents import LlmAgent
-from google.adk.models.lite_llm import LiteLlm
-from google.adk.tools import FunctionTool
+if TYPE_CHECKING:
+    from google.adk.agents import LlmAgent
+
 
 AGENT_INSTRUCTIONS = """
 You are an agent for a t-shirt store named Shirtify.
@@ -72,7 +73,12 @@ def send_email_tool(
     return f"Email sent to {email} with subject {subject} and body {body}"
 
 
-def create_tshirt_store_agent() -> LlmAgent:
+def create_tshirt_store_agent() -> "LlmAgent":
+    # adk imports take a while, importing them here to reduce rogue startup time.
+    from google.adk.agents import LlmAgent
+    from google.adk.models.lite_llm import LiteLlm
+    from google.adk.tools import FunctionTool
+
     tools: list[FunctionTool] = [
         FunctionTool(
             func=inventory_tool,
