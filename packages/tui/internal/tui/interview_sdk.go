@@ -152,24 +152,3 @@ func (sdk *RogueSDK) GetConversation(ctx context.Context, sessionID string) (*Ge
 
 	return &convResp, nil
 }
-
-// EndInterview ends an interview session and cleans up resources
-func (sdk *RogueSDK) EndInterview(ctx context.Context, sessionID string) error {
-	req, err := http.NewRequestWithContext(ctx, "DELETE", sdk.baseURL+"/api/v1/interview/session/"+url.PathEscape(sessionID), nil)
-	if err != nil {
-		return err
-	}
-
-	resp, err := sdk.httpClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("end interview failed: %d %s", resp.StatusCode, string(body))
-	}
-
-	return nil
-}

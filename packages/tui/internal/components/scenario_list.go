@@ -85,6 +85,10 @@ func (e ScenarioEditor) handleListMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 		if len(e.filteredIdx) == 0 {
 			return e, nil
 		}
+		if e.selectedIndex > len(e.filteredIdx)-1 {
+			e.selectedIndex = len(e.filteredIdx) - 1
+		}
+
 		idx := e.filteredIdx[e.selectedIndex]
 		e.mode = EditMode
 		e.editing = e.scenarios[idx]
