@@ -460,7 +460,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					// Trigger summary generation for completed evaluations (only once and if we don't have one yet)
 					m.evalState.SummaryGenerated = true // Mark as attempted to prevent multiple generations
 					m.triggerSummaryGeneration()
-					return m, m.summaryGenerationCmd()
+					return m, tea.Batch(m.summarySpinner.Start(), m.summaryGenerationCmd())
 				}
 			}
 		}
@@ -1056,7 +1056,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.evalState.currentField == 3 { // Start button field
 					m.handleNewEvalEnter()
 					// Return command to start evaluation after showing spinner
-					return m, startEvaluationCmd()
+					return m, tea.Batch(m.evalSpinner.Start(), startEvaluationCmd())
 				} else if m.evalState.currentField == 1 { // Judge LLM field
 					// Open LLM config dialog when Enter is pressed on Judge LLM field
 					llmDialog := components.NewLLMConfigDialog(m.config.APIKeys, m.config.SelectedProvider, m.config.SelectedModel)
@@ -1093,7 +1093,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				case "t":
 					// Start health check spinner and background health check
 					m.healthSpinner.SetActive(true)
-					return m, m.healthCheckCmd()
+					return m, tea.Batch(m.healthSpinner.Start(), m.healthCheckCmd())
 				case "up":
 					if m.evalState.currentField > 0 {
 						m.evalState.currentField--
@@ -1293,7 +1293,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					// Allow manual regeneration by resetting the flag
 					m.evalState.SummaryGenerated = false
 					m.summarySpinner.SetActive(true)
-					return m, m.summaryGenerationCmd()
+					return m, tea.Batch(m.summarySpinner.Start(), m.summaryGenerationCmd())
 				}
 				return m, nil
 			case "home":
