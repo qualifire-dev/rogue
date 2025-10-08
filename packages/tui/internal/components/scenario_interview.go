@@ -393,7 +393,7 @@ func (e ScenarioEditor) renderInterviewView(t theme.Theme) string {
 		Background(t.Background()).
 		Padding(1, 1).
 		Width(e.width - 4).
-		Height((e.height - 20)) // Leave room for input and help
+		Height((e.height - 24)) // Leave room for input and help
 
 	borderedHistory := historyStyle.Render(messageHistory)
 
@@ -405,6 +405,7 @@ func (e ScenarioEditor) renderInterviewView(t theme.Theme) string {
 	// Different UI for business context approval
 	if e.awaitingBusinessCtxApproval {
 		inputLabel = "Business Context (Review and Approve):"
+		e.interviewInput.Placeholder = "Request changes here..."
 
 		// Create approve button
 		buttonText := "Approve & Generate"
@@ -457,6 +458,16 @@ func (e ScenarioEditor) renderInterviewView(t theme.Theme) string {
 			Foreground(t.TextMuted()).
 			Padding(1, 0).
 			Render("Enter send  Esc cancel  Shift+Enter new line")
+
+		help = lipgloss.Place(
+			(e.width - 4),
+			3,
+			lipgloss.Right,
+			lipgloss.Top,
+			help,
+			styles.WhitespaceStyle(t.Background()),
+		)
+
 	}
 
 	inputLabelStyled := lipgloss.NewStyle().
@@ -467,7 +478,21 @@ func (e ScenarioEditor) renderInterviewView(t theme.Theme) string {
 
 	var inputArea string
 	if e.interviewInput != nil {
-		inputArea = e.interviewInput.View()
+		// Determine if input is focused
+		inputFocused := !e.awaitingBusinessCtxApproval || !e.approveButtonFocused
+
+		// Wrap input with primary-colored border only when focused
+		if inputFocused {
+			inputArea = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(t.Primary()).
+				Render(e.interviewInput.View())
+		} else {
+			inputArea = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(t.TextMuted()).
+				Render(e.interviewInput.View())
+		}
 	}
 
 	// Error display
