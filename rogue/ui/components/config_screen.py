@@ -1,15 +1,22 @@
-import gradio as gr
+from typing import TYPE_CHECKING
+
 from loguru import logger
 from pydantic import ValidationError
 from rogue_sdk.types import AgentConfig, AuthType
 
 from ...common.workdir_utils import dump_config
 
+if TYPE_CHECKING:
+    from gradio import State, Tabs
+
 
 def create_config_screen(
-    shared_state: gr.State,
-    tabs_component: gr.Tabs,
+    shared_state: "State",
+    tabs_component: "Tabs",
 ):
+    # gradio import takes a while, importing here to reduce startup time.
+    import gradio as gr
+
     config_data = {}
     if shared_state.value and isinstance(shared_state.value, dict):
         config_data = shared_state.value.get("config", {})

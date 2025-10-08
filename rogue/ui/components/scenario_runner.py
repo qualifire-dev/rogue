@@ -1,7 +1,7 @@
 import asyncio
 import json
+from typing import TYPE_CHECKING
 
-import gradio as gr
 from loguru import logger
 from pydantic import HttpUrl
 from rogue_sdk import RogueClientConfig, RogueSDK
@@ -15,6 +15,9 @@ from rogue_sdk.types import (
 )
 
 from ...common.workdir_utils import dump_scenarios
+
+if TYPE_CHECKING:
+    from gradio import State, Tabs
 
 MAX_PARALLEL_RUNS = 10
 
@@ -41,7 +44,10 @@ def split_into_batches(scenarios: list, n: int) -> list[list]:
     return batches
 
 
-def create_scenario_runner_screen(shared_state: gr.State, tabs_component: gr.Tabs):
+def create_scenario_runner_screen(shared_state: "State", tabs_component: "Tabs"):
+    # gradio import takes a while, importing here to reduce startup time.
+    import gradio as gr
+
     with gr.Column():
         gr.Markdown("## Scenario Runner & Evaluator")
         with gr.Accordion("scenarios to Run"):
