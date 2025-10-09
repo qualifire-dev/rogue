@@ -330,6 +330,8 @@ func (m Model) renderEvaluationDetail() string {
 	// Customize prefixes to match the evaluation context
 	m.eventsHistory.SetPrefixes("🔍 Rogue: ", "🤖 Agent: ")
 
+	m.eventsHistory.SetColors(t.Primary(), t.Text())
+
 	// Render events using MessageHistoryView
 	var eventsContent string
 	if m.eventsHistory != nil {

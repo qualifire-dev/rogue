@@ -33,7 +33,7 @@ type ChatView struct {
 // NewChatView creates a new chat view component
 func NewChatView(id int, width, height int, t theme.Theme) *ChatView {
 	// Create message history view
-	messageHistory := NewMessageHistoryView(id, width, height-24)
+	messageHistory := NewMessageHistoryView(id, width, height-24, t)
 
 	// Create input
 	input := NewTextArea(id+100, width-6, 4, t)

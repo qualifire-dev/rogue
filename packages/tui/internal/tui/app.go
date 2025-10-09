@@ -285,7 +285,7 @@ func (a *App) Run() error {
 		evalSpinner:    components.NewSpinner(3),
 
 		// Initialize viewports and message history
-		eventsHistory:   components.NewMessageHistoryView(1, 80, 20),
+		eventsHistory:   components.NewMessageHistoryView(1, 80, 20, theme.CurrentTheme()),
 		summaryViewport: components.NewViewport(2, 80, 20),
 		reportViewport:  components.NewViewport(3, 80, 15),
 		helpViewport:    components.NewViewport(4, 80, 20),

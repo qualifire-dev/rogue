@@ -5,6 +5,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"
+	"github.com/charmbracelet/lipgloss/v2/compat"
 	"github.com/rogue/tui/internal/theme"
 )
 
@@ -34,12 +35,12 @@ type MessageHistoryView struct {
 	spinner         *Spinner
 
 	// Rendering
-	userColor      string
-	assistantColor string
+	userColor      compat.AdaptiveColor
+	assistantColor compat.AdaptiveColor
 }
 
 // NewMessageHistoryView creates a new message history viewport
-func NewMessageHistoryView(id int, width, height int) *MessageHistoryView {
+func NewMessageHistoryView(id int, width, height int, t theme.Theme) *MessageHistoryView {
 	viewport := NewViewport(id, width-4, height)
 	viewport.WrapContent = true
 
@@ -55,8 +56,8 @@ func NewMessageHistoryView(id int, width, height int) *MessageHistoryView {
 		assistantPrefix: "🤖 AI:  ",
 		showSpinner:     false,
 		spinner:         &spinner,
-		userColor:       "", // Will use theme Primary
-		assistantColor:  "", // Will use theme Accent
+		userColor:       t.Text(), // Will use theme Primary
+		assistantColor:  t.Text(), // Will use theme Accent
 	}
 }
 
@@ -78,7 +79,7 @@ func (m *MessageHistoryView) SetPrefixes(userPrefix, assistantPrefix string) {
 }
 
 // SetColors customizes the message colors
-func (m *MessageHistoryView) SetColors(userColor, assistantColor string) {
+func (m *MessageHistoryView) SetColors(userColor, assistantColor compat.AdaptiveColor) {
 	m.userColor = userColor
 	m.assistantColor = assistantColor
 }
@@ -277,8 +278,8 @@ func (m *MessageHistoryView) renderMessages(t theme.Theme) []string {
 		// Determine prefix and color based on role
 		if msg.Role == "assistant" {
 			prefix = m.assistantPrefix
-			if m.assistantColor != "" {
-				textStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(m.assistantColor))
+			if m.assistantColor != (compat.AdaptiveColor{}) {
+				textStyle = lipgloss.NewStyle().Foreground(m.assistantColor)
 			} else {
 				textStyle = lipgloss.NewStyle().Foreground(t.Accent())
 			}
@@ -289,8 +290,8 @@ func (m *MessageHistoryView) renderMessages(t theme.Theme) []string {
 		} else {
 			// Default to user style
 			prefix = m.userPrefix
-			if m.userColor != "" {
-				textStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(m.userColor))
+			if m.userColor != (compat.AdaptiveColor{}) {
+				textStyle = lipgloss.NewStyle().Foreground(m.userColor)
 			} else {
 				textStyle = lipgloss.NewStyle().Foreground(t.Primary())
 			}
