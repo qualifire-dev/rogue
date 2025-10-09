@@ -38,34 +38,46 @@ func wrapText(text string, width int) string {
 
 // wrapTextWithStarts wraps text to the given width and returns lines and rune index starts for each line
 func wrapTextWithStarts(text string, width int) ([]string, []int) {
+	if width <= 0 {
+		if text == "" {
+			return []string{""}, []int{0}
+		}
+		return []string{text}, []int{0}
+	}
+
 	runes := []rune(text)
-	var lines []string
-	var starts []int
-	start := 0
-	col := 0
-	for i := 0; i <= len(runes); i++ {
-		atEnd := i == len(runes)
-		if !atEnd && runes[i] == '\n' {
+	if len(runes) == 0 {
+		return []string{""}, []int{0}
+	}
+
+	var (
+		lines  []string
+		starts []int
+		start  int
+		col    int
+	)
+
+	for i, r := range runes {
+		if r == '\n' {
 			lines = append(lines, string(runes[start:i]))
 			starts = append(starts, start)
 			start = i + 1
 			col = 0
 			continue
 		}
-		if !atEnd {
-			col++
-		}
-		if atEnd || col >= width {
-			lines = append(lines, string(runes[start:i]))
+
+		col++
+		if col == width {
+			lines = append(lines, string(runes[start:i+1]))
 			starts = append(starts, start)
-			start = i
+			start = i + 1
 			col = 0
 		}
 	}
-	if len(lines) == 0 {
-		lines = []string{""}
-		starts = []int{0}
-	}
+
+	lines = append(lines, string(runes[start:]))
+	starts = append(starts, start)
+
 	return lines, starts
 }
 
