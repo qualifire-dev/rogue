@@ -28,6 +28,10 @@ pre-commit:
       glob: "*.py"
       run: add-trailing-comma {staged_files}
 
+    - name: isort
+      glob: "*.py"
+      run: isort {staged_files}
+
     - name: black
       glob: "*.py"
       exclude: ".venv/"
