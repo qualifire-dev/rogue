@@ -325,7 +325,7 @@ func (m Model) renderEvaluationDetail() string {
 	}
 
 	// Update size
-	m.eventsHistory.SetSize(m.width-4, eventsHeight)
+	m.eventsHistory.SetSize(m.width, eventsHeight)
 
 	// Customize prefixes to match the evaluation context
 	m.eventsHistory.SetPrefixes("🔍 Rogue: ", "🤖 Agent: ")
