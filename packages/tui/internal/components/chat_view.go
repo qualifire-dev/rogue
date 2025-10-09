@@ -1,7 +1,6 @@
 package components
 
 import (
-	"fmt"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea/v2"
@@ -40,8 +39,8 @@ type ChatView struct {
 	assistantPrefix  string
 	inputLabel       string
 	inputPlaceholder string
-	showProgressBar  bool
-	maxResponses     int // For progress display (0 = no limit)
+	showHeader       bool
+	headerText       string
 	baseID           int // Base ID for sub-components
 }
 
@@ -71,8 +70,8 @@ func NewChatView(id int, width, height int, t theme.Theme) *ChatView {
 		assistantPrefix:  "🤖 AI:  ",
 		inputLabel:       "Your Response:",
 		inputPlaceholder: "Type your message...",
-		showProgressBar:  false,
-		maxResponses:     0,
+		showHeader:       false,
+		headerText:       "",
 		baseID:           id,
 	}
 }
@@ -109,10 +108,16 @@ func (c *ChatView) SetInputPlaceholder(placeholder string) {
 	}
 }
 
-// SetProgressBar enables/disables progress display
-func (c *ChatView) SetProgressBar(enabled bool, maxResponses int) {
-	c.showProgressBar = enabled
-	c.maxResponses = maxResponses
+// SetHeader sets a custom header text for the chat view
+func (c *ChatView) SetHeader(text string) {
+	c.showHeader = text != ""
+	c.headerText = text
+}
+
+// HideHeader hides the header
+func (c *ChatView) HideHeader() {
+	c.showHeader = false
+	c.headerText = ""
 }
 
 // AddMessage adds a message to the chat history
@@ -210,6 +215,14 @@ func (c *ChatView) Update(msg tea.Msg) tea.Cmd {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		return c.handleKeyPress(msg)
+	case tea.PasteMsg:
+		// Forward paste to input if not loading and not scrolling
+		if c.input != nil && !c.loading && !c.viewportFocused {
+			updatedTextArea, cmd := c.input.Update(msg)
+			*c.input = *updatedTextArea
+			return cmd
+		}
+		return nil
 	case SpinnerTickMsg:
 		if c.spinner != nil {
 			updatedSpinner, cmd := c.spinner.Update(msg)
@@ -307,28 +320,14 @@ func (c *ChatView) View(t theme.Theme) string {
 
 // renderChatContent renders the chat view with optional help section
 func (c *ChatView) renderChatContent(t theme.Theme, includeHelp bool) string {
-	// Calculate message count (user messages only)
-	userMsgCount := 0
-	for _, msg := range c.messages {
-		if msg.Role == "user" {
-			userMsgCount++
-		}
-	}
-
-	// Header with optional progress
+	// Header (optional)
 	var header string
-	if c.showProgressBar && c.maxResponses > 0 {
+	if c.showHeader {
 		header = lipgloss.NewStyle().
 			Background(t.Background()).
 			Foreground(t.Primary()).
 			Bold(true).
-			Render(fmt.Sprintf("\n🤖 Chat (%d/%d responses)", userMsgCount, max(c.maxResponses, userMsgCount)))
-	} else {
-		header = lipgloss.NewStyle().
-			Background(t.Background()).
-			Foreground(t.Primary()).
-			Bold(true).
-			Render("\n🤖 Chat")
+			Render("\n" + c.headerText)
 	}
 
 	// Render message history
@@ -397,7 +396,10 @@ func (c *ChatView) renderChatContent(t theme.Theme, includeHelp bool) string {
 
 	// Build the view
 	var contentParts []string
-	contentParts = append(contentParts, header, borderedHistory, inputLabelStyled, inputArea)
+	if c.showHeader && header != "" {
+		contentParts = append(contentParts, header)
+	}
+	contentParts = append(contentParts, borderedHistory, inputLabelStyled, inputArea)
 
 	// Only add help/error section if requested
 	if includeHelp {

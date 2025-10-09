@@ -161,7 +161,6 @@ func (e ScenarioEditor) handleListMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 		// Initialize ChatView if not already done
 		if e.interviewChatView == nil {
 			chatView := NewChatView(9990, e.width, e.height, theme.CurrentTheme())
-			chatView.SetProgressBar(true, 3) // Show progress with 3 responses expected
 			e.interviewChatView = chatView
 		}
 

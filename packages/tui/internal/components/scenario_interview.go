@@ -304,9 +304,16 @@ func (e ScenarioEditor) renderInterviewView(t theme.Theme) string {
 		return "Loading chat..."
 	}
 
+	// Add interview title
+	title := lipgloss.NewStyle().
+		Background(t.Background()).
+		Foreground(t.Primary()).
+		Bold(true).
+		Render("\n🤖 AI Interview - Understanding Your Agent\n")
+
 	// Normal interview mode - just render the ChatView
 	if !e.awaitingBusinessCtxApproval {
-		return e.interviewChatView.View(t)
+		return title + "\n" + e.interviewChatView.View(t)
 	}
 
 	// Approval mode - render ChatView with custom label and approval button
@@ -314,7 +321,7 @@ func (e ScenarioEditor) renderInterviewView(t theme.Theme) string {
 	e.interviewChatView.SetInputPlaceholder("Request changes here...")
 
 	// Use ViewWithoutHelp to avoid double help text
-	chatViewContent := e.interviewChatView.ViewWithoutHelp(t)
+	chatViewContent := title + "\n" + e.interviewChatView.ViewWithoutHelp(t)
 
 	// Create approve button
 	buttonText := "Approve & Generate"
