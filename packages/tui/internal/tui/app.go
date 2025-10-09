@@ -338,14 +338,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		if m.dialog != nil {
-			clipboardText, err := components.GetClipboardContent()
-			if err != nil {
-				// If clipboard reading fails, just return without error
-				return m, nil
-			}
-
 			// Clean the clipboard text (remove newlines and trim whitespace)
-			cleanText := strings.TrimSpace(strings.ReplaceAll(clipboardText, "\n", ""))
+			cleanText := strings.TrimSpace(strings.ReplaceAll(string(msg), "\n", ""))
 
 			if cleanText == "" {
 				return m, nil

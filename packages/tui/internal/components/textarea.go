@@ -580,12 +580,7 @@ func (t *TextArea) Update(msg tea.Msg) (*TextArea, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.PasteMsg:
-		clipboardText, err := GetClipboardContent()
-		if err != nil {
-			return t, nil
-		}
-
-		cleanText := strings.TrimSpace(clipboardText)
+		cleanText := strings.TrimSpace(string(msg))
 
 		if cleanText == "" {
 			return t, nil
