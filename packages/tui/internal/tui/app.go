@@ -496,24 +496,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.commandInput.SetFocus(false)
 			m.commandInput.SetValue("")
 			// Configure scenario editor with interview model settings
-			interviewModel := "openai/gpt-4o" // Default fallback
-			if m.config.InterviewProvider != "" && m.config.InterviewModel != "" {
-				interviewModel = m.config.InterviewProvider + "/" + m.config.InterviewModel
-			} else if m.config.SelectedProvider != "" && m.config.SelectedModel != "" {
-				// Fall back to selected judge model if interview model not set
-				interviewModel = m.config.SelectedProvider + "/" + m.config.SelectedModel
-			}
-			interviewAPIKey := ""
-			if m.config.InterviewProvider != "" {
-				if key, ok := m.config.APIKeys[m.config.InterviewProvider]; ok {
-					interviewAPIKey = key
-				}
-			} else if m.config.SelectedProvider != "" {
-				if key, ok := m.config.APIKeys[m.config.SelectedProvider]; ok {
-					interviewAPIKey = key
-				}
-			}
-			m.scenarioEditor.SetConfig(m.config.ServerURL, interviewModel, interviewAPIKey)
+			m.configureScenarioEditorWithInterviewModel()
 		case "configuration":
 			m.currentScreen = ConfigurationScreen
 			// Initialize config state when entering configuration screen
@@ -892,6 +875,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Unfocus command input when entering scenarios screen
 			m.commandInput.SetFocus(false)
 			m.commandInput.SetValue("")
+			// Configure scenario editor with interview model settings
+			m.configureScenarioEditorWithInterviewModel()
 			return m, nil
 
 		case "ctrl+g":
@@ -1758,4 +1743,26 @@ func (m *Model) generateScenariosCmd(businessContext string) tea.Cmd {
 			Error:           nil,
 		}
 	}
+}
+
+// configureScenarioEditorWithInterviewModel configures the scenario editor with interview model settings
+func (m *Model) configureScenarioEditorWithInterviewModel() {
+	interviewModel := "openai/gpt-4o" // Default fallback
+	if m.config.InterviewProvider != "" && m.config.InterviewModel != "" {
+		interviewModel = m.config.InterviewProvider + "/" + m.config.InterviewModel
+	} else if m.config.SelectedProvider != "" && m.config.SelectedModel != "" {
+		// Fall back to selected judge model if interview model not set
+		interviewModel = m.config.SelectedProvider + "/" + m.config.SelectedModel
+	}
+	interviewAPIKey := ""
+	if m.config.InterviewProvider != "" {
+		if key, ok := m.config.APIKeys[m.config.InterviewProvider]; ok {
+			interviewAPIKey = key
+		}
+	} else if m.config.SelectedProvider != "" {
+		if key, ok := m.config.APIKeys[m.config.SelectedProvider]; ok {
+			interviewAPIKey = key
+		}
+	}
+	m.scenarioEditor.SetConfig(m.config.ServerURL, interviewModel, interviewAPIKey)
 }
