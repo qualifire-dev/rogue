@@ -1242,6 +1242,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "up", "down", "pgup", "pgdown":
 				// Arrow keys: focus the active viewport and scroll
 				if m.focusedViewport == 0 && m.eventsHistory != nil {
+					// Special case: if at bottom and user hits down, blur to re-enable auto-scroll
+					if msg.String() == "down" && m.eventsHistory.AtBottom() {
+						m.eventsHistory.Blur()
+						return m, nil
+					}
+
 					// Focus events history when user starts scrolling
 					m.eventsHistory.Focus()
 					switch msg.String() {
