@@ -300,54 +300,48 @@ func (m Model) renderEvaluationDetail() string {
 		summaryHeight = 0
 	}
 
-	// Prepare events content for viewport
-	var lines []string
+	// Clear existing messages and rebuild from events
+	m.eventsHistory.ClearMessages()
+
+	// Process events and add as messages
 	for _, ev := range m.evalState.Events {
 		switch ev.Type {
 		case "status":
 			if ev.Status != "running" {
-				lines = append(lines, lipgloss.NewStyle().Foreground(t.Success()).Render(fmt.Sprintf("✓ %s", ev.Status)))
+				m.eventsHistory.AddMessage("system", fmt.Sprintf("✓ %s", ev.Status))
 			}
 		case "chat":
-			// Split multi-line chat messages
-			chatLines := strings.Split(renderChatMessage(t, ev.Role, ev.Content), "\n")
-			lines = append(lines, chatLines...)
+			// Normalize role for MessageHistoryView
+			normalizedRole := normalizeEvaluationRole(ev.Role)
+			m.eventsHistory.AddMessage(normalizedRole, ev.Content)
 		case "error":
-			lines = append(lines, lipgloss.NewStyle().Foreground(t.Error()).Render(fmt.Sprintf("⚠ ERROR: %s", ev.Message)))
+			m.eventsHistory.AddMessage("system", fmt.Sprintf("⚠ ERROR: %s", ev.Message))
 		}
 	}
 
-	if len(lines) == 0 {
-		lines = append(lines, lipgloss.NewStyle().Foreground(t.TextMuted()).Italic(true).Render("Waiting for evaluation events..."))
+	// Check if we have any messages
+	if len(m.eventsHistory.GetMessages()) == 0 {
+		m.eventsHistory.AddMessage("system", "Waiting for evaluation events...")
 	}
 
-	// Update events viewport
-	// Set viewport to match the style height (which includes border and padding)
-	// Use more conservative sizing to prevent content overflow
-	m.eventsViewport.SetSize(m.width-4, eventsHeight-8) // -6 for padding and extra margin
-	m.eventsViewport.SetContent(strings.Join(lines, "\n"))
+	// Update size
+	m.eventsHistory.SetSize(m.width-4, eventsHeight)
 
-	// Set border color based on focus
-	eventsBorderFg := t.Border()
+	// Set focus state based on focusedViewport
 	if m.focusedViewport == 0 {
-		eventsBorderFg = t.Primary()
+		m.eventsHistory.Focus()
+	} else {
+		m.eventsHistory.Blur()
 	}
 
-	m.eventsViewport.Style = lipgloss.NewStyle().
-		Foreground(t.Text()).
-		Background(t.BackgroundPanel()).
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(eventsBorderFg).
-		Padding(1, 2).
-		Width(m.width - 4).
-		Height(eventsHeight)
+	// Customize prefixes to match the evaluation context
+	m.eventsHistory.SetPrefixes("🔍 Rogue: ", "🤖 Agent: ")
 
-	// Auto-scroll to bottom for new events (like a chat) only if auto-scroll is enabled
-	if m.eventsAutoScroll {
-		m.eventsViewport.GotoBottom()
+	// Render events using MessageHistoryView
+	var eventsContent string
+	if m.eventsHistory != nil {
+		eventsContent = m.eventsHistory.View(t)
 	}
-
-	eventsContent := m.eventsViewport.View()
 
 	// Help text style (for bottom of screen)
 	helpStyle := lipgloss.NewStyle().
@@ -483,73 +477,38 @@ func (m Model) renderEvaluationDetail() string {
 	return mainStyle.Render(fullLayout)
 }
 
-// renderChatMessage renders a chat message with role-specific styling
-func renderChatMessage(t theme.Theme, role, content string) string {
-	var emoji string
-	var roleStyle lipgloss.Style
-	var messageStyle lipgloss.Style
+// normalizeEvaluationRole maps evaluation-specific roles to MessageHistoryView roles
+// MessageHistoryView expects: "user", "assistant", or "system"
+// In evaluation context:
+//   - "user" represents the evaluator/judge (Rogue)
+//   - "assistant" represents the agent being tested
+//   - "system" represents system messages
+func normalizeEvaluationRole(role string) string {
+	// Normalize role string (trim whitespace and lowercase for matching)
+	roleLower := strings.ToLower(strings.TrimSpace(role))
 
-	// Determine styling based on role
-	switch role {
-	case "Rogue", "judge", "evaluator", "Evaluator Agent":
-		// Rogue/Judge - the evaluator (our system)
-		emoji = "🔍" // magnifying glass for evaluation
-		roleStyle = lipgloss.NewStyle().
-			Foreground(t.Primary()).
-			Bold(true)
-		messageStyle = lipgloss.NewStyle().
-			Foreground(t.Text()).
-			Background(t.BackgroundPanel()).
-			Padding(0, 1).
-			MarginLeft(2)
-
-	case "agent", "Agent", "user":
-		// Agent under test
-		emoji = "🤖" // robot for the agent being tested
-		roleStyle = lipgloss.NewStyle().
-			Foreground(t.Accent()).
-			Bold(true)
-		messageStyle = lipgloss.NewStyle().
-			Foreground(t.Text()).
-			Background(t.BackgroundPanel()).
-			Padding(0, 1).
-			MarginLeft(2)
-
-	case "system", "System":
-		// System messages
-		emoji = "⚙️" // gear for system
-		roleStyle = lipgloss.NewStyle().
-			Foreground(t.TextMuted()).
-			Italic(true)
-		messageStyle = lipgloss.NewStyle().
-			Foreground(t.TextMuted()).
-			Italic(true).
-			MarginLeft(2)
-
-	default:
-		// Unknown role - fallback
-		emoji = "💬" // generic chat
-		roleStyle = lipgloss.NewStyle().
-			Foreground(t.Text())
-		messageStyle = lipgloss.NewStyle().
-			Foreground(t.Text()).
-			MarginLeft(2)
+	// Check if role contains agent-related keywords
+	if strings.Contains(roleLower, "agent") {
+		// Agent under test shown as "assistant" (will use assistantPrefix: "🤖 Agent: ")
+		return "assistant"
 	}
 
-	// Format: [emoji] Role:
-	//          Content (indented)
-	roleHeader := fmt.Sprintf("%s %s:", emoji, role)
-	roleText := roleStyle.Render(roleHeader)
+	// Check if role contains evaluator/rogue/judge keywords
+	if strings.Contains(roleLower, "rogue") ||
+		strings.Contains(roleLower, "judge") ||
+		strings.Contains(roleLower, "evaluator") {
+		// Evaluator/Judge messages shown as "user" (will use userPrefix: "🔍 Rogue: ")
+		return "user"
+	}
 
-	// Wrap content for better readability
-	contentText := messageStyle.Render(content)
+	// Check for system messages
+	if strings.Contains(roleLower, "system") {
+		return "system"
+	}
 
-	// Add a subtle separator for visual distinction
-	separator := lipgloss.NewStyle().
-		Foreground(t.Border()).
-		Render("─────")
-
-	return fmt.Sprintf("%s\n%s\n%s", roleText, contentText, separator)
+	// Default: if role is empty or unknown, treat as evaluator
+	// This ensures messages are visible even if role is malformed
+	return "user"
 }
 
 // renderMarkdownSummary renders the markdown summary with basic styling

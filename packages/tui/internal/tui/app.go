@@ -199,12 +199,11 @@ type Model struct {
 	evalSpinner    components.Spinner
 
 	// Viewports for scrollable content
-	eventsViewport   components.Viewport
-	summaryViewport  components.Viewport
-	reportViewport   components.Viewport
-	helpViewport     components.Viewport
-	focusedViewport  int  // 0 = events, 1 = summary
-	eventsAutoScroll bool // Track if events should auto-scroll to bottom
+	eventsHistory   *components.MessageHistoryView
+	summaryViewport components.Viewport
+	reportViewport  components.Viewport
+	helpViewport    components.Viewport
+	focusedViewport int // 0 = events, 1 = summary
 
 	// /eval state
 	evalState *EvaluationViewState
@@ -285,13 +284,12 @@ func (a *App) Run() error {
 		summarySpinner: components.NewSpinner(2),
 		evalSpinner:    components.NewSpinner(3),
 
-		// Initialize viewports
-		eventsViewport:   components.NewViewport(1, 80, 20),
-		summaryViewport:  components.NewViewport(2, 80, 20),
-		reportViewport:   components.NewViewport(3, 80, 15),
-		helpViewport:     components.NewViewport(4, 80, 20),
-		focusedViewport:  0,    // Start with events viewport focused
-		eventsAutoScroll: true, // Start with auto-scroll enabled
+		// Initialize viewports and message history
+		eventsHistory:   components.NewMessageHistoryView(1, 80, 20),
+		summaryViewport: components.NewViewport(2, 80, 20),
+		reportViewport:  components.NewViewport(3, 80, 15),
+		helpViewport:    components.NewViewport(4, 80, 20),
+		focusedViewport: 0, // Start with events viewport focused
 	}
 
 	// Load existing configuration
@@ -398,8 +396,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.currentScreen = EvaluationDetailScreen
 			// Reset viewport focus to events when entering detail screen
 			m.focusedViewport = 0
-			// Enable auto-scroll for new evaluation
-			m.eventsAutoScroll = true
+			// Blur events history to enable auto-scroll for new evaluation
+			if m.eventsHistory != nil {
+				m.eventsHistory.Blur()
+			}
 			return m, autoRefreshCmd()
 		}
 		return m, nil
@@ -436,7 +436,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Update viewport sizes
 		viewportWidth := msg.Width - 4
 		viewportHeight := msg.Height - 8
-		m.eventsViewport.SetSize(viewportWidth, viewportHeight)
+		if m.eventsHistory != nil {
+			m.eventsHistory.SetSize(viewportWidth, viewportHeight)
+		}
 		m.summaryViewport.SetSize(viewportWidth, viewportHeight)
 		m.reportViewport.SetSize(viewportWidth, viewportHeight)
 		m.helpViewport.SetSize(viewportWidth, viewportHeight)
@@ -1220,33 +1222,43 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, nil
 			case "end":
-				// Go to bottom and re-enable auto-scroll for events viewport
-				if m.focusedViewport == 0 {
-					m.eventsViewport.GotoBottom()
-					m.eventsAutoScroll = true
+				// Go to bottom for focused viewport
+				if m.focusedViewport == 0 && m.eventsHistory != nil {
+					m.eventsHistory.GotoBottom()
+					m.eventsHistory.Blur() // Unfocus to enable auto-scroll
 				} else if m.focusedViewport == 1 {
 					m.summaryViewport.GotoBottom()
 				}
 				return m, nil
 			case "home":
-				// Go to top and disable auto-scroll for events viewport
-				if m.focusedViewport == 0 {
-					m.eventsViewport.GotoTop()
-					m.eventsAutoScroll = false
+				// Go to top for focused viewport
+				if m.focusedViewport == 0 && m.eventsHistory != nil {
+					m.eventsHistory.GotoTop()
+					m.eventsHistory.Focus() // Focus to disable auto-scroll
 				} else if m.focusedViewport == 1 {
 					m.summaryViewport.GotoTop()
 				}
 				return m, nil
 			default:
 				// Update only the focused viewport for scrolling
-				if m.focusedViewport == 0 {
-					// Events viewport is focused - disable auto-scroll when user manually scrolls
-					m.eventsAutoScroll = false
-					eventsViewportPtr, cmd := m.eventsViewport.Update(msg)
+				if m.focusedViewport == 0 && m.eventsHistory != nil {
+					// Events viewport is focused - focus the message history for manual scrolling
+					m.eventsHistory.Focus()
+					// Handle scrolling with up/down arrow keys
+					switch msg.String() {
+					case "up":
+						m.eventsHistory.ScrollUp(1)
+					case "down":
+						m.eventsHistory.ScrollDown(1)
+					case "pgup":
+						m.eventsHistory.ScrollUp(10)
+					case "pgdown":
+						m.eventsHistory.ScrollDown(10)
+					}
+					cmd := m.eventsHistory.Update(msg)
 					if cmd != nil {
 						cmds = append(cmds, cmd)
 					}
-					m.eventsViewport = *eventsViewportPtr
 				} else if m.focusedViewport == 1 {
 					// Summary viewport is focused
 					summaryViewportPtr, cmd := m.summaryViewport.Update(msg)

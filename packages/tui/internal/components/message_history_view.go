@@ -296,12 +296,16 @@ func (m *MessageHistoryView) renderMessages(t theme.Theme) []string {
 			}
 		}
 
-		// Calculate available width for text
-		visualPrefixWidth := 8
-		availableWidth := m.width - visualPrefixWidth - 8
+		// Calculate visual width of prefix (accounting for emojis)
+		// Emojis typically take 2 visual columns in terminals
+		prefixVisualWidth := calculateVisualWidth(prefix)
+		availableWidth := m.width - prefixVisualWidth - 8
 		if availableWidth < 40 {
 			availableWidth = 40
 		}
+
+		// Create indentation string matching prefix visual width
+		indentation := strings.Repeat(" ", prefixVisualWidth)
 
 		// Preserve newlines by processing each paragraph separately
 		paragraphs := strings.Split(msg.Content, "\n")
@@ -320,12 +324,28 @@ func (m *MessageHistoryView) renderMessages(t theme.Theme) []string {
 				// First line with prefix
 				messageLines = append(messageLines, textStyle.Render(prefix+line))
 			} else {
-				// Continuation lines with indentation
-				messageLines = append(messageLines, textStyle.Render("        "+line))
+				// Continuation lines with indentation matching prefix width
+				messageLines = append(messageLines, textStyle.Render(indentation+line))
 			}
 		}
 		messageLines = append(messageLines, "") // Blank line between messages
 	}
 
 	return messageLines
+}
+
+// calculateVisualWidth returns the visual width of a string in terminal columns
+// accounting for emojis and other wide characters
+func calculateVisualWidth(s string) int {
+	width := 0
+	for _, r := range s {
+		// Emojis and wide unicode characters typically take 2 columns
+		// Simple heuristic: if rune is > 0x1F300, it's likely an emoji
+		if r >= 0x1F300 && r <= 0x1FAFF {
+			width += 2
+		} else {
+			width += 1
+		}
+	}
+	return width
 }
