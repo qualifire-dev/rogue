@@ -46,6 +46,7 @@ type ScenarioEditor struct {
 	interviewMessages           []InterviewMessage // conversation history
 	interviewInput              *TextArea          // multi-line input for user responses
 	interviewViewport           *Viewport          // scrollable message history
+	interviewViewportFocused    bool               // true when viewport is focused for scrolling
 	interviewLoading            bool               // waiting for AI response
 	interviewError              string             // error message
 	lastUserMessage             string             // track last user message for display

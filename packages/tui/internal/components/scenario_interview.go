@@ -29,7 +29,8 @@ func (e ScenarioEditor) handleInterviewStarted(msg InterviewStartedMsg) (Scenari
 		Content: msg.InitialMessage,
 	})
 
-	// Focus input for user response
+	// Focus input for user response, not viewport
+	e.interviewViewportFocused = false
 	if e.interviewInput != nil {
 		e.interviewInput.Focus()
 	}
@@ -42,24 +43,78 @@ func (e ScenarioEditor) handleInterviewMode(msg tea.KeyMsg) (ScenarioEditor, tea
 	// Handle business context approval state
 	if e.awaitingBusinessCtxApproval {
 		switch msg.String() {
-		case "down", "tab":
-			// Move focus to approve button
-			if !e.approveButtonFocused {
+		case "tab":
+			// Cycle through: viewport -> input -> button
+			if e.interviewViewportFocused {
+				e.interviewViewportFocused = false
+				if e.interviewInput != nil {
+					e.interviewInput.Focus()
+				}
+			} else if !e.approveButtonFocused {
 				e.approveButtonFocused = true
 				if e.interviewInput != nil {
 					e.interviewInput.Blur()
 				}
+			} else {
+				// From button back to viewport
+				e.approveButtonFocused = false
+				e.interviewViewportFocused = true
 			}
 			return e, nil
 
-		case "up", "shift+tab":
-			// Move focus to input
+		case "shift+tab":
+			// Cycle backwards: button -> input -> viewport
 			if e.approveButtonFocused {
 				e.approveButtonFocused = false
 				if e.interviewInput != nil {
 					e.interviewInput.Focus()
 				}
+			} else if !e.interviewViewportFocused {
+				e.interviewViewportFocused = true
+				if e.interviewInput != nil {
+					e.interviewInput.Blur()
+				}
+			} else {
+				// From viewport back to button
+				e.interviewViewportFocused = false
+				e.approveButtonFocused = true
 			}
+			return e, nil
+
+		case "down":
+			// Move focus down: viewport -> input -> button
+			if e.interviewViewportFocused {
+				// From viewport to input
+				e.interviewViewportFocused = false
+				if e.interviewInput != nil {
+					e.interviewInput.Focus()
+				}
+			} else if !e.approveButtonFocused {
+				// From input to button
+				e.approveButtonFocused = true
+				if e.interviewInput != nil {
+					e.interviewInput.Blur()
+				}
+			}
+			// If already on button, stay there
+			return e, nil
+
+		case "up":
+			// Move focus up: button -> input -> viewport
+			if e.approveButtonFocused {
+				// From button to input
+				e.approveButtonFocused = false
+				if e.interviewInput != nil {
+					e.interviewInput.Focus()
+				}
+			} else if !e.interviewViewportFocused {
+				// From input to viewport
+				e.interviewViewportFocused = true
+				if e.interviewInput != nil {
+					e.interviewInput.Blur()
+				}
+			}
+			// If already on viewport, stay there
 			return e, nil
 
 		case "enter":
@@ -135,6 +190,54 @@ func (e ScenarioEditor) handleInterviewMode(msg tea.KeyMsg) (ScenarioEditor, tea
 
 	// Normal interview mode handling
 	switch msg.String() {
+	case "tab":
+		// Toggle focus between viewport and input
+		if !e.interviewLoading {
+			e.interviewViewportFocused = !e.interviewViewportFocused
+			if e.interviewInput != nil {
+				if e.interviewViewportFocused {
+					e.interviewInput.Blur()
+				} else {
+					e.interviewInput.Focus()
+				}
+			}
+		}
+		return e, nil
+
+	case "shift+tab":
+		// Same as tab in normal mode (just two states)
+		if !e.interviewLoading {
+			e.interviewViewportFocused = !e.interviewViewportFocused
+			if e.interviewInput != nil {
+				if e.interviewViewportFocused {
+					e.interviewInput.Blur()
+				} else {
+					e.interviewInput.Focus()
+				}
+			}
+		}
+		return e, nil
+
+	case "up":
+		// Move focus up: input -> viewport
+		if !e.interviewLoading && !e.interviewViewportFocused {
+			e.interviewViewportFocused = true
+			if e.interviewInput != nil {
+				e.interviewInput.Blur()
+			}
+		}
+		return e, nil
+
+	case "down":
+		// Move focus down: viewport -> input
+		if !e.interviewLoading && e.interviewViewportFocused {
+			e.interviewViewportFocused = false
+			if e.interviewInput != nil {
+				e.interviewInput.Focus()
+			}
+		}
+		return e, nil
+
 	case "escape", "esc":
 		// Exit interview with confirmation
 		if !e.interviewLoading {
@@ -149,15 +252,15 @@ func (e ScenarioEditor) handleInterviewMode(msg tea.KeyMsg) (ScenarioEditor, tea
 
 	case "shift+enter":
 		// Insert newline in the input
-		if e.interviewInput != nil && !e.interviewLoading {
+		if e.interviewInput != nil && !e.interviewLoading && !e.interviewViewportFocused {
 			e.interviewInput.InsertNewline()
 			return e, nil
 		}
 		return e, nil
 
 	case "enter":
-		// Send message if input not empty
-		if e.interviewInput != nil && !e.interviewLoading {
+		// Send message if input not empty and input is focused
+		if e.interviewInput != nil && !e.interviewLoading && !e.interviewViewportFocused {
 			message := e.interviewInput.GetValue()
 			if strings.TrimSpace(message) == "" {
 				return e, nil
@@ -186,8 +289,8 @@ func (e ScenarioEditor) handleInterviewMode(msg tea.KeyMsg) (ScenarioEditor, tea
 		return e, nil
 
 	default:
-		// Forward to TextArea for text input
-		if e.interviewInput != nil && !e.interviewLoading {
+		// Forward to TextArea for text input (only when input is focused)
+		if e.interviewInput != nil && !e.interviewLoading && !e.interviewViewportFocused {
 			updatedTextArea, cmd := e.interviewInput.Update(msg)
 			*e.interviewInput = *updatedTextArea
 			return e, cmd
@@ -234,6 +337,7 @@ func (e ScenarioEditor) handleInterviewResponse(msg InterviewResponseMsg) (Scena
 		e.proposedBusinessContext = msg.Response
 		e.awaitingBusinessCtxApproval = true
 		e.approveButtonFocused = false // Start with input focused
+		e.interviewViewportFocused = false
 		e.infoMsg = "Review the business context. Type to request changes or navigate to button to approve."
 
 		// Focus input for potential edits
@@ -244,7 +348,8 @@ func (e ScenarioEditor) handleInterviewResponse(msg InterviewResponseMsg) (Scena
 		return e, nil
 	}
 
-	// Re-focus input for next response
+	// Re-focus input for next response, not viewport
+	e.interviewViewportFocused = false
 	if e.interviewInput != nil {
 		e.interviewInput.Focus()
 	}
@@ -292,6 +397,7 @@ func (e ScenarioEditor) handleScenariosGenerated(msg ScenariosGeneratedMsg) (Sce
 	e.awaitingBusinessCtxApproval = false
 	e.proposedBusinessContext = ""
 	e.approveButtonFocused = false
+	e.interviewViewportFocused = false
 	e.rebuildFilter()
 
 	return e, func() tea.Msg {
@@ -387,9 +493,15 @@ func (e ScenarioEditor) renderInterviewView(t theme.Theme) string {
 	}
 
 	// Message history section with border
+	// Use primary color when viewport is focused, muted when not
+	borderColor := t.TextMuted()
+	if e.interviewViewportFocused {
+		borderColor = t.Primary()
+	}
+
 	historyStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(t.Primary()).
+		BorderForeground(borderColor).
 		Background(t.Background()).
 		Padding(1, 1).
 		Width(e.width - 4).
@@ -431,7 +543,7 @@ func (e ScenarioEditor) renderInterviewView(t theme.Theme) string {
 			Background(t.Background()).
 			Foreground(t.TextMuted()).
 			Padding(1, 0).
-			Render("↑/↓ navigate  Enter confirm  Shift+Enter new line  Esc cancel")
+			Render("Tab/↑↓ switch focus  Enter confirm  Shift+Enter new line  Esc cancel")
 
 		buttonLine = lipgloss.JoinHorizontal(
 			lipgloss.Top,
@@ -457,7 +569,7 @@ func (e ScenarioEditor) renderInterviewView(t theme.Theme) string {
 			Background(t.Background()).
 			Foreground(t.TextMuted()).
 			Padding(1, 0).
-			Render("Enter send  Esc cancel  Shift+Enter new line")
+			Render("Tab/↑↓ switch focus  Enter send  Shift+Enter new line  Esc cancel")
 
 		help = lipgloss.Place(
 			(e.width - 4),
@@ -479,7 +591,15 @@ func (e ScenarioEditor) renderInterviewView(t theme.Theme) string {
 	var inputArea string
 	if e.interviewInput != nil {
 		// Determine if input is focused
-		inputFocused := !e.awaitingBusinessCtxApproval || !e.approveButtonFocused
+		// Input is focused when:
+		// - In approval mode: not on button and not on viewport
+		// - In normal mode: not on viewport
+		var inputFocused bool
+		if e.awaitingBusinessCtxApproval {
+			inputFocused = !e.approveButtonFocused && !e.interviewViewportFocused
+		} else {
+			inputFocused = !e.interviewViewportFocused
+		}
 
 		// Wrap input with primary-colored border only when focused
 		if inputFocused {
