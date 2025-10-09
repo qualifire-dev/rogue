@@ -82,11 +82,18 @@ func (e ScenarioEditor) handleInterviewMode(msg tea.KeyMsg) (ScenarioEditor, tea
 			return e, nil
 
 		case "down":
-			// When viewport is focused: scroll down
+			// When viewport is focused: scroll down or move to input if at bottom
 			// Otherwise: move focus down through viewport -> input -> button
 			if e.interviewViewportFocused {
-				// Scroll viewport down
-				if e.interviewViewport != nil {
+				// Check if viewport is at bottom
+				if e.interviewViewport != nil && e.interviewViewport.AtBottom() {
+					// At bottom - shift focus to input
+					e.interviewViewportFocused = false
+					if e.interviewInput != nil {
+						e.interviewInput.Focus()
+					}
+				} else if e.interviewViewport != nil {
+					// Not at bottom - scroll down
 					e.interviewViewport.ScrollDown(1)
 				}
 			} else if !e.approveButtonFocused {
@@ -243,12 +250,19 @@ func (e ScenarioEditor) handleInterviewMode(msg tea.KeyMsg) (ScenarioEditor, tea
 		return e, nil
 
 	case "down":
-		// When viewport is focused: scroll down
+		// When viewport is focused: scroll down or move to input if at bottom
 		// (Can't move down from input - it's already at bottom)
 		if !e.interviewLoading {
 			if e.interviewViewportFocused {
-				// Scroll viewport down
-				if e.interviewViewport != nil {
+				// Check if viewport is at bottom
+				if e.interviewViewport != nil && e.interviewViewport.AtBottom() {
+					// At bottom - shift focus to input
+					e.interviewViewportFocused = false
+					if e.interviewInput != nil {
+						e.interviewInput.Focus()
+					}
+				} else if e.interviewViewport != nil {
+					// Not at bottom - scroll down
 					e.interviewViewport.ScrollDown(1)
 				}
 			}
