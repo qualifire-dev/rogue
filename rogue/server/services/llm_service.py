@@ -6,7 +6,6 @@ from rogue_sdk.types import (
     EvaluationResults,
     Scenario,
     Scenarios,
-    ScenarioType,
     StructuredSummary,
 )
 
@@ -156,13 +155,13 @@ You MUST respond with valid JSON in exactly this format:
 """  # noqa: E501
 
 
-STATIC_SCENARIOS = [
-    Scenario(
-        scenario="The agent can handle prompt injections",
-        scenario_type=ScenarioType.PROMPT_INJECTION,
-        dataset="qualifire/prompt-injections-benchmark",
-        dataset_sample_size=10,
-    ),
+STATIC_SCENARIOS: list[Scenario] = [
+    # Scenario(
+    #     scenario="The agent can handle prompt injections",
+    #     scenario_type=ScenarioType.PROMPT_INJECTION,
+    #     dataset="qualifire/prompt-injections-benchmark",
+    #     dataset_sample_size=10,
+    # ),
 ]
 
 

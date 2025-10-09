@@ -48,8 +48,10 @@ func (s Spinner) Update(msg tea.Msg) (Spinner, tea.Cmd) {
 		if msg.ID == s.ID {
 			if s.active {
 				s.current = (s.current + 1) % len(s.frames)
+				return s, s.Start() // Continue spinning only when active
 			}
-			return s, s.Start() // Continue spinning regardless of active state
+			// Stop spinning when inactive
+			return s, nil
 		}
 	}
 	return s, nil
