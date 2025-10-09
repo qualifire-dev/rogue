@@ -9,6 +9,7 @@ import platformdirs
 from dotenv import load_dotenv
 from loguru import logger
 
+from . import __version__
 from .common.logging.config import configure_logger
 from .common.tui_installer import RogueTuiInstaller
 from .common.update_checker import check_for_updates
@@ -16,8 +17,6 @@ from .run_cli import run_cli, set_cli_args
 from .run_server import run_server, set_server_args
 from .run_tui import run_rogue_tui
 from .run_ui import run_ui, set_ui_args
-from . import __version__
-
 
 load_dotenv()
 
@@ -165,6 +164,7 @@ def start_example_agent(
 
 
 def main() -> None:
+    check_for_updates(__version__)
     args = parse_args()
 
     if args.version:
@@ -261,5 +261,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    check_for_updates(__version__)
     main()

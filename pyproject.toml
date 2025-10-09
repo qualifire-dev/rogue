@@ -1,6 +1,6 @@
 [project]
 name = "rogue-ai"
-version = "0.1.8"
+version = "0.1.9"
 description = "Rogue agent evaluator by Qualifire"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -39,11 +39,7 @@ dev = [
     "types-requests>=2.32.4.20250611",
     "pre-commit>=4.3.0",
 ]
-examples = [
-    "langchain==0.3.26",
-    "langchain-openai==0.3.27",
-    "langgraph==0.5.2",
-]
+examples = ["langchain==0.3.26", "langchain-openai==0.3.27", "langgraph==0.5.2"]
 
 [build-system]
 requires = ["hatchling"]
