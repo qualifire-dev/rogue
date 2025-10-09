@@ -668,7 +668,7 @@ func (d LLMConfigDialog) renderProviderSelection(t theme.Theme) []string {
 	if len(allItems) > d.VisibleItems {
 		scrollInfo := fmt.Sprintf("Showing %d-%d of %d items",
 			d.ScrollOffset+1,
-			math.Min(float64(d.ScrollOffset+d.VisibleItems), float64(len(allItems))),
+			int(math.Min(float64(d.ScrollOffset+d.VisibleItems), float64(len(allItems)))),
 			len(allItems))
 
 		scrollStyle := lipgloss.NewStyle().

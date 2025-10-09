@@ -87,7 +87,7 @@ func (m *Model) summaryGenerationCmd() tea.Cmd {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 		defer cancel()
 		parsedAPIKey := &m.config.QualifireAPIKey
-		if m.config.QualifireEnabled == false {
+		if !m.config.QualifireEnabled {
 			parsedAPIKey = nil
 		}
 		structuredSummary, err := sdk.GenerateSummary(
@@ -276,7 +276,7 @@ func (a *App) Run() error {
 			Theme:     "aura",
 			APIKeys:   make(map[string]string),
 		},
-		version:        "v0.1.9",
+		version:        "v0.1.10",
 		commandInput:   components.NewCommandInput(),
 		scenarioEditor: components.NewScenarioEditor(),
 
@@ -384,7 +384,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			d := components.ShowErrorDialog("Server Health", fmt.Sprintf("%v", msg.Err))
 			m.dialog = &d
 		} else {
-			d := components.NewInfoDialog("Server Health", fmt.Sprintf("%s", msg.Status))
+			d := components.NewInfoDialog("Server Health", msg.Status)
 			m.dialog = &d
 		}
 		return m, nil
@@ -590,7 +590,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					// immediately report the summary
 					if m.evalState != nil && m.evalState.Completed {
 						parsedAPIKey := m.config.QualifireAPIKey
-						if m.config.QualifireEnabled == false {
+						if !m.config.QualifireEnabled {
 							parsedAPIKey = ""
 						}
 
