@@ -13,40 +13,28 @@ import (
 func (e ScenarioEditor) handleBusinessContextMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd) {
 	switch msg.String() {
 	case "escape", "esc":
-		// Save and exit business context edit mode
-		if e.bizTextArea != nil {
-			content := e.bizTextArea.GetValue()
-			if content == "" {
-				e.businessContext = nil
-			} else {
-				e.businessContext = &content
-			}
-			e.bizTextArea.Blur()
-		}
-		e.mode = ListMode
-		e.calculateVisibleItems()   // Recalculate for list mode
-		e.bizContextSelected = true // Keep business context selected when exiting edit mode
-		e.errorMsg = ""
-		e.infoMsg = ""
-		return e, nil
-
-	case "ctrl+s":
-		// Save business context
-		if e.bizTextArea != nil {
-			content := e.bizTextArea.GetValue()
-			if content == "" {
-				e.businessContext = nil
-			} else {
-				e.businessContext = &content
-			}
-		}
-		// Save to file
-		if err := e.saveScenarios(); err != nil {
-			e.errorMsg = fmt.Sprintf("Save error: %v", err)
-		} else {
-			e.infoMsg = "Business context saved"
-		}
-		return e, nil
+case "escape", "esc":
+    // Save and exit business context edit mode
+    if e.bizTextArea != nil {
+        content := e.bizTextArea.GetValue()
+        if content == "" {
+            e.businessContext = nil
+        } else {
+            e.businessContext = &content
+        }
+        e.bizTextArea.Blur()
+    }
+    if err := e.saveScenarios(); err != nil {
+        e.errorMsg = fmt.Sprintf("Save error: %v", err)
+        e.infoMsg = ""
+    } else {
+        e.infoMsg = "Business context saved"
+        e.errorMsg = ""
+    }
+    e.mode = ListMode
+    e.calculateVisibleItems()   // Recalculate for list mode
+    e.bizContextSelected = true // Keep business context selected when exiting edit mode
+    return e, nil
 
 	default:
 		// Pass through to TextArea
