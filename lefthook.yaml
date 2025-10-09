@@ -1,0 +1,67 @@
+pre-commit:
+  parallel: true
+  jobs:
+    - name: gitleaks
+      run: gitleaks protect --verbose --redact --staged
+
+    - name: end-of-file-fixer
+      glob: "*"
+      exclude: "LICENSE"
+      run: |
+        for file in {staged_files}; do
+          if [ -n "$(tail -c 1 "$file")" ]; then
+            echo >> "$file"
+            git add "$file"
+          fi
+        done
+
+    # YAML
+    - name: check-yaml
+      glob: "*.{yaml,yml}"
+      run: |
+        for file in {staged_files}; do
+          python -c "import yaml; yaml.safe_load(open('$file'))" || exit 1
+        done
+
+    # Python
+    - name: add-trailing-comma
+      glob: "*.py"
+      run: add-trailing-comma {staged_files}
+
+    - name: isort
+      glob: "*.py"
+      run: isort {staged_files}
+
+    - name: black
+      glob: "*.py"
+      exclude: ".venv/"
+      run: black {staged_files}
+
+    - name: flake8
+      glob: "*.py"
+      run: flake8 {staged_files}
+
+    - name: mypy
+      glob: "*.py"
+      run: mypy --config-file .mypy.ini {staged_files}
+
+    - name: bandit
+      glob: "*.py"
+      run: bandit -c .bandit.yaml -r {staged_files}
+
+    - name: uv lock check
+      glob: "pyproject.toml"
+      run: uv lock --check
+
+    # Go
+    - name: gofmt
+      glob: "*.go"
+      run: gofmt -s -w {staged_files}
+
+    - name: goimports
+      glob: "*.go"
+      run: goimports -w {staged_files}
+
+    - name: go vet
+      glob: "*.go"
+      run: (cd packages/tui && go vet ./...)
