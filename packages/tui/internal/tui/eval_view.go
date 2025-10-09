@@ -327,13 +327,6 @@ func (m Model) renderEvaluationDetail() string {
 	// Update size
 	m.eventsHistory.SetSize(m.width-4, eventsHeight)
 
-	// Set focus state based on focusedViewport
-	if m.focusedViewport == 0 {
-		m.eventsHistory.Focus()
-	} else {
-		m.eventsHistory.Blur()
-	}
-
 	// Customize prefixes to match the evaluation context
 	m.eventsHistory.SetPrefixes("🔍 Rogue: ", "🤖 Agent: ")
 

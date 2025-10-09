@@ -1222,29 +1222,28 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, nil
 			case "end":
-				// Go to bottom for focused viewport
+				// Go to bottom and blur to re-enable auto-scroll
 				if m.focusedViewport == 0 && m.eventsHistory != nil {
 					m.eventsHistory.GotoBottom()
-					m.eventsHistory.Blur() // Unfocus to enable auto-scroll
+					m.eventsHistory.Blur()
 				} else if m.focusedViewport == 1 {
 					m.summaryViewport.GotoBottom()
 				}
 				return m, nil
 			case "home":
-				// Go to top for focused viewport
+				// Go to top and focus to disable auto-scroll
 				if m.focusedViewport == 0 && m.eventsHistory != nil {
 					m.eventsHistory.GotoTop()
-					m.eventsHistory.Focus() // Focus to disable auto-scroll
+					m.eventsHistory.Focus()
 				} else if m.focusedViewport == 1 {
 					m.summaryViewport.GotoTop()
 				}
 				return m, nil
-			default:
-				// Update only the focused viewport for scrolling
+			case "up", "down", "pgup", "pgdown":
+				// Arrow keys: focus the active viewport and scroll
 				if m.focusedViewport == 0 && m.eventsHistory != nil {
-					// Events viewport is focused - focus the message history for manual scrolling
+					// Focus events history when user starts scrolling
 					m.eventsHistory.Focus()
-					// Handle scrolling with up/down arrow keys
 					switch msg.String() {
 					case "up":
 						m.eventsHistory.ScrollUp(1)
@@ -1260,15 +1259,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						cmds = append(cmds, cmd)
 					}
 				} else if m.focusedViewport == 1 {
-					// Summary viewport is focused
+					// Summary viewport scrolling
 					summaryViewportPtr, cmd := m.summaryViewport.Update(msg)
 					if cmd != nil {
 						cmds = append(cmds, cmd)
 					}
 					m.summaryViewport = *summaryViewportPtr
 				}
-
 				return m, tea.Batch(cmds...)
+			default:
+				// No action for other keys
+				return m, nil
 			}
 		}
 
