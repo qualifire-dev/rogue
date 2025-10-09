@@ -41,19 +41,13 @@ type ScenarioEditor struct {
 	expectedOutcomeTextArea *TextArea
 
 	// Interview mode
-	interviewMode               bool               // true when in interview mode
-	interviewSessionID          string             // current interview session
-	interviewMessages           []InterviewMessage // conversation history
-	interviewInput              *TextArea          // multi-line input for user responses
-	interviewViewport           *Viewport          // scrollable message history
-	interviewViewportFocused    bool               // true when viewport is focused for scrolling
-	interviewLoading            bool               // waiting for AI response
-	interviewError              string             // error message
-	lastUserMessage             string             // track last user message for display
-	interviewSpinner            Spinner            // spinner for loading state
-	awaitingBusinessCtxApproval bool               // waiting for user to approve/edit business context
-	proposedBusinessContext     string             // the AI-generated business context for review
-	approveButtonFocused        bool               // true when approve button is focused instead of input
+	interviewMode               bool      // true when in interview mode
+	interviewSessionID          string    // current interview session
+	interviewChatView           *ChatView // reusable chat component
+	lastUserMessage             string    // track last user message for display
+	awaitingBusinessCtxApproval bool      // waiting for user to approve/edit business context
+	proposedBusinessContext     string    // the AI-generated business context for review
+	approveButtonFocused        bool      // true when approve button is focused instead of input
 
 	// Configuration (set by parent app) - exported so app.go can access
 	ServerURL       string // Rogue server URL
@@ -95,20 +89,8 @@ func NewScenarioEditor() ScenarioEditor {
 	outTA.ApplyTheme(theme.CurrentTheme())
 	editor.expectedOutcomeTextArea = &outTA
 
-	// Initialize interview components
-	interviewVP := NewViewport(9995, 80, 15) // Interview message viewport
-	editor.interviewViewport = &interviewVP
-
-	interviewTA := NewTextArea(9994, 80, 5, theme.CurrentTheme()) // Interview input text area
-	interviewTA.ApplyTheme(theme.CurrentTheme())
-	interviewTA.Placeholder = "Type your response here..."
-	interviewTA.ShowLineNumbers = false // Disable line numbers for interview input
-	interviewTA.Focus()                 // Start focused
-	editor.interviewInput = &interviewTA
-
-	// Initialize interview spinner
-	spinner := NewSpinner(9993) // Unique ID for interview spinner
-	editor.interviewSpinner = spinner
+	// Interview chat view will be initialized when entering interview mode
+	// (lazy initialization to have proper dimensions)
 
 	// Discover scenarios.json location and load
 	editor.filePath = discoverScenariosFile()
@@ -154,16 +136,9 @@ func (e *ScenarioEditor) SetSize(width, height int) {
 		e.expectedOutcomeTextArea.SetSize(width-4, 8) // Height will be set dynamically in renderEditView
 	}
 
-	// Update interview components size
-	if e.interviewViewport != nil {
-		interviewHistoryHeight := height - 20
-		if interviewHistoryHeight < 10 {
-			interviewHistoryHeight = 10
-		}
-		e.interviewViewport.SetSize(width-4, interviewHistoryHeight)
-	}
-	if e.interviewInput != nil {
-		e.interviewInput.SetSize(width-6, 5) // Fixed height for input, account for border
+	// Update interview chat view size
+	if e.interviewChatView != nil {
+		e.interviewChatView.SetSize(width, height)
 	}
 }
 
@@ -210,10 +185,12 @@ func (e *ScenarioEditor) calculateVisibleItems() {
 func (e ScenarioEditor) Update(msg tea.Msg) (ScenarioEditor, tea.Cmd) {
 	switch m := msg.(type) {
 	case SpinnerTickMsg:
-		// Update interview spinner
-		var cmd tea.Cmd
-		e.interviewSpinner, cmd = e.interviewSpinner.Update(msg)
-		return e, cmd
+		// Update interview chat view spinner
+		if e.interviewChatView != nil {
+			cmd := e.interviewChatView.Update(msg)
+			return e, cmd
+		}
+		return e, nil
 	// StartInterviewMsg is NOT handled here - it bubbles up to app.go
 	// app.go will make the API call and send back InterviewStartedMsg
 	case InterviewStartedMsg:
@@ -229,13 +206,11 @@ func (e ScenarioEditor) Update(msg tea.Msg) (ScenarioEditor, tea.Cmd) {
 			e.mode = ListMode
 			e.interviewMode = false
 			e.interviewSessionID = ""
-			e.interviewMessages = nil
-			e.interviewLoading = false
-			e.interviewError = ""
 			e.awaitingBusinessCtxApproval = false
 			e.proposedBusinessContext = ""
 			e.approveButtonFocused = false
 			e.lastUserMessage = ""
+			e.interviewChatView = nil
 			e.infoMsg = "Interview cancelled"
 		}
 		return e, nil
@@ -249,9 +224,8 @@ func (e ScenarioEditor) Update(msg tea.Msg) (ScenarioEditor, tea.Cmd) {
 				return e, cmd
 			}
 		case InterviewMode:
-			if e.interviewInput != nil && !e.interviewLoading {
-				updatedTextArea, cmd := e.interviewInput.Update(msg)
-				*e.interviewInput = *updatedTextArea
+			if e.interviewChatView != nil && !e.interviewChatView.IsLoading() {
+				cmd := e.interviewChatView.Update(msg)
 				return e, cmd
 			}
 		case EditMode, AddMode:

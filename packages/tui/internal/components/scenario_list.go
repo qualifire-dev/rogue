@@ -155,26 +155,28 @@ func (e ScenarioEditor) handleListMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 	case "i":
 		// Start interview mode - enter the mode immediately and trigger API call
 		e.mode = InterviewMode
-		e.interviewLoading = true
-		e.interviewError = ""
-		e.interviewMessages = []InterviewMessage{}
 		e.infoMsg = ""
 		e.errorMsg = "" // Clear any previous errors
 
-		if e.interviewInput != nil {
-			e.interviewInput.SetValue("")
-			// Focus input immediately so cursor is visible
-			e.interviewInput.Focus()
+		// Initialize ChatView if not already done
+		if e.interviewChatView == nil {
+			chatView := NewChatView(9990, e.width, e.height, theme.CurrentTheme())
+			chatView.SetProgressBar(true, 3) // Show progress with 3 responses expected
+			e.interviewChatView = chatView
 		}
 
-		// Start spinner for loading state
-		e.interviewSpinner.SetActive(true)
+		// Set loading state and clear any previous messages
+		e.interviewChatView.ClearMessages()
+		e.interviewChatView.SetLoading(true)
 
 		// Send message to app.go to start the interview API call
-		return e, tea.Batch(
+		cmds := []tea.Cmd{
 			func() tea.Msg { return StartInterviewMsg{} },
-			e.interviewSpinner.Start(),
-		)
+		}
+		if e.interviewChatView != nil {
+			cmds = append(cmds, e.interviewChatView.StartSpinner())
+		}
+		return e, tea.Batch(cmds...)
 
 	default:
 		return e, nil
