@@ -1661,7 +1661,15 @@ func (m *Model) startInterviewCmd() tea.Cmd {
 
 		if interviewModel == "" {
 			// Fall back to judge model if not set
-			interviewModel = "openai/gpt-4o"
+			return components.InterviewStartedMsg{
+				Error: fmt.Errorf("AI model not set, please use /models to set an AI model"),
+			}
+		}
+
+		if interviewAPIKey == "" {
+			return components.InterviewStartedMsg{
+				Error: fmt.Errorf("AI API key not set, please use /models to set an AI API key"),
+			}
 		}
 
 		// Start interview
