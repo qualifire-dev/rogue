@@ -9,34 +9,20 @@ import (
 	"github.com/rogue/tui/internal/theme"
 )
 
-// ChatMessage represents a single message in the chat
-type ChatMessage struct {
-	Role    string // "user" or "assistant"
-	Content string
-}
-
 // ChatView is a reusable chat component with message history and input
 type ChatView struct {
-	// Messages
-	messages []ChatMessage
-
 	// Layout
 	width  int
 	height int
 
 	// Components
-	viewport        *Viewport
-	input           *TextArea
-	spinner         *Spinner
-	viewportFocused bool // true when viewport is focused for scrolling
+	messageHistory *MessageHistoryView
+	input          *TextArea
 
 	// State
-	loading      bool
 	errorMessage string
 
 	// Config
-	userPrefix       string
-	assistantPrefix  string
 	inputLabel       string
 	inputPlaceholder string
 	showHeader       bool
@@ -46,28 +32,21 @@ type ChatView struct {
 
 // NewChatView creates a new chat view component
 func NewChatView(id int, width, height int, t theme.Theme) *ChatView {
-	viewport := NewViewport(id, width-4, height-24)
-	viewport.WrapContent = true
+	// Create message history view
+	messageHistory := NewMessageHistoryView(id, width, height-24)
 
+	// Create input
 	input := NewTextArea(id+100, width-6, 4, t)
 	input.Placeholder = "Type your message..."
 	input.ShowLineNumbers = false // Disable line numbers for chat input
 	input.Focus()
 
-	spinner := NewSpinner(id + 200)
-
 	return &ChatView{
-		messages:         make([]ChatMessage, 0),
 		width:            width,
 		height:           height,
-		viewport:         &viewport,
+		messageHistory:   messageHistory,
 		input:            &input,
-		spinner:          &spinner,
-		viewportFocused:  false,
-		loading:          false,
 		errorMessage:     "",
-		userPrefix:       "👤 You: ",
-		assistantPrefix:  "🤖 AI:  ",
 		inputLabel:       "Your Response:",
 		inputPlaceholder: "Type your message...",
 		showHeader:       false,
@@ -80,9 +59,8 @@ func NewChatView(id int, width, height int, t theme.Theme) *ChatView {
 func (c *ChatView) SetSize(width, height int) {
 	c.width = width
 	c.height = height
-	if c.viewport != nil {
-		c.viewport.Width = width - 4
-		c.viewport.Height = height - 24
+	if c.messageHistory != nil {
+		c.messageHistory.SetSize(width, height-24)
 	}
 	if c.input != nil {
 		c.input.Width = width - 4
@@ -91,8 +69,9 @@ func (c *ChatView) SetSize(width, height int) {
 
 // SetPrefixes customizes the message prefixes
 func (c *ChatView) SetPrefixes(userPrefix, assistantPrefix string) {
-	c.userPrefix = userPrefix
-	c.assistantPrefix = assistantPrefix
+	if c.messageHistory != nil {
+		c.messageHistory.SetPrefixes(userPrefix, assistantPrefix)
+	}
 }
 
 // SetInputLabel customizes the input label
@@ -122,20 +101,24 @@ func (c *ChatView) HideHeader() {
 
 // AddMessage adds a message to the chat history
 func (c *ChatView) AddMessage(role, content string) {
-	c.messages = append(c.messages, ChatMessage{
-		Role:    role,
-		Content: content,
-	})
+	if c.messageHistory != nil {
+		c.messageHistory.AddMessage(role, content)
+	}
 }
 
 // ClearMessages removes all messages
 func (c *ChatView) ClearMessages() {
-	c.messages = make([]ChatMessage, 0)
+	if c.messageHistory != nil {
+		c.messageHistory.ClearMessages()
+	}
 }
 
 // GetMessages returns all messages
-func (c *ChatView) GetMessages() []ChatMessage {
-	return c.messages
+func (c *ChatView) GetMessages() []Message {
+	if c.messageHistory != nil {
+		return c.messageHistory.GetMessages()
+	}
+	return []Message{}
 }
 
 // GetError returns the current error message
@@ -145,23 +128,25 @@ func (c *ChatView) GetError() string {
 
 // SetLoading sets the loading state
 func (c *ChatView) SetLoading(loading bool) {
-	c.loading = loading
-	if c.spinner != nil {
-		c.spinner.SetActive(loading)
+	if c.messageHistory != nil {
+		c.messageHistory.SetSpinner(loading)
 	}
 }
 
 // StartSpinner starts the spinner animation
 func (c *ChatView) StartSpinner() tea.Cmd {
-	if c.spinner != nil {
-		return c.spinner.Start()
+	if c.messageHistory != nil {
+		return c.messageHistory.StartSpinner()
 	}
 	return nil
 }
 
 // IsLoading returns the loading state
 func (c *ChatView) IsLoading() bool {
-	return c.loading
+	if c.messageHistory != nil {
+		return c.messageHistory.showSpinner
+	}
+	return false
 }
 
 // SetError sets an error message
@@ -191,12 +176,17 @@ func (c *ChatView) ClearInput() {
 
 // IsViewportFocused returns true if viewport is focused
 func (c *ChatView) IsViewportFocused() bool {
-	return c.viewportFocused
+	if c.messageHistory != nil {
+		return c.messageHistory.IsFocused()
+	}
+	return false
 }
 
 // FocusViewport focuses the viewport for scrolling
 func (c *ChatView) FocusViewport() {
-	c.viewportFocused = true
+	if c.messageHistory != nil {
+		c.messageHistory.Focus()
+	}
 	if c.input != nil {
 		c.input.Blur()
 	}
@@ -204,7 +194,9 @@ func (c *ChatView) FocusViewport() {
 
 // FocusInput focuses the input field
 func (c *ChatView) FocusInput() {
-	c.viewportFocused = false
+	if c.messageHistory != nil {
+		c.messageHistory.Blur()
+	}
 	if c.input != nil {
 		c.input.Focus()
 	}
@@ -217,17 +209,15 @@ func (c *ChatView) Update(msg tea.Msg) tea.Cmd {
 		return c.handleKeyPress(msg)
 	case tea.PasteMsg:
 		// Forward paste to input if not loading and not scrolling
-		if c.input != nil && !c.loading && !c.viewportFocused {
+		if c.input != nil && !c.IsLoading() && !c.IsViewportFocused() {
 			updatedTextArea, cmd := c.input.Update(msg)
 			*c.input = *updatedTextArea
 			return cmd
 		}
 		return nil
 	case SpinnerTickMsg:
-		if c.spinner != nil {
-			updatedSpinner, cmd := c.spinner.Update(msg)
-			*c.spinner = updatedSpinner
-			return cmd
+		if c.messageHistory != nil {
+			return c.messageHistory.Update(msg)
 		}
 	}
 	return nil
@@ -238,14 +228,11 @@ func (c *ChatView) handleKeyPress(msg tea.KeyMsg) tea.Cmd {
 	switch msg.String() {
 	case "tab", "shift+tab":
 		// Toggle focus between viewport and input
-		if !c.loading {
-			c.viewportFocused = !c.viewportFocused
-			if c.input != nil {
-				if c.viewportFocused {
-					c.input.Blur()
-				} else {
-					c.input.Focus()
-				}
+		if !c.IsLoading() {
+			if c.IsViewportFocused() {
+				c.FocusInput()
+			} else {
+				c.FocusViewport()
 			}
 		}
 		return nil
@@ -253,36 +240,30 @@ func (c *ChatView) handleKeyPress(msg tea.KeyMsg) tea.Cmd {
 	case "up":
 		// When viewport is focused: scroll up
 		// When input is focused: move focus to viewport
-		if !c.loading {
-			if c.viewportFocused {
+		if !c.IsLoading() {
+			if c.IsViewportFocused() {
 				// Scroll viewport up
-				if c.viewport != nil {
-					c.viewport.ScrollUp(1)
+				if c.messageHistory != nil {
+					c.messageHistory.ScrollUp(1)
 				}
 			} else {
 				// Move focus to viewport
-				c.viewportFocused = true
-				if c.input != nil {
-					c.input.Blur()
-				}
+				c.FocusViewport()
 			}
 		}
 		return nil
 
 	case "down":
 		// When viewport is focused: scroll down or move to input if at bottom
-		if !c.loading {
-			if c.viewportFocused {
+		if !c.IsLoading() {
+			if c.IsViewportFocused() {
 				// Check if viewport is at bottom
-				if c.viewport != nil && c.viewport.AtBottom() {
+				if c.messageHistory != nil && c.messageHistory.AtBottom() {
 					// At bottom - shift focus to input
-					c.viewportFocused = false
-					if c.input != nil {
-						c.input.Focus()
-					}
-				} else if c.viewport != nil {
+					c.FocusInput()
+				} else if c.messageHistory != nil {
 					// Not at bottom - scroll down
-					c.viewport.ScrollDown(1)
+					c.messageHistory.ScrollDown(1)
 				}
 			}
 		}
@@ -290,7 +271,7 @@ func (c *ChatView) handleKeyPress(msg tea.KeyMsg) tea.Cmd {
 
 	case "shift+enter":
 		// Insert newline in the input
-		if c.input != nil && !c.loading && !c.viewportFocused {
+		if c.input != nil && !c.IsLoading() && !c.IsViewportFocused() {
 			c.input.InsertNewline()
 			return nil
 		}
@@ -298,7 +279,7 @@ func (c *ChatView) handleKeyPress(msg tea.KeyMsg) tea.Cmd {
 
 	default:
 		// Forward to TextArea for text input (only when input is focused)
-		if c.input != nil && !c.loading && !c.viewportFocused {
+		if c.input != nil && !c.IsLoading() && !c.IsViewportFocused() {
 			updatedTextArea, cmd := c.input.Update(msg)
 			*c.input = *updatedTextArea
 			return cmd
@@ -330,47 +311,11 @@ func (c *ChatView) renderChatContent(t theme.Theme, includeHelp bool) string {
 			Render("\n" + c.headerText)
 	}
 
-	// Render message history
-	messageLines := c.renderMessages(t)
-
-	// Add loading indicator with spinner if loading
-	if c.loading {
-		spinnerView := c.spinner.View()
-		if spinnerView != "" {
-			textStyle := lipgloss.NewStyle().Foreground(t.Accent()).Background(t.Background())
-			loadingLine := spinnerView + textStyle.Render(" thinking...")
-			messageLines = append(messageLines, loadingLine)
-		}
+	// Render message history using MessageHistoryView
+	var borderedHistory string
+	if c.messageHistory != nil {
+		borderedHistory = c.messageHistory.View(t)
 	}
-
-	// Update viewport with message history
-	messageHistory := ""
-	if c.viewport != nil {
-		c.viewport.SetContent(strings.Join(messageLines, "\n"))
-		// Only auto-scroll to bottom when viewport is not manually focused
-		if !c.viewportFocused {
-			c.viewport.GotoBottom()
-		}
-		messageHistory = c.viewport.View()
-	} else {
-		messageHistory = strings.Join(messageLines, "\n")
-	}
-
-	// Message history section with border
-	borderColor := t.TextMuted()
-	if c.viewportFocused {
-		borderColor = t.Primary()
-	}
-
-	historyStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(borderColor).
-		Background(t.Background()).
-		Padding(1, 1).
-		Width(c.width - 4).
-		Height(c.height - 24)
-
-	borderedHistory := historyStyle.Render(messageHistory)
 
 	// Input section
 	inputLabelStyled := lipgloss.NewStyle().
@@ -382,7 +327,7 @@ func (c *ChatView) renderChatContent(t theme.Theme, includeHelp bool) string {
 	// Input area with focus-dependent border
 	var inputArea string
 	if c.input != nil {
-		inputFocused := !c.viewportFocused
+		inputFocused := !c.IsViewportFocused()
 		borderColor := t.TextMuted()
 		if inputFocused {
 			borderColor = t.Primary()
@@ -405,7 +350,7 @@ func (c *ChatView) renderChatContent(t theme.Theme, includeHelp bool) string {
 	if includeHelp {
 		// Help text - context-aware based on focus
 		var helpText string
-		if c.viewportFocused {
+		if c.IsViewportFocused() {
 			helpText = "↑↓ scroll  Tab switch focus"
 		} else {
 			helpText = "↑ to scroll history  Tab switch focus  Enter send  Shift+Enter new line"
@@ -443,54 +388,4 @@ func (c *ChatView) renderChatContent(t theme.Theme, includeHelp bool) string {
 	}
 
 	return strings.Join(contentParts, "\n")
-}
-
-// renderMessages renders all messages with proper formatting
-func (c *ChatView) renderMessages(t theme.Theme) []string {
-	var messageLines []string
-
-	for _, msg := range c.messages {
-		var prefix string
-		var textStyle lipgloss.Style
-
-		if msg.Role == "assistant" {
-			textStyle = lipgloss.NewStyle().Foreground(t.Accent())
-			prefix = c.assistantPrefix
-		} else {
-			textStyle = lipgloss.NewStyle().Foreground(t.Primary())
-			prefix = c.userPrefix
-		}
-
-		// Calculate available width for text
-		visualPrefixWidth := 8
-		availableWidth := c.width - visualPrefixWidth - 8
-		if availableWidth < 40 {
-			availableWidth = 40
-		}
-
-		// Preserve newlines by processing each paragraph separately
-		paragraphs := strings.Split(msg.Content, "\n")
-		var allLines []string
-		for _, para := range paragraphs {
-			if strings.TrimSpace(para) == "" {
-				allLines = append(allLines, "")
-			} else {
-				wrapped := wrapText(para, availableWidth)
-				allLines = append(allLines, strings.Split(wrapped, "\n")...)
-			}
-		}
-
-		for i, line := range allLines {
-			if i == 0 {
-				// First line with prefix
-				messageLines = append(messageLines, textStyle.Render(prefix+line))
-			} else {
-				// Continuation lines with indentation
-				messageLines = append(messageLines, textStyle.Render("        "+line))
-			}
-		}
-		messageLines = append(messageLines, "") // Blank line between messages
-	}
-
-	return messageLines
 }
