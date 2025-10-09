@@ -77,9 +77,9 @@ def _should_skip_update_check(cache_info: Dict[str, Any]) -> bool:
     if not last_check:
         return False
 
-    # Skip if we've checked in the last 10 minutes
+    # Skip if we've checked in the last 5 minutes
     last_check_time = datetime.fromisoformat(last_check)
-    return datetime.now() - last_check_time < timedelta(minutes=10)
+    return datetime.now() - last_check_time < timedelta(minutes=5)
 
 
 def _get_latest_version_from_pypi() -> Optional[str]:
