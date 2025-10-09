@@ -82,12 +82,12 @@ func (e ScenarioEditor) handleInterviewMode(msg tea.KeyMsg) (ScenarioEditor, tea
 			return e, nil
 
 		case "down":
-			// Move focus down: viewport -> input -> button
+			// When viewport is focused: scroll down
+			// Otherwise: move focus down through viewport -> input -> button
 			if e.interviewViewportFocused {
-				// From viewport to input
-				e.interviewViewportFocused = false
-				if e.interviewInput != nil {
-					e.interviewInput.Focus()
+				// Scroll viewport down
+				if e.interviewViewport != nil {
+					e.interviewViewport.ScrollDown(1)
 				}
 			} else if !e.approveButtonFocused {
 				// From input to button
@@ -100,21 +100,26 @@ func (e ScenarioEditor) handleInterviewMode(msg tea.KeyMsg) (ScenarioEditor, tea
 			return e, nil
 
 		case "up":
-			// Move focus up: button -> input -> viewport
-			if e.approveButtonFocused {
+			// When viewport is focused: scroll up
+			// Otherwise: move focus up through button -> input -> viewport
+			if e.interviewViewportFocused {
+				// Scroll viewport up
+				if e.interviewViewport != nil {
+					e.interviewViewport.ScrollUp(1)
+				}
+			} else if e.approveButtonFocused {
 				// From button to input
 				e.approveButtonFocused = false
 				if e.interviewInput != nil {
 					e.interviewInput.Focus()
 				}
-			} else if !e.interviewViewportFocused {
+			} else {
 				// From input to viewport
 				e.interviewViewportFocused = true
 				if e.interviewInput != nil {
 					e.interviewInput.Blur()
 				}
 			}
-			// If already on viewport, stay there
 			return e, nil
 
 		case "enter":
@@ -219,22 +224,35 @@ func (e ScenarioEditor) handleInterviewMode(msg tea.KeyMsg) (ScenarioEditor, tea
 		return e, nil
 
 	case "up":
-		// Move focus up: input -> viewport
-		if !e.interviewLoading && !e.interviewViewportFocused {
-			e.interviewViewportFocused = true
-			if e.interviewInput != nil {
-				e.interviewInput.Blur()
+		// When viewport is focused: scroll up
+		// When input is focused: move focus to viewport
+		if !e.interviewLoading {
+			if e.interviewViewportFocused {
+				// Scroll viewport up
+				if e.interviewViewport != nil {
+					e.interviewViewport.ScrollUp(1)
+				}
+			} else {
+				// Move focus to viewport
+				e.interviewViewportFocused = true
+				if e.interviewInput != nil {
+					e.interviewInput.Blur()
+				}
 			}
 		}
 		return e, nil
 
 	case "down":
-		// Move focus down: viewport -> input
-		if !e.interviewLoading && e.interviewViewportFocused {
-			e.interviewViewportFocused = false
-			if e.interviewInput != nil {
-				e.interviewInput.Focus()
+		// When viewport is focused: scroll down
+		// (Can't move down from input - it's already at bottom)
+		if !e.interviewLoading {
+			if e.interviewViewportFocused {
+				// Scroll viewport down
+				if e.interviewViewport != nil {
+					e.interviewViewport.ScrollDown(1)
+				}
 			}
+			// No action if input is focused (already at bottom)
 		}
 		return e, nil
 
@@ -486,7 +504,11 @@ func (e ScenarioEditor) renderInterviewView(t theme.Theme) string {
 	messageHistory := ""
 	if e.interviewViewport != nil {
 		e.interviewViewport.SetContent(strings.Join(messageLines, "\n"))
-		e.interviewViewport.GotoBottom() // Auto-scroll to bottom
+		// Only auto-scroll to bottom when viewport is not manually focused
+		// If user has focused the viewport to scroll through history, respect their position
+		if !e.interviewViewportFocused {
+			e.interviewViewport.GotoBottom()
+		}
 		messageHistory = e.interviewViewport.View()
 	} else {
 		messageHistory = strings.Join(messageLines, "\n")
@@ -538,12 +560,18 @@ func (e ScenarioEditor) renderInterviewView(t theme.Theme) string {
 
 		button := buttonStyle.Render(buttonText)
 
-		// Help text on the right
+		// Help text on the right - context-aware based on focus
+		var helpText string
+		if e.interviewViewportFocused {
+			helpText = "↑↓ scroll  Tab switch focus  Enter confirm  Shift+Enter new line  Esc cancel"
+		} else {
+			helpText = "Tab/↑↓ switch focus  Enter confirm  Shift+Enter new line  Esc cancel"
+		}
 		help = lipgloss.NewStyle().
 			Background(t.Background()).
 			Foreground(t.TextMuted()).
 			Padding(1, 0).
-			Render("Tab/↑↓ switch focus  Enter confirm  Shift+Enter new line  Esc cancel")
+			Render(helpText)
 
 		buttonLine = lipgloss.JoinHorizontal(
 			lipgloss.Top,
@@ -565,11 +593,18 @@ func (e ScenarioEditor) renderInterviewView(t theme.Theme) string {
 			),
 		)
 	} else {
+		// Help text - context-aware based on focus
+		var helpText string
+		if e.interviewViewportFocused {
+			helpText = "↑↓ scroll  Tab switch focus  Esc cancel"
+		} else {
+			helpText = "↑ to scroll history  Tab switch focus  Enter send  Shift+Enter new line  Esc cancel"
+		}
 		help = lipgloss.NewStyle().
 			Background(t.Background()).
 			Foreground(t.TextMuted()).
 			Padding(1, 0).
-			Render("Tab/↑↓ switch focus  Enter send  Shift+Enter new line  Esc cancel")
+			Render(helpText)
 
 		help = lipgloss.Place(
 			(e.width - 4),
