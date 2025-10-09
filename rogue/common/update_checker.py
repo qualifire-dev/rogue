@@ -10,11 +10,11 @@ import shutil
 import subprocess  # nosec: B404
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
-from packaging import version
 
 import platformdirs
 import requests
 from loguru import logger
+from packaging import version
 from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Confirm
@@ -77,9 +77,9 @@ def _should_skip_update_check(cache_info: Dict[str, Any]) -> bool:
     if not last_check:
         return False
 
-    # Skip if we've checked in the last 24 hours
+    # Skip if we've checked in the last 10 minutes
     last_check_time = datetime.fromisoformat(last_check)
-    return datetime.now() - last_check_time < timedelta(hours=24)
+    return datetime.now() - last_check_time < timedelta(minutes=10)
 
 
 def _get_latest_version_from_pypi() -> Optional[str]:
