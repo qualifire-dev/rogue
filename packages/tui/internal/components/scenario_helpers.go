@@ -135,14 +135,15 @@ func insertAtRune(s string, idx int, insert string) string {
 }
 
 func ellipsis(s string, max int) string {
-	if max <= 0 {
-		return ""
-	}
-	if len(s) <= max {
-		return s
-	}
-	if max <= 3 {
-		return s[:max]
-	}
-	return s[:max-3] + "..."
+    if max <= 0 {
+        return ""
+    }
+    runes := []rune(s)
+    if len(runes) <= max {
+        return s
+    }
+    if max <= 3 {
+        return string(runes[:max])
+    }
+    return string(runes[:max-3]) + "..."
 }
