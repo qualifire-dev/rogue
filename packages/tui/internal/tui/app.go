@@ -941,6 +941,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			if m.currentScreen == ReportScreen {
 				// go back to the evaluation view screen
+				if m.reportHistory != nil {
+					m.reportHistory.Blur()
+				}
 				m.currentScreen = EvaluationDetailScreen
 				return m, nil
 			}
@@ -960,6 +963,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// If no dialog needed, proceed to dashboard
 			}
 			// Default ESC behavior: back to dashboard
+			// Blur any focused viewports when leaving
+			if m.currentScreen == ReportScreen && m.reportHistory != nil {
+				m.reportHistory.Blur()
+			}
 			m.currentScreen = DashboardScreen
 			m.commandInput.SetFocus(true) // Keep focused when returning to dashboard
 			m.commandInput.SetValue("")
@@ -1201,6 +1208,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.evalState.Completed {
 					m.currentScreen = ReportScreen
 					// Report content will be built in renderReport()
+					// Focus the report so user can immediately scroll
+					if m.reportHistory != nil {
+						m.reportHistory.Focus()
+					}
 				}
 				return m, nil
 			case "tab":
@@ -1301,6 +1312,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.currentScreen == ReportScreen && m.evalState != nil {
 			switch msg.String() {
 			case "b":
+				if m.reportHistory != nil {
+					m.reportHistory.Blur()
+				}
 				m.currentScreen = DashboardScreen
 				return m, nil
 			case "r":
