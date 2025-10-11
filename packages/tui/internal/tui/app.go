@@ -199,12 +199,11 @@ type Model struct {
 	evalSpinner    components.Spinner
 
 	// Viewports for scrollable content
-	eventsViewport   components.Viewport
-	summaryViewport  components.Viewport
-	reportViewport   components.Viewport
-	helpViewport     components.Viewport
-	focusedViewport  int  // 0 = events, 1 = summary
-	eventsAutoScroll bool // Track if events should auto-scroll to bottom
+	eventsHistory   *components.MessageHistoryView
+	summaryHistory  *components.MessageHistoryView
+	reportHistory   *components.MessageHistoryView
+	helpViewport    components.Viewport
+	focusedViewport int // 0 = events, 1 = summary
 
 	// /eval state
 	evalState *EvaluationViewState
@@ -285,13 +284,12 @@ func (a *App) Run() error {
 		summarySpinner: components.NewSpinner(2),
 		evalSpinner:    components.NewSpinner(3),
 
-		// Initialize viewports
-		eventsViewport:   components.NewViewport(1, 80, 20),
-		summaryViewport:  components.NewViewport(2, 80, 20),
-		reportViewport:   components.NewViewport(3, 80, 15),
-		helpViewport:     components.NewViewport(4, 80, 20),
-		focusedViewport:  0,    // Start with events viewport focused
-		eventsAutoScroll: true, // Start with auto-scroll enabled
+		// Initialize viewports and message history
+		eventsHistory:   components.NewMessageHistoryView(1, 80, 20, theme.CurrentTheme()),
+		summaryHistory:  components.NewMessageHistoryView(2, 80, 20, theme.CurrentTheme()),
+		reportHistory:   components.NewMessageHistoryView(3, 80, 15, theme.CurrentTheme()),
+		helpViewport:    components.NewViewport(4, 80, 20),
+		focusedViewport: 0, // Start with events viewport focused
 	}
 
 	// Load existing configuration
@@ -398,8 +396,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.currentScreen = EvaluationDetailScreen
 			// Reset viewport focus to events when entering detail screen
 			m.focusedViewport = 0
-			// Enable auto-scroll for new evaluation
-			m.eventsAutoScroll = true
+			// Blur events history to enable auto-scroll for new evaluation
+			if m.eventsHistory != nil {
+				m.eventsHistory.Blur()
+			}
 			return m, autoRefreshCmd()
 		}
 		return m, nil
@@ -410,18 +410,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Err != nil {
 			if m.evalState != nil {
 				m.evalState.Summary = fmt.Sprintf("# Summary Generation Failed\n\nError: %v", msg.Err)
-				// Update report viewport if we're on the report screen
-				if m.currentScreen == ReportScreen {
-					m.reportViewport.SetContent(m.evalState.Summary)
-				}
 			}
 		} else {
 			if m.evalState != nil {
 				m.evalState.Summary = msg.Summary
-				// Update report viewport if we're on the report screen
-				if m.currentScreen == ReportScreen {
-					m.reportViewport.SetContent(m.evalState.Summary)
-				}
 			}
 		}
 		return m, nil
@@ -436,9 +428,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Update viewport sizes
 		viewportWidth := msg.Width - 4
 		viewportHeight := msg.Height - 8
-		m.eventsViewport.SetSize(viewportWidth, viewportHeight)
-		m.summaryViewport.SetSize(viewportWidth, viewportHeight)
-		m.reportViewport.SetSize(viewportWidth, viewportHeight)
+		if m.eventsHistory != nil {
+			m.eventsHistory.SetSize(viewportWidth, viewportHeight)
+		}
+		if m.summaryHistory != nil {
+			m.summaryHistory.SetSize(viewportWidth, viewportHeight)
+		}
+		if m.reportHistory != nil {
+			m.reportHistory.SetSize(viewportWidth, viewportHeight)
+		}
 		m.helpViewport.SetSize(viewportWidth, viewportHeight)
 		return m, nil
 
@@ -943,6 +941,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			if m.currentScreen == ReportScreen {
 				// go back to the evaluation view screen
+				if m.reportHistory != nil {
+					m.reportHistory.Blur()
+				}
 				m.currentScreen = EvaluationDetailScreen
 				return m, nil
 			}
@@ -962,6 +963,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// If no dialog needed, proceed to dashboard
 			}
 			// Default ESC behavior: back to dashboard
+			// Blur any focused viewports when leaving
+			if m.currentScreen == ReportScreen && m.reportHistory != nil {
+				m.reportHistory.Blur()
+			}
 			m.currentScreen = DashboardScreen
 			m.commandInput.SetFocus(true) // Keep focused when returning to dashboard
 			m.commandInput.SetValue("")
@@ -1202,14 +1207,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Navigate to report if evaluation completed
 				if m.evalState.Completed {
 					m.currentScreen = ReportScreen
-					// Update report viewport content when entering report screen
-					var reportContent string
-					if m.evalState.Summary == "" {
-						reportContent = "Generating summary, please wait..."
-					} else {
-						reportContent = m.evalState.Summary
+					// Report content will be built in renderReport()
+					// Focus the report so user can immediately scroll
+					if m.reportHistory != nil {
+						m.reportHistory.Focus()
 					}
-					m.reportViewport.SetContent(reportContent)
 				}
 				return m, nil
 			case "tab":
@@ -1220,43 +1222,89 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, nil
 			case "end":
-				// Go to bottom and re-enable auto-scroll for events viewport
-				if m.focusedViewport == 0 {
-					m.eventsViewport.GotoBottom()
-					m.eventsAutoScroll = true
-				} else if m.focusedViewport == 1 {
-					m.summaryViewport.GotoBottom()
+				// Go to bottom and blur to re-enable auto-scroll
+				if m.focusedViewport == 0 && m.eventsHistory != nil {
+					m.eventsHistory.GotoBottom()
+					m.eventsHistory.Blur()
+				} else if m.focusedViewport == 1 && m.summaryHistory != nil {
+					m.summaryHistory.GotoBottom()
+					m.summaryHistory.Blur()
 				}
 				return m, nil
 			case "home":
-				// Go to top and disable auto-scroll for events viewport
-				if m.focusedViewport == 0 {
-					m.eventsViewport.GotoTop()
-					m.eventsAutoScroll = false
-				} else if m.focusedViewport == 1 {
-					m.summaryViewport.GotoTop()
+				// Go to top and focus to disable auto-scroll
+				if m.focusedViewport == 0 && m.eventsHistory != nil {
+					m.eventsHistory.GotoTop()
+					m.eventsHistory.Focus()
+				} else if m.focusedViewport == 1 && m.summaryHistory != nil {
+					m.summaryHistory.GotoTop()
+					m.summaryHistory.Focus()
 				}
 				return m, nil
-			default:
-				// Update only the focused viewport for scrolling
-				if m.focusedViewport == 0 {
-					// Events viewport is focused - disable auto-scroll when user manually scrolls
-					m.eventsAutoScroll = false
-					eventsViewportPtr, cmd := m.eventsViewport.Update(msg)
-					if cmd != nil {
-						cmds = append(cmds, cmd)
+			case "up", "down", "pgup", "pgdown":
+				// Arrow keys: focus the active viewport and scroll
+				if m.focusedViewport == 0 && m.eventsHistory != nil {
+					// Special case: if at bottom and user hits down
+					if msg.String() == "down" && m.eventsHistory.AtBottom() {
+						// If summary is visible, switch focus to summary panel
+						if m.evalState != nil && m.evalState.Completed &&
+							(m.evalState.Summary != "" || m.summarySpinner.IsActive()) {
+							m.eventsHistory.Blur()
+							m.focusedViewport = 1 // Switch to summary
+							return m, nil
+						}
+						// Otherwise, just blur to re-enable auto-scroll
+						m.eventsHistory.Blur()
+						return m, nil
 					}
-					m.eventsViewport = *eventsViewportPtr
-				} else if m.focusedViewport == 1 {
-					// Summary viewport is focused
-					summaryViewportPtr, cmd := m.summaryViewport.Update(msg)
-					if cmd != nil {
-						cmds = append(cmds, cmd)
-					}
-					m.summaryViewport = *summaryViewportPtr
-				}
 
+					// Focus events history when user starts scrolling
+					m.eventsHistory.Focus()
+					switch msg.String() {
+					case "up":
+						m.eventsHistory.ScrollUp(1)
+					case "down":
+						m.eventsHistory.ScrollDown(1)
+					case "pgup":
+						m.eventsHistory.ScrollUp(10)
+					case "pgdown":
+						m.eventsHistory.ScrollDown(10)
+					}
+					cmd := m.eventsHistory.Update(msg)
+					if cmd != nil {
+						cmds = append(cmds, cmd)
+					}
+				} else if m.focusedViewport == 1 && m.summaryHistory != nil {
+					// Special case: if at top of summary and user hits up, switch back to events
+					if msg.String() == "up" && m.summaryHistory.AtTop() {
+						m.focusedViewport = 0 // Switch back to events
+						if m.eventsHistory != nil {
+							m.eventsHistory.Focus()
+						}
+						return m, nil
+					}
+
+					// Summary history scrolling
+					m.summaryHistory.Focus()
+					switch msg.String() {
+					case "up":
+						m.summaryHistory.ScrollUp(1)
+					case "down":
+						m.summaryHistory.ScrollDown(1)
+					case "pgup":
+						m.summaryHistory.ScrollUp(10)
+					case "pgdown":
+						m.summaryHistory.ScrollDown(10)
+					}
+					cmd := m.summaryHistory.Update(msg)
+					if cmd != nil {
+						cmds = append(cmds, cmd)
+					}
+				}
 				return m, tea.Batch(cmds...)
+			default:
+				// No action for other keys
+				return m, nil
 			}
 		}
 
@@ -1264,6 +1312,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.currentScreen == ReportScreen && m.evalState != nil {
 			switch msg.String() {
 			case "b":
+				if m.reportHistory != nil {
+					m.reportHistory.Blur()
+				}
 				m.currentScreen = DashboardScreen
 				return m, nil
 			case "r":
@@ -1277,20 +1328,38 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			case "home":
 				// Go to top of report
-				m.reportViewport.GotoTop()
+				if m.reportHistory != nil {
+					m.reportHistory.GotoTop()
+				}
 				return m, nil
 			case "end":
 				// Go to bottom of report
-				m.reportViewport.GotoBottom()
-				return m, nil
-			default:
-				// Update the report viewport for scrolling
-				reportViewportPtr, cmd := m.reportViewport.Update(msg)
-				if cmd != nil {
-					cmds = append(cmds, cmd)
+				if m.reportHistory != nil {
+					m.reportHistory.GotoBottom()
 				}
-				m.reportViewport = *reportViewportPtr
+				return m, nil
+			case "up", "down", "pgup", "pgdown":
+				// Scroll the report
+				if m.reportHistory != nil {
+					switch msg.String() {
+					case "up":
+						m.reportHistory.ScrollUp(1)
+					case "down":
+						m.reportHistory.ScrollDown(1)
+					case "pgup":
+						m.reportHistory.ScrollUp(10)
+					case "pgdown":
+						m.reportHistory.ScrollDown(10)
+					}
+					cmd := m.reportHistory.Update(msg)
+					if cmd != nil {
+						cmds = append(cmds, cmd)
+					}
+				}
 				return m, tea.Batch(cmds...)
+			default:
+				// No action for other keys
+				return m, nil
 			}
 		}
 
