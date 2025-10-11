@@ -1242,8 +1242,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "up", "down", "pgup", "pgdown":
 				// Arrow keys: focus the active viewport and scroll
 				if m.focusedViewport == 0 && m.eventsHistory != nil {
-					// Special case: if at bottom and user hits down, blur to re-enable auto-scroll
+					// Special case: if at bottom and user hits down
 					if msg.String() == "down" && m.eventsHistory.AtBottom() {
+						// If summary is visible, switch focus to summary panel
+						if m.evalState != nil && m.evalState.Completed &&
+							(m.evalState.Summary != "" || m.summarySpinner.IsActive()) {
+							m.eventsHistory.Blur()
+							m.focusedViewport = 1 // Switch to summary
+							return m, nil
+						}
+						// Otherwise, just blur to re-enable auto-scroll
 						m.eventsHistory.Blur()
 						return m, nil
 					}
@@ -1265,6 +1273,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						cmds = append(cmds, cmd)
 					}
 				} else if m.focusedViewport == 1 {
+					// Special case: if at top of summary and user hits up, switch back to events
+					if msg.String() == "up" && m.summaryViewport.AtTop() {
+						m.focusedViewport = 0 // Switch back to events
+						if m.eventsHistory != nil {
+							m.eventsHistory.Focus()
+						}
+						return m, nil
+					}
+
 					// Summary viewport scrolling
 					summaryViewportPtr, cmd := m.summaryViewport.Update(msg)
 					if cmd != nil {
