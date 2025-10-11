@@ -164,6 +164,14 @@ func (m *MessageHistoryView) AtBottom() bool {
 	return true
 }
 
+// AtTop returns true if scrolled to top
+func (m *MessageHistoryView) AtTop() bool {
+	if m.viewport != nil {
+		return m.viewport.AtTop()
+	}
+	return true
+}
+
 // GotoBottom scrolls to the bottom
 func (m *MessageHistoryView) GotoBottom() {
 	if m.viewport != nil {

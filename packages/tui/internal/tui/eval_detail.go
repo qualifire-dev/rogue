@@ -64,9 +64,14 @@ func (m Model) renderEvaluationDetail() string {
 	}
 	status := statusStyle.Render(statusText)
 
-	// Calculate available height for content area (excluding header, status, help)
-	// header(3) + help(1) + margins(2) = 6, plus extra margin for status and spacing
-	totalContentHeight := m.height - 8 // More conservative calculation to prevent footer override
+	// Calculate available height for content area
+	// Total layout: header(3) + mainContent + helpText(2) = m.height
+	// mainContent contains: status(3) + spacers(2-3) + events + [spacer + summary]
+	// Start with total height minus header and help
+	availableHeight := m.height - 5 // header(3) + helpText(2)
+
+	// Subtract status bar and spacers
+	statusAndSpacersHeight := 5 // status(3) + spacers(2)
 
 	var eventsHeight, summaryHeight int
 	var showSummary bool
@@ -74,11 +79,17 @@ func (m Model) renderEvaluationDetail() string {
 	// If evaluation completed and we have a summary OR are generating one, split 50/50
 	if m.evalState.Completed && (m.evalState.Summary != "" || m.summarySpinner.IsActive()) {
 		showSummary = true
-		eventsHeight = (totalContentHeight / 2) - 2           // Reduced margin to prevent overflow
-		summaryHeight = totalContentHeight - eventsHeight - 1 // -1 for spacer between them
+		// Add one more spacer between events and summary
+		statusAndSpacersHeight = 6 // status(3) + spacers(3)
+
+		// Remaining height split between events and summary
+		remainingHeight := availableHeight - statusAndSpacersHeight
+		eventsHeight = remainingHeight / 2
+		summaryHeight = remainingHeight - eventsHeight
 	} else {
-		// No summary, events take full height with conservative margin
-		eventsHeight = totalContentHeight - 2 // Leave extra space to prevent footer override
+		// No summary, events take full remaining height
+		remainingHeight := availableHeight - statusAndSpacersHeight
+		eventsHeight = remainingHeight
 		summaryHeight = 0
 	}
 
@@ -140,8 +151,8 @@ func (m Model) renderEvaluationDetail() string {
 	helpText := helpStyle.Render(helpMsg)
 
 	// Calculate main content area height (space between header and footer)
-	// header(3) + helpText(1) + margins(2) = 6
-	mainContentHeight := m.height - 10
+	// This should match availableHeight calculated above
+	mainContentHeight := availableHeight
 
 	// Create content area for the main content (between header and footer)
 	contentArea := lipgloss.NewStyle().
@@ -162,49 +173,38 @@ func (m Model) renderEvaluationDetail() string {
 			summaryTitleText = "📊 Evaluation Summary"
 		}
 
-		summaryTitle := lipgloss.NewStyle().
-			Foreground(t.Primary()).
-			Bold(true).
-			Render(summaryTitleText)
+		// Clear existing summary messages
+		m.summaryHistory.ClearMessages()
 
-		var summaryText string
+		// Add title as a system message
+		m.summaryHistory.AddMessage("system", summaryTitleText)
+
 		if m.evalState.Summary == "" && m.summarySpinner.IsActive() {
 			// Show loading message when generating summary
-			summaryText = lipgloss.NewStyle().
-				Foreground(t.TextMuted()).
-				Italic(true).
-				Render("Generating summary with LLM...")
-		} else {
-			// Render the markdown summary with styling
-			summaryText = renderMarkdownSummary(t, m.evalState.Summary)
+			m.summaryHistory.AddMessage("system", "Generating summary with LLM...")
+		} else if m.evalState.Summary != "" {
+			// Add summary content as a single message
+			m.summaryHistory.AddMessage("assistant", m.evalState.Summary)
 		}
 
-		// Prepare summary content for viewport
-		summaryBody := summaryTitle + "\n" + summaryText
+		// Update size for summary history
+		m.summaryHistory.SetSize(m.width, summaryHeight)
 
-		// Update summary viewport
-		// Use conservative sizing to match events viewport
-		m.summaryViewport.SetSize(m.width-4, summaryHeight-10)
-		m.summaryViewport.SetContent(summaryBody)
+		// Customize prefixes for summary view
+		m.summaryHistory.SetPrefixes("", "")
 
-		// Set border color based on focus
-		summaryBorderFg := t.Primary() // Default border for summary
+		// Set colors for summary
+		m.summaryHistory.SetColors(t.Success(), t.Text())
+
+		// Set focus state for border color
 		if m.focusedViewport == 1 {
-			summaryBorderFg = t.Primary() // Keep primary when focused
+			m.summaryHistory.Focus()
 		} else {
-			summaryBorderFg = t.Border() // Use normal border when not focused
+			m.summaryHistory.Blur()
 		}
 
-		m.summaryViewport.Style = lipgloss.NewStyle().
-			Foreground(t.Text()).
-			Background(t.BackgroundPanel()).
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(summaryBorderFg).
-			Padding(1, 2).
-			Width(m.width - 4).
-			Height(summaryHeight - 6)
-
-		summaryContent = m.summaryViewport.View()
+		// Render summary using MessageHistoryView
+		summaryContent = m.summaryHistory.View(t)
 	}
 
 	// Arrange content based on whether we have a summary or not

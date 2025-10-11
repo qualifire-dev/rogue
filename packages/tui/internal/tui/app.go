@@ -200,8 +200,8 @@ type Model struct {
 
 	// Viewports for scrollable content
 	eventsHistory   *components.MessageHistoryView
-	summaryViewport components.Viewport
-	reportViewport  components.Viewport
+	summaryHistory  *components.MessageHistoryView
+	reportHistory   *components.MessageHistoryView
 	helpViewport    components.Viewport
 	focusedViewport int // 0 = events, 1 = summary
 
@@ -286,8 +286,8 @@ func (a *App) Run() error {
 
 		// Initialize viewports and message history
 		eventsHistory:   components.NewMessageHistoryView(1, 80, 20, theme.CurrentTheme()),
-		summaryViewport: components.NewViewport(2, 80, 20),
-		reportViewport:  components.NewViewport(3, 80, 15),
+		summaryHistory:  components.NewMessageHistoryView(2, 80, 20, theme.CurrentTheme()),
+		reportHistory:   components.NewMessageHistoryView(3, 80, 15, theme.CurrentTheme()),
 		helpViewport:    components.NewViewport(4, 80, 20),
 		focusedViewport: 0, // Start with events viewport focused
 	}
@@ -410,18 +410,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Err != nil {
 			if m.evalState != nil {
 				m.evalState.Summary = fmt.Sprintf("# Summary Generation Failed\n\nError: %v", msg.Err)
-				// Update report viewport if we're on the report screen
-				if m.currentScreen == ReportScreen {
-					m.reportViewport.SetContent(m.evalState.Summary)
-				}
 			}
 		} else {
 			if m.evalState != nil {
 				m.evalState.Summary = msg.Summary
-				// Update report viewport if we're on the report screen
-				if m.currentScreen == ReportScreen {
-					m.reportViewport.SetContent(m.evalState.Summary)
-				}
 			}
 		}
 		return m, nil
@@ -439,8 +431,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.eventsHistory != nil {
 			m.eventsHistory.SetSize(viewportWidth, viewportHeight)
 		}
-		m.summaryViewport.SetSize(viewportWidth, viewportHeight)
-		m.reportViewport.SetSize(viewportWidth, viewportHeight)
+		if m.summaryHistory != nil {
+			m.summaryHistory.SetSize(viewportWidth, viewportHeight)
+		}
+		if m.reportHistory != nil {
+			m.reportHistory.SetSize(viewportWidth, viewportHeight)
+		}
 		m.helpViewport.SetSize(viewportWidth, viewportHeight)
 		return m, nil
 
@@ -1204,14 +1200,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Navigate to report if evaluation completed
 				if m.evalState.Completed {
 					m.currentScreen = ReportScreen
-					// Update report viewport content when entering report screen
-					var reportContent string
-					if m.evalState.Summary == "" {
-						reportContent = "Generating summary, please wait..."
-					} else {
-						reportContent = m.evalState.Summary
-					}
-					m.reportViewport.SetContent(reportContent)
+					// Report content will be built in renderReport()
 				}
 				return m, nil
 			case "tab":
@@ -1226,8 +1215,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.focusedViewport == 0 && m.eventsHistory != nil {
 					m.eventsHistory.GotoBottom()
 					m.eventsHistory.Blur()
-				} else if m.focusedViewport == 1 {
-					m.summaryViewport.GotoBottom()
+				} else if m.focusedViewport == 1 && m.summaryHistory != nil {
+					m.summaryHistory.GotoBottom()
+					m.summaryHistory.Blur()
 				}
 				return m, nil
 			case "home":
@@ -1235,8 +1225,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.focusedViewport == 0 && m.eventsHistory != nil {
 					m.eventsHistory.GotoTop()
 					m.eventsHistory.Focus()
-				} else if m.focusedViewport == 1 {
-					m.summaryViewport.GotoTop()
+				} else if m.focusedViewport == 1 && m.summaryHistory != nil {
+					m.summaryHistory.GotoTop()
+					m.summaryHistory.Focus()
 				}
 				return m, nil
 			case "up", "down", "pgup", "pgdown":
@@ -1272,9 +1263,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if cmd != nil {
 						cmds = append(cmds, cmd)
 					}
-				} else if m.focusedViewport == 1 {
+				} else if m.focusedViewport == 1 && m.summaryHistory != nil {
 					// Special case: if at top of summary and user hits up, switch back to events
-					if msg.String() == "up" && m.summaryViewport.AtTop() {
+					if msg.String() == "up" && m.summaryHistory.AtTop() {
 						m.focusedViewport = 0 // Switch back to events
 						if m.eventsHistory != nil {
 							m.eventsHistory.Focus()
@@ -1282,12 +1273,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						return m, nil
 					}
 
-					// Summary viewport scrolling
-					summaryViewportPtr, cmd := m.summaryViewport.Update(msg)
+					// Summary history scrolling
+					m.summaryHistory.Focus()
+					switch msg.String() {
+					case "up":
+						m.summaryHistory.ScrollUp(1)
+					case "down":
+						m.summaryHistory.ScrollDown(1)
+					case "pgup":
+						m.summaryHistory.ScrollUp(10)
+					case "pgdown":
+						m.summaryHistory.ScrollDown(10)
+					}
+					cmd := m.summaryHistory.Update(msg)
 					if cmd != nil {
 						cmds = append(cmds, cmd)
 					}
-					m.summaryViewport = *summaryViewportPtr
 				}
 				return m, tea.Batch(cmds...)
 			default:
@@ -1313,20 +1314,38 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			case "home":
 				// Go to top of report
-				m.reportViewport.GotoTop()
+				if m.reportHistory != nil {
+					m.reportHistory.GotoTop()
+				}
 				return m, nil
 			case "end":
 				// Go to bottom of report
-				m.reportViewport.GotoBottom()
-				return m, nil
-			default:
-				// Update the report viewport for scrolling
-				reportViewportPtr, cmd := m.reportViewport.Update(msg)
-				if cmd != nil {
-					cmds = append(cmds, cmd)
+				if m.reportHistory != nil {
+					m.reportHistory.GotoBottom()
 				}
-				m.reportViewport = *reportViewportPtr
+				return m, nil
+			case "up", "down", "pgup", "pgdown":
+				// Scroll the report
+				if m.reportHistory != nil {
+					switch msg.String() {
+					case "up":
+						m.reportHistory.ScrollUp(1)
+					case "down":
+						m.reportHistory.ScrollDown(1)
+					case "pgup":
+						m.reportHistory.ScrollUp(10)
+					case "pgdown":
+						m.reportHistory.ScrollDown(10)
+					}
+					cmd := m.reportHistory.Update(msg)
+					if cmd != nil {
+						cmds = append(cmds, cmd)
+					}
+				}
 				return m, tea.Batch(cmds...)
+			default:
+				// No action for other keys
+				return m, nil
 			}
 		}
 
