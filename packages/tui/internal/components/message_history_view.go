@@ -228,13 +228,20 @@ func (m *MessageHistoryView) View(t theme.Theme) string {
 		borderColor = t.Primary()
 	}
 
+	// Calculate content height (viewport height) to prevent overflow
+	// Viewport is already sized to m.height - 4 to account for border/padding
+	contentHeight := m.height - 4
+	if contentHeight < 0 {
+		contentHeight = 0
+	}
+
 	historyStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(borderColor).
 		Background(t.Background()).
 		Padding(1, 1).
 		Width(m.width - 4).
-		Height(m.height)
+		Height(contentHeight)
 
 	return historyStyle.Render(messageHistory)
 }
