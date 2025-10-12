@@ -258,12 +258,12 @@ func (c *ChatView) handleKeyPress(msg tea.KeyMsg) tea.Cmd {
 		if !c.IsLoading() {
 			if c.IsViewportFocused() {
 				// Check if viewport is at bottom
-				if c.messageHistory != nil && c.messageHistory.AtBottom() {
-					// At bottom - shift focus to input
-					c.FocusInput()
-				} else if c.messageHistory != nil {
+				if c.messageHistory != nil && !c.messageHistory.AtBottom() {
 					// Not at bottom - scroll down
 					c.messageHistory.ScrollDown(1)
+				} else {
+					// At bottom or messageHistory is nil - shift focus to input
+					c.FocusInput()
 				}
 			}
 		}
