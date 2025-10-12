@@ -340,7 +340,7 @@ func (c *ChatView) renderChatContent(t theme.Theme, includeHelp bool) string {
 	}
 
 	// Build the view
-	var contentParts []string
+	contentParts := make([]string, 0, 5)
 	if c.showHeader && header != "" {
 		contentParts = append(contentParts, header)
 	}
