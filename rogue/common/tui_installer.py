@@ -168,11 +168,12 @@ class RogueTuiInstaller:
     def install_rogue_tui(
         self,
         upgrade: bool = False,
+        reinstall: bool = False,
     ) -> bool:
         """Install rogue-tui from GitHub releases if not already installed."""
         console = Console()
         # Check if rogue-tui is already available
-        if self._is_rogue_tui_installed() and not upgrade:
+        if self._is_rogue_tui_installed() and not upgrade and not reinstall:
             console.print("[green]✅ rogue-tui is already installed.[/green]")
             return True
 
