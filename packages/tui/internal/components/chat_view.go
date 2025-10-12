@@ -182,6 +182,14 @@ func (c *ChatView) IsViewportFocused() bool {
 	return false
 }
 
+// IsViewportFocused returns true if viewport is focused
+func (c *ChatView) IsInputFocused() bool {
+	if c.input != nil {
+		return c.input.IsFocused()
+	}
+	return false
+}
+
 // FocusViewport focuses the viewport for scrolling
 func (c *ChatView) FocusViewport() {
 	if c.messageHistory != nil {
@@ -209,7 +217,7 @@ func (c *ChatView) Update(msg tea.Msg) tea.Cmd {
 		return c.handleKeyPress(msg)
 	case tea.PasteMsg:
 		// Forward paste to input if not loading and not scrolling
-		if c.input != nil && !c.IsLoading() && !c.IsViewportFocused() {
+		if c.input != nil && !c.IsLoading() && c.IsInputFocused() {
 			updatedTextArea, cmd := c.input.Update(msg)
 			*c.input = *updatedTextArea
 			return cmd
@@ -271,7 +279,7 @@ func (c *ChatView) handleKeyPress(msg tea.KeyMsg) tea.Cmd {
 
 	case "shift+enter":
 		// Insert newline in the input
-		if c.input != nil && !c.IsLoading() && !c.IsViewportFocused() {
+		if c.input != nil && !c.IsLoading() && c.IsInputFocused() {
 			c.input.InsertNewline()
 			return nil
 		}
@@ -279,7 +287,7 @@ func (c *ChatView) handleKeyPress(msg tea.KeyMsg) tea.Cmd {
 
 	default:
 		// Forward to TextArea for text input (only when input is focused)
-		if c.input != nil && !c.IsLoading() && !c.IsViewportFocused() {
+		if c.input != nil && !c.IsLoading() && c.IsInputFocused() {
 			updatedTextArea, cmd := c.input.Update(msg)
 			*c.input = *updatedTextArea
 			return cmd
@@ -327,9 +335,8 @@ func (c *ChatView) renderChatContent(t theme.Theme, includeHelp bool) string {
 	// Input area with focus-dependent border
 	var inputArea string
 	if c.input != nil {
-		inputFocused := !c.IsViewportFocused()
 		borderColor := t.TextMuted()
-		if inputFocused {
+		if c.IsInputFocused() {
 			borderColor = t.Primary()
 		}
 
