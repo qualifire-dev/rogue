@@ -355,18 +355,18 @@ func (c *ChatView) renderChatContent(t theme.Theme, includeHelp bool) string {
 		} else {
 			helpText = "↑ to scroll history  Tab switch focus  Enter send  Shift+Enter new line"
 		}
-		help := lipgloss.NewStyle().
+		helpStyle := lipgloss.NewStyle().
 			Background(t.Background()).
 			Foreground(t.TextMuted()).
 			Padding(1, 0).
 			Render(helpText)
 
-		help = lipgloss.Place(
+		help := lipgloss.Place(
 			c.width-4,
 			3,
 			lipgloss.Right,
 			lipgloss.Top,
-			help,
+			helpStyle,
 			styles.WhitespaceStyle(t.Background()),
 		)
 
