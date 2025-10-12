@@ -121,10 +121,7 @@ func (m *MessageHistoryView) StartSpinner() tea.Cmd {
 
 // StopSpinner stops the spinner
 func (m *MessageHistoryView) StopSpinner() {
-	m.showSpinner = false
-	if m.spinner != nil {
-		m.spinner.SetActive(false)
-	}
+	m.SetSpinner(false)
 }
 
 // IsFocused returns true if the viewport is focused for scrolling

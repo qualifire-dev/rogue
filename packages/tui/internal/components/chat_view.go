@@ -266,12 +266,12 @@ func (c *ChatView) handleKeyPress(msg tea.KeyMsg) tea.Cmd {
 		if !c.IsLoading() {
 			if c.IsViewportFocused() {
 				// Check if viewport is at bottom
-				if c.messageHistory != nil && c.messageHistory.AtBottom() {
-					// At bottom - shift focus to input
-					c.FocusInput()
-				} else if c.messageHistory != nil {
+				if c.messageHistory != nil && !c.messageHistory.AtBottom() {
 					// Not at bottom - scroll down
 					c.messageHistory.ScrollDown(1)
+				} else {
+					// At bottom or messageHistory is nil - shift focus to input
+					c.FocusInput()
 				}
 			}
 		}
@@ -347,7 +347,7 @@ func (c *ChatView) renderChatContent(t theme.Theme, includeHelp bool) string {
 	}
 
 	// Build the view
-	var contentParts []string
+	contentParts := make([]string, 0, 5)
 	if c.showHeader && header != "" {
 		contentParts = append(contentParts, header)
 	}
@@ -362,18 +362,18 @@ func (c *ChatView) renderChatContent(t theme.Theme, includeHelp bool) string {
 		} else {
 			helpText = "↑ to scroll history  Tab switch focus  Enter send  Shift+Enter new line"
 		}
-		help := lipgloss.NewStyle().
+		helpStyle := lipgloss.NewStyle().
 			Background(t.Background()).
 			Foreground(t.TextMuted()).
 			Padding(1, 0).
 			Render(helpText)
 
-		help = lipgloss.Place(
+		help := lipgloss.Place(
 			c.width-4,
 			3,
 			lipgloss.Right,
 			lipgloss.Top,
-			help,
+			helpStyle,
 			styles.WhitespaceStyle(t.Background()),
 		)
 
