@@ -1,28 +1,14 @@
 package tui
 
 import (
-	"os"
-
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/glamour/ansi"
 	"github.com/charmbracelet/glamour/styles"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/lipgloss/v2/compat"
 	"github.com/lucasb-eyer/go-colorful"
-	"github.com/rogue/tui/internal/components"
 	"github.com/rogue/tui/internal/theme"
 )
-
-// renderMarkdownTest renders the markdown test screen
-func (m Model) renderMarkdownTest() string {
-	in, _ := os.ReadFile("../../README.md")
-
-	out, _ := GetMarkdownRenderer(m.width, theme.CurrentTheme().Background()).Render(string(in))
-	mdView := components.NewViewport(1, m.width, m.height)
-	mdView.SetContent(out)
-	mdView.SetSize(m.width, m.height)
-	return mdView.View()
-}
 
 const defaultMargin = 1
 
