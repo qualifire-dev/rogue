@@ -168,6 +168,7 @@ const (
 	ConfigurationScreen
 	ScenariosScreen
 	HelpScreen
+	MarkdownTestScreen
 )
 
 // App represents the main TUI application
@@ -501,6 +502,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				HasChanges:       false,
 				QualifireEnabled: m.config.QualifireAPIKey != "" && m.config.QualifireEnabled, // Set based on API key and enabled flag
 			}
+		case "markdown":
+			m.currentScreen = MarkdownTestScreen
 		case "help":
 			m.currentScreen = HelpScreen
 		case "quit":
@@ -891,6 +894,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "ctrl+i":
 			m.currentScreen = InterviewScreen
+			return m, nil
+
+		case "ctrl+d":
+			m.currentScreen = MarkdownTestScreen
 			return m, nil
 
 		case "/":
@@ -1420,6 +1427,8 @@ func (m Model) View() string {
 		screen = m.renderScenarios()
 	case HelpScreen:
 		screen = m.RenderHelp()
+	case MarkdownTestScreen:
+		screen = m.renderMarkdownTest()
 	default:
 		screen = m.RenderMainScreen(t)
 	}
