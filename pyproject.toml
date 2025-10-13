@@ -39,7 +39,12 @@ dev = [
     "types-requests>=2.32.4.20250611",
     "pre-commit>=4.3.0",
 ]
-examples = ["langchain==0.3.26", "langchain-openai==0.3.27", "langgraph==0.5.2"]
+examples = [
+    "langchain>=0.3.27",
+    "langchain-openai>=0.3.35",
+    "langgraph>=0.6.10",
+    "mcp[cli]>=1.13.0",
+]
 
 [build-system]
 requires = ["hatchling"]
