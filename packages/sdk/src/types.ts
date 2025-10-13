@@ -118,6 +118,15 @@ export interface RogueClientConfig {
   retries?: number;
 }
 
+export interface ReportSummaryRequest {
+  qualifireUrl: string;
+  qualifireApiKey: string;
+  structuredSummary: boolean;
+  deepTest: boolean;
+  startTime: string;
+  judgeModel?: string;
+}
+
 // Event Types for WebSocket
 export type WebSocketEventType =
   | "job_update"
