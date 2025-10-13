@@ -179,7 +179,7 @@ uv run rogue-ai --example=tshirt_store
 
 3. **Test your changes**
 
-   Before creating a pull request, you are expected to test you changes manually as well as running the unit tests.
+   Before creating a pull request, you are expected to test your changes manually as well as running the unit tests.
 
    ```bash
    # Run tests
