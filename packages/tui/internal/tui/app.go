@@ -276,7 +276,7 @@ func (a *App) Run() error {
 			Theme:     "aura",
 			APIKeys:   make(map[string]string),
 		},
-		version:        "v0.1.10",
+		version:        "v0.1.11",
 		commandInput:   components.NewCommandInput(),
 		scenarioEditor: components.NewScenarioEditor(),
 
