@@ -31,7 +31,7 @@ There are many ways you can contribute to Rogue:
 1. **Fork and clone the repository**
 
    ```bash
-   git clone https://github.com/qualifire-dev/rogue.git
+   git clone https://github.com/YOUR-USERNAME/rogue.git
    cd rogue
    ```
 
