@@ -118,10 +118,18 @@ export interface RogueClientConfig {
   retries?: number;
 }
 
+export interface StructuredSummary {
+  overall_summary: string,
+  key_findings: string[],
+  recommendations: string[],
+  detailed_breakdown: object[]
+}
+
 export interface ReportSummaryRequest {
+  job_id: string,
   qualifireUrl: string;
   qualifireApiKey: string;
-  structuredSummary: boolean;
+  structuredSummary: StructuredSummary;
   deepTest: boolean;
   startTime: string;
   judgeModel?: string;
