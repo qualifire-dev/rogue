@@ -10,6 +10,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/v2/table"
 	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/glamour"
 
 	"github.com/pelletier/go-toml/v2"
 	"github.com/rogue/tui/internal/components"
@@ -204,6 +205,11 @@ type Model struct {
 	reportHistory   *components.MessageHistoryView
 	helpViewport    components.Viewport
 	focusedViewport int // 0 = events, 1 = summary
+
+	// Markdown renderer with caching
+	markdownRenderer    *glamour.TermRenderer
+	rendererCachedWidth int
+	rendererCachedTheme string
 
 	// /eval state
 	evalState *EvaluationViewState
@@ -1828,4 +1834,34 @@ func (m *Model) configureScenarioEditorWithInterviewModel() {
 		}
 	}
 	m.scenarioEditor.SetConfig(m.config.ServerURL, interviewModel, interviewAPIKey)
+
+	// Set markdown renderer for interview responses
+	renderer := m.getMarkdownRenderer()
+	m.scenarioEditor.SetMarkdownRenderer(renderer)
+}
+
+// getMarkdownRenderer returns a markdown renderer configured for the current dimensions and theme
+// Uses caching to avoid recreating the renderer unnecessarily
+func (m *Model) getMarkdownRenderer() *glamour.TermRenderer {
+	t := theme.CurrentTheme()
+	currentThemeName := theme.CurrentThemeName()
+
+	// Use a reasonable width for markdown rendering, accounting for padding/margins
+	width := m.width - 8
+	if width < 40 {
+		width = 40
+	}
+
+	// Check if we need to recreate the renderer
+	needsRecreate := m.markdownRenderer == nil ||
+		m.rendererCachedWidth != width ||
+		m.rendererCachedTheme != currentThemeName
+
+	if needsRecreate {
+		m.markdownRenderer = GetMarkdownRenderer(width, t.Background())
+		m.rendererCachedWidth = width
+		m.rendererCachedTheme = currentThemeName
+	}
+
+	return m.markdownRenderer
 }
