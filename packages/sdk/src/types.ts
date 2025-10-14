@@ -129,7 +129,7 @@ export interface ReportSummaryRequest {
   job_id: string,
   qualifireUrl: string;
   qualifireApiKey: string;
-  structuredSummary: StructuredSummary;
+  structuredSummary?: StructuredSummary;
   deepTest: boolean;
   startTime: string;
   judgeModel?: string;
