@@ -127,11 +127,11 @@ export interface StructuredSummary {
 
 export interface ReportSummaryRequest {
   job_id: string,
-  qualifireUrl: string;
-  qualifireApiKey: string;
+  qualifireUrl?: string;
+  qualifireApiKey?: string;
   structuredSummary?: StructuredSummary;
-  deepTest: boolean;
-  startTime: string;
+  deepTest?: boolean;
+  startTime?: string;
   judgeModel?: string;
 }
 
