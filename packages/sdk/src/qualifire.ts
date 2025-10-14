@@ -39,7 +39,7 @@ export class QualifireClient {
   public static async reportSummaryToQualifire(
     evaluationResults: EvaluationResult,
     request: ReportSummaryRequest,
-    options: QualifireClientOptions
+    options?: QualifireClientOptions
   ): Promise<void> {
     options?.logger?.("Reporting summary to Qualifire");
 
