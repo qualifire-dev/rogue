@@ -129,9 +129,12 @@ func (m *Model) summaryGenerationCmd() tea.Cmd {
 			parsedDetailedBreakdown = "| Scenario | Status | Outcome |\n"
 			parsedDetailedBreakdown += "|----------|--------|---------|\n"
 
-			// Add table rows
+			// Add table rows with escaped content
 			for _, breakdown := range detailedBreakdown {
-				parsedDetailedBreakdown += "| " + breakdown.Scenario + " | " + breakdown.Status + " | " + breakdown.Outcome + " |\n"
+				escapedScenario := escapeMarkdownTableCell(breakdown.Scenario)
+				escapedStatus := escapeMarkdownTableCell(breakdown.Status)
+				escapedOutcome := escapeMarkdownTableCell(breakdown.Outcome)
+				parsedDetailedBreakdown += "| " + escapedScenario + " | " + escapedStatus + " | " + escapedOutcome + " |\n"
 			}
 		}
 
@@ -161,6 +164,18 @@ func clampToInt(s string) int {
 		n = 9999
 	}
 	return n
+}
+
+// escapeMarkdownTableCell escapes special characters in markdown table cells
+func escapeMarkdownTableCell(s string) string {
+	// Replace pipe characters with HTML entity to prevent table structure break
+	s = strings.ReplaceAll(s, "|", "&#124;")
+	// Replace newlines with spaces to keep content on single line
+	s = strings.ReplaceAll(s, "\n", " ")
+	s = strings.ReplaceAll(s, "\r", " ")
+	// Trim extra whitespace
+	s = strings.TrimSpace(s)
+	return s
 }
 
 // Screen represents different screens in the TUI
