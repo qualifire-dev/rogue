@@ -124,8 +124,15 @@ func (m *Model) summaryGenerationCmd() tea.Cmd {
 
 		detailedBreakdown := structuredSummary.Summary.DetailedBreakdown
 		parsedDetailedBreakdown := ""
-		for _, breakdown := range detailedBreakdown {
-			parsedDetailedBreakdown += "- " + breakdown.Scenario + " - " + breakdown.Status + " - " + breakdown.Outcome + "\n"
+		if len(detailedBreakdown) > 0 {
+			// Create Markdown table header
+			parsedDetailedBreakdown = "| Scenario | Status | Outcome |\n"
+			parsedDetailedBreakdown += "|----------|--------|---------|\n"
+
+			// Add table rows
+			for _, breakdown := range detailedBreakdown {
+				parsedDetailedBreakdown += "| " + breakdown.Scenario + " | " + breakdown.Status + " | " + breakdown.Outcome + " |\n"
+			}
 		}
 
 		summary := "## Overall Summary\n\n" + overallSummary +
@@ -859,6 +866,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Handle global keyboard shortcuts first (regardless of focus state)
 		switch msg.String() {
 		case "ctrl+n":
+			judgeModel := "openai/gpt-4.1" // fallback default
+			if m.config.SelectedModel != "" && m.config.SelectedProvider != "" {
+				// Use the configured model in provider/model format
+				judgeModel = m.config.SelectedProvider + "/" + m.config.SelectedModel
+			}
+			m.evalState = &EvaluationViewState{
+				ServerURL:    m.config.ServerURL,
+				AgentURL:     "http://localhost:10001",
+				JudgeModel:   judgeModel,
+				ParallelRuns: 1,
+				DeepTest:     false,
+				Scenarios:    loadScenariosFromWorkdir(),
+			}
 			m.currentScreen = NewEvaluationScreen
 			return m, nil
 

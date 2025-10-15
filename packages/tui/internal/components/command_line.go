@@ -40,7 +40,6 @@ func NewCommandInput() CommandInput {
 		{Name: "/models", Description: "Configure LLMs", KeyBinding: "Ctrl+L", Action: "configure_models"},
 		{Name: "/editor", Description: "Scenario editor", KeyBinding: "Ctrl+E", Action: "open_editor"},
 		{Name: "/eval", Description: "New evaluation", KeyBinding: "Ctrl+N", Action: "new_evaluation"},
-		{Name: "/markdown", Description: "Markdown test", KeyBinding: "Ctrl+D", Action: "markdown"},
 		{Name: "/help", Description: "Show help", KeyBinding: "Ctrl+H", Action: "help"},
 		{Name: "/settings", Description: "settings", KeyBinding: "Ctrl+S", Action: "configuration"},
 	}

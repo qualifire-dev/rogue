@@ -325,8 +325,8 @@ func (m *MessageHistoryView) renderMessages(t theme.Theme) []string {
 			}
 		}
 
-		// Check if we should render as markdown for assistant messages
-		if m.renderMarkdown && m.markdownRenderer != nil && msg.Role == "assistant" {
+		// Check if we should render as markdown
+		if m.renderMarkdown && m.markdownRenderer != nil && msg.Role != "system" {
 			// Render markdown content
 			rendered, err := m.markdownRenderer.Render(msg.Content)
 			if err != nil {
@@ -334,18 +334,7 @@ func (m *MessageHistoryView) renderMessages(t theme.Theme) []string {
 				rendered = msg.Content
 			}
 
-			// Split rendered content into lines and add prefix to first line only
-			lines := strings.Split(strings.TrimRight(rendered, "\n"), "\n")
-			if len(lines) > 0 {
-				// First line with prefix
-				messageLines = append(messageLines, prefix+lines[0])
-				// Remaining lines without prefix but with indentation
-				prefixVisualWidth := calculateVisualWidth(prefix)
-				indentation := strings.Repeat(" ", prefixVisualWidth)
-				for _, line := range lines[1:] {
-					messageLines = append(messageLines, indentation+line)
-				}
-			}
+			messageLines = append(messageLines, prefix, rendered)
 		} else {
 			// Regular text rendering (existing logic)
 			// Calculate visual width of prefix (accounting for emojis)

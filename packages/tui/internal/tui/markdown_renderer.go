@@ -240,7 +240,10 @@ func generateMarkdownStyleConfig(backgroundColor compat.AdaptiveColor) ansi.Styl
 		Table: ansi.StyleTable{
 			StyleBlock: ansi.StyleBlock{
 				StylePrimitive: ansi.StylePrimitive{
-					BlockSuffix: "\n",
+					BlockSuffix:     "",
+					BlockPrefix:     "",
+					BackgroundColor: background,
+					Color:           AdaptiveColorToString(t.MarkdownText()),
 				},
 			},
 			CenterSeparator: stringPtr("┼"),
