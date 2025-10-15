@@ -68,6 +68,10 @@ func (m Model) renderReport() string {
 	// Set colors for report
 	m.reportHistory.SetColors(t.Success(), t.Text())
 
+	// Enable markdown rendering for report content
+	renderer := m.getMarkdownRenderer()
+	m.reportHistory.SetMarkdownRenderer(renderer)
+
 	// Render report using MessageHistoryView
 	reportContent := m.reportHistory.View(t)
 
