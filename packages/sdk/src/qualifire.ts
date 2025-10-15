@@ -49,7 +49,7 @@ export class QualifireClient {
     );
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
 
     try {
       const response = await fetch(`${request.qualifireUrl}/api/evaluation/evaluate`, {
@@ -72,7 +72,7 @@ export class QualifireClient {
     } catch (error) {
       clearTimeout(timeoutId);
       if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error('Qualifire report timed out after 3 seconds');
+        throw new Error('Qualifire report timed out after 30 seconds');
       }
       throw error;
     }
