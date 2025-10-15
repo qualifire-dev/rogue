@@ -242,7 +242,7 @@ func generateMarkdownStyleConfig(backgroundColor compat.AdaptiveColor) ansi.Styl
 				StylePrimitive: ansi.StylePrimitive{
 					BlockSuffix:     "",
 					BlockPrefix:     "",
-					BackgroundColor: background,
+					BackgroundColor: stringPtr(""),
 					Color:           AdaptiveColorToString(t.MarkdownText()),
 				},
 			},
