@@ -396,3 +396,9 @@ Please make sure to update tests as appropriate.
 ## License
 
 This project is licensed under the ELASTIC License - see the [LICENSE](LICENSE) file for details.
+This means that you can use this freely and forever but you are not allowed to host and sell this software.
+
+If you have any queries about the license and commercial use for this project please email `admin@qualifire.ai`
+
+
+
