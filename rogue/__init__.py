@@ -4,6 +4,8 @@ Rogue Agent Evaluator - Core Library
 This module provides a clean, library-oriented API for agent evaluation.
 """
 
+from pathlib import Path
+
 # Import submodules for backward compatibility
 from . import (
     common,
@@ -43,7 +45,24 @@ __all__ = [
     "ui",
 ]
 
+# Read version from VERSION file
+def _get_version():
+    try:
+        # In development, prioritize VERSION file over installed metadata
+        version_file = Path(__file__).parent.parent / "VERSION"
+        if version_file.exists():
+            return version_file.read_text().strip()
+    except Exception:
+        pass
+    
+    try:
+        # Fall back to installed package metadata
+        from importlib.metadata import version
+        return version("rogue-ai")
+    except Exception:
+        return "0.0.0-dev"
+
 # Version info
-__version__ = "0.1.10"
+__version__ = _get_version()
 __author__ = "Qualifire"
 __description__ = "Library for evaluating AI agents against scenarios"

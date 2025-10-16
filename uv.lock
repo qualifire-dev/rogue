@@ -3522,7 +3522,6 @@ wheels = [
 
 [[package]]
 name = "rogue-ai"
-version = "0.1.10"
 source = { editable = "." }
 dependencies = [
     { name = "a2a-sdk" },

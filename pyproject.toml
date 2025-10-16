@@ -1,6 +1,6 @@
 [project]
 name = "rogue-ai"
-version = "0.1.10"
+dynamic = ["version"]
 description = "Rogue agent evaluator by Qualifire"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -45,6 +45,10 @@ examples = ["langchain==0.3.26", "langchain-openai==0.3.27", "langgraph==0.5.2"]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.version]
+path = "VERSION"
+pattern = "(?P<version>^\\s*[^\\r\\n\\s]+)"
+
 [tool.hatch.build.targets.wheel]
 packages = ["rogue", "examples"]
 
@@ -55,3 +59,8 @@ packages = ["rogue", "examples"]
 [project.scripts]
 rogue-ai = "rogue.__main__:main"
 rogue-ai-example-tshirt = "examples.tshirt_store_agent.__main__:main"
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
+]
