@@ -381,48 +381,6 @@ Rogue's workflow is designed to be simple and intuitive, managed entirely throug
 
 ---
 
-## Supported Models
-
-_The following tables show the models we have tested with Rogue._
-
-### We have successfully run our agent with the following models:
-
-#### OpenAI:
-
-- gpt-5
-- gpt-5-mini
-- gpt-5-nano
-- openai/gpt-4.1
-- openai/gpt-4.1-mini
-- openai/gpt-4.5-preview
-- openai/gpt-4o
-- openai/gpt-4o-mini
-- openai/o4-mini
-
-#### Gemini (vertex or google-ai):
-
-- gemini-2.5-flash
-- gemini-2.5-pro
-
-#### Anthropic:
-
-- anthropic/claude-3-5-sonnet-latest
-- anthropic/claude-3-7-sonnet-latest
-- anthropic/claude-4-sonnet-latest
-
-### The following models are not supported:
-
-#### OpenAI:
-
-- openai/o1 (including mini)
-- openai/o4 (including mini)
-
-#### Gemini (vertex or google-ai):
-
-- gemini-2.5-flash (partial support)
-
----
-
 ## Contributing
 
 Contributions are welcome! If you'd like to contribute, please follow these steps:
