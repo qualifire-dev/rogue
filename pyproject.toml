@@ -60,7 +60,3 @@ packages = ["rogue", "examples"]
 rogue-ai = "rogue.__main__:main"
 rogue-ai-example-tshirt = "examples.tshirt_store_agent.__main__:main"
 
-[tool.pytest.ini_options]
-markers = [
-    "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
-]
