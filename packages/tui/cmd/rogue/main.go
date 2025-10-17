@@ -25,7 +25,7 @@ func main() {
     rootCmd.PersistentFlags().Bool("debug", false, "Enable debug mode")
     rootCmd.PersistentFlags().Bool("no-color", false, "Disable colors")
     rootCmd.PersistentFlags().String("model", "", "Default LLM model")
-    rootCmd.PersistentFlags().String("theme", "UI theme", "aura")
+    rootCmd.PersistentFlags().String("theme", "aura", "UI theme")
 
     // Add version flag to root command
     var showVersion bool

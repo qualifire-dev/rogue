@@ -46,7 +46,7 @@ __all__ = [
 ]
 
 # Read version from VERSION file
-def _get_version():
+def _get_version() -> str:
     try:
         # In development, prioritize VERSION file over installed metadata
         version_file = Path(__file__).parent.parent / "VERSION"
