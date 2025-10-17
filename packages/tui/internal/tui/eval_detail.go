@@ -196,6 +196,10 @@ func (m Model) renderEvaluationDetail() string {
 		// Set colors for summary
 		m.summaryHistory.SetColors(t.Success(), t.Text())
 
+		// Enable markdown rendering for summary content
+		renderer := m.getMarkdownRenderer()
+		m.summaryHistory.SetMarkdownRenderer(renderer)
+
 		// Set focus state for border color
 		if m.focusedViewport == 1 {
 			m.summaryHistory.Focus()

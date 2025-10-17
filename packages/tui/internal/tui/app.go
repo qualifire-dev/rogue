@@ -10,6 +10,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/v2/table"
 	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/glamour"
 
 	"github.com/pelletier/go-toml/v2"
 	"github.com/rogue/tui/internal/components"
@@ -123,8 +124,18 @@ func (m *Model) summaryGenerationCmd() tea.Cmd {
 
 		detailedBreakdown := structuredSummary.Summary.DetailedBreakdown
 		parsedDetailedBreakdown := ""
-		for _, breakdown := range detailedBreakdown {
-			parsedDetailedBreakdown += "- " + breakdown.Scenario + " - " + breakdown.Status + " - " + breakdown.Outcome + "\n"
+		if len(detailedBreakdown) > 0 {
+			// Create Markdown table header
+			parsedDetailedBreakdown = "| Scenario | Status | Outcome |\n"
+			parsedDetailedBreakdown += "|----------|--------|---------|\n"
+
+			// Add table rows with escaped content
+			for _, breakdown := range detailedBreakdown {
+				escapedScenario := escapeMarkdownTableCell(breakdown.Scenario)
+				escapedStatus := escapeMarkdownTableCell(breakdown.Status)
+				escapedOutcome := escapeMarkdownTableCell(breakdown.Outcome)
+				parsedDetailedBreakdown += "| " + escapedScenario + " | " + escapedStatus + " | " + escapedOutcome + " |\n"
+			}
 		}
 
 		summary := "## Overall Summary\n\n" + overallSummary +
@@ -153,6 +164,18 @@ func clampToInt(s string) int {
 		n = 9999
 	}
 	return n
+}
+
+// escapeMarkdownTableCell escapes special characters in markdown table cells
+func escapeMarkdownTableCell(s string) string {
+	// Replace pipe characters with HTML entity to prevent table structure break
+	s = strings.ReplaceAll(s, "|", "&#124;")
+	// Replace newlines with spaces to keep content on single line
+	s = strings.ReplaceAll(s, "\n", " ")
+	s = strings.ReplaceAll(s, "\r", " ")
+	// Trim extra whitespace
+	s = strings.TrimSpace(s)
+	return s
 }
 
 // Screen represents different screens in the TUI
@@ -204,6 +227,11 @@ type Model struct {
 	reportHistory   *components.MessageHistoryView
 	helpViewport    components.Viewport
 	focusedViewport int // 0 = events, 1 = summary
+
+	// Markdown renderer with caching
+	markdownRenderer    *glamour.TermRenderer
+	rendererCachedWidth int
+	rendererCachedTheme string
 
 	// /eval state
 	evalState *EvaluationViewState
@@ -853,6 +881,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Handle global keyboard shortcuts first (regardless of focus state)
 		switch msg.String() {
 		case "ctrl+n":
+			judgeModel := "openai/gpt-4.1" // fallback default
+			if m.config.SelectedModel != "" && m.config.SelectedProvider != "" {
+				// Use the configured model in provider/model format
+				judgeModel = m.config.SelectedProvider + "/" + m.config.SelectedModel
+			}
+			m.evalState = &EvaluationViewState{
+				ServerURL:    m.config.ServerURL,
+				AgentURL:     "http://localhost:10001",
+				JudgeModel:   judgeModel,
+				ParallelRuns: 1,
+				DeepTest:     false,
+				Scenarios:    loadScenariosFromWorkdir(),
+			}
 			m.currentScreen = NewEvaluationScreen
 			return m, nil
 
@@ -1828,4 +1869,34 @@ func (m *Model) configureScenarioEditorWithInterviewModel() {
 		}
 	}
 	m.scenarioEditor.SetConfig(m.config.ServerURL, interviewModel, interviewAPIKey)
+
+	// Set markdown renderer for interview responses
+	renderer := m.getMarkdownRenderer()
+	m.scenarioEditor.SetMarkdownRenderer(renderer)
+}
+
+// getMarkdownRenderer returns a markdown renderer configured for the current dimensions and theme
+// Uses caching to avoid recreating the renderer unnecessarily
+func (m *Model) getMarkdownRenderer() *glamour.TermRenderer {
+	t := theme.CurrentTheme()
+	currentThemeName := theme.CurrentThemeName()
+
+	// Use a reasonable width for markdown rendering, accounting for padding/margins
+	width := m.width - 8
+	if width < 40 {
+		width = 40
+	}
+
+	// Check if we need to recreate the renderer
+	needsRecreate := m.markdownRenderer == nil ||
+		m.rendererCachedWidth != width ||
+		m.rendererCachedTheme != currentThemeName
+
+	if needsRecreate {
+		m.markdownRenderer = GetMarkdownRenderer(width, t.Background())
+		m.rendererCachedWidth = width
+		m.rendererCachedTheme = currentThemeName
+	}
+
+	return m.markdownRenderer
 }

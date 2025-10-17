@@ -2,6 +2,7 @@ package components
 
 import (
 	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/rogue/tui/internal/styles"
 	"github.com/rogue/tui/internal/theme"
@@ -54,6 +55,9 @@ type ScenarioEditor struct {
 	InterviewModel  string // model for interview (e.g., "openai/gpt-4o")
 	InterviewAPIKey string // API key for interview model
 
+	// Markdown rendering
+	markdownRenderer *glamour.TermRenderer
+
 	// File management
 	filePath string // path to .rogue/scenarios.json
 
@@ -104,6 +108,14 @@ func (e *ScenarioEditor) SetConfig(serverURL, interviewModel, interviewAPIKey st
 	e.ServerURL = serverURL
 	e.InterviewModel = interviewModel
 	e.InterviewAPIKey = interviewAPIKey
+}
+
+// SetMarkdownRenderer sets the markdown renderer for the interview chat view
+func (e *ScenarioEditor) SetMarkdownRenderer(renderer *glamour.TermRenderer) {
+	e.markdownRenderer = renderer
+	if e.interviewChatView != nil {
+		e.interviewChatView.SetMarkdownRenderer(renderer)
+	}
 }
 
 // SetSize sets the size of the editor

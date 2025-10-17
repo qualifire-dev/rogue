@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/rogue/tui/internal/styles"
 	"github.com/rogue/tui/internal/theme"
@@ -71,6 +72,13 @@ func (c *ChatView) SetSize(width, height int) {
 func (c *ChatView) SetPrefixes(userPrefix, assistantPrefix string) {
 	if c.messageHistory != nil {
 		c.messageHistory.SetPrefixes(userPrefix, assistantPrefix)
+	}
+}
+
+// SetMarkdownRenderer enables markdown rendering with the provided renderer
+func (c *ChatView) SetMarkdownRenderer(renderer *glamour.TermRenderer) {
+	if c.messageHistory != nil {
+		c.messageHistory.SetMarkdownRenderer(renderer)
 	}
 }
 
