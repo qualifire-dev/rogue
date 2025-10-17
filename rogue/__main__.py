@@ -54,6 +54,12 @@ def common_parser() -> ArgumentParser:
         help="Host for the example agent (default: localhost)",
     )
     parent_parser.add_argument(
+        "--force-reinstall",
+        action="store_true",
+        default=False,
+        help="Force reinstallation of the TUI.",
+    )
+    parent_parser.add_argument(
         "--example-port",
         type=int,
         default=10001,
@@ -199,7 +205,7 @@ def main() -> None:
         logger.info("Starting rogue-ai...")
 
         # Step 1: Install rogue-tui if needed
-        if not RogueTuiInstaller().install_rogue_tui():
+        if not RogueTuiInstaller().install_rogue_tui(force=args.force_reinstall):
             logger.error("Failed to install rogue-tui. Exiting.")
             if example_process:
                 example_process.terminate()
@@ -246,7 +252,9 @@ def main() -> None:
             exit_code = asyncio.run(run_cli(args))
             sys.exit(exit_code)
         elif args.mode == "tui":
-            if not RogueTuiInstaller().install_rogue_tui():
+            if not RogueTuiInstaller().install_rogue_tui(
+                force=args.force_reinstall
+            ):
                 logger.error("Failed to install rogue-tui. Exiting.")
                 sys.exit(1)
             exit_code = run_rogue_tui()
