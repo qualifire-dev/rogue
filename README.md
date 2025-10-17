@@ -4,7 +4,6 @@
 
 <div align="center">
 
-[![License: ELASTIC](https://img.shields.io/badge/License-elastic-yellow.svg)](https://www.elastic.co/licensing/elastic-license)
 ![Tests](https://github.com/qualifire-dev/rogue/actions/workflows/test.yml/badge.svg?branch=main)
 
 <img src="./freddy-rogue.png" width="200"/>
@@ -395,7 +394,7 @@ Please make sure to update tests as appropriate.
 
 ## License
 
-This project is licensed under the ELASTIC License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under a License - see the [LICENSE](LICENSE) file for details.
 This means that you can use this freely and forever but you are not allowed to host and sell this software.
 
 If you have any queries about the license and commercial use for this project please email `admin@qualifire.ai`
