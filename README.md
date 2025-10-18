@@ -8,7 +8,7 @@
 
 <img src="./freddy-rogue.png" width="200"/>
 
-Join our [Discord community]!(https://discord.gg/EUfAt7ZDeK)
+Join our [Discord community](https://discord.gg/EUfAt7ZDeK)!
 
 </div>
 
