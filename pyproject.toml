@@ -56,6 +56,9 @@ packages = ["rogue", "examples"]
 "rogue" = "rogue"
 "examples" = "examples"
 
+[tool.uv.sources]
+rogue-ai-sdk = { path = "sdks/python", editable = true }
+
 [project.scripts]
 rogue-ai = "rogue.__main__:main"
 rogue-ai-example-tshirt = "examples.tshirt_store_agent.__main__:main"

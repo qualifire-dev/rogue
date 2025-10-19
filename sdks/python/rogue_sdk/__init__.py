@@ -53,7 +53,12 @@ from .types import *
 from .websocket import RogueWebSocketClient
 
 # Version
-__version__ = "1.0.0"
+try:
+    from importlib.metadata import version
+    __version__ = version("rogue-ai-sdk")
+except Exception:
+    # Fallback for development environments where the package isn't installed
+    __version__ = "0.0.0-dev"
 
 # Default export
 __all__ = [
