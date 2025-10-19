@@ -7,7 +7,7 @@ from loguru import logger
 from rogue_sdk.types import AuthType, EvaluationResults, Scenarios, TransportType
 
 from ..common.agent_sessions import create_session
-from .evaluator_agent import get_evaluator_agent
+from .evaluator_agent_factory import get_evaluator_agent
 
 if TYPE_CHECKING:
     from google.adk.runners import Runner
