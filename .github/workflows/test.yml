@@ -36,6 +36,7 @@ jobs:
       - name: Install rogue server with local sdk
         run: |
           source .venv/bin/activate
+          uv sync --dev
           uv pip install -e .
           uv pip uninstall rogue-ai-sdk
           uv pip install -e sdks/python --force-reinstall
