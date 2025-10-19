@@ -55,8 +55,8 @@ There are many ways you can contribute to Rogue:
 
    **Installation**:
 
-    Please follow [Lefthook's documentation](https://lefthook.dev/installation/) on how to install.
-   
+   Please follow [Lefthook's documentation](https://lefthook.dev/installation/) on how to install.
+
    **Activate Lefthook** in the repository:
 
    ```bash
@@ -64,6 +64,7 @@ There are many ways you can contribute to Rogue:
    ```
 
    This will set up the git hooks defined in `lefthook.yaml`. Now, every time you commit, Lefthook will automatically run:
+
    - **Python linters**: `black`, `flake8`, `mypy`, `bandit`, `isort`, `add-trailing-comma`
    - **Go formatters**: `gofmt`, `goimports`, `go vet` (for TUI code)
    - **Security checks**: `gitleaks` (prevents committing secrets)
@@ -166,6 +167,7 @@ uv run rogue-ai --example=tshirt_store
    ```
 
    Use descriptive branch names:
+
    - `feature/add-new-evaluation-type` for new features
    - `fix/issue-123-bug-description` for bug fixes
    - `docs/improve-contributing-guide` for documentation
@@ -225,6 +227,7 @@ uv run rogue-ai --example=tshirt_store
 - Reference issues and pull requests liberally after the first line
 
 Examples:
+
 ```
 Add support for custom evaluation metrics
 
@@ -313,9 +316,8 @@ All contributors will be recognized in our release notes and can be added to a C
 
 ## License
 
-By contributing to Rogue, you agree that your contributions will be licensed under the same ELASTIC license that covers the project. See [LICENSE.md](LICENSE.md) for details.
+By contributing to Rogue, you agree that your contributions will be licensed under the same Qualifire OSS License that covers the project. See [LICENSE.md](LICENSE.md) for details.
 
 ---
 
 Thank you for contributing to Rogue! Your efforts help make AI agent evaluation better for everyone. 🚀
-

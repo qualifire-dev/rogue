@@ -302,4 +302,7 @@ python -m flake8 rogue_sdk/
 
 ## License
 
-Elastic License 2.0 - see LICENSE file for details.
+This project is licensed under a License - see the [LICENSE](LICENSE.md) file for details.
+This means that you can use this freely and forever but you are not allowed to host and sell this software.
+
+If you have any queries about the license and commercial use for this project please email `admin@qualifire.ai`

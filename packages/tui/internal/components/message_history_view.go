@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/charmbracelet/lipgloss/v2/compat"
 	"github.com/rogue/tui/internal/theme"
@@ -33,6 +34,10 @@ type MessageHistoryView struct {
 	assistantPrefix string
 	showSpinner     bool
 	spinner         *Spinner
+
+	// Markdown rendering
+	renderMarkdown   bool
+	markdownRenderer *glamour.TermRenderer
 
 	// Rendering
 	userColor      compat.AdaptiveColor
@@ -82,6 +87,17 @@ func (m *MessageHistoryView) SetPrefixes(userPrefix, assistantPrefix string) {
 func (m *MessageHistoryView) SetColors(userColor, assistantColor compat.AdaptiveColor) {
 	m.userColor = userColor
 	m.assistantColor = assistantColor
+}
+
+// SetMarkdownRenderer enables markdown rendering with the provided renderer
+func (m *MessageHistoryView) SetMarkdownRenderer(renderer *glamour.TermRenderer) {
+	m.markdownRenderer = renderer
+	m.renderMarkdown = true
+}
+
+// SetRenderMarkdown enables or disables markdown rendering
+func (m *MessageHistoryView) SetRenderMarkdown(enabled bool) {
+	m.renderMarkdown = enabled
 }
 
 // AddMessage adds a message to the history
@@ -309,38 +325,52 @@ func (m *MessageHistoryView) renderMessages(t theme.Theme) []string {
 			}
 		}
 
-		// Calculate visual width of prefix (accounting for emojis)
-		// Emojis typically take 2 visual columns in terminals
-		prefixVisualWidth := calculateVisualWidth(prefix)
-		availableWidth := m.width - prefixVisualWidth - 8
-		if availableWidth < 40 {
-			availableWidth = 40
-		}
+		// Check if we should render as markdown
+		if m.renderMarkdown && m.markdownRenderer != nil && msg.Role != "system" {
+			// Render markdown content
+			rendered, err := m.markdownRenderer.Render(msg.Content)
+			if err != nil {
+				// Fall back to plain text if markdown rendering fails
+				rendered = msg.Content
+			}
 
-		// Create indentation string matching prefix visual width
-		indentation := strings.Repeat(" ", prefixVisualWidth)
+			messageLines = append(messageLines, prefix, rendered)
+		} else {
+			// Regular text rendering (existing logic)
+			// Calculate visual width of prefix (accounting for emojis)
+			// Emojis typically take 2 visual columns in terminals
+			prefixVisualWidth := calculateVisualWidth(prefix)
+			availableWidth := m.width - prefixVisualWidth - 8
+			if availableWidth < 40 {
+				availableWidth = 40
+			}
 
-		// Preserve newlines by processing each paragraph separately
-		paragraphs := strings.Split(msg.Content, "\n")
-		var allLines []string
-		for _, para := range paragraphs {
-			if strings.TrimSpace(para) == "" {
-				allLines = append(allLines, "")
-			} else {
-				wrapped := wrapText(para, availableWidth)
-				allLines = append(allLines, strings.Split(wrapped, "\n")...)
+			// Create indentation string matching prefix visual width
+			indentation := strings.Repeat(" ", prefixVisualWidth)
+
+			// Preserve newlines by processing each paragraph separately
+			paragraphs := strings.Split(msg.Content, "\n")
+			var allLines []string
+			for _, para := range paragraphs {
+				if strings.TrimSpace(para) == "" {
+					allLines = append(allLines, "")
+				} else {
+					wrapped := wrapText(para, availableWidth)
+					allLines = append(allLines, strings.Split(wrapped, "\n")...)
+				}
+			}
+
+			for i, line := range allLines {
+				if i == 0 {
+					// First line with prefix
+					messageLines = append(messageLines, textStyle.Render(prefix+line))
+				} else {
+					// Continuation lines with indentation matching prefix width
+					messageLines = append(messageLines, textStyle.Render(indentation+line))
+				}
 			}
 		}
 
-		for i, line := range allLines {
-			if i == 0 {
-				// First line with prefix
-				messageLines = append(messageLines, textStyle.Render(prefix+line))
-			} else {
-				// Continuation lines with indentation matching prefix width
-				messageLines = append(messageLines, textStyle.Render(indentation+line))
-			}
-		}
 		messageLines = append(messageLines, "") // Blank line between messages
 	}
 
