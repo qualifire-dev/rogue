@@ -85,22 +85,32 @@ class ShirtifyAgent:
         current_state = self.graph.get_state(config)
         structured_response = current_state.values.get("structured_response")
         if structured_response and isinstance(structured_response, ResponseFormat):
-            if structured_response.status in ("input_required", "error"):
+            if structured_response.status == "error":
                 return {
                     "is_task_complete": False,
                     "require_user_input": True,
+                    "is_error": True,
+                    "content": structured_response.message,
+                }
+            elif structured_response.status == "input_required":
+                return {
+                    "is_task_complete": False,
+                    "require_user_input": True,
+                    "is_error": False,
                     "content": structured_response.message,
                 }
             elif structured_response.status == "completed":
                 return {
                     "is_task_complete": True,
                     "require_user_input": False,
+                    "is_error": False,
                     "content": structured_response.message,
                 }
 
         return {
             "is_task_complete": False,
             "require_user_input": True,
+            "is_error": True,
             "content": "We are unable to process your request at the moment. Please try again.",  # noqa: E501
         }
 

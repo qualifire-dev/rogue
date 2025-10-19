@@ -5,6 +5,7 @@ load_dotenv()
 
 
 def main():
+    print("Starting MCP server...")
     mcp.run()
 
 

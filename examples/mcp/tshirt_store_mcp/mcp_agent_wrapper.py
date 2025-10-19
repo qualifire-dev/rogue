@@ -18,7 +18,16 @@ mcp = FastMCP("shirtify_agent_mcp")
 
 @mcp.tool()
 def send_message(message: str, context: Context) -> Dict[str, Any]:
-    raw_tool_result = agent.invoke(message)
+    # Invoking our agent
+    raw_tool_result = agent.invoke(message, context.client_id)
 
-    CallToolResult(content=TextContent(text=raw_tool_result["content"]), isError=False)
-    return agent.invoke(message, str(context))  # ["content"]
+    # Preparing the response
+    return CallToolResult(
+        content=[
+            TextContent(
+                text=raw_tool_result.get("content", ""),
+                type="text",
+            ),
+        ],
+        isError=raw_tool_result.get("is_error", False),
+    ).model_dump()
