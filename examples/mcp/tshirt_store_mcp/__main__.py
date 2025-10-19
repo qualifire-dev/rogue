@@ -4,7 +4,7 @@ from mcp_agent_wrapper import mcp
 load_dotenv()
 
 
-def main():
+def main() -> None:
     print("Starting MCP server...")
 
     # Can also be "sse".

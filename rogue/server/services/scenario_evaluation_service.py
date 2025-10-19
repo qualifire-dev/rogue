@@ -1,7 +1,7 @@
 from typing import Any, AsyncGenerator
 
 from loguru import logger
-from rogue_sdk.types import AuthType, EvaluationResults, Scenarios
+from rogue_sdk.types import AuthType, EvaluationResults, Scenarios, TransportType
 
 from ...evaluator_agent.run_evaluator_agent import arun_evaluator_agent
 
@@ -9,6 +9,7 @@ from ...evaluator_agent.run_evaluator_agent import arun_evaluator_agent
 class ScenarioEvaluationService:
     def __init__(
         self,
+        transport: TransportType,
         evaluated_agent_url: str,
         evaluated_agent_auth_type: AuthType,
         evaluated_agent_auth_credentials: str | None,
@@ -18,6 +19,7 @@ class ScenarioEvaluationService:
         business_context: str,
         deep_test_mode: bool,
     ):
+        self._transport = transport
         self._evaluated_agent_url = evaluated_agent_url
         self._evaluated_agent_auth_type = evaluated_agent_auth_type
         self._evaluated_agent_auth_credentials = evaluated_agent_auth_credentials
@@ -55,6 +57,7 @@ class ScenarioEvaluationService:
             update_count = 0
 
             async for update_type, data in arun_evaluator_agent(
+                transport=self._transport,
                 evaluated_agent_url=str(self._evaluated_agent_url),
                 auth_type=self._evaluated_agent_auth_type,
                 auth_credentials=self._evaluated_agent_auth_credentials,

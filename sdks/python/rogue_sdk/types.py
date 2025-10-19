@@ -59,12 +59,19 @@ class EvaluationStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
+class TransportType(str, Enum):
+    """Transport types for evaluator agent."""
+
+    A2A = "a2a"
+
+
 # Core Models
 
 
 class AgentConfig(BaseModel):
     """Configuration for the agent being evaluated."""
 
+    transport: TransportType = TransportType.A2A
     evaluated_agent_url: HttpUrl
     evaluated_agent_auth_type: AuthType = Field(
         default=AuthType.NO_AUTH,
