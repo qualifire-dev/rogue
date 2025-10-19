@@ -6,7 +6,12 @@ load_dotenv()
 
 def main():
     print("Starting MCP server...")
-    mcp.run(transport="sse")
+
+    # Can also be "sse".
+    # When using "sse", the url will be http://localhost:10001/sse
+    # When using "streamable-http", the url will be http://localhost:10001/mcp
+    # stdio isn't supported in this example, since rogue won't be able to connect to it.
+    mcp.run(transport="streamable-http")
 
 
 if __name__ == "__main__":
