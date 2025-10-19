@@ -62,7 +62,7 @@ class ResponseFormat(BaseModel):
 
 
 class ShirtifyAgent:
-    def __init__(self, model: str = "openai:gpt-4o") -> None:
+    def __init__(self, model: str = "openai:gpt-5") -> None:
         self.memory = MemorySaver()
 
         self.graph: CompiledStateGraph = create_react_agent(
