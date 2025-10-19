@@ -66,6 +66,7 @@ __all__ = [
     "EvaluationJob",
     "EvaluationResult",
     "AgentConfig",
+    "TransportType",
     "Scenario",
     "AuthType",
     "ScenarioType",
