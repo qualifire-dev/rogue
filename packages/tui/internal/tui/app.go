@@ -376,6 +376,33 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
+		// Handle paste for new evaluation screen (Agent URL, Judge Model fields)
+		if m.currentScreen == NewEvaluationScreen && m.evalState != nil {
+			// Clean the clipboard text (remove newlines and trim whitespace)
+			cleanText := strings.TrimSpace(strings.ReplaceAll(string(msg), "\n", ""))
+
+			if cleanText == "" {
+				return m, nil
+			}
+
+			// Only paste into text fields (Agent URL and Judge Model)
+			if m.evalState.currentField <= 1 {
+				switch m.evalState.currentField {
+				case 0: // Agent URL
+					// Insert at cursor position
+					runes := []rune(m.evalState.AgentURL)
+					m.evalState.AgentURL = string(runes[:m.evalState.cursorPos]) + cleanText + string(runes[m.evalState.cursorPos:])
+					m.evalState.cursorPos += len([]rune(cleanText))
+				case 1: // Judge Model
+					// Insert at cursor position
+					runes := []rune(m.evalState.JudgeModel)
+					m.evalState.JudgeModel = string(runes[:m.evalState.cursorPos]) + cleanText + string(runes[m.evalState.cursorPos:])
+					m.evalState.cursorPos += len([]rune(cleanText))
+				}
+			}
+			return m, nil
+		}
+
 		// Forward paste to scenario editor if on scenarios screen
 		if m.currentScreen == ScenariosScreen {
 			m.scenarioEditor, cmd = m.scenarioEditor.Update(msg)
