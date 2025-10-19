@@ -118,7 +118,7 @@ class ShirtifyAgent:
     def _inventory_tool(
         color: str,
         size: str,
-    ):
+    ) -> str:
         """
         Get the inventory of a specific color and size of T-shirt.
         """
@@ -129,7 +129,7 @@ class ShirtifyAgent:
         email: str,
         subject: str,
         body: str,
-    ):
+    ) -> str:
         """
         Send an email to a customer.
         """
