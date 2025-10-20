@@ -1,0 +1,68 @@
+name: Import Time CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  import-time:
+    name: Import Time Gate
+    runs-on: ubuntu-latest
+    env:
+      PACKAGE_NAME: rogue
+      THRESHOLD_SECONDS: "2.0"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: ".python-version"
+
+      - name: Create venv
+        run: uv venv
+
+      - name: Install rogue with local sdk
+        run: |
+          source .venv/bin/activate
+          uv pip install -e .
+          uv pip uninstall -y rogue-ai-sdk || true
+          uv pip install -e sdks/python --force-reinstall
+
+      - name: Install timing tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y time bc
+
+      - name: Check import time (best-of-5)
+        shell: bash
+        env:
+          THRESHOLD: ${{ env.THRESHOLD_SECONDS }}
+        run: |
+          set -euo pipefail
+          source .venv/bin/activate
+          best=9999
+          for i in 1 2 3 4 5; do
+            /usr/bin/time -f "%e" -o elapsed.txt python -c "import ${PACKAGE_NAME}" >/dev/null 2>&1 || true
+            elapsed=$(cat elapsed.txt)
+            echo "Run #$i: ${elapsed}s"
+            # keep the best (minimum)
+            if [ "$(echo "$elapsed < $best" | bc -l)" -eq 1 ]; then
+              best=$elapsed
+            fi
+          done
+          echo "Best import time for '${PACKAGE_NAME}': ${best}s (threshold ${THRESHOLD}s)"
+          if [ "$(echo "$best <= $THRESHOLD" | bc -l)" -eq 1 ]; then
+            echo "PASS: Import time within threshold"
+            exit 0
+          else
+            echo "FAIL: Import time exceeded threshold" >&2
+            exit 1
+          fi
