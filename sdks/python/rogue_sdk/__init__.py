@@ -51,10 +51,6 @@ from .sdk import RogueSDK
 # All types
 from .types import *
 from .websocket import RogueWebSocketClient
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    pass
 
 # Version
 __version__: str
