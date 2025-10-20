@@ -1,11 +1,10 @@
 {
-  "transport": "mcp",
-  "evaluated_agent_url": "http://localhost:10001/mcp",
+  "evaluated_agent_url": "http://localhost:10001/",
   "evaluated_agent_auth_type": "no_auth",
   "evaluated_agent_credentials": "",
   "service_llm": "openai/gpt-4.1",
   "judge_llm": "openai/gpt-4.1",
-  "interview_mode": false,
+  "interview_mode": true,
   "deep_test_mode": false,
   "parallel_runs": 2,
   "business_context": ""
