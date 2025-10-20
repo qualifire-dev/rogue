@@ -1,14 +1,14 @@
 from typing import Callable, Optional
 
-from rogue_sdk.types import Scenarios, TransportType
+from rogue_sdk.types import Protocol, Scenarios
 
-from .transports.a2a_evaluator_agent import A2AEvaluatorAgent
-from .transports.base_evaluator_agent import BaseEvaluatorAgent
-from .transports.mcp_evaluator_agent import MCPEvaluatorAgent
+from .protocols.a2a_evaluator_agent import A2AEvaluatorAgent
+from .protocols.base_evaluator_agent import BaseEvaluatorAgent
+from .protocols.mcp_evaluator_agent import MCPEvaluatorAgent
 
 
 def get_evaluator_agent(
-    transport: TransportType,
+    protocol: Protocol,
     evaluated_agent_address: str,
     judge_llm: str,
     scenarios: Scenarios,
@@ -20,7 +20,7 @@ def get_evaluator_agent(
     chat_update_callback: Optional[Callable[[dict], None]] = None,
     **kwargs,
 ) -> BaseEvaluatorAgent:
-    if transport == TransportType.A2A:
+    if protocol == Protocol.A2A:
         return A2AEvaluatorAgent(
             evaluated_agent_address=evaluated_agent_address,
             judge_llm=judge_llm,
@@ -33,7 +33,7 @@ def get_evaluator_agent(
             chat_update_callback=chat_update_callback,
             **kwargs,
         )
-    elif transport == TransportType.MCP:
+    elif protocol == Protocol.MCP:
         return MCPEvaluatorAgent(
             evaluated_agent_address=evaluated_agent_address,
             judge_llm=judge_llm,
@@ -47,4 +47,4 @@ def get_evaluator_agent(
             **kwargs,
         )
     else:
-        raise ValueError(f"Invalid transport: {transport}")
+        raise ValueError(f"Invalid protocol: {protocol}")

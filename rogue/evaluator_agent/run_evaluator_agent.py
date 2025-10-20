@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, AsyncGenerator
 
 from google.genai import types
 from loguru import logger
-from rogue_sdk.types import AuthType, EvaluationResults, Scenarios, TransportType
+from rogue_sdk.types import AuthType, EvaluationResults, Protocol, Scenarios
 
 from ..common.agent_sessions import create_session
 from .evaluator_agent_factory import get_evaluator_agent
@@ -72,7 +72,7 @@ async def _run_agent(
 
 
 async def arun_evaluator_agent(
-    transport: TransportType,
+    protocol: Protocol,
     evaluated_agent_url: str,
     auth_type: AuthType,
     auth_credentials: str | None,
@@ -89,6 +89,7 @@ async def arun_evaluator_agent(
     logger.info(
         "🤖 arun_evaluator_agent starting",
         extra={
+            "protocol": protocol.value,
             "evaluated_agent_url": evaluated_agent_url,
             "auth_type": auth_type.value,
             "judge_llm": judge_llm,
@@ -106,7 +107,7 @@ async def arun_evaluator_agent(
 
         logger.info("🌐 Creating evaluator agent")
         evaluator_agent = get_evaluator_agent(
-            transport=transport,
+            protocol=protocol,
             evaluated_agent_address=evaluated_agent_url,
             judge_llm=judge_llm,
             scenarios=scenarios,
@@ -213,6 +214,7 @@ async def arun_evaluator_agent(
 
 
 def run_evaluator_agent(
+    protocol: Protocol,
     evaluated_agent_url: str,
     auth_type: AuthType,
     auth_credentials: str | None,
@@ -224,6 +226,7 @@ def run_evaluator_agent(
 ) -> EvaluationResults:
     async def run_evaluator_agent_task():
         async for update_type, data in arun_evaluator_agent(
+            protocol=protocol,
             evaluated_agent_url=evaluated_agent_url,
             auth_type=auth_type,
             auth_credentials=auth_credentials,

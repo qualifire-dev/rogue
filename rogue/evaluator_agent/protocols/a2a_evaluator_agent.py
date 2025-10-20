@@ -155,7 +155,7 @@ class A2AEvaluatorAgent(BaseEvaluatorAgent):
             if not response:
                 logger.debug(
                     "_send_message_to_evaluated_agent - no response",
-                    extra={"transport": "a2a"},
+                    extra={"protocol": "a2a"},
                 )
                 return {"response": ""}
 

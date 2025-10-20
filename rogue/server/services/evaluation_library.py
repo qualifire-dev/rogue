@@ -55,7 +55,7 @@ class EvaluationLibrary:
 
         try:
             service = ScenarioEvaluationService(
-                transport=agent_config.transport,
+                protocol=agent_config.protocol,
                 evaluated_agent_url=str(agent_config.evaluated_agent_url),
                 evaluated_agent_auth_type=agent_config.evaluated_agent_auth_type,
                 evaluated_agent_auth_credentials=(
@@ -147,7 +147,7 @@ class EvaluationLibrary:
             Tuple of (update_type, data) for real-time updates
         """
         service = ScenarioEvaluationService(
-            transport=agent_config.transport,
+            protocol=agent_config.protocol,
             evaluated_agent_url=str(agent_config.evaluated_agent_url),
             evaluated_agent_auth_type=agent_config.evaluated_agent_auth_type,
             evaluated_agent_auth_credentials=agent_config.evaluated_agent_credentials,

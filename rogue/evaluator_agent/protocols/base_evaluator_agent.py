@@ -486,7 +486,8 @@ class BaseEvaluatorAgent(ABC):
     ) -> dict[str, str]:
         """
         Sends a message to the evaluated agent.
-        This method must be implemented by the subclass based on the transport protocol.
+        This method must be implemented by the subclass based
+        on the communication protocol.
         :param message: the text to send to the other agent.
         :param context_id: The context ID of the conversation.
             Each conversation has a unique context_id. All messages in the conversation

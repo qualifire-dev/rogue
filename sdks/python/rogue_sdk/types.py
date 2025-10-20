@@ -59,8 +59,8 @@ class EvaluationStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
-class TransportType(str, Enum):
-    """Transport types for evaluator agent."""
+class Protocol(str, Enum):
+    """Protocol types for communicating with the evaluator agent."""
 
     A2A = "a2a"
     MCP = "mcp"
@@ -72,7 +72,7 @@ class TransportType(str, Enum):
 class AgentConfig(BaseModel):
     """Configuration for the agent being evaluated."""
 
-    transport: TransportType = TransportType.A2A
+    protocol: Protocol = Protocol.A2A
     evaluated_agent_url: HttpUrl
     evaluated_agent_auth_type: AuthType = Field(
         default=AuthType.NO_AUTH,

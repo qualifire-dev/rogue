@@ -68,7 +68,7 @@ class MCPEvaluatorAgent(BaseEvaluatorAgent):
         if not response or not response.get("response"):
             logger.debug(
                 "_send_message_to_evaluated_agent - no response",
-                extra={"transport": "mcp"},
+                extra={"protocol": "mcp"},
             )
             return {"response": ""}
 
