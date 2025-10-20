@@ -9,7 +9,13 @@ from pydantic import SecretStr, ValidationError
 from rich.console import Console
 from rich.markdown import Markdown
 from rogue_sdk import RogueClientConfig, RogueSDK
-from rogue_sdk.types import AgentConfig, AuthType, EvaluationResults, Scenarios
+from rogue_sdk.types import (
+    AgentConfig,
+    AuthType,
+    EvaluationResults,
+    Protocol,
+    Scenarios,
+)
 
 from .models.cli_input import CLIInput, PartialCLIInput
 
@@ -24,6 +30,14 @@ def set_cli_args(parser: ArgumentParser) -> None:
         "--rogue-server-url",
         default="http://localhost:8000",
         help="Rogue server URL",
+    )
+    parser.add_argument(
+        "--evaluated-agent-protocol",
+        choices=[e.value for e in Protocol],
+        default=Protocol.A2A.value,
+        type=Protocol,
+        help="Protocol used to communicate with the agent."
+        f"Valid options are: {[e.value for e in Protocol]}",
     )
     parser.add_argument(
         "--evaluated-agent-url",
@@ -96,6 +110,7 @@ def set_cli_args(parser: ArgumentParser) -> None:
 
 async def run_scenarios(
     rogue_server_url: str,
+    evaluated_agent_protocol: Protocol,
     evaluated_agent_url: str,
     evaluated_agent_auth_type: AuthType,
     evaluated_agent_auth_credentials_secret: SecretStr | None,
@@ -120,6 +135,7 @@ async def run_scenarios(
     # Use SDK for evaluation
     return await _run_scenarios_with_sdk(
         rogue_server_url=rogue_server_url,
+        evaluated_agent_protocol=evaluated_agent_protocol,
         evaluated_agent_url=evaluated_agent_url,
         evaluated_agent_auth_type=evaluated_agent_auth_type,
         evaluated_agent_auth_credentials=evaluated_agent_auth_credentials,
@@ -134,6 +150,7 @@ async def run_scenarios(
 
 async def _run_scenarios_with_sdk(
     rogue_server_url: str,
+    evaluated_agent_protocol: Protocol,
     evaluated_agent_url: str,
     evaluated_agent_auth_type: AuthType,
     evaluated_agent_auth_credentials: str | None,
@@ -159,12 +176,14 @@ async def _run_scenarios_with_sdk(
 
         # Run evaluation
         job = await sdk.run_evaluation(
+            protocol=evaluated_agent_protocol,
             agent_url=evaluated_agent_url,
             scenarios=scenarios,
             business_context=business_context,
             auth_type=evaluated_agent_auth_type,
             auth_credentials=evaluated_agent_auth_credentials,
             judge_model=judge_llm,
+            judge_llm_api_key=judge_llm_api_key,
             deep_test=deep_test_mode,
         )
 
@@ -356,6 +375,7 @@ async def run_cli(args: Namespace) -> int:
     )
     results, job_id = await run_scenarios(
         rogue_server_url=args.rogue_server_url,
+        evaluated_agent_protocol=cli_input.protocol,
         evaluated_agent_url=cli_input.evaluated_agent_url.encoded_string(),
         evaluated_agent_auth_type=cli_input.evaluated_agent_auth_type,
         evaluated_agent_auth_credentials_secret=cli_input.evaluated_agent_credentials,

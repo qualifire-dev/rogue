@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from pydantic import BaseModel, Field, HttpUrl, SecretStr, model_validator
-from rogue_sdk.types import AuthType, Scenarios
+from rogue_sdk.types import AuthType, Protocol, Scenarios
 
 
 class CLIInput(BaseModel):
@@ -10,6 +10,7 @@ class CLIInput(BaseModel):
     """
 
     workdir: Path = Path(".") / ".rogue"
+    protocol: Protocol
     evaluated_agent_url: HttpUrl
     evaluated_agent_auth_type: AuthType = AuthType.NO_AUTH
     evaluated_agent_credentials: SecretStr | None = None
@@ -52,6 +53,7 @@ class PartialCLIInput(BaseModel):
     """
 
     workdir: Path = Path(".") / ".rogue"
+    protocol: Protocol = Field(default=Protocol.A2A)
     evaluated_agent_url: HttpUrl | None = Field(default=None)
     evaluated_agent_auth_type: AuthType = Field(default=AuthType.NO_AUTH)
     evaluated_agent_credentials: SecretStr | None = Field(default=None)

@@ -22,6 +22,7 @@ from .types import (
     HealthResponse,
     InterviewSession,
     JobListResponse,
+    Protocol,
     RogueClientConfig,
     Scenarios,
     SendMessageResponse,
@@ -240,6 +241,8 @@ class RogueSDK:
         scenarios: Scenarios,
         business_context: str,
         judge_model: str = "openai/gpt-4o-mini",
+        judge_llm_api_key: Optional[str] = None,
+        protocol: Protocol = Protocol.A2A,
         auth_type: AuthType = AuthType.NO_AUTH,
         auth_credentials: Optional[str] = None,
         deep_test: bool = False,
@@ -247,10 +250,12 @@ class RogueSDK:
     ) -> EvaluationJob:
         """Quick evaluation helper."""
         agent_config = AgentConfig(
+            protocol=protocol,
             evaluated_agent_url=HttpUrl(agent_url),
             evaluated_agent_auth_type=auth_type,
             evaluated_agent_credentials=auth_credentials,
             judge_llm=judge_model,
+            judge_llm_api_key=judge_llm_api_key,
             deep_test_mode=deep_test,
             interview_mode=True,
             parallel_runs=1,
