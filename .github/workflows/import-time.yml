@@ -18,7 +18,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.x"
+          python-version: "3.12"
 
       - name: Install package
         run: |
@@ -38,11 +38,21 @@ jobs:
           def cold_import_once(pkg: str) -> float:
               code = (
                   "import importlib, time; "
-                  f"t=time.perf_counter(); importlib.import_module('{package}'); "
+                  f"t=time.perf_counter(); importlib.import_module('{pkg}'); "
                   "print(time.perf_counter()-t)"
               )
-              out = subprocess.check_output([sys.executable, "-c", code]).decode().strip()
-              return float(out)
+              try:
+                  out = subprocess.check_output([sys.executable, "-c", code], text=True).strip()
+                  return float(out)
+              except subprocess.CalledProcessError as e:
+                  err = getattr(e, "stderr", None)
+                  if err is None:
+                      err = "(no stderr captured)"
+                  print(f"FAIL: Import subprocess failed with exit code {e.returncode}: {err}", file=sys.stderr)
+                  sys.exit(1)
+              except ValueError:
+                  print(f"FAIL: Could not parse import time from output: {out!r}", file=sys.stderr)
+                  sys.exit(1)
 
           times = [cold_import_once(package) for _ in range(5)]
           best = min(times)
