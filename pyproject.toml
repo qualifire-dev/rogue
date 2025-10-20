@@ -1,6 +1,6 @@
 [project]
 name = "rogue-ai"
-version = "0.1.12"
+dynamic = ["version"]
 description = "Rogue agent evaluator by Qualifire"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -53,6 +53,10 @@ examples = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.version]
+path = "VERSION"
+pattern = "(?P<version>^\\s*[^\\r\\n\\s]+)"
+
 [tool.hatch.build.targets.wheel]
 packages = ["rogue", "examples"]
 
@@ -66,3 +70,4 @@ rogue-ai-sdk = { path = "sdks/python", editable = true }
 [project.scripts]
 rogue-ai = "rogue.__main__:main"
 rogue-ai-example-tshirt = "examples.tshirt_store_agent.__main__:main"
+

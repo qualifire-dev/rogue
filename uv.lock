@@ -4135,7 +4135,6 @@ wheels = [
 
 [[package]]
 name = "rogue-ai"
-version = "0.1.12"
 source = { editable = "." }
 dependencies = [
     { name = "a2a-sdk" },
@@ -4230,10 +4229,11 @@ examples = [
 
 [[package]]
 name = "rogue-ai-sdk"
-version = "0.1.4"
 source = { editable = "sdks/python" }
 dependencies = [
+    { name = "backoff" },
     { name = "httpx" },
+    { name = "loguru" },
     { name = "pydantic" },
     { name = "typing-extensions" },
     { name = "websockets" },
@@ -4241,10 +4241,12 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "backoff", specifier = ">=2.2.1" },
     { name = "black", marker = "extra == 'dev'", specifier = ">=23.0.0" },
     { name = "flake8", marker = "extra == 'dev'", specifier = ">=6.0.0" },
     { name = "httpx", specifier = ">=0.24.0" },
     { name = "isort", marker = "extra == 'dev'", specifier = ">=5.0.0" },
+    { name = "loguru", specifier = ">=0.7.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "pydantic", specifier = ">=2.0.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },

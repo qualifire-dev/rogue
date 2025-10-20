@@ -1,6 +1,6 @@
 [project]
 name = "rogue-ai-sdk"
-version = "0.1.4"
+dynamic = ["version"]
 description = "Python SDK for Rogue Agent Evaluator"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -25,6 +25,8 @@ dependencies = [
     "pydantic>=2.0.0",
     "websockets>=11.0.0",
     "typing-extensions>=4.0.0",
+    "loguru>=0.7.0",
+    "backoff>=2.2.1",
 ]
 
 [project.optional-dependencies]
@@ -45,6 +47,10 @@ Issues = "https://github.com/qualifire/rogue-agent-evaluator/issues"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "../../VERSION"
+pattern = "(?P<version>^\\s*[^\\r\\n\\s]+)"
 
 [tool.hatch.build.targets.wheel]
 packages = ["rogue_sdk"]

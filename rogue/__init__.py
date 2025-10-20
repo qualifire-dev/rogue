@@ -17,6 +17,7 @@ from . import (
 )
 
 # Import the new library interface
+from .common.version import get_version
 from .server.services.evaluation_library import EvaluationLibrary
 
 # Main library interface
@@ -41,9 +42,11 @@ __all__ = [
     "run_ui",
     "run_server",
     "ui",
+    "get_version",
 ]
 
+
 # Version info
-__version__ = "0.1.12"
+__version__ = get_version("rogue-ai")
 __author__ = "Qualifire"
 __description__ = "Library for evaluating AI agents against scenarios"
