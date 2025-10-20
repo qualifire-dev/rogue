@@ -51,13 +51,18 @@ from .sdk import RogueSDK
 # All types
 from .types import *
 from .websocket import RogueWebSocketClient
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    pass
 
 # Version
+__version__: str
 try:
-    from importlib.metadata import version
+    from importlib.metadata import PackageNotFoundError, version
 
     __version__ = version("rogue-ai-sdk")
-except Exception:
+except PackageNotFoundError:
     # Fallback for development environments where the package isn't installed
     __version__ = "0.0.0-dev"
 
