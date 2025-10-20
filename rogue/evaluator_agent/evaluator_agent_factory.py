@@ -2,10 +2,9 @@ from typing import Callable, Optional
 
 from rogue_sdk.types import Scenarios, TransportType
 
-from rogue.evaluator_agent.transports.mcp_evaluator_agent import MCPEvaluatorAgent
-
 from .transports.a2a_evaluator_agent import A2AEvaluatorAgent
 from .transports.base_evaluator_agent import BaseEvaluatorAgent
+from .transports.mcp_evaluator_agent import MCPEvaluatorAgent
 
 
 def get_evaluator_agent(
