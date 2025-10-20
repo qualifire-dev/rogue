@@ -3,7 +3,6 @@ from types import TracebackType
 from typing import TYPE_CHECKING, Any, Callable, Optional, Self, Type
 from uuid import uuid4
 
-from google.genai import types
 from loguru import logger
 from pydantic import ValidationError
 from pydantic_yaml import to_yaml_str
@@ -183,6 +182,7 @@ class BaseEvaluatorAgent(ABC):
         # adk imports take a while, importing them here to reduce rogue startup time.
         from google.adk.agents import LlmAgent
         from google.adk.tools import FunctionTool
+        from google.genai.types import GenerateContentConfig
 
         instructions_template = (
             AGENT_INSTRUCTIONS if self._deep_test_mode else FAST_MODE_AGENT_INSTRUCTIONS
@@ -231,7 +231,7 @@ class BaseEvaluatorAgent(ABC):
             after_tool_callback=self._after_tool_callback,
             before_model_callback=self._before_model_callback,
             after_model_callback=self._after_model_callback,
-            generate_content_config=types.GenerateContentConfig(
+            generate_content_config=GenerateContentConfig(
                 temperature=0.0,
             ),
         )
