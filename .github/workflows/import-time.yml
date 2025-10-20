@@ -1,0 +1,53 @@
+name: Import Time CI
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  import-time:
+    name: Import Time Gate
+    runs-on: ubuntu-latest
+    env:
+      PACKAGE_NAME: rogue
+      THRESHOLD_SECONDS: "1.0"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Check import time
+        shell: bash
+        run: |
+          python - << 'PY'
+          import importlib, os, sys
+          import subprocess, time
+
+          package = os.getenv("PACKAGE_NAME", "rogue")
+          threshold = float(os.getenv("THRESHOLD_SECONDS", "1.0"))
+
+          def cold_import_once(pkg: str) -> float:
+              code = (
+                  "import importlib, time; "
+                  f"t=time.perf_counter(); importlib.import_module('{package}'); "
+                  "print(time.perf_counter()-t)"
+              )
+              out = subprocess.check_output([sys.executable, "-c", code]).decode().strip()
+              return float(out)
+
+          times = [cold_import_once(package) for _ in range(5)]
+          best = min(times)
+          print(f"Best import time for '{package}': {best:.4f} s (threshold {threshold:.2f} s)")
+          if best > threshold:
+              print("FAIL: Import time exceeded threshold.", file=sys.stderr)
+              sys.exit(1)
+          PY
