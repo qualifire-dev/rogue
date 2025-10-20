@@ -10,6 +10,7 @@ dependencies = [
     "click>=8.0.0",
     "datasets==3.6.0",
     "fastapi>=0.115.0",
+    "fastmcp>=2.12.5",
     "google-adk==1.5.0",
     "gradio==5.35.0",
     "langchain-openai>=0.3.35",
@@ -58,6 +59,9 @@ packages = ["rogue", "examples"]
 [tool.hatch.build.targets.wheel.sources]
 "rogue" = "rogue"
 "examples" = "examples"
+
+[tool.uv.sources]
+rogue-ai-sdk = { path = "sdks/python", editable = true }
 
 [project.scripts]
 rogue-ai = "rogue.__main__:main"

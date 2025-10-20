@@ -2,6 +2,8 @@ from typing import Callable, Optional
 
 from rogue_sdk.types import Scenarios, TransportType
 
+from rogue.evaluator_agent.transports.mcp_evaluator_agent import MCPEvaluatorAgent
+
 from .transports.a2a_evaluator_agent import A2AEvaluatorAgent
 from .transports.base_evaluator_agent import BaseEvaluatorAgent
 
@@ -21,6 +23,19 @@ def get_evaluator_agent(
 ) -> BaseEvaluatorAgent:
     if transport == TransportType.A2A:
         return A2AEvaluatorAgent(
+            evaluated_agent_address=evaluated_agent_address,
+            judge_llm=judge_llm,
+            scenarios=scenarios,
+            business_context=business_context,
+            headers=headers,
+            judge_llm_auth=judge_llm_auth,
+            debug=debug,
+            deep_test_mode=deep_test_mode,
+            chat_update_callback=chat_update_callback,
+            **kwargs,
+        )
+    elif transport == TransportType.MCP:
+        return MCPEvaluatorAgent(
             evaluated_agent_address=evaluated_agent_address,
             judge_llm=judge_llm,
             scenarios=scenarios,

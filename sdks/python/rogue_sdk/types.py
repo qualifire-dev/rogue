@@ -63,6 +63,7 @@ class TransportType(str, Enum):
     """Transport types for evaluator agent."""
 
     A2A = "a2a"
+    MCP = "mcp"
 
 
 # Core Models

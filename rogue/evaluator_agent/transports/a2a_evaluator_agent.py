@@ -7,7 +7,7 @@ from a2a.client import A2ACardResolver
 from a2a.types import Message, MessageSendParams, Part, Role, Task, TextPart
 from httpx import AsyncClient
 from loguru import logger
-from rogue_sdk.types import ChatHistory, ChatMessage, Scenarios
+from rogue_sdk.types import Scenarios
 
 from ...common.remote_agent_connection import (
     JSON_RPC_ERROR_TYPES,
@@ -132,20 +132,7 @@ class A2AEvaluatorAgent(BaseEvaluatorAgent):
                 },
             )
 
-            if self._chat_update_callback:
-                self._chat_update_callback(
-                    {"role": "Rogue", "content": message},
-                )
-
-            if context_id not in self._context_id_to_chat_history:
-                self._context_id_to_chat_history[context_id] = ChatHistory()
-
-            self._context_id_to_chat_history[context_id].add_message(
-                ChatMessage(
-                    role="user",
-                    content=message,
-                ),
-            )
+            self._add_message_to_chat_history(context_id, "user", message)
 
             agent_client = await self._get_evaluated_agent_client()
             response = await agent_client.send_message(
@@ -166,23 +153,21 @@ class A2AEvaluatorAgent(BaseEvaluatorAgent):
             )
 
             if not response:
-                logger.debug("_send_message_to_evaluated_agent - no response")
+                logger.debug(
+                    "_send_message_to_evaluated_agent - no response",
+                    extra={"transport": "a2a"},
+                )
                 return {"response": ""}
 
             agent_response_text = (
                 self._get_text_from_response(response) or "Not a text response"
             )
-            self._context_id_to_chat_history[context_id].add_message(
-                ChatMessage(
-                    role="assistant",
-                    content=agent_response_text,
-                ),
-            )
 
-            if self._chat_update_callback:
-                self._chat_update_callback(
-                    {"role": "Agent Under Test", "content": agent_response_text},
-                )
+            self._add_message_to_chat_history(
+                context_id,
+                "assistant",
+                agent_response_text,
+            )
 
             logger.info(
                 "✅ A2A call successful - received response from evaluated agent",

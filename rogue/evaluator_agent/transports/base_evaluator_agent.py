@@ -9,6 +9,7 @@ from pydantic import ValidationError
 from pydantic_yaml import to_yaml_str
 from rogue_sdk.types import (
     ChatHistory,
+    ChatMessage,
     ConversationEvaluation,
     EvaluationResult,
     EvaluationResults,
@@ -504,6 +505,34 @@ class BaseEvaluatorAgent(ABC):
         """
         logger.debug("_get_conversation_context_id - enter")
         return uuid4().hex
+
+    def _add_message_to_chat_history(
+        self,
+        context_id: str,
+        role: str,
+        message: str,
+    ) -> None:
+        """
+        Adds a message to the chat history.
+        If a callback is provided, it will also call the callback with the message.
+        :param context_id: The context ID of the conversation.
+        :param role: The role of the message.
+        :param message: The message to add to the chat history.
+        """
+        if context_id not in self._context_id_to_chat_history:
+            self._context_id_to_chat_history[context_id] = ChatHistory()
+        self._context_id_to_chat_history[context_id].add_message(
+            ChatMessage(
+                role=role,
+                content=message,
+            ),
+        )
+
+        callback_role = "Rogue" if role == "user" else "Agent Under Test"
+        if self._chat_update_callback:
+            self._chat_update_callback(
+                {"role": callback_role, "content": message},
+            )
 
     async def __aenter__(self) -> Self:
         return self

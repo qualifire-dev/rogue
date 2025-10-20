@@ -6,10 +6,8 @@ The agent itself can be implemented using any agent framework,
 you only need to implement the send_message tool.
 """
 
-from typing import Any, Dict
-
+from loguru import logger
 from mcp.server.fastmcp import Context, FastMCP
-from mcp.types import CallToolResult, TextContent
 from shirtify_agent import ShirtifyAgent
 from starlette.requests import Request
 
@@ -22,25 +20,24 @@ mcp = FastMCP(
 
 
 @mcp.tool()
-def send_message(message: str, context: Context) -> Dict[str, Any]:
+def send_message(message: str, context: Context) -> str:
     session_id: str | None = None
     try:
         request: Request = context.request_context.request  # type: ignore
-        session_id = request.query_params.get("session_id")
+
+        # The session id should be in the headers for streamable-http transport
+        session_id = request.headers.get("mcp-session-id")
+
+        # The session id might also be in query param when using sse transport
+        if session_id is None:
+            session_id = request.query_params.get("session_id")
     except Exception:
-        print("No session ID found in request")
         session_id = None
+        logger.exception("Error while extracting session id")
+
+    if session_id is None:
+        logger.error("Couldn't extract session id")
 
     # Invoking our agent
-    raw_tool_result = agent.invoke(message, session_id)
-
-    # Preparing the response
-    return CallToolResult(
-        content=[
-            TextContent(
-                text=raw_tool_result.get("content", ""),
-                type="text",
-            ),
-        ],
-        isError=raw_tool_result.get("is_error", False),
-    ).model_dump()
+    response = agent.invoke(message, session_id)
+    return response.get("content", "")
