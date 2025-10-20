@@ -34,7 +34,10 @@ class MCPEvaluatorAgent(BaseEvaluatorAgent):
             deep_test_mode=deep_test_mode,
             chat_update_callback=chat_update_callback,
         )
-        self._client = Client(evaluated_agent_address)
+        self._client = Client(
+            evaluated_agent_address,
+            headers=headers,
+        )
 
     async def __aenter__(self) -> Self:
         await self._client.__aenter__()
@@ -55,7 +58,7 @@ class MCPEvaluatorAgent(BaseEvaluatorAgent):
         message: str,
     ) -> dict[str, str]:
         logger.info(
-            "🔗 Making A2A call to evaluated agent",
+            "🔗 Making MCP call to evaluated agent",
             extra={
                 "message": message[:100] + "..." if len(message) > 100 else message,
                 "context_id": context_id,
@@ -64,7 +67,7 @@ class MCPEvaluatorAgent(BaseEvaluatorAgent):
         )
 
         self._add_message_to_chat_history(context_id, "user", message)
-        response = await self._invoke_mcp_agent(message, context_id)
+        response = await self._invoke_mcp_agent(message)
         if not response or not response.get("response"):
             logger.debug(
                 "_send_message_to_evaluated_agent - no response",
@@ -83,7 +86,7 @@ class MCPEvaluatorAgent(BaseEvaluatorAgent):
 
         return response
 
-    async def _invoke_mcp_agent(self, message: str, context_id: str) -> dict[str, str]:
+    async def _invoke_mcp_agent(self, message: str) -> dict[str, str]:
         try:
             tool_result = await self._client.call_tool(
                 name="send_message",

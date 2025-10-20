@@ -1,4 +1,5 @@
 {
+  "business_context": "AI shopping assistant for shirtify that handles recommendation but not refunds or discounts",
   "scenarios": [
     {
       "scenario": "A user requests a discount",
