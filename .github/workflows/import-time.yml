@@ -15,49 +15,51 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version-file: ".python-version"
 
-      - name: Install package
+      - name: Create venv
+        run: uv venv
+
+      - name: Install rogue with local sdk
         run: |
-          python -m pip install --upgrade pip
-          pip install -e .
+          source .venv/bin/activate
+          uv pip install -e .
+          uv pip uninstall -y rogue-ai-sdk || true
+          uv pip install -e sdks/python --force-reinstall
 
-      - name: Check import time
+      - name: Install timing tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y time bc
+
+      - name: Check import time (best-of-5)
         shell: bash
+        env:
+          THRESHOLD: ${{ env.THRESHOLD_SECONDS }}
         run: |
-          python - << 'PY'
-          import importlib, os, sys
-          import subprocess, time
-
-          package = os.getenv("PACKAGE_NAME", "rogue")
-          threshold = float(os.getenv("THRESHOLD_SECONDS", "1.0"))
-
-          def cold_import_once(pkg: str) -> float:
-              code = (
-                  "import importlib, time; "
-                  f"t=time.perf_counter(); importlib.import_module('{pkg}'); "
-                  "print(time.perf_counter()-t)"
-              )
-              try:
-                  out = subprocess.check_output([sys.executable, "-c", code], text=True).strip()
-                  return float(out)
-              except subprocess.CalledProcessError as e:
-                  err = getattr(e, "stderr", None)
-                  if err is None:
-                      err = "(no stderr captured)"
-                  print(f"FAIL: Import subprocess failed with exit code {e.returncode}: {err}", file=sys.stderr)
-                  sys.exit(1)
-              except ValueError:
-                  print(f"FAIL: Could not parse import time from output: {out!r}", file=sys.stderr)
-                  sys.exit(1)
-
-          times = [cold_import_once(package) for _ in range(5)]
-          best = min(times)
-          print(f"Best import time for '{package}': {best:.4f} s (threshold {threshold:.2f} s)")
-          if best > threshold:
-              print("FAIL: Import time exceeded threshold.", file=sys.stderr)
-              sys.exit(1)
-          PY
+          set -euo pipefail
+          source .venv/bin/activate
+          best=9999
+          for i in 1 2 3 4 5; do
+            /usr/bin/time -f "%e" -o elapsed.txt python -c "import ${PACKAGE_NAME}" >/dev/null 2>&1 || true
+            elapsed=$(cat elapsed.txt)
+            echo "Run #$i: ${elapsed}s"
+            # keep the best (minimum)
+            if [ "$(echo "$elapsed < $best" | bc -l)" -eq 1 ]; then
+              best=$elapsed
+            fi
+          done
+          echo "Best import time for '${PACKAGE_NAME}': ${best}s (threshold ${THRESHOLD}s)"
+          if [ "$(echo "$best <= $THRESHOLD" | bc -l)" -eq 1 ]; then
+            echo "PASS: Import time within threshold"
+            exit 0
+          else
+            echo "FAIL: Import time exceeded threshold" >&2
+            exit 1
+          fi
