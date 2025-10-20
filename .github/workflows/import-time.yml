@@ -3,6 +3,9 @@ name: Import Time CI
 on:
   pull_request:
   push:
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
   import-time:
