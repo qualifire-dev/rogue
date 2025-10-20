@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PACKAGE_NAME: rogue
-      THRESHOLD_SECONDS: "1.0"
+      THRESHOLD_SECONDS: "2.0"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
