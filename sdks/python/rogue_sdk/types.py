@@ -66,6 +66,14 @@ class Protocol(str, Enum):
     MCP = "mcp"
 
 
+class Transport(str, Enum):
+    """Transport types for communicating with the evaluator agent."""
+
+    # MCP transports
+    STREAMABLE_HTTP = "streamable_http"
+    SSE = "sse"
+
+
 # Core Models
 
 
@@ -73,6 +81,7 @@ class AgentConfig(BaseModel):
     """Configuration for the agent being evaluated."""
 
     protocol: Protocol = Protocol.A2A
+    transport: Transport | None = None
     evaluated_agent_url: HttpUrl
     evaluated_agent_auth_type: AuthType = Field(
         default=AuthType.NO_AUTH,
@@ -97,6 +106,10 @@ class AgentConfig(BaseModel):
                 "Authentication Credentials cannot be empty for the selected auth type.",  # noqa: E501
             )
         return self
+
+    def model_post_init(self, __context):
+        if self.transport is None and self.protocol == Protocol.MCP:
+            self.transport = Transport.STREAMABLE_HTTP
 
 
 class Scenario(BaseModel):

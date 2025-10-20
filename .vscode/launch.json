@@ -45,6 +45,25 @@
             "envFile": "${workspaceFolder}/.env"
         },
         {
+            "name": "Rogue CLI MCP",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "./.venv/bin/python",
+            "module": "rogue",
+            "args": [
+                "cli",
+                "--evaluated-agent-url",
+                "http://localhost:10001/mcp",
+                "--protocol",
+                "mcp",
+                "--judge-llm",
+                "openai/o4-mini",
+                "--workdir",
+                "./examples/tshirt_store_agent/.rogue"
+            ],
+            "envFile": "${workspaceFolder}/.env"
+        },
+        {
             "name": "Rogue AIO",
             "type": "debugpy",
             "request": "launch",
@@ -66,8 +85,8 @@
             "type": "debugpy",
             "request": "launch",
             "python": "./.venv/bin/python",
-            "program": "./examples/mcp/tshirt_store_mcp",
-            "envFile": "${workspaceFolder}/examples/mcp/tshirt_store_mcp/.env"
+            "program": "./examples/mcp/tshirt_store_langgraph_mcp",
+            "envFile": "${workspaceFolder}/examples/mcp/tshirt_store_langgraph_mcp/.env"
         }
     ]
 }

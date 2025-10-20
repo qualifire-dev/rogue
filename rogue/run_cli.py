@@ -4,6 +4,8 @@ from typing import Tuple
 
 import requests
 from a2a.types import AgentCard
+from fastmcp import Client
+from fastmcp.client import SSETransport, StreamableHttpTransport
 from loguru import logger
 from pydantic import SecretStr, ValidationError
 from rich.console import Console
@@ -15,6 +17,7 @@ from rogue_sdk.types import (
     EvaluationResults,
     Protocol,
     Scenarios,
+    Transport,
 )
 
 from .models.cli_input import CLIInput, PartialCLIInput
@@ -32,12 +35,22 @@ def set_cli_args(parser: ArgumentParser) -> None:
         help="Rogue server URL",
     )
     parser.add_argument(
-        "--evaluated-agent-protocol",
+        "--protocol",
         choices=[e.value for e in Protocol],
         default=Protocol.A2A.value,
         type=Protocol,
         help="Protocol used to communicate with the agent."
         f"Valid options are: {[e.value for e in Protocol]}",
+    )
+    parser.add_argument(
+        "--transport",
+        choices=[e.value for e in Transport],
+        default=None,
+        type=Transport,
+        required=False,
+        help="Transport used to communicate with the agent. "
+        "Currently only relevant to MCP agents. This is ignored in non-mcp agents."
+        f"Valid options are: {[e.value for e in Transport]}",
     )
     parser.add_argument(
         "--evaluated-agent-url",
@@ -110,7 +123,8 @@ def set_cli_args(parser: ArgumentParser) -> None:
 
 async def run_scenarios(
     rogue_server_url: str,
-    evaluated_agent_protocol: Protocol,
+    protocol: Protocol,
+    transport: Transport,
     evaluated_agent_url: str,
     evaluated_agent_auth_type: AuthType,
     evaluated_agent_auth_credentials_secret: SecretStr | None,
@@ -135,7 +149,8 @@ async def run_scenarios(
     # Use SDK for evaluation
     return await _run_scenarios_with_sdk(
         rogue_server_url=rogue_server_url,
-        evaluated_agent_protocol=evaluated_agent_protocol,
+        protocol=protocol,
+        transport=transport,
         evaluated_agent_url=evaluated_agent_url,
         evaluated_agent_auth_type=evaluated_agent_auth_type,
         evaluated_agent_auth_credentials=evaluated_agent_auth_credentials,
@@ -150,7 +165,8 @@ async def run_scenarios(
 
 async def _run_scenarios_with_sdk(
     rogue_server_url: str,
-    evaluated_agent_protocol: Protocol,
+    protocol: Protocol,
+    transport: Transport,
     evaluated_agent_url: str,
     evaluated_agent_auth_type: AuthType,
     evaluated_agent_auth_credentials: str | None,
@@ -176,7 +192,8 @@ async def _run_scenarios_with_sdk(
 
         # Run evaluation
         job = await sdk.run_evaluation(
-            protocol=evaluated_agent_protocol,
+            protocol=protocol,
+            transport=transport,
             agent_url=evaluated_agent_url,
             scenarios=scenarios,
             business_context=business_context,
@@ -342,11 +359,15 @@ def get_cli_input(cli_args: Namespace) -> CLIInput:
     return cli_input
 
 
-def get_agent_card(agent_url: str) -> AgentCard:
+def get_agent_card(
+    agent_url: str,
+    headers: dict[str, str] | None = None,
+) -> AgentCard:
     try:
         response = requests.get(
             f"{agent_url}/.well-known/agent.json",
             timeout=5,
+            headers=headers,
         )
         return AgentCard.model_validate(response.json())
     except Exception:
@@ -358,12 +379,69 @@ def get_agent_card(agent_url: str) -> AgentCard:
         raise
 
 
+async def ping_mcp_server(
+    agent_url: str,
+    transport: Transport | None,
+    headers: dict[str, str] | None = None,
+) -> None:
+    transport = transport or Transport.STREAMABLE_HTTP
+    if transport == Transport.STREAMABLE_HTTP:
+        client = Client(
+            StreamableHttpTransport(
+                url=agent_url,
+                headers=headers,
+            ),
+        )
+    elif transport == Transport.SSE:
+        client = Client(
+            SSETransport(
+                url=agent_url,
+                headers=headers,
+            ),
+        )
+    else:
+        raise ValueError(f"Unsupported transport: {transport}")
+
+    async with client:
+        await client.ping()
+
+
+async def ping_agent(
+    protocol: Protocol,
+    transport: Transport | None,
+    agent_url: str,
+    agent_auth_type: AuthType,
+    agent_auth_credentials: str | None,
+) -> None:
+    headers = agent_auth_type.get_auth_header(agent_auth_credentials)
+
+    if protocol == Protocol.MCP:
+        await ping_mcp_server(
+            transport=transport,
+            agent_url=agent_url,
+            headers=headers,
+        )
+    elif protocol == Protocol.A2A:
+        get_agent_card(
+            agent_url,
+            headers=headers,
+        )
+    else:
+        raise ValueError(f"Unsupported protocol: {protocol}")
+
+
 async def run_cli(args: Namespace) -> int:
     cli_input = get_cli_input(args)
     logger.debug("Running CLI", extra=cli_input.model_dump())
 
     # fast fail if the agent is not reachable
-    get_agent_card(cli_input.evaluated_agent_url.encoded_string())
+    await ping_agent(
+        protocol=cli_input.protocol,
+        transport=cli_input.transport,
+        agent_url=cli_input.evaluated_agent_url.encoded_string(),
+        agent_auth_type=cli_input.evaluated_agent_auth_type,
+        agent_auth_credentials=cli_input.evaluated_agent_credentials,
+    )
 
     scenarios = cli_input.get_scenarios_from_file()
 
@@ -375,7 +453,8 @@ async def run_cli(args: Namespace) -> int:
     )
     results, job_id = await run_scenarios(
         rogue_server_url=args.rogue_server_url,
-        evaluated_agent_protocol=cli_input.protocol,
+        protocol=cli_input.protocol,
+        transport=cli_input.transport,
         evaluated_agent_url=cli_input.evaluated_agent_url.encoded_string(),
         evaluated_agent_auth_type=cli_input.evaluated_agent_auth_type,
         evaluated_agent_auth_credentials_secret=cli_input.evaluated_agent_credentials,

@@ -27,6 +27,7 @@ from .types import (
     Scenarios,
     SendMessageResponse,
     StructuredSummary,
+    Transport,
     WebSocketEventType,
 )
 from .websocket import RogueWebSocketClient
@@ -243,14 +244,17 @@ class RogueSDK:
         judge_model: str = "openai/gpt-4o-mini",
         judge_llm_api_key: Optional[str] = None,
         protocol: Protocol = Protocol.A2A,
+        transport: Transport | None = None,
         auth_type: AuthType = AuthType.NO_AUTH,
         auth_credentials: Optional[str] = None,
         deep_test: bool = False,
         timeout: float = 600.0,
     ) -> EvaluationJob:
         """Quick evaluation helper."""
+
         agent_config = AgentConfig(
             protocol=protocol,
+            transport=transport,
             evaluated_agent_url=HttpUrl(agent_url),
             evaluated_agent_auth_type=auth_type,
             evaluated_agent_credentials=auth_credentials,

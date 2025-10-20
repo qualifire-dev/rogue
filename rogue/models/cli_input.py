@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from pydantic import BaseModel, Field, HttpUrl, SecretStr, model_validator
-from rogue_sdk.types import AuthType, Protocol, Scenarios
+from rogue_sdk.types import AuthType, Protocol, Scenarios, Transport
 
 
 class CLIInput(BaseModel):
@@ -11,6 +11,7 @@ class CLIInput(BaseModel):
 
     workdir: Path = Path(".") / ".rogue"
     protocol: Protocol
+    transport: Transport | None = None
     evaluated_agent_url: HttpUrl
     evaluated_agent_auth_type: AuthType = AuthType.NO_AUTH
     evaluated_agent_credentials: SecretStr | None = None
@@ -54,6 +55,7 @@ class PartialCLIInput(BaseModel):
 
     workdir: Path = Path(".") / ".rogue"
     protocol: Protocol = Field(default=Protocol.A2A)
+    transport: Transport | None = Field(default=None)
     evaluated_agent_url: HttpUrl | None = Field(default=None)
     evaluated_agent_auth_type: AuthType = Field(default=AuthType.NO_AUTH)
     evaluated_agent_credentials: SecretStr | None = Field(default=None)
@@ -75,3 +77,6 @@ class PartialCLIInput(BaseModel):
             self.output_report_file = self.workdir / "report.md"
         if self.business_context_file is None:
             self.business_context_file = self.workdir / "business_context.md"
+
+        if self.transport is None and self.protocol == Protocol.MCP:
+            self.transport = Transport.STREAMABLE_HTTP
