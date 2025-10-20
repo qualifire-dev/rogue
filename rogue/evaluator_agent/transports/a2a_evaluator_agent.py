@@ -13,7 +13,7 @@ from ...common.remote_agent_connection import (
     JSON_RPC_ERROR_TYPES,
     RemoteAgentConnections,
 )
-from ..evaluator_agent import BaseEvaluatorAgent
+from .base_evaluator_agent import BaseEvaluatorAgent
 
 
 class A2AEvaluatorAgent(BaseEvaluatorAgent):
