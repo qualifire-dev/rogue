@@ -1,6 +1,7 @@
 """
 Shared version retrieval logic.
 """
+
 from pathlib import Path
 
 
