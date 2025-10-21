@@ -24,6 +24,7 @@ class TestCLIInput:
     )
     def test_check_auth_credentials(self, auth_type, credentials, should_raise):
         input_data = {
+            "protocol": Protocol.A2A,
             "evaluated_agent_url": "https://example.com",
             "evaluated_agent_auth_type": auth_type,
             "evaluated_agent_credentials": credentials,
