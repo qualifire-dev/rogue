@@ -37,18 +37,18 @@ class MCPEvaluatorAgent(BaseEvaluatorAgent):
             deep_test_mode=deep_test_mode,
             chat_update_callback=chat_update_callback,
         )
-        transport = transport or Transport.STREAMABLE_HTTP
+        self._transport = transport or Transport.STREAMABLE_HTTP
 
         self._client: Client[SSETransport | StreamableHttpTransport]
 
-        if transport == Transport.SSE:
+        if self._transport == Transport.SSE:
             self._client = Client[SSETransport](
                 transport=SSETransport(
                     url=evaluated_agent_address,
                     headers=headers,
                 ),
             )
-        elif transport == Transport.STREAMABLE_HTTP:
+        elif self._transport == Transport.STREAMABLE_HTTP:
             self._client = Client[StreamableHttpTransport](
                 transport=StreamableHttpTransport(
                     url=evaluated_agent_address,
@@ -56,7 +56,7 @@ class MCPEvaluatorAgent(BaseEvaluatorAgent):
                 ),
             )
         else:
-            raise ValueError(f"Unsupported transport: {transport}")
+            raise ValueError(f"Unsupported transport: {self._transport}")
 
     async def __aenter__(self) -> Self:
         await self._client.__aenter__()
@@ -82,6 +82,7 @@ class MCPEvaluatorAgent(BaseEvaluatorAgent):
                 "message": message[:100] + "..." if len(message) > 100 else message,
                 "context_id": context_id,
                 "agent_url": self._evaluated_agent_address,
+                "transport": self._transport.value,
             },
         )
 
@@ -127,7 +128,15 @@ class MCPEvaluatorAgent(BaseEvaluatorAgent):
 
             return {"response": text_response}
         except Exception as e:
-            logger.exception("Error while sending message to evaluated agent using mcp")
+            logger.exception(
+                "Error while sending message to evaluated agent using mcp",
+                extra={
+                    "protocol": "mcp",
+                    "agent_url": self._evaluated_agent_address,
+                    "transport": self._transport.value,
+                    "message": message[:100] + "..." if len(message) > 100 else message,
+                },
+            )
             return {
                 "response": "",
                 "error": str(e),
