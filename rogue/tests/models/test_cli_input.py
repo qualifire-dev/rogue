@@ -3,6 +3,7 @@ from typing import Any
 import pytest
 from pydantic import HttpUrl, SecretStr, ValidationError
 from pytest_mock import MockerFixture
+from rogue_sdk.types import Protocol
 
 from rogue.models.cli_input import AuthType, CLIInput
 
@@ -80,6 +81,7 @@ class TestCLIInput:
             )
 
         cli_input = CLIInputWithMockScenarios(
+            protocol=Protocol.A2A,
             evaluated_agent_url=HttpUrl("https://example.com"),
             judge_llm="example-model",
             business_context="example-context",
