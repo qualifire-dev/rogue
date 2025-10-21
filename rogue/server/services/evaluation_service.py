@@ -97,6 +97,7 @@ class EvaluationService:
             agent_config = job.request.agent_config
             orchestrator = EvaluationOrchestrator(
                 protocol=agent_config.protocol,
+                transport=agent_config.transport,
                 evaluated_agent_url=str(agent_config.evaluated_agent_url),
                 evaluated_agent_auth_type=agent_config.evaluated_agent_auth_type,
                 evaluated_agent_auth_credentials=(

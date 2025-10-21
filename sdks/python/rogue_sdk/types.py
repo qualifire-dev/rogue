@@ -14,6 +14,7 @@ from pydantic import (
     ConfigDict,
     Field,
     HttpUrl,
+    SecretStr,
     field_validator,
     model_validator,
 )
@@ -29,8 +30,13 @@ class AuthType(str, Enum):
 
     def get_auth_header(
         self,
-        auth_credentials: Optional[str],
+        auth_credentials: Optional[str | SecretStr],
     ) -> dict[str, str]:
+        auth_credentials = (
+            auth_credentials.get_secret_value()
+            if isinstance(auth_credentials, SecretStr)
+            else auth_credentials
+        )
         if self == AuthType.NO_AUTH or not auth_credentials:
             return {}
         elif self == AuthType.API_KEY:
@@ -66,6 +72,14 @@ class Protocol(str, Enum):
     MCP = "mcp"
 
 
+class Transport(str, Enum):
+    """Transport types for communicating with the evaluator agent."""
+
+    # MCP transports
+    STREAMABLE_HTTP = "streamable_http"
+    SSE = "sse"
+
+
 # Core Models
 
 
@@ -73,6 +87,7 @@ class AgentConfig(BaseModel):
     """Configuration for the agent being evaluated."""
 
     protocol: Protocol = Protocol.A2A
+    transport: Transport | None = None
     evaluated_agent_url: HttpUrl
     evaluated_agent_auth_type: AuthType = Field(
         default=AuthType.NO_AUTH,
@@ -97,6 +112,10 @@ class AgentConfig(BaseModel):
                 "Authentication Credentials cannot be empty for the selected auth type.",  # noqa: E501
             )
         return self
+
+    def model_post_init(self, __context):
+        if self.transport is None and self.protocol == Protocol.MCP:
+            self.transport = Transport.STREAMABLE_HTTP
 
 
 class Scenario(BaseModel):

@@ -1,6 +1,6 @@
 from typing import Callable, Optional
 
-from rogue_sdk.types import Protocol, Scenarios
+from rogue_sdk.types import Protocol, Scenarios, Transport
 
 from .protocols.a2a_evaluator_agent import A2AEvaluatorAgent
 from .protocols.base_evaluator_agent import BaseEvaluatorAgent
@@ -9,6 +9,7 @@ from .protocols.mcp_evaluator_agent import MCPEvaluatorAgent
 
 def get_evaluator_agent(
     protocol: Protocol,
+    transport: Transport | None,
     evaluated_agent_address: str,
     judge_llm: str,
     scenarios: Scenarios,
@@ -35,6 +36,7 @@ def get_evaluator_agent(
         )
     elif protocol == Protocol.MCP:
         return MCPEvaluatorAgent(
+            transport=transport,
             evaluated_agent_address=evaluated_agent_address,
             judge_llm=judge_llm,
             scenarios=scenarios,

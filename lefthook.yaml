@@ -30,7 +30,7 @@ pre-commit:
 
     - name: isort
       glob: "*.py"
-      run: isort {staged_files}
+      run: isort --profile black {staged_files}
 
     - name: black
       glob: "*.py"
