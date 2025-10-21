@@ -124,7 +124,7 @@ def set_cli_args(parser: ArgumentParser) -> None:
 async def run_scenarios(
     rogue_server_url: str,
     protocol: Protocol,
-    transport: Transport,
+    transport: Transport | None,
     evaluated_agent_url: str,
     evaluated_agent_auth_type: AuthType,
     evaluated_agent_auth_credentials_secret: SecretStr | None,
@@ -166,7 +166,7 @@ async def run_scenarios(
 async def _run_scenarios_with_sdk(
     rogue_server_url: str,
     protocol: Protocol,
-    transport: Transport,
+    transport: Transport | None,
     evaluated_agent_url: str,
     evaluated_agent_auth_type: AuthType,
     evaluated_agent_auth_credentials: str | None,
@@ -385,16 +385,17 @@ async def ping_mcp_server(
     headers: dict[str, str] | None = None,
 ) -> None:
     transport = transport or Transport.STREAMABLE_HTTP
+    client: Client[StreamableHttpTransport | SSETransport]
     if transport == Transport.STREAMABLE_HTTP:
-        client = Client(
-            StreamableHttpTransport(
+        client = Client[StreamableHttpTransport](
+            transport=StreamableHttpTransport(
                 url=agent_url,
                 headers=headers,
             ),
         )
     elif transport == Transport.SSE:
-        client = Client(
-            SSETransport(
+        client = Client[SSETransport](
+            transport=SSETransport(
                 url=agent_url,
                 headers=headers,
             ),
@@ -411,7 +412,7 @@ async def ping_agent(
     transport: Transport | None,
     agent_url: str,
     agent_auth_type: AuthType,
-    agent_auth_credentials: str | None,
+    agent_auth_credentials: SecretStr | None,
 ) -> None:
     headers = agent_auth_type.get_auth_header(agent_auth_credentials)
 

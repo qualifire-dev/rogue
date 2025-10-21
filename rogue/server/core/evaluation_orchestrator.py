@@ -22,7 +22,7 @@ class EvaluationOrchestrator:
     def __init__(
         self,
         protocol: Protocol,
-        transport: Transport,
+        transport: Transport | None,
         evaluated_agent_url: str,
         evaluated_agent_auth_type: AuthType,
         evaluated_agent_auth_credentials: str | None,

@@ -38,6 +38,8 @@ class MCPEvaluatorAgent(BaseEvaluatorAgent):
         )
         transport = transport or Transport.STREAMABLE_HTTP
 
+        self._client: Client[SSETransport | StreamableHttpTransport]
+
         if transport == Transport.SSE:
             self._client = Client[SSETransport](
                 transport=SSETransport(

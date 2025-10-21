@@ -9,7 +9,7 @@ from .protocols.mcp_evaluator_agent import MCPEvaluatorAgent
 
 def get_evaluator_agent(
     protocol: Protocol,
-    transport: Transport,
+    transport: Transport | None,
     evaluated_agent_address: str,
     judge_llm: str,
     scenarios: Scenarios,

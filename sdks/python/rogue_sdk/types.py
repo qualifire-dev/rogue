@@ -14,6 +14,7 @@ from pydantic import (
     ConfigDict,
     Field,
     HttpUrl,
+    SecretStr,
     field_validator,
     model_validator,
 )
@@ -29,8 +30,13 @@ class AuthType(str, Enum):
 
     def get_auth_header(
         self,
-        auth_credentials: Optional[str],
+        auth_credentials: Optional[str | SecretStr],
     ) -> dict[str, str]:
+        auth_credentials = (
+            auth_credentials.get_secret_value()
+            if isinstance(auth_credentials, SecretStr)
+            else auth_credentials
+        )
         if self == AuthType.NO_AUTH or not auth_credentials:
             return {}
         elif self == AuthType.API_KEY:

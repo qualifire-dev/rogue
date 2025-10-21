@@ -73,7 +73,7 @@ async def _run_agent(
 
 async def arun_evaluator_agent(
     protocol: Protocol,
-    transport: Transport,
+    transport: Transport | None,
     evaluated_agent_url: str,
     auth_type: AuthType,
     auth_credentials: str | None,
@@ -91,7 +91,7 @@ async def arun_evaluator_agent(
         "🤖 arun_evaluator_agent starting",
         extra={
             "protocol": protocol.value,
-            "transport": transport.value,
+            "transport": transport.value if transport else None,
             "evaluated_agent_url": evaluated_agent_url,
             "auth_type": auth_type.value,
             "judge_llm": judge_llm,
@@ -218,7 +218,7 @@ async def arun_evaluator_agent(
 
 def run_evaluator_agent(
     protocol: Protocol,
-    transport: Transport,
+    transport: Transport | None,
     evaluated_agent_url: str,
     auth_type: AuthType,
     auth_credentials: str | None,
