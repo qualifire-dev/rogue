@@ -1,4 +1,4 @@
-from . import a2a_evaluator_agent, mcp_evaluator_agent
+from . import a2a_evaluator_agent, base_evaluator_agent, mcp_evaluator_agent
 from .a2a_evaluator_agent import A2AEvaluatorAgent
 from .mcp_evaluator_agent import MCPEvaluatorAgent
 

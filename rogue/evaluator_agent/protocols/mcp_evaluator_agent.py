@@ -1,8 +1,6 @@
 from types import TracebackType
 from typing import Callable, Optional, Self, Type
 
-from fastmcp import Client
-from fastmcp.client import SSETransport, StreamableHttpTransport
 from loguru import logger
 from rogue_sdk.types import Scenarios, Transport
 
@@ -25,6 +23,9 @@ class MCPEvaluatorAgent(BaseEvaluatorAgent):
         *args,
         **kwargs,
     ):
+        from fastmcp import Client
+        from fastmcp.client import SSETransport, StreamableHttpTransport
+
         super().__init__(
             evaluated_agent_address=evaluated_agent_address,
             judge_llm=judge_llm,
