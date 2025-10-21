@@ -113,7 +113,7 @@ class AgentConfig(BaseModel):
             )
         return self
 
-    def model_post_init(self, __context):
+    def model_post_init(self, __context: Any) -> None:
         if self.transport is None and self.protocol == Protocol.MCP:
             self.transport = Transport.STREAMABLE_HTTP
 
