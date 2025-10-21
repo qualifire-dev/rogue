@@ -2,7 +2,6 @@ import asyncio
 from asyncio import Queue
 from typing import TYPE_CHECKING, Any, AsyncGenerator
 
-from google.genai import types
 from loguru import logger
 from rogue_sdk.types import AuthType, EvaluationResults, Protocol, Scenarios, Transport
 
@@ -19,15 +18,17 @@ async def _run_agent(
     input_text: str,
     session: "Session",
 ) -> str:
+    from google.genai.types import Content, Part
+
     input_text_preview = (
         input_text[:100] + "..." if len(input_text) > 100 else input_text
     )
     logger.info(f"🎯 running agent with input: '{input_text_preview}'")
 
     # Create content from user input
-    content = types.Content(
+    content = Content(
         role="user",
-        parts=[types.Part(text=input_text)],
+        parts=[Part(text=input_text)],
     )
 
     agent_output = ""
