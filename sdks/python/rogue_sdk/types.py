@@ -71,14 +71,32 @@ class Protocol(str, Enum):
     A2A = "a2a"
     MCP = "mcp"
 
+    def get_default_transport(self) -> "Transport":
+        if self == Protocol.A2A:
+            return Transport.HTTP
+        elif self == Protocol.MCP:
+            return Transport.STREAMABLE_HTTP
+        raise ValueError(f"No default transport for protocol {self}")
+
 
 class Transport(str, Enum):
     """Transport types for communicating with the evaluator agent."""
+
+    # A2A transports
+    HTTP = "http"
 
     # MCP transports
     STREAMABLE_HTTP = "streamable_http"
     SSE = "sse"
 
+    def is_valid_for_protocol(self, protocol: Protocol) -> bool:
+        return self in PROTOCOL_TO_TRANSPORTS[protocol]
+
+
+PROTOCOL_TO_TRANSPORTS: dict[Protocol, list[Transport]] = {
+    Protocol.A2A: [Transport.HTTP],
+    Protocol.MCP: [Transport.STREAMABLE_HTTP, Transport.SSE],
+}
 
 # Core Models
 
@@ -114,8 +132,8 @@ class AgentConfig(BaseModel):
         return self
 
     def model_post_init(self, __context: Any) -> None:
-        if self.transport is None and self.protocol == Protocol.MCP:
-            self.transport = Transport.STREAMABLE_HTTP
+        if self.transport is None:
+            self.transport = self.protocol.get_default_transport()
 
 
 class Scenario(BaseModel):
