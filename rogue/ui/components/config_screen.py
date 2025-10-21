@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 
 from loguru import logger
 from pydantic import ValidationError
-from rogue_sdk.types import AgentConfig, AuthType
+from rogue_sdk.types import AgentConfig, AuthType, Protocol, Transport
 
 from ...common.workdir_utils import dump_config
 
@@ -32,6 +32,34 @@ def create_config_screen(
             ),
         )
         agent_url_error = gr.Markdown(visible=False, elem_classes=["error-label"])
+
+        gr.Markdown("**Protocol**")
+        protocol = gr.Dropdown(
+            label="Protocol",
+            choices=[p.value for p in Protocol],
+            value=config_data.get(
+                "protocol",
+                Protocol.A2A.value,
+            ),
+        )
+
+        transport_label = gr.Markdown(
+            "**Transport**",
+            visible=(
+                config_data.get("protocol", Protocol.A2A.value) == Protocol.MCP.value
+            ),
+        )
+        transport = gr.Dropdown(
+            label="Transport",
+            choices=[t.value for t in Transport],
+            value=config_data.get(
+                "transport",
+                Transport.STREAMABLE_HTTP.value,
+            ),
+            visible=(
+                config_data.get("protocol", Protocol.A2A.value) == Protocol.MCP.value
+            ),
+        )
 
         gr.Markdown("**Interview Mode**")
         interview_mode = gr.Checkbox(
@@ -153,6 +181,8 @@ def create_config_screen(
 
     for component, key in [
         (agent_url, "agent_url"),
+        (protocol, "protocol"),
+        (transport, "transport"),
         (interview_mode, "interview_mode"),
         (auth_type, "auth_type"),
         (auth_credentials, "auth_credentials"),
@@ -179,9 +209,21 @@ def create_config_screen(
         outputs=[auth_credentials],
     )
 
+    def toggle_transport(protocol_val):
+        is_visible = protocol_val == Protocol.MCP.value
+        return [gr.update(visible=is_visible), gr.update(visible=is_visible)]
+
+    protocol.change(
+        fn=toggle_transport,
+        inputs=[protocol],
+        outputs=[transport_label, transport],
+    )
+
     def save_config(
         state,
         url,
+        protocol_val,
+        transport_val,
         interview_mode_val,
         deep_test_mode_val,
         parallel_runs_val,
@@ -207,6 +249,8 @@ def create_config_screen(
                 judge_llm=llm,
                 judge_llm_api_key=llm_key,
                 deep_test_mode=deep_test_mode_val,
+                protocol=protocol_val,
+                transport=transport_val,
                 interview_mode=interview_mode_val,
                 parallel_runs=parallel_runs_val,
                 business_context="",
@@ -252,6 +296,8 @@ def create_config_screen(
         inputs=[
             shared_state,
             agent_url,
+            protocol,
+            transport,
             interview_mode,
             deep_test_mode,
             parallel_runs,
@@ -272,6 +318,8 @@ def create_config_screen(
 
     return (
         agent_url,
+        protocol,
+        transport,
         interview_mode,
         auth_type,
         auth_credentials,

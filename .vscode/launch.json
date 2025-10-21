@@ -66,8 +66,8 @@
             "type": "debugpy",
             "request": "launch",
             "python": "./.venv/bin/python",
-            "program": "./examples/mcp/tshirt_store_mcp",
-            "envFile": "${workspaceFolder}/examples/mcp/tshirt_store_mcp/.env"
+            "program": "./examples/mcp/tshirt_store_langgraph_mcp",
+            "envFile": "${workspaceFolder}/examples/mcp/tshirt_store_langgraph_mcp/.env"
         }
     ]
 }

@@ -35,6 +35,8 @@ def get_app(workdir: Path, rogue_server_url: str):
             with gr.TabItem("1. Config", id="config"):
                 (
                     agent_url,
+                    protocol,
+                    transport,
                     interview_mode,
                     auth_type,
                     auth_credentials,
@@ -144,6 +146,8 @@ def get_app(workdir: Path, rogue_server_url: str):
             outputs=[
                 shared_state,
                 agent_url,
+                protocol,
+                transport,
                 interview_mode,
                 auth_type,
                 auth_credentials,
