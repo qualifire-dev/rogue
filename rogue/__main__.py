@@ -133,6 +133,12 @@ def start_example_agent(
             sys.executable,
             "-m",
             "examples.mcp.tshirt_store_langgraph_mcp",
+            "--host",
+            host,
+            "--port",
+            str(port),
+            "--transport",
+            "streamable-http",
         ]
     else:
         logger.error(f"Unknown example: {example_name}")
