@@ -4,7 +4,7 @@ from typing import Callable, Optional, Self, Type
 from loguru import logger
 from rogue_sdk.types import Protocol, Scenarios, Transport
 
-from .base_evaluator_agent import BaseEvaluatorAgent
+from ..base_evaluator_agent import BaseEvaluatorAgent
 
 
 class MCPEvaluatorAgent(BaseEvaluatorAgent):
@@ -89,6 +89,7 @@ class MCPEvaluatorAgent(BaseEvaluatorAgent):
 
         self._add_message_to_chat_history(context_id, "user", message)
         response = await self._invoke_mcp_agent(message)
+        # TODO: add support for multi-model responses (audio, images, etc.)
         if not response or not response.get("response"):
             logger.debug(
                 "_send_message_to_evaluated_agent - no response",
