@@ -25,6 +25,8 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
+        with:
+          prune-cache: false
 
       - name: Setup Python
         uses: actions/setup-python@v5
