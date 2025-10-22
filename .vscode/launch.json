@@ -58,7 +58,7 @@
             "type": "debugpy",
             "request": "launch",
             "python": "./.venv/bin/python",
-            "program": "./examples/tshirt_store_agent",
+            "module": "examples.tshirt_store_agent",
             "envFile": "${workspaceFolder}/examples/tshirt_store_agent/.env"
         },
         {

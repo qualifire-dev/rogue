@@ -2,8 +2,9 @@ from typing import Callable, Optional
 
 from rogue_sdk.types import Protocol, Scenarios, Transport
 
-from . import A2AEvaluatorAgent, MCPEvaluatorAgent
+from .a2a.a2a_evaluator_agent import A2AEvaluatorAgent
 from .base_evaluator_agent import BaseEvaluatorAgent
+from .mcp.mcp_evaluator_agent import MCPEvaluatorAgent
 
 _PROTOCOOL_TO_AGENT_CLASS = {
     Protocol.A2A: A2AEvaluatorAgent,
