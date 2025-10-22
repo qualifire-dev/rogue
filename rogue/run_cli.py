@@ -362,7 +362,7 @@ def get_cli_input(cli_args: Namespace) -> CLIInput:
     return cli_input
 
 
-def get_a2a_agent_card(
+async def get_a2a_agent_card(
     transport: Transport,
     agent_url: str,
     headers: dict[str, str] | None = None,
@@ -420,22 +420,19 @@ async def ping_agent(
     agent_auth_type: AuthType,
     agent_auth_credentials: SecretStr | None,
 ) -> None:
-    headers = agent_auth_type.get_auth_header(agent_auth_credentials)
-
-    if protocol == Protocol.MCP:
-        await ping_mcp_server(
-            transport=transport,
-            agent_url=agent_url,
-            headers=headers,
-        )
-    elif protocol == Protocol.A2A:
-        get_a2a_agent_card(
-            transport=transport,
-            agent_url=agent_url,
-            headers=headers,
-        )
-    else:
+    # TODO: move this to the server side
+    protocol_to_ping_function = {
+        Protocol.MCP: ping_mcp_server,
+        Protocol.A2A: get_a2a_agent_card,
+    }
+    if protocol not in protocol_to_ping_function:
         raise ValueError(f"Unsupported protocol: {protocol}")
+
+    await protocol_to_ping_function[protocol](
+        transport=transport,
+        agent_url=agent_url,
+        headers=agent_auth_type.get_auth_header(agent_auth_credentials),
+    )
 
 
 async def run_cli(args: Namespace) -> int:
