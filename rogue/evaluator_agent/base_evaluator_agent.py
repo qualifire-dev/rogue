@@ -19,8 +19,8 @@ from rogue_sdk.types import (
     Transport,
 )
 
-from ...common.agent_model_wrapper import get_llm_from_model
-from ...evaluator_agent.policy_evaluation import evaluate_policy
+from ..common.agent_model_wrapper import get_llm_from_model
+from .policy_evaluation import evaluate_policy
 
 if TYPE_CHECKING:
     from google.adk.agents import LlmAgent
