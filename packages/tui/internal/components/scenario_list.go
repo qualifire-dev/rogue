@@ -162,6 +162,11 @@ func (e ScenarioEditor) handleListMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 		if e.interviewChatView == nil {
 			chatView := NewChatView(9990, e.width, e.height, theme.CurrentTheme())
 			e.interviewChatView = chatView
+
+			// Apply markdown renderer if available
+			if e.markdownRenderer != nil {
+				e.interviewChatView.SetMarkdownRenderer(e.markdownRenderer)
+			}
 		}
 
 		// Set loading state and clear any previous messages

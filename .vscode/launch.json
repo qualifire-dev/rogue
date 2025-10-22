@@ -60,6 +60,14 @@
             "python": "./.venv/bin/python",
             "program": "./examples/tshirt_store_agent",
             "envFile": "${workspaceFolder}/examples/tshirt_store_agent/.env"
+        },
+        {
+            "name": "shirtify mcp",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "./.venv/bin/python",
+            "program": "./examples/mcp/tshirt_store_mcp",
+            "envFile": "${workspaceFolder}/examples/mcp/tshirt_store_mcp/.env"
         }
     ]
 }
