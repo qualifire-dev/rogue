@@ -117,12 +117,20 @@ def get_app(workdir: Path, rogue_server_url: str):
                 "evaluated_agent_auth_type",
                 AuthType.NO_AUTH.value,
             )
-            protocol_val = Protocol(config.get("protocol", Protocol.A2A))
-            transport_val = Transport(config.get("transport", Transport.HTTP))
+            # Safe enum parsing with sensible fallbacks
+            raw_protocol = config.get("protocol", Protocol.A2A.value)
+            raw_transport = config.get("transport", Transport.HTTP.value)
+            try:
+                protocol_val = Protocol(raw_protocol)
+            except (ValueError, KeyError):
+                protocol_val = Protocol.A2A
+            try:
+                transport_val = Transport(raw_transport)
+            except (ValueError, KeyError):
+                transport_val = Transport.HTTP
 
             if not transport_val.is_valid_for_protocol(protocol_val):
                 transport_val = protocol_val.get_default_transport()
-
             return {
                 shared_state: state,
                 agent_url: gr.update(
