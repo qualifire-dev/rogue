@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from rogue_sdk.types import AuthType
+from rogue_sdk.types import AuthType, Protocol, Transport
 
 from ..common.workdir_utils import load_config
 from .components.config_screen import create_config_screen
@@ -117,11 +117,19 @@ def get_app(workdir: Path, rogue_server_url: str):
                 "evaluated_agent_auth_type",
                 AuthType.NO_AUTH.value,
             )
+            protocol_val = Protocol(config.get("protocol", Protocol.A2A))
+            transport_val = Transport(config.get("transport", Transport.HTTP))
+
+            if not transport_val.is_valid_for_protocol(protocol_val):
+                transport_val = protocol_val.get_default_transport()
+
             return {
                 shared_state: state,
                 agent_url: gr.update(
                     value=config.get("evaluated_agent_url", "http://localhost:10001"),
                 ),
+                protocol: gr.update(value=protocol_val.value),
+                transport: gr.update(value=transport_val.value),
                 interview_mode: gr.update(value=config.get("interview_mode", True)),
                 deep_test_mode: gr.update(value=config.get("deep_test_mode", False)),
                 parallel_runs: gr.update(value=config.get("parallel_runs", 1)),
