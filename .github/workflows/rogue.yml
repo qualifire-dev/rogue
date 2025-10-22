@@ -1,7 +1,7 @@
 name: Rogue
 
 on:
-  pull_request:
+  pull_request_target:
   push:
     branches:
       - main
@@ -11,9 +11,17 @@ jobs:
   rogue_sanity:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    environment: rogue-sanity-ci-secrets
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          # 1. Checkout the actual PR commit, not just the base branch
+          ref: ${{ github.event.pull_request.head.sha }}
+          # 2. DO NOT expose the GITHUB_TOKEN write-permissions to the untrusted code
+          # This is essential to prevent untrusted code from exfiltrating secrets
+          # by manipulating the repository itself.
+          persist-credentials: false
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
