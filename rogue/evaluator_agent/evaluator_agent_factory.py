@@ -2,9 +2,13 @@ from typing import Callable, Optional
 
 from rogue_sdk.types import Protocol, Scenarios, Transport
 
-from .protocols.a2a_evaluator_agent import A2AEvaluatorAgent
-from .protocols.base_evaluator_agent import BaseEvaluatorAgent
-from .protocols.mcp_evaluator_agent import MCPEvaluatorAgent
+from . import A2AEvaluatorAgent, MCPEvaluatorAgent
+from .base_evaluator_agent import BaseEvaluatorAgent
+
+_PROTOCOOL_TO_AGENT_CLASS = {
+    Protocol.A2A: A2AEvaluatorAgent,
+    Protocol.MCP: MCPEvaluatorAgent,
+}
 
 
 def get_evaluator_agent(
@@ -21,33 +25,20 @@ def get_evaluator_agent(
     chat_update_callback: Optional[Callable[[dict], None]] = None,
     **kwargs,
 ) -> BaseEvaluatorAgent:
-    if protocol == Protocol.A2A:
-        return A2AEvaluatorAgent(
-            transport=transport,
-            evaluated_agent_address=evaluated_agent_address,
-            judge_llm=judge_llm,
-            scenarios=scenarios,
-            business_context=business_context,
-            headers=headers,
-            judge_llm_auth=judge_llm_auth,
-            debug=debug,
-            deep_test_mode=deep_test_mode,
-            chat_update_callback=chat_update_callback,
-            **kwargs,
-        )
-    elif protocol == Protocol.MCP:
-        return MCPEvaluatorAgent(
-            transport=transport,
-            evaluated_agent_address=evaluated_agent_address,
-            judge_llm=judge_llm,
-            scenarios=scenarios,
-            business_context=business_context,
-            headers=headers,
-            judge_llm_auth=judge_llm_auth,
-            debug=debug,
-            deep_test_mode=deep_test_mode,
-            chat_update_callback=chat_update_callback,
-            **kwargs,
-        )
-    else:
+    agent_class = _PROTOCOOL_TO_AGENT_CLASS.get(protocol, None)
+    if not agent_class:
         raise ValueError(f"Invalid protocol: {protocol}")
+
+    return agent_class(
+        transport=transport,
+        evaluated_agent_address=evaluated_agent_address,
+        judge_llm=judge_llm,
+        scenarios=scenarios,
+        business_context=business_context,
+        headers=headers,
+        judge_llm_auth=judge_llm_auth,
+        debug=debug,
+        deep_test_mode=deep_test_mode,
+        chat_update_callback=chat_update_callback,
+        **kwargs,
+    )

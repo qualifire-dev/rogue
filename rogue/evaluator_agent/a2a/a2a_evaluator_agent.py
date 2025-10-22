@@ -13,7 +13,7 @@ from ...common.remote_agent_connection import (
     JSON_RPC_ERROR_TYPES,
     RemoteAgentConnections,
 )
-from .base_evaluator_agent import BaseEvaluatorAgent
+from ..base_evaluator_agent import BaseEvaluatorAgent
 
 
 class A2AEvaluatorAgent(BaseEvaluatorAgent):
@@ -71,6 +71,7 @@ class A2AEvaluatorAgent(BaseEvaluatorAgent):
     def _get_text_from_response(
         response: Task | Message | JSON_RPC_ERROR_TYPES,
     ) -> str | None:
+        # TODO: add support for multi-model responses (audio, images, etc.)
         logger.debug(f"_get_text_from_response {response}")
 
         def get_parts_text(parts: list[Part]) -> str:
