@@ -25,6 +25,8 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
+        with:
+          prune-cache: false
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -49,7 +51,7 @@ jobs:
           echo "🚀 Starting AI agent..."
 
           # Not using uv because it will reinstall the sdk from pypi
-          source .venv/bin/activate && uv run python -m examples.tshirt_store_agent --host 0.0.0.0 --port 10001 &
+          source .venv/bin/activate && python -m examples.tshirt_store_agent --host 0.0.0.0 --port 10001 &
           AGENT_PID=$!
           echo "Agent started with PID: $AGENT_PID"
           trap 'echo "🛑 Stopping agent..."; kill $AGENT_PID' EXIT

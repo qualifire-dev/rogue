@@ -6,38 +6,45 @@ The agent itself can be implemented using any agent framework,
 you only need to implement the send_message tool.
 """
 
+from functools import lru_cache
+
 from loguru import logger
 from mcp.server.fastmcp import Context, FastMCP
-from shirtify_agent import ShirtifyAgent
 from starlette.requests import Request
 
-agent = ShirtifyAgent()
-mcp = FastMCP(
-    "shirtify_agent_mcp",
-    port=10001,
-    host="127.0.0.1",
-)
+from .shirtify_agent import ShirtifyAgent
 
 
-@mcp.tool()
-def send_message(message: str, context: Context) -> str:
-    session_id: str | None = None
-    try:
-        request: Request = context.request_context.request  # type: ignore
+@lru_cache(maxsize=1)
+def get_mcp_server(host: str = "127.0.0.1", port: int = 10001) -> FastMCP:
+    agent = ShirtifyAgent()
+    mcp = FastMCP(
+        "shirtify_agent_mcp",
+        host=host,
+        port=port,
+    )
 
-        # The session id should be in the headers for streamable-http transport
-        session_id = request.headers.get("mcp-session-id")
+    @mcp.tool()
+    def send_message(message: str, context: Context) -> str:
+        session_id: str | None = None
+        try:
+            request: Request = context.request_context.request  # type: ignore
 
-        # The session id might also be in query param when using sse transport
+            # The session id should be in the headers for streamable-http transport
+            session_id = request.headers.get("mcp-session-id")
+
+            # The session id might also be in query param when using sse transport
+            if session_id is None:
+                session_id = request.query_params.get("session_id")
+        except Exception:
+            session_id = None
+            logger.exception("Error while extracting session id")
+
         if session_id is None:
-            session_id = request.query_params.get("session_id")
-    except Exception:
-        session_id = None
-        logger.exception("Error while extracting session id")
+            logger.error("Couldn't extract session id")
 
-    if session_id is None:
-        logger.error("Couldn't extract session id")
+        # Invoking our agent
+        response = agent.invoke(message, session_id)
+        return response.get("content", "")
 
-    # Invoking our agent
-    response = agent.invoke(message, session_id)
-    return response.get("content", "")
+    return mcp

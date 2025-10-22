@@ -14,6 +14,7 @@ from pydantic import (
     ConfigDict,
     Field,
     HttpUrl,
+    SecretStr,
     field_validator,
     model_validator,
 )
@@ -29,8 +30,13 @@ class AuthType(str, Enum):
 
     def get_auth_header(
         self,
-        auth_credentials: Optional[str],
+        auth_credentials: Optional[str | SecretStr],
     ) -> dict[str, str]:
+        auth_credentials = (
+            auth_credentials.get_secret_value()
+            if isinstance(auth_credentials, SecretStr)
+            else auth_credentials
+        )
         if self == AuthType.NO_AUTH or not auth_credentials:
             return {}
         elif self == AuthType.API_KEY:
@@ -59,12 +65,47 @@ class EvaluationStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
+class Protocol(str, Enum):
+    """Protocol types for communicating with the evaluator agent."""
+
+    A2A = "a2a"
+    MCP = "mcp"
+
+    def get_default_transport(self) -> "Transport":
+        if self == Protocol.A2A:
+            return Transport.HTTP
+        elif self == Protocol.MCP:
+            return Transport.STREAMABLE_HTTP
+        raise ValueError(f"No default transport for protocol {self}")
+
+
+class Transport(str, Enum):
+    """Transport types for communicating with the evaluator agent."""
+
+    # A2A transports
+    HTTP = "http"
+
+    # MCP transports
+    STREAMABLE_HTTP = "streamable_http"
+    SSE = "sse"
+
+    def is_valid_for_protocol(self, protocol: Protocol) -> bool:
+        return self in PROTOCOL_TO_TRANSPORTS[protocol]
+
+
+PROTOCOL_TO_TRANSPORTS: dict[Protocol, list[Transport]] = {
+    Protocol.A2A: [Transport.HTTP],
+    Protocol.MCP: [Transport.STREAMABLE_HTTP, Transport.SSE],
+}
+
 # Core Models
 
 
 class AgentConfig(BaseModel):
     """Configuration for the agent being evaluated."""
 
+    protocol: Protocol = Protocol.A2A
+    transport: Transport | None = None
     evaluated_agent_url: HttpUrl
     evaluated_agent_auth_type: AuthType = Field(
         default=AuthType.NO_AUTH,
@@ -89,6 +130,10 @@ class AgentConfig(BaseModel):
                 "Authentication Credentials cannot be empty for the selected auth type.",  # noqa: E501
             )
         return self
+
+    def model_post_init(self, __context: Any) -> None:
+        if self.transport is None:
+            self.transport = self.protocol.get_default_transport()
 
 
 class Scenario(BaseModel):

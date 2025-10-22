@@ -4,7 +4,7 @@ Evaluation orchestrator - Server-native evaluation logic.
 
 from typing import Any, AsyncGenerator, Tuple
 
-from rogue_sdk.types import AuthType, EvaluationResults, Scenarios
+from rogue_sdk.types import AuthType, EvaluationResults, Protocol, Scenarios, Transport
 
 from ...common.logging import get_logger
 from ...evaluator_agent.run_evaluator_agent import arun_evaluator_agent
@@ -21,6 +21,8 @@ class EvaluationOrchestrator:
 
     def __init__(
         self,
+        protocol: Protocol,
+        transport: Transport | None,
         evaluated_agent_url: str,
         evaluated_agent_auth_type: AuthType,
         evaluated_agent_auth_credentials: str | None,
@@ -30,6 +32,8 @@ class EvaluationOrchestrator:
         business_context: str,
         deep_test_mode: bool,
     ):
+        self.protocol = protocol
+        self.transport = transport
         self.evaluated_agent_url = evaluated_agent_url
         self.evaluated_agent_auth_type = evaluated_agent_auth_type
         self.evaluated_agent_auth_credentials = evaluated_agent_auth_credentials
@@ -79,6 +83,8 @@ class EvaluationOrchestrator:
 
             # Call the evaluator agent directly
             async for update_type, data in arun_evaluator_agent(
+                protocol=self.protocol,
+                transport=self.transport,
                 evaluated_agent_url=self.evaluated_agent_url,
                 auth_type=self.evaluated_agent_auth_type,
                 auth_credentials=self.evaluated_agent_auth_credentials,
