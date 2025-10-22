@@ -32,7 +32,7 @@ runs:
       run: |
         # Get the current version from pyproject.toml
         cd "${{ inputs.workdir }}"
-        CURRENT_VERSION=$(grep '^version = ' pyproject.toml | cut -d'"' -f2)
+        CURRENT_VERSION=$(cat VERSION | tr -d '\n')
         echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
 
         # Check if this version already exists on PyPI
