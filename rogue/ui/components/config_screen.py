@@ -54,6 +54,8 @@ def create_config_screen(
             "transport",
             initial_protocol.get_default_transport().value,
         )
+        if initial_transport_value not in initial_transport_choices:
+            initial_transport_value = initial_protocol.get_default_transport().value
 
         gr.Markdown("**Transport**")
         transport = gr.Dropdown(
