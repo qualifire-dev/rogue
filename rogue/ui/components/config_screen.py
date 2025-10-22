@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 
 from loguru import logger
 from pydantic import ValidationError
-from rogue_sdk.types import AgentConfig, AuthType, Protocol, Transport
+from rogue_sdk.types import PROTOCOL_TO_TRANSPORTS, AgentConfig, AuthType, Protocol
 
 from ...common.workdir_utils import dump_config
 
@@ -43,22 +43,23 @@ def create_config_screen(
             ),
         )
 
-        transport_label = gr.Markdown(
-            "**Transport**",
-            visible=(
-                config_data.get("protocol", Protocol.A2A.value) == Protocol.MCP.value
-            ),
+        # Get initial transport choices based on current protocol
+        initial_protocol = Protocol(
+            config_data.get("protocol", Protocol.A2A.value),
         )
+        initial_transport_choices = [
+            t.value for t in PROTOCOL_TO_TRANSPORTS[initial_protocol]
+        ]
+        initial_transport_value = config_data.get(
+            "transport",
+            initial_protocol.get_default_transport().value,
+        )
+
+        gr.Markdown("**Transport**")
         transport = gr.Dropdown(
             label="Transport",
-            choices=[t.value for t in Transport],
-            value=config_data.get(
-                "transport",
-                Transport.STREAMABLE_HTTP.value,
-            ),
-            visible=(
-                config_data.get("protocol", Protocol.A2A.value) == Protocol.MCP.value
-            ),
+            choices=initial_transport_choices,
+            value=initial_transport_value,
         )
 
         gr.Markdown("**Interview Mode**")
@@ -209,14 +210,17 @@ def create_config_screen(
         outputs=[auth_credentials],
     )
 
-    def toggle_transport(protocol_val):
-        is_visible = protocol_val == Protocol.MCP.value
-        return [gr.update(visible=is_visible), gr.update(visible=is_visible)]
+    def update_transport_choices(protocol_val):
+        """Update transport choices based on selected protocol."""
+        selected_protocol = Protocol(protocol_val)
+        transport_choices = [t.value for t in PROTOCOL_TO_TRANSPORTS[selected_protocol]]
+        default_transport = selected_protocol.get_default_transport().value
+        return gr.update(choices=transport_choices, value=default_transport)
 
     protocol.change(
-        fn=toggle_transport,
+        fn=update_transport_choices,
         inputs=[protocol],
-        outputs=[transport_label, transport],
+        outputs=[transport],
     )
 
     def save_config(
