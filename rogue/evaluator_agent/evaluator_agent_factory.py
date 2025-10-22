@@ -23,6 +23,7 @@ def get_evaluator_agent(
 ) -> BaseEvaluatorAgent:
     if protocol == Protocol.A2A:
         return A2AEvaluatorAgent(
+            transport=transport,
             evaluated_agent_address=evaluated_agent_address,
             judge_llm=judge_llm,
             scenarios=scenarios,

@@ -7,7 +7,7 @@ from a2a.client import A2ACardResolver
 from a2a.types import Message, MessageSendParams, Part, Role, Task, TextPart
 from httpx import AsyncClient
 from loguru import logger
-from rogue_sdk.types import Scenarios
+from rogue_sdk.types import Protocol, Scenarios, Transport
 
 from ...common.remote_agent_connection import (
     JSON_RPC_ERROR_TYPES,
@@ -20,6 +20,7 @@ class A2AEvaluatorAgent(BaseEvaluatorAgent):
     def __init__(
         self,
         evaluated_agent_address: str,
+        transport: Optional[Transport],
         judge_llm: str,
         scenarios: Scenarios,
         business_context: Optional[str],
@@ -33,6 +34,8 @@ class A2AEvaluatorAgent(BaseEvaluatorAgent):
     ) -> None:
         super().__init__(
             evaluated_agent_address=evaluated_agent_address,
+            protocol=Protocol.A2A,
+            transport=transport,
             headers=headers,
             judge_llm=judge_llm,
             scenarios=scenarios,
