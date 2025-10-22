@@ -12,9 +12,11 @@ from rogue_sdk.types import (
     ConversationEvaluation,
     EvaluationResult,
     EvaluationResults,
+    Protocol,
     Scenario,
     Scenarios,
     ScenarioType,
+    Transport,
 )
 
 from ...common.agent_model_wrapper import get_llm_from_model
@@ -155,6 +157,8 @@ class BaseEvaluatorAgent(ABC):
     def __init__(
         self,
         evaluated_agent_address: str,
+        protocol: Protocol,
+        transport: Optional[Transport],
         judge_llm: str,
         scenarios: Scenarios,
         business_context: Optional[str],
@@ -167,6 +171,11 @@ class BaseEvaluatorAgent(ABC):
         **kwargs,
     ) -> None:
         self._evaluated_agent_address = evaluated_agent_address
+        self._protocol = protocol
+        self._transport = transport or self._protocol.get_default_transport()
+        if not self._transport.is_valid_for_protocol(protocol):
+            raise ValueError(f"Unsupported transport for {protocol}: {self._transport}")
+
         self._headers = headers or {}
         self._judge_llm = judge_llm
         self._judge_llm_auth = judge_llm_auth

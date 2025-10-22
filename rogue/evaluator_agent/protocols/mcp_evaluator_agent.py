@@ -2,7 +2,7 @@ from types import TracebackType
 from typing import Callable, Optional, Self, Type
 
 from loguru import logger
-from rogue_sdk.types import Scenarios, Transport
+from rogue_sdk.types import Protocol, Scenarios, Transport
 
 from .base_evaluator_agent import BaseEvaluatorAgent
 
@@ -10,7 +10,7 @@ from .base_evaluator_agent import BaseEvaluatorAgent
 class MCPEvaluatorAgent(BaseEvaluatorAgent):
     def __init__(
         self,
-        transport: Transport | None,
+        transport: Optional[Transport],
         evaluated_agent_address: str,
         judge_llm: str,
         scenarios: Scenarios,
@@ -28,6 +28,8 @@ class MCPEvaluatorAgent(BaseEvaluatorAgent):
 
         super().__init__(
             evaluated_agent_address=evaluated_agent_address,
+            protocol=Protocol.MCP,
+            transport=transport,
             judge_llm=judge_llm,
             scenarios=scenarios,
             business_context=business_context,
@@ -37,7 +39,6 @@ class MCPEvaluatorAgent(BaseEvaluatorAgent):
             deep_test_mode=deep_test_mode,
             chat_update_callback=chat_update_callback,
         )
-        self._transport = transport or Transport.STREAMABLE_HTTP
 
         self._client: Client[SSETransport | StreamableHttpTransport]
 
@@ -56,7 +57,7 @@ class MCPEvaluatorAgent(BaseEvaluatorAgent):
                 ),
             )
         else:
-            raise ValueError(f"Unsupported transport: {self._transport}")
+            raise ValueError(f"Unsupported transport for MCP: {self._transport}")
 
     async def __aenter__(self) -> Self:
         await self._client.__aenter__()
