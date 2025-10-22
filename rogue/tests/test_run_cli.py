@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from pydantic import HttpUrl, SecretStr
 from pytest_mock import MockerFixture
-from rogue_sdk.types import AuthType, Protocol
+from rogue_sdk.types import AuthType, Protocol, Transport
 
 from rogue.models.cli_input import CLIInput
 from rogue.run_cli import get_cli_input
@@ -24,6 +24,7 @@ from rogue.run_cli import get_cli_input
             CLIInput(
                 workdir=Path(".") / ".rogue",
                 protocol=Protocol.A2A,
+                transport=Transport.HTTP,
                 evaluated_agent_url=HttpUrl("https://localhost:10001"),
                 evaluated_agent_auth_type=AuthType.NO_AUTH,
                 evaluated_agent_credentials=None,
@@ -47,6 +48,7 @@ from rogue.run_cli import get_cli_input
             CLIInput(
                 workdir=Path(".") / ".rogue",
                 protocol=Protocol.A2A,
+                transport=Transport.HTTP,
                 evaluated_agent_url=HttpUrl("https://localhost:10001"),
                 evaluated_agent_auth_type=AuthType.API_KEY,
                 evaluated_agent_credentials=SecretStr("abc123"),
@@ -69,6 +71,7 @@ from rogue.run_cli import get_cli_input
             CLIInput(
                 workdir=Path(".") / ".rogue",
                 protocol=Protocol.A2A,
+                transport=Transport.HTTP,
                 evaluated_agent_url=HttpUrl("https://overriden_agent_url:10001"),
                 evaluated_agent_auth_type=AuthType.NO_AUTH,
                 evaluated_agent_credentials=None,

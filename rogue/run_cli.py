@@ -12,6 +12,7 @@ from rich.console import Console
 from rich.markdown import Markdown
 from rogue_sdk import RogueClientConfig, RogueSDK
 from rogue_sdk.types import (
+    PROTOCOL_TO_TRANSPORTS,
     AgentConfig,
     AuthType,
     EvaluationResults,
@@ -42,15 +43,17 @@ def set_cli_args(parser: ArgumentParser) -> None:
         help="Protocol used to communicate with the agent."
         f"Valid options are: {[e.value for e in Protocol]}",
     )
+    transport_options = ", ".join(
+        f"{protocol.value}: {[t.value for t in transports]}"
+        for protocol, transports in PROTOCOL_TO_TRANSPORTS.items()
+    )
     parser.add_argument(
         "--transport",
         choices=[e.value for e in Transport],
-        default=None,
         type=Transport,
         required=False,
         help="Transport used to communicate with the agent. "
-        "Currently only relevant to MCP agents. This is ignored in non-mcp agents."
-        f"Valid options are: {[e.value for e in Transport]}",
+        f"Valid options are based on the protocol: {transport_options}",
     )
     parser.add_argument(
         "--evaluated-agent-url",
@@ -124,7 +127,7 @@ def set_cli_args(parser: ArgumentParser) -> None:
 async def run_scenarios(
     rogue_server_url: str,
     protocol: Protocol,
-    transport: Transport | None,
+    transport: Transport,
     evaluated_agent_url: str,
     evaluated_agent_auth_type: AuthType,
     evaluated_agent_auth_credentials_secret: SecretStr | None,
@@ -166,7 +169,7 @@ async def run_scenarios(
 async def _run_scenarios_with_sdk(
     rogue_server_url: str,
     protocol: Protocol,
-    transport: Transport | None,
+    transport: Transport,
     evaluated_agent_url: str,
     evaluated_agent_auth_type: AuthType,
     evaluated_agent_auth_credentials: str | None,
@@ -359,32 +362,35 @@ def get_cli_input(cli_args: Namespace) -> CLIInput:
     return cli_input
 
 
-def get_agent_card(
+def get_a2a_agent_card(
+    transport: Transport,
     agent_url: str,
     headers: dict[str, str] | None = None,
 ) -> AgentCard:
-    try:
-        response = requests.get(
-            f"{agent_url}/.well-known/agent.json",
-            timeout=5,
-            headers=headers,
-        )
-        return AgentCard.model_validate(response.json())
-    except Exception:
-        logger.debug(
-            "Failed to connect to agent",
-            extra={"agent_url": agent_url},
-            exc_info=True,
-        )
-        raise
+    if transport == Transport.HTTP:
+        try:
+            response = requests.get(
+                f"{agent_url}/.well-known/agent.json",
+                timeout=5,
+                headers=headers,
+            )
+            return AgentCard.model_validate(response.json())
+        except Exception:
+            logger.debug(
+                "Failed to connect to agent",
+                extra={"agent_url": agent_url},
+                exc_info=True,
+            )
+            raise
+    else:
+        raise ValueError(f"Unsupported transport: {transport} for A2A protocol")
 
 
 async def ping_mcp_server(
+    transport: Transport,
     agent_url: str,
-    transport: Transport | None,
     headers: dict[str, str] | None = None,
 ) -> None:
-    transport = transport or Transport.STREAMABLE_HTTP
     client: Client[StreamableHttpTransport | SSETransport]
     if transport == Transport.STREAMABLE_HTTP:
         client = Client[StreamableHttpTransport](
@@ -401,7 +407,7 @@ async def ping_mcp_server(
             ),
         )
     else:
-        raise ValueError(f"Unsupported transport: {transport}")
+        raise ValueError(f"Unsupported transport: {transport} for MCP protocol")
 
     async with client:
         await client.ping()
@@ -409,7 +415,7 @@ async def ping_mcp_server(
 
 async def ping_agent(
     protocol: Protocol,
-    transport: Transport | None,
+    transport: Transport,
     agent_url: str,
     agent_auth_type: AuthType,
     agent_auth_credentials: SecretStr | None,
@@ -423,8 +429,9 @@ async def ping_agent(
             headers=headers,
         )
     elif protocol == Protocol.A2A:
-        get_agent_card(
-            agent_url,
+        get_a2a_agent_card(
+            transport=transport,
+            agent_url=agent_url,
             headers=headers,
         )
     else:

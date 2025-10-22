@@ -254,7 +254,7 @@ class RogueSDK:
 
         agent_config = AgentConfig(
             protocol=protocol,
-            transport=transport,
+            transport=transport or protocol.get_default_transport(),
             evaluated_agent_url=HttpUrl(agent_url),
             evaluated_agent_auth_type=auth_type,
             evaluated_agent_credentials=auth_credentials,

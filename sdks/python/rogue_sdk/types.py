@@ -105,7 +105,7 @@ class AgentConfig(BaseModel):
     """Configuration for the agent being evaluated."""
 
     protocol: Protocol = Protocol.A2A
-    transport: Transport | None = None
+    transport: Transport = None  # type: ignore # fixed in model_post_init
     evaluated_agent_url: HttpUrl
     evaluated_agent_auth_type: AuthType = Field(
         default=AuthType.NO_AUTH,
