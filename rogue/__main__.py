@@ -44,8 +44,9 @@ def common_parser() -> ArgumentParser:
     parent_parser.add_argument(
         "--example",
         type=str,
-        choices=["tshirt_store"],
-        help="Run with an example agent (e.g., tshirt_store)",
+        choices=["tshirt_store", "tshirt_store_langgraph_mcp"],
+        help="Run with an example agent "
+        "(e.g., tshirt_store, tshirt_store_langgraph_mcp)",
     )
     parent_parser.add_argument(
         "--example-host",
@@ -125,6 +126,13 @@ def start_example_agent(
             host,
             "--port",
             str(port),
+        ]
+    elif example_name == "tshirt_store_langgraph_mcp":
+        # Use subprocess to run the example agent
+        cmd = [
+            sys.executable,
+            "-m",
+            "examples.mcp.tshirt_store_langgraph_mcp",
         ]
     else:
         logger.error(f"Unknown example: {example_name}")

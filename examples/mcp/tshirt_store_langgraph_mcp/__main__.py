@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
-from mcp_agent_wrapper import mcp
+
+from .mcp_agent_wrapper import mcp
 
 load_dotenv()
 

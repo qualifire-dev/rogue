@@ -8,8 +8,9 @@ you only need to implement the send_message tool.
 
 from loguru import logger
 from mcp.server.fastmcp import Context, FastMCP
-from shirtify_agent import ShirtifyAgent
 from starlette.requests import Request
+
+from .shirtify_agent import ShirtifyAgent
 
 agent = ShirtifyAgent()
 mcp = FastMCP(
