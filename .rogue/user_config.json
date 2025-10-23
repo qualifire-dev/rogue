@@ -1,4 +1,6 @@
 {
+  "protocol": "mcp",
+  "transport": "streamable_http",
   "evaluated_agent_url": "http://localhost:10001/",
   "evaluated_agent_auth_type": "no_auth",
   "evaluated_agent_credentials": "",
