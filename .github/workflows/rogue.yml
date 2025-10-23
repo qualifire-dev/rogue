@@ -1,7 +1,7 @@
 name: Rogue
 
 on:
-  pull_request:
+  pull_request_target:
   push:
     branches:
       - main
@@ -11,12 +11,22 @@ jobs:
   rogue_sanity:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    environment: rogue-sanity-ci-secrets
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          # 1. Checkout the actual PR commit, not just the base branch
+          ref: ${{ github.event.pull_request.head.sha }}
+          # 2. DO NOT expose the GITHUB_TOKEN write-permissions to the untrusted code
+          # This is essential to prevent untrusted code from exfiltrating secrets
+          # by manipulating the repository itself.
+          persist-credentials: false
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
+        with:
+          prune-cache: false
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -41,7 +51,7 @@ jobs:
           echo "🚀 Starting AI agent..."
 
           # Not using uv because it will reinstall the sdk from pypi
-          source .venv/bin/activate && uv run python -m examples.tshirt_store_agent --host 0.0.0.0 --port 10001 &
+          source .venv/bin/activate && python -m examples.tshirt_store_agent --host 0.0.0.0 --port 10001 &
           AGENT_PID=$!
           echo "Agent started with PID: $AGENT_PID"
           trap 'echo "🛑 Stopping agent..."; kill $AGENT_PID' EXIT

@@ -6,12 +6,12 @@
 BINARY_NAME=rogue-tui
 BUILD_DIR?=dist
 CMD_DIR=cmd/rogue
-VERSION?=dev
+VERSION?=$(shell cat ../../VERSION 2>/dev/null || echo "dev")
 COMMIT?=$(shell git rev-parse --short HEAD)
 DATE?=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 # Build flags
-LDFLAGS=-ldflags "-X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(DATE)"
+LDFLAGS=-ldflags "-X github.com/rogue/tui/internal/tui.Version=v$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(DATE)"
 
 # Default target
 all: build

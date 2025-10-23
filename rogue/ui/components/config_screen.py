@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 
 from loguru import logger
 from pydantic import ValidationError
-from rogue_sdk.types import AgentConfig, AuthType
+from rogue_sdk.types import PROTOCOL_TO_TRANSPORTS, AgentConfig, AuthType, Protocol
 
 from ...common.workdir_utils import dump_config
 
@@ -32,6 +32,37 @@ def create_config_screen(
             ),
         )
         agent_url_error = gr.Markdown(visible=False, elem_classes=["error-label"])
+
+        gr.Markdown("**Protocol**")
+        protocol = gr.Dropdown(
+            label="Protocol",
+            choices=[p.value for p in Protocol],
+            value=config_data.get(
+                "protocol",
+                Protocol.A2A.value,
+            ),
+        )
+
+        # Get initial transport choices based on current protocol
+        initial_protocol = Protocol(
+            config_data.get("protocol", Protocol.A2A.value),
+        )
+        initial_transport_choices = [
+            t.value for t in PROTOCOL_TO_TRANSPORTS[initial_protocol]
+        ]
+        initial_transport_value = config_data.get(
+            "transport",
+            initial_protocol.get_default_transport().value,
+        )
+        if initial_transport_value not in initial_transport_choices:
+            initial_transport_value = initial_protocol.get_default_transport().value
+
+        gr.Markdown("**Transport**")
+        transport = gr.Dropdown(
+            label="Transport",
+            choices=initial_transport_choices,
+            value=initial_transport_value,
+        )
 
         gr.Markdown("**Interview Mode**")
         interview_mode = gr.Checkbox(
@@ -153,6 +184,8 @@ def create_config_screen(
 
     for component, key in [
         (agent_url, "agent_url"),
+        (protocol, "protocol"),
+        (transport, "transport"),
         (interview_mode, "interview_mode"),
         (auth_type, "auth_type"),
         (auth_credentials, "auth_credentials"),
@@ -179,9 +212,24 @@ def create_config_screen(
         outputs=[auth_credentials],
     )
 
+    def update_transport_choices(protocol_val):
+        """Update transport choices based on selected protocol."""
+        selected_protocol = Protocol(protocol_val)
+        transport_choices = [t.value for t in PROTOCOL_TO_TRANSPORTS[selected_protocol]]
+        default_transport = selected_protocol.get_default_transport().value
+        return gr.update(choices=transport_choices, value=default_transport)
+
+    protocol.change(
+        fn=update_transport_choices,
+        inputs=[protocol],
+        outputs=[transport],
+    )
+
     def save_config(
         state,
         url,
+        protocol_val,
+        transport_val,
         interview_mode_val,
         deep_test_mode_val,
         parallel_runs_val,
@@ -207,6 +255,8 @@ def create_config_screen(
                 judge_llm=llm,
                 judge_llm_api_key=llm_key,
                 deep_test_mode=deep_test_mode_val,
+                protocol=protocol_val,
+                transport=transport_val,
                 interview_mode=interview_mode_val,
                 parallel_runs=parallel_runs_val,
                 business_context="",
@@ -252,6 +302,8 @@ def create_config_screen(
         inputs=[
             shared_state,
             agent_url,
+            protocol,
+            transport,
             interview_mode,
             deep_test_mode,
             parallel_runs,
@@ -272,6 +324,8 @@ def create_config_screen(
 
     return (
         agent_url,
+        protocol,
+        transport,
         interview_mode,
         auth_type,
         auth_credentials,

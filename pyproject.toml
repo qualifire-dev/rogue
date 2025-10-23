@@ -1,6 +1,6 @@
 [project]
 name = "rogue-ai"
-version = "0.1.12"
+dynamic = ["version"]
 description = "Rogue agent evaluator by Qualifire"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -10,8 +10,10 @@ dependencies = [
     "click>=8.0.0",
     "datasets==3.6.0",
     "fastapi>=0.115.0",
+    "fastmcp>=2.12.5",
     "google-adk==1.5.0",
     "gradio==5.35.0",
+    "langchain-openai>=0.3.35",
     "litellm==1.76.1",
     "loguru==0.7.3",
     "platformdirs>=4.3.8",
@@ -39,11 +41,21 @@ dev = [
     "types-requests>=2.32.4.20250611",
     "pre-commit>=4.3.0",
 ]
-examples = ["langchain==0.3.26", "langchain-openai==0.3.27", "langgraph==0.5.2"]
+examples = [
+    "langchain>=0.3.27",
+    "langchain-core>=1.0.0",
+    "langchain-openai>=1.0.0",
+    "langgraph>=0.6.10",
+    "mcp[cli]>=1.13.0",
+]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "VERSION"
+pattern = "(?P<version>^\\s*[^\\r\\n\\s]+)"
 
 [tool.hatch.build.targets.wheel]
 packages = ["rogue", "examples"]
@@ -52,6 +64,10 @@ packages = ["rogue", "examples"]
 "rogue" = "rogue"
 "examples" = "examples"
 
+[tool.uv.sources]
+rogue-ai-sdk = { path = "sdks/python", editable = true }
+
 [project.scripts]
 rogue-ai = "rogue.__main__:main"
 rogue-ai-example-tshirt = "examples.tshirt_store_agent.__main__:main"
+

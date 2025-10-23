@@ -33,11 +33,13 @@ jobs:
       - name: Create venv
         run: uv venv
 
-      - name: Install rogue sdk
-        run: source .venv/bin/activate && uv pip install -e sdks/python --force-reinstall
-
-      - name: Install rogue server
-        run: source .venv/bin/activate && uv sync --dev
+      - name: Install rogue server with local sdk
+        run: |
+          source .venv/bin/activate
+          uv sync --dev
+          uv pip install -e .
+          uv pip uninstall rogue-ai-sdk
+          uv pip install -e sdks/python --force-reinstall
 
       - name: Run tests
         uses: ./.github/actions/run-tests

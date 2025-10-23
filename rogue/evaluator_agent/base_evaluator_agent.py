@@ -1,11 +1,8 @@
-import json
-from typing import TYPE_CHECKING, Any, Callable, Optional
+from abc import ABC, abstractmethod
+from types import TracebackType
+from typing import TYPE_CHECKING, Any, Callable, Optional, Self, Type
 from uuid import uuid4
 
-from a2a.client import A2ACardResolver
-from a2a.types import Message, MessageSendParams, Part, Role, Task, TextPart
-from google.genai import types
-from httpx import AsyncClient
 from loguru import logger
 from pydantic import ValidationError
 from pydantic_yaml import to_yaml_str
@@ -15,17 +12,15 @@ from rogue_sdk.types import (
     ConversationEvaluation,
     EvaluationResult,
     EvaluationResults,
+    Protocol,
     Scenario,
     Scenarios,
     ScenarioType,
+    Transport,
 )
 
 from ..common.agent_model_wrapper import get_llm_from_model
-from ..common.remote_agent_connection import (
-    JSON_RPC_ERROR_TYPES,
-    RemoteAgentConnections,
-)
-from ..evaluator_agent.policy_evaluation import evaluate_policy
+from .policy_evaluation import evaluate_policy
 
 if TYPE_CHECKING:
     from google.adk.agents import LlmAgent
@@ -158,51 +153,45 @@ Run all scenarios without stopping or asking for user input.
 """  # noqa: E501
 
 
-class EvaluatorAgent:
+class BaseEvaluatorAgent(ABC):
     def __init__(
         self,
-        http_client: AsyncClient,
         evaluated_agent_address: str,
+        protocol: Protocol,
+        transport: Optional[Transport],
         judge_llm: str,
         scenarios: Scenarios,
         business_context: Optional[str],
+        headers: Optional[dict[str, str]] = None,
         judge_llm_auth: Optional[str] = None,
         debug: bool = False,
-        chat_update_callback: Optional[Callable[[dict], None]] = None,
         deep_test_mode: bool = False,
+        chat_update_callback: Optional[Callable[[dict], None]] = None,
+        *args,
+        **kwargs,
     ) -> None:
-        self._http_client = http_client
         self._evaluated_agent_address = evaluated_agent_address
+        self._protocol = protocol
+        self._transport = transport or self._protocol.get_default_transport()
+        if not self._transport.is_valid_for_protocol(protocol):
+            raise ValueError(f"Unsupported transport for {protocol}: {self._transport}")
+
+        self._headers = headers or {}
         self._judge_llm = judge_llm
         self._judge_llm_auth = judge_llm_auth
         self._scenarios = scenarios
         self._evaluation_results: EvaluationResults = EvaluationResults()
-        self.__evaluated_agent_client: RemoteAgentConnections | None = None
         self._context_id_to_chat_history: dict[str, ChatHistory] = {}
         self._debug = debug
         self._business_context = business_context or ""
-        self._chat_update_callback = chat_update_callback
         self._deep_test_mode = deep_test_mode
-
-    async def _get_evaluated_agent_client(self) -> RemoteAgentConnections:
-        logger.debug("_get_evaluated_agent - enter")
-        if self.__evaluated_agent_client is None:
-            card_resolver = A2ACardResolver(
-                self._http_client,
-                self._evaluated_agent_address,
-            )
-            card = await card_resolver.get_agent_card()
-            self.__evaluated_agent_client = RemoteAgentConnections(
-                self._http_client,
-                card,
-            )
-
-        return self.__evaluated_agent_client
+        self._chat_update_callback = chat_update_callback
 
     def get_underlying_agent(self) -> "LlmAgent":
         # adk imports take a while, importing them here to reduce rogue startup time.
         from google.adk.agents import LlmAgent
         from google.adk.tools import FunctionTool
+        from google.genai.types import GenerateContentConfig
 
         instructions_template = (
             AGENT_INSTRUCTIONS if self._deep_test_mode else FAST_MODE_AGENT_INSTRUCTIONS
@@ -251,7 +240,7 @@ class EvaluatorAgent:
             after_tool_callback=self._after_tool_callback,
             before_model_callback=self._before_model_callback,
             after_model_callback=self._after_model_callback,
-            generate_content_config=types.GenerateContentConfig(
+            generate_content_config=GenerateContentConfig(
                 temperature=0.0,
             ),
         )
@@ -498,49 +487,7 @@ class EvaluatorAgent:
     def get_evaluation_results(self) -> EvaluationResults:
         return self._evaluation_results
 
-    @staticmethod
-    def _get_text_from_response(
-        response: Task | Message | JSON_RPC_ERROR_TYPES,
-    ) -> str | None:
-        logger.debug(f"_get_text_from_response {response}")
-
-        def get_parts_text(parts: list[Part]) -> str:
-            text = ""
-            for p in parts:
-                if p.root.kind == "text":
-                    text += p.root.text
-                elif p.root.kind == "data":
-                    text += json.dumps(p.root.data)
-                elif p.root.kind == "file":
-                    text += p.root.file.model_dump_json()
-
-            return text
-
-        if isinstance(response, Message):
-            return get_parts_text(response.parts)
-        elif isinstance(response, Task):
-            if response.artifacts is None:
-                if (
-                    response.status is not None
-                    and response.status.message is not None
-                    and response.status.message.parts is not None
-                ):
-                    logger.debug("Returning text from task status message")
-                    return get_parts_text(response.status.message.parts)
-                return None
-
-            artifacts_text = ""
-
-            for artifact in response.artifacts:
-                if artifact.name:
-                    artifacts_text += f"Artifact: {artifact.name}:\n"
-                artifacts_text += get_parts_text(artifact.parts)
-                artifacts_text += "\n"
-
-            return artifacts_text
-
-        return None
-
+    @abstractmethod
     async def _send_message_to_evaluated_agent(
         self,
         context_id: str,
@@ -548,6 +495,8 @@ class EvaluatorAgent:
     ) -> dict[str, str]:
         """
         Sends a message to the evaluated agent.
+        This method must be implemented by the subclass based
+        on the communication protocol.
         :param message: the text to send to the other agent.
         :param context_id: The context ID of the conversation.
             Each conversation has a unique context_id. All messages in the conversation
@@ -556,93 +505,7 @@ class EvaluatorAgent:
             - "response": the response string. If there is no response
                 from the other agent, the string is empty.
         """
-        try:
-            logger.info(
-                "🔗 Making A2A call to evaluated agent",
-                extra={
-                    "message": message[:100] + "..." if len(message) > 100 else message,
-                    "context_id": context_id,
-                    "agent_url": self._evaluated_agent_address,
-                },
-            )
-
-            if self._chat_update_callback:
-                self._chat_update_callback(
-                    {"role": "Rogue", "content": message},
-                )
-
-            if context_id not in self._context_id_to_chat_history:
-                self._context_id_to_chat_history[context_id] = ChatHistory()
-
-            self._context_id_to_chat_history[context_id].add_message(
-                ChatMessage(
-                    role="user",
-                    content=message,
-                ),
-            )
-
-            agent_client = await self._get_evaluated_agent_client()
-            response = await agent_client.send_message(
-                MessageSendParams(
-                    message=Message(
-                        contextId=context_id,
-                        messageId=uuid4().hex,
-                        role=Role.user,
-                        parts=[
-                            Part(
-                                root=TextPart(
-                                    text=message,
-                                ),
-                            ),
-                        ],
-                    ),
-                ),
-            )
-
-            if not response:
-                logger.debug("_send_message_to_evaluated_agent - no response")
-                return {"response": ""}
-
-            agent_response_text = (
-                self._get_text_from_response(response) or "Not a text response"
-            )
-            self._context_id_to_chat_history[context_id].add_message(
-                ChatMessage(
-                    role="assistant",
-                    content=agent_response_text,
-                ),
-            )
-
-            if self._chat_update_callback:
-                self._chat_update_callback(
-                    {"role": "Agent Under Test", "content": agent_response_text},
-                )
-
-            logger.info(
-                "✅ A2A call successful - received response from evaluated agent",
-                extra={
-                    "response_length": len(agent_response_text),
-                    "response_preview": (
-                        agent_response_text[:100] + "..."
-                        if len(agent_response_text) > 100
-                        else agent_response_text
-                    ),
-                    "context_id": context_id,
-                },
-            )
-            return {"response": response.model_dump_json()}
-        except Exception as e:
-            logger.exception(
-                "❌ A2A call failed - error sending message to evaluated agent",
-                extra={
-                    "message": message[:100] + "..." if len(message) > 100 else message,
-                    "context_id": context_id,
-                    "agent_url": self._evaluated_agent_address,
-                    "error": str(e),
-                    "error_type": type(e).__name__,
-                },
-            )
-            return {"response": "", "error": str(e)}
+        raise NotImplementedError("Subclasses must implement this method")
 
     @staticmethod
     def _get_conversation_context_id() -> str:
@@ -652,3 +515,42 @@ class EvaluatorAgent:
         """
         logger.debug("_get_conversation_context_id - enter")
         return uuid4().hex
+
+    def _add_message_to_chat_history(
+        self,
+        context_id: str,
+        role: str,
+        message: str,
+    ) -> None:
+        """
+        Adds a message to the chat history.
+        If a callback is provided, it will also call the callback with the message.
+        :param context_id: The context ID of the conversation.
+        :param role: The role of the message.
+        :param message: The message to add to the chat history.
+        """
+        if context_id not in self._context_id_to_chat_history:
+            self._context_id_to_chat_history[context_id] = ChatHistory()
+        self._context_id_to_chat_history[context_id].add_message(
+            ChatMessage(
+                role=role,
+                content=message,
+            ),
+        )
+
+        callback_role = "Rogue" if role == "user" else "Agent Under Test"
+        if self._chat_update_callback:
+            self._chat_update_callback(
+                {"role": callback_role, "content": message},
+            )
+
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> None:
+        pass
