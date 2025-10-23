@@ -4,8 +4,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea/v2"
 )
 
-// handleReportInput handles keyboard input for the report screen
-func (m Model) handleReportInput(msg tea.KeyMsg) (Model, tea.Cmd) {
+// HandleReportInput handles keyboard input for the report screen
+func HandleReportInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	if m.evalState == nil {

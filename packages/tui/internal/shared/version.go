@@ -1,4 +1,4 @@
-package tui
+package shared
 
 // Version will be set at build time via ldflags
 // Default to "dev" if not set during build

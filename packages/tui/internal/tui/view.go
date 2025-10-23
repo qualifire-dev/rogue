@@ -7,15 +7,6 @@ import (
 	"github.com/rogue/tui/internal/theme"
 )
 
-// ConfigField represents different configuration fields
-type ConfigField int
-
-const (
-	ConfigFieldServerURL ConfigField = iota
-	ConfigFieldTheme
-	ConfigFieldQualifire
-)
-
 // RenderConfiguration renders the configuration screen
 func (m Model) RenderConfiguration() string {
 	t := theme.CurrentTheme()

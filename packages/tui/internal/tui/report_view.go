@@ -5,8 +5,8 @@ import (
 	"github.com/rogue/tui/internal/theme"
 )
 
-// renderReport renders the evaluation report screen with summary using MessageHistoryView for scrollable content
-func (m Model) renderReport() string {
+// RenderReport renders the evaluation report screen with summary using MessageHistoryView for scrollable content
+func (m Model) RenderReport() string {
 	t := theme.CurrentTheme()
 
 	if m.evalState == nil {

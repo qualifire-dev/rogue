@@ -7,8 +7,8 @@ import (
 	"github.com/rogue/tui/internal/theme"
 )
 
-// renderNewEvaluation renders the new evaluation form screen
-func (m Model) renderNewEvaluation() string {
+// RenderNewEvaluation renders the new evaluation form screen
+func (m Model) RenderNewEvaluation() string {
 	t := theme.CurrentTheme()
 	if m.evalState == nil {
 		return lipgloss.NewStyle().

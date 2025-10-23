@@ -1,9 +1,10 @@
-package components
+package tui
 
 import (
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss/v2"
+	"github.com/rogue/tui/internal/components"
 	"github.com/rogue/tui/internal/styles"
 	"github.com/rogue/tui/internal/theme"
 )
@@ -34,21 +35,21 @@ type ScenarioEditor struct {
 	visibleItems int
 
 	// Business context
-	bizViewport *Viewport
-	bizTextArea *TextArea
+	bizViewport *components.Viewport
+	bizTextArea *components.TextArea
 
 	// Scenario editing
-	scenarioTextArea        *TextArea
-	expectedOutcomeTextArea *TextArea
+	scenarioTextArea        *components.TextArea
+	expectedOutcomeTextArea *components.TextArea
 
 	// Interview mode
-	interviewMode               bool      // true when in interview mode
-	interviewSessionID          string    // current interview session
-	interviewChatView           *ChatView // reusable chat component
-	lastUserMessage             string    // track last user message for display
-	awaitingBusinessCtxApproval bool      // waiting for user to approve/edit business context
-	proposedBusinessContext     string    // the AI-generated business context for review
-	approveButtonFocused        bool      // true when approve button is focused instead of input
+	interviewMode               bool                 // true when in interview mode
+	interviewSessionID          string               // current interview session
+	interviewChatView           *components.ChatView // reusable chat component
+	lastUserMessage             string               // track last user message for display
+	awaitingBusinessCtxApproval bool                 // waiting for user to approve/edit business context
+	proposedBusinessContext     string               // the AI-generated business context for review
+	approveButtonFocused        bool                 // true when approve button is focused instead of input
 
 	// Configuration (set by parent app) - exported so app.go can access
 	ServerURL       string // Rogue server URL
@@ -77,19 +78,19 @@ func NewScenarioEditor() ScenarioEditor {
 	}
 
 	// Initialize business context components
-	vp := NewViewport(9999, 80, 10) // Use unique ID
+	vp := components.NewViewport(9999, 80, 10) // Use unique ID
 	editor.bizViewport = &vp
 
-	ta := NewTextArea(9998, 80, 10, theme.CurrentTheme()) // Use unique ID
-	ta.ApplyTheme(theme.CurrentTheme())                   // Apply current theme
+	ta := components.NewTextArea(9998, 80, 10, theme.CurrentTheme()) // Use unique ID
+	ta.ApplyTheme(theme.CurrentTheme())                              // Apply current theme
 	editor.bizTextArea = &ta
 
 	// Initialize scenario editing TextAreas
-	scenTA := NewTextArea(9997, 80, 8, theme.CurrentTheme()) // Scenario text area
+	scenTA := components.NewTextArea(9997, 80, 8, theme.CurrentTheme()) // Scenario text area
 	scenTA.ApplyTheme(theme.CurrentTheme())
 	editor.scenarioTextArea = &scenTA
 
-	outTA := NewTextArea(9996, 80, 8, theme.CurrentTheme()) // Expected outcome text area
+	outTA := components.NewTextArea(9996, 80, 8, theme.CurrentTheme()) // Expected outcome text area
 	outTA.ApplyTheme(theme.CurrentTheme())
 	editor.expectedOutcomeTextArea = &outTA
 
@@ -196,7 +197,7 @@ func (e *ScenarioEditor) calculateVisibleItems() {
 // Update handles input for the scenario editor
 func (e ScenarioEditor) Update(msg tea.Msg) (ScenarioEditor, tea.Cmd) {
 	switch m := msg.(type) {
-	case SpinnerTickMsg:
+	case components.SpinnerTickMsg:
 		// Update interview chat view spinner
 		if e.interviewChatView != nil {
 			cmd := e.interviewChatView.Update(msg)
@@ -211,7 +212,7 @@ func (e ScenarioEditor) Update(msg tea.Msg) (ScenarioEditor, tea.Cmd) {
 		return e.handleInterviewResponse(m)
 	case ScenariosGeneratedMsg:
 		return e.handleScenariosGenerated(m)
-	case DialogClosedMsg:
+	case components.DialogClosedMsg:
 		// Handle dialog results (e.g., from interview cancellation)
 		if e.mode == InterviewMode && m.Action == "ok" {
 			// User confirmed they want to exit interview - return to list mode

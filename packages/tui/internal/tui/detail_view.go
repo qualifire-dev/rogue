@@ -7,8 +7,8 @@ import (
 	"github.com/rogue/tui/internal/theme"
 )
 
-// renderEvaluationDetail renders the evaluation detail/running screen
-func (m Model) renderEvaluationDetail() string {
+// RenderEvaluationDetail renders the evaluation detail/running screen
+func (m Model) RenderEvaluationDetail() string {
 	t := theme.CurrentTheme()
 	if m.evalState == nil {
 		return lipgloss.NewStyle().

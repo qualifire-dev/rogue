@@ -41,11 +41,6 @@ type AgentConfig struct {
 	ParallelRuns              int      `json:"parallel_runs"`
 }
 
-type EvalScenario struct {
-	Scenario        string       `json:"scenario"`
-	ScenarioType    ScenarioType `json:"scenario_type"`
-	ExpectedOutcome string       `json:"expected_outcome,omitempty"`
-}
 
 type EvaluationRequest struct {
 	AgentConfig    AgentConfig    `json:"agent_config"`
@@ -69,16 +64,6 @@ type EvaluationJob struct {
 	UpdatedAt string  `json:"updated_at"`
 }
 
-type EvaluationEvent struct {
-	Type     string  `json:"type"`
-	Status   string  `json:"status,omitempty"`
-	Progress float64 `json:"progress,omitempty"`
-	Role     string  `json:"role,omitempty"`
-	Content  string  `json:"content,omitempty"`
-	Message  string  `json:"message,omitempty"`
-	JobID    string  `json:"job_id,omitempty"`
-	Data     any     `json:"data,omitempty"`
-}
 
 type WebSocketMessage struct {
 	Type  string `json:"type"`
@@ -93,16 +78,6 @@ type RogueSDK struct {
 	ws         *websocket.Conn
 }
 
-type StructuredSummary struct {
-	OverallSummary    string   `json:"overall_summary"`
-	KeyFindings       []string `json:"key_findings"`
-	Recommendations   []string `json:"recommendations"`
-	DetailedBreakdown []struct {
-		Scenario string `json:"scenario"`
-		Status   string `json:"status"`
-		Outcome  string `json:"outcome"`
-	} `json:"detailed_breakdown"`
-}
 type SummaryResp struct {
 	Summary StructuredSummary `json:"summary"`
 	Message string            `json:"message"`

@@ -6,6 +6,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea/v2"
 
 	"github.com/rogue/tui/internal/components"
+	"github.com/rogue/tui/internal/shared"
 	"github.com/rogue/tui/internal/theme"
 )
 
@@ -33,9 +34,9 @@ func (a *App) Run() error {
 			Theme:     "aura",
 			APIKeys:   make(map[string]string),
 		},
-		version:        Version,
+		version:        shared.Version,
 		commandInput:   components.NewCommandInput(),
-		scenarioEditor: components.NewScenarioEditor(),
+		scenarioEditor: NewScenarioEditor(),
 
 		// Initialize spinners
 		healthSpinner:  components.NewSpinner(1),
@@ -117,25 +118,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case components.DialogClosedMsg:
 		return m.handleDialogClosedMsg(msg)
 
-	case components.StartInterviewMsg:
+	case StartInterviewMsg:
 		return m.handleStartInterviewMsg(msg)
 
-	case components.SendInterviewMessageMsg:
+	case SendInterviewMessageMsg:
 		return m.handleSendInterviewMessageMsg(msg)
 
-	case components.InterviewStartedMsg:
+	case InterviewStartedMsg:
 		return m.handleInterviewStartedMsg(msg)
 
-	case components.InterviewResponseMsg:
+	case InterviewResponseMsg:
 		return m.handleInterviewResponseMsg(msg)
 
-	case components.GenerateScenariosMsg:
+	case GenerateScenariosMsg:
 		return m.handleGenerateScenariosMsg(msg)
 
-	case components.ScenariosGeneratedMsg:
+	case ScenariosGeneratedMsg:
 		return m.handleScenariosGeneratedMsg(msg)
 
-	case components.ScenarioEditorMsg:
+	case ScenarioEditorMsg:
 		return m.handleScenarioEditorMsg(msg)
 
 	case tea.KeyMsg:
@@ -153,17 +154,17 @@ func (m Model) View() string {
 	case DashboardScreen:
 		screen = m.RenderMainScreen(t)
 	case NewEvaluationScreen:
-		screen = m.renderNewEvaluation()
+		screen = m.RenderNewEvaluation()
 	case EvaluationDetailScreen:
-		screen = m.renderEvaluationDetail()
+		screen = m.RenderEvaluationDetail()
 	case ReportScreen:
-		screen = m.renderReport()
+		screen = m.RenderReport()
 	case InterviewScreen:
 		screen = m.RenderInterview()
 	case ConfigurationScreen:
 		screen = m.RenderConfiguration()
 	case ScenariosScreen:
-		screen = m.renderScenarios()
+		screen = m.scenarioEditor.View()
 	case HelpScreen:
 		screen = m.RenderHelp()
 	default:

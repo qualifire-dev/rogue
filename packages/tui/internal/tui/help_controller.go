@@ -4,8 +4,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea/v2"
 )
 
-// handleHelpInput handles keyboard input for the help screen
-func (m Model) handleHelpInput(msg tea.KeyMsg) (Model, tea.Cmd) {
+// HandleHelpInput handles keyboard input for the help screen
+func HandleHelpInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg.String() {

@@ -6,7 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/glamour"
-	"github.com/rogue/tui/internal/components"
+	"github.com/rogue/tui/internal/shared"
 	"github.com/rogue/tui/internal/theme"
 )
 
@@ -22,13 +22,13 @@ func (m *Model) startInterviewCmd() tea.Cmd {
 
 		if interviewModel == "" {
 			// Fall back to judge model if not set
-			return components.InterviewStartedMsg{
+			return InterviewStartedMsg{
 				Error: fmt.Errorf("AI model not set, please use /models to set an AI model"),
 			}
 		}
 
 		if interviewAPIKey == "" {
-			return components.InterviewStartedMsg{
+			return InterviewStartedMsg{
 				Error: fmt.Errorf("AI API key not set, please use /models to set an AI API key"),
 			}
 		}
@@ -36,12 +36,12 @@ func (m *Model) startInterviewCmd() tea.Cmd {
 		// Start interview
 		resp, err := sdk.StartInterview(ctx, interviewModel, interviewAPIKey)
 		if err != nil {
-			return components.InterviewStartedMsg{
+			return InterviewStartedMsg{
 				Error: err,
 			}
 		}
 
-		return components.InterviewStartedMsg{
+		return InterviewStartedMsg{
 			SessionID:      resp.SessionID,
 			InitialMessage: resp.InitialMessage,
 			Error:          nil,
@@ -58,12 +58,12 @@ func (m *Model) sendInterviewMessageCmd(sessionID, message string) tea.Cmd {
 		// Send message
 		resp, err := sdk.SendInterviewMessage(ctx, sessionID, message)
 		if err != nil {
-			return components.InterviewResponseMsg{
+			return InterviewResponseMsg{
 				Error: err,
 			}
 		}
 
-		return components.InterviewResponseMsg{
+		return InterviewResponseMsg{
 			Response:     resp.Response,
 			IsComplete:   resp.IsComplete,
 			MessageCount: resp.MessageCount,
@@ -96,15 +96,15 @@ func (m *Model) generateScenariosCmd(businessContext string) tea.Cmd {
 
 		resp, err := sdk.GenerateScenarios(ctx, request)
 		if err != nil {
-			return components.ScenariosGeneratedMsg{
+			return ScenariosGeneratedMsg{
 				Error: err,
 			}
 		}
 
 		// Convert SDK scenario data to component scenario data
-		var scenarios []components.ScenarioData
+		var scenarios []ScenarioData
 		for _, s := range resp.Scenarios.Scenarios {
-			scenarios = append(scenarios, components.ScenarioData{
+			scenarios = append(scenarios, ScenarioData{
 				Scenario:          s.Scenario,
 				ScenarioType:      s.ScenarioType,
 				Dataset:           s.Dataset,
@@ -113,7 +113,7 @@ func (m *Model) generateScenariosCmd(businessContext string) tea.Cmd {
 			})
 		}
 
-		return components.ScenariosGeneratedMsg{
+		return ScenariosGeneratedMsg{
 			Scenarios:       scenarios,
 			BusinessContext: businessContext,
 			Error:           nil,
@@ -165,7 +165,7 @@ func (m *Model) getMarkdownRenderer() *glamour.TermRenderer {
 		m.rendererCachedTheme != currentThemeName
 
 	if needsRecreate {
-		m.markdownRenderer = GetMarkdownRenderer(width, t.Background())
+		m.markdownRenderer = shared.GetMarkdownRenderer(width, t.Background())
 		m.rendererCachedWidth = width
 		m.rendererCachedTheme = currentThemeName
 	}

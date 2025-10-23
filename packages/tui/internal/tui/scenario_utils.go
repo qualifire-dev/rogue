@@ -13,13 +13,6 @@ import (
 // Scenario generation API types matching server's rogue_sdk.types
 
 // ScenarioData represents a single scenario aligned with Python schema
-type ScenarioData struct {
-	Scenario          string  `json:"scenario"`
-	ScenarioType      string  `json:"scenario_type"`
-	Dataset           *string `json:"dataset"`
-	ExpectedOutcome   *string `json:"expected_outcome"`
-	DatasetSampleSize *int    `json:"dataset_sample_size"`
-}
 
 // ScenariosList represents the collection of scenarios with business context
 type ScenariosList struct {

@@ -60,7 +60,7 @@ type Model struct {
 	dialog            *components.Dialog
 	dialogStack       []components.Dialog
 	llmDialog         *components.LLMConfigDialog
-	scenarioEditor    components.ScenarioEditor
+	scenarioEditor    ScenarioEditor
 	detailedBreakdown []table.Row
 
 	// Spinners for loading states
@@ -115,6 +115,15 @@ type Config struct {
 	DontShowQualifirePrompt bool              `toml:"dont_show_qualifire_prompt"`
 }
 
+// ConfigField represents different configuration fields
+type ConfigField int
+
+const (
+	ConfigFieldServerURL ConfigField = iota
+	ConfigFieldTheme
+	ConfigFieldQualifire
+)
+
 // ConfigState represents the configuration screen state
 type ConfigState struct {
 	ActiveField      ConfigField
@@ -124,4 +133,63 @@ type ConfigState struct {
 	IsEditing        bool
 	HasChanges       bool
 	QualifireEnabled bool
+}
+
+// EvalScenario represents a single evaluation scenario
+type EvalScenario struct {
+	Scenario        string `json:"scenario"`
+	ScenarioType    string `json:"scenario_type"`
+	ExpectedOutcome string `json:"expected_outcome,omitempty"`
+}
+
+// EvaluationEvent represents an event during evaluation
+type EvaluationEvent struct {
+	Type     string  `json:"type"`
+	Status   string  `json:"status,omitempty"`
+	Progress float64 `json:"progress,omitempty"`
+	Role     string  `json:"role,omitempty"`
+	Content  string  `json:"content,omitempty"`
+	Message  string  `json:"message,omitempty"`
+	JobID    string  `json:"job_id,omitempty"`
+	Data     any     `json:"data,omitempty"`
+}
+
+// StructuredSummary represents a structured evaluation summary
+type StructuredSummary struct {
+	OverallSummary    string   `json:"overall_summary"`
+	KeyFindings       []string `json:"key_findings"`
+	Recommendations   []string `json:"recommendations"`
+	DetailedBreakdown []struct {
+		Scenario string `json:"scenario"`
+		Status   string `json:"status"`
+		Outcome  string `json:"outcome"`
+	} `json:"detailed_breakdown"`
+}
+
+// EvaluationViewState represents the state for evaluation screens
+type EvaluationViewState struct {
+	ServerURL    string // Used from config, not editable in form
+	AgentURL     string
+	JudgeModel   string
+	ParallelRuns int
+	DeepTest     bool
+	Scenarios    []EvalScenario
+
+	// Runtime
+	Running  bool
+	Progress float64
+	Status   string
+	Events   []EvaluationEvent
+	cancelFn func() error
+
+	// Report generation
+	Summary           string // Generated markdown summary
+	JobID             string // For tracking the evaluation job
+	Completed         bool   // Whether evaluation finished successfully
+	SummaryGenerated  bool   // Whether summary generation was already attempted
+	StructuredSummary StructuredSummary
+
+	// Editing state for New Evaluation
+	currentField int // 0: AgentURL, 1: JudgeModel, 2: DeepTest, 3: StartButton
+	cursorPos    int // rune index in current text field
 }

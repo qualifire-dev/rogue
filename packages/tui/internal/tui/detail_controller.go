@@ -5,8 +5,8 @@ import (
 	"github.com/rogue/tui/internal/components"
 )
 
-// handleEvalDetailInput handles keyboard input for the evaluation detail screen
-func (m Model) handleEvalDetailInput(msg tea.KeyMsg) (Model, tea.Cmd) {
+// HandleEvalDetailInput handles keyboard input for the evaluation detail screen
+func HandleEvalDetailInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	if m.evalState == nil {

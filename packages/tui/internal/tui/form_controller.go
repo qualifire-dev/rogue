@@ -7,8 +7,8 @@ import (
 	"github.com/rogue/tui/internal/components"
 )
 
-// handleEvalFormInput handles keyboard input for the new evaluation form
-func (m Model) handleEvalFormInput(msg tea.KeyMsg) (Model, tea.Cmd) {
+// HandleEvalFormInput handles keyboard input for the new evaluation form
+func HandleEvalFormInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 	if m.evalState == nil {
 		return m, nil
 	}

@@ -1,4 +1,4 @@
-package components
+package tui
 
 import (
 	"fmt"
@@ -6,6 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"
+	"github.com/rogue/tui/internal/components"
 	"github.com/rogue/tui/internal/theme"
 )
 
@@ -62,9 +63,9 @@ func (e ScenarioEditor) handleListMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 
 	case "/":
 		// Open a dialog to enter search query (single OK button, no Cancel)
-		dialog := NewInputDialog("Search Scenarios", "Type to filter scenarios:", e.searchQuery)
-		dialog.Buttons = []DialogButton{{Label: "OK", Action: "ok", Style: PrimaryButton}}
-		return e, func() tea.Msg { return DialogOpenMsg{Dialog: dialog} }
+		dialog := components.NewInputDialog("Search Scenarios", "Type to filter scenarios:", e.searchQuery)
+		dialog.Buttons = []components.DialogButton{{Label: "OK", Action: "ok", Style: components.PrimaryButton}}
+		return e, func() tea.Msg { return components.DialogOpenMsg{Dialog: dialog} }
 
 	case "enter":
 		if e.bizContextSelected {
@@ -140,8 +141,8 @@ func (e ScenarioEditor) handleListMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 		if len(name) > 60 {
 			name = name[:57] + "..."
 		}
-		dialog := ShowDeleteConfirmationDialog(name)
-		return e, func() tea.Msg { return DialogOpenMsg{Dialog: dialog} }
+		dialog := components.ShowDeleteConfirmationDialog(name)
+		return e, func() tea.Msg { return components.DialogOpenMsg{Dialog: dialog} }
 
 	case "s", "ctrl+s":
 		// Save all scenarios to file
@@ -160,7 +161,7 @@ func (e ScenarioEditor) handleListMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 
 		// Initialize ChatView if not already done
 		if e.interviewChatView == nil {
-			chatView := NewChatView(9990, e.width, e.height, theme.CurrentTheme())
+			chatView := components.NewChatView(9990, e.width, e.height, theme.CurrentTheme())
 			e.interviewChatView = chatView
 
 			// Apply markdown renderer if available

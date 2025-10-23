@@ -1,4 +1,4 @@
-package components
+package tui
 
 // ScenarioData represents a single scenario aligned with Python schema
 type ScenarioData struct {
@@ -33,10 +33,6 @@ type ScenarioEditorMsg struct {
 }
 
 // InterviewMessage represents a message in the interview conversation
-type InterviewMessage struct {
-	Role    string
-	Content string
-}
 
 // Interview-related message types
 type StartInterviewMsg struct{}

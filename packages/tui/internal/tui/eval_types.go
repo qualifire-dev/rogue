@@ -7,33 +7,7 @@ import (
 	"path/filepath"
 )
 
-// Minimal state for eval screens
-type EvaluationViewState struct {
-	ServerURL    string // Used from config, not editable in form
-	AgentURL     string
-	JudgeModel   string
-	ParallelRuns int
-	DeepTest     bool
-	Scenarios    []EvalScenario
-
-	// Runtime
-	Running  bool
-	Progress float64
-	Status   string
-	Events   []EvaluationEvent
-	cancelFn func() error
-
-	// Report generation
-	Summary           string // Generated markdown summary
-	JobID             string // For tracking the evaluation job
-	Completed         bool   // Whether evaluation finished successfully
-	SummaryGenerated  bool   // Whether summary generation was already attempted
-	StructuredSummary StructuredSummary
-
-	// Editing state for New Evaluation
-	currentField int // 0: AgentURL, 1: JudgeModel, 2: DeepTest, 3: StartButton
-	cursorPos    int // rune index in current text field
-}
+// Note: EvaluationViewState is now defined in tui package to avoid import cycles
 
 // loadScenariosFromWorkdir reads .rogue/scenarios.json upward from CWD
 func loadScenariosFromWorkdir() []EvalScenario {
@@ -55,7 +29,7 @@ func loadScenariosFromWorkdir() []EvalScenario {
 					if s.Scenario != "" {
 						out = append(out, EvalScenario{
 							Scenario:        s.Scenario,
-							ScenarioType:    ScenarioType(s.ScenarioType),
+							ScenarioType:    s.ScenarioType,
 							ExpectedOutcome: s.ExpectedOutcome,
 						})
 					}

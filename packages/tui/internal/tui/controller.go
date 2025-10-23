@@ -6,8 +6,8 @@ import (
 	"github.com/rogue/tui/internal/theme"
 )
 
-// handleConfigEnter handles Enter key in configuration screen
-func (m Model) handleConfigEnter() (Model, tea.Cmd) {
+// HandleConfigEnter handles Enter key in configuration screen
+func HandleConfigEnter(m Model) (Model, tea.Cmd) {
 	if m.configState == nil {
 		return m, nil
 	}
@@ -57,8 +57,8 @@ func (m Model) handleConfigEnter() (Model, tea.Cmd) {
 	}
 }
 
-// handleConfigInput handles keyboard input for the configuration screen
-func (m Model) handleConfigInput(msg tea.KeyMsg) (Model, tea.Cmd) {
+// HandleConfigInput handles keyboard input for the configuration screen
+func HandleConfigInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 	if m.configState == nil {
 		return m, nil
 	}

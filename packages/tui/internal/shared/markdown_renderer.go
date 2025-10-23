@@ -1,4 +1,4 @@
-package tui
+package shared
 
 import (
 	"github.com/charmbracelet/glamour"
