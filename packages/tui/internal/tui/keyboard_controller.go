@@ -3,6 +3,7 @@ package tui
 import (
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/rogue/tui/internal/components"
+	"github.com/rogue/tui/internal/screens/help"
 )
 
 // handleKeyMsg is the main keyboard input router
@@ -312,7 +313,9 @@ func (m Model) routeKeyToScreen(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return HandleReportInput(m, msg)
 
 	case HelpScreen:
-		return HandleHelpInput(m, msg)
+		updatedViewport, cmd := help.HandleInput(&m.helpViewport, msg)
+		m.helpViewport = *updatedViewport
+		return m, cmd
 
 	case DashboardScreen:
 		// Let the command input handle non-shortcut keys if it's focused

@@ -1,20 +1,21 @@
-package tui
+package help
 
 import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss/v2"
+	"github.com/rogue/tui/internal/components"
 	"github.com/rogue/tui/internal/theme"
 )
 
-// RenderHelp renders the help screen with viewport for scrollable content
-func (m Model) RenderHelp() string {
+// Render renders the help screen with viewport for scrollable content
+func Render(width, height int, viewport *components.Viewport) string {
 	t := theme.CurrentTheme()
 
 	// Main container style with full width and height background
 	mainStyle := lipgloss.NewStyle().
-		Width(m.width).
-		Height(m.height - 1).
+		Width(width).
+		Height(height - 1).
 		Background(t.Background())
 
 	// Title style
@@ -22,7 +23,7 @@ func (m Model) RenderHelp() string {
 		Foreground(t.Primary()).
 		Background(t.Background()).
 		Bold(true).
-		Width(m.width).
+		Width(width).
 		Align(lipgloss.Center).
 		Padding(1, 0)
 
@@ -115,11 +116,10 @@ Key Features:
 	helpContent := strings.Join(sections, "\n")
 
 	// Calculate viewport dimensions
-	viewportWidth := m.width - 8
-	viewportHeight := m.height - 6
+	viewportWidth := width - 8
+	viewportHeight := height - 6
 
-	// Create a temporary copy of the viewport to avoid modifying the original
-	viewport := m.helpViewport
+	// Update the viewport size and content
 	viewport.SetSize(viewportWidth-4, viewportHeight-4)
 	viewport.SetContent(helpContent)
 
@@ -143,7 +143,7 @@ Key Features:
 	helpStyle := lipgloss.NewStyle().
 		Foreground(t.TextMuted()).
 		Background(t.Background()).
-		Width(m.width).
+		Width(width).
 		Align(lipgloss.Center).
 		Padding(0, 1)
 
@@ -159,13 +159,13 @@ Key Features:
 
 	// Center the viewport in the available space
 	contentArea := lipgloss.NewStyle().
-		Width(m.width).
+		Width(width).
 		Height(viewportHeight).
 		Background(t.Background())
 
 	centeredViewport := contentArea.Render(
 		lipgloss.Place(
-			m.width,
+			width,
 			viewportHeight,
 			lipgloss.Center,
 			lipgloss.Top,

@@ -6,6 +6,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea/v2"
 
 	"github.com/rogue/tui/internal/components"
+	"github.com/rogue/tui/internal/screens/help"
 	"github.com/rogue/tui/internal/shared"
 	"github.com/rogue/tui/internal/theme"
 )
@@ -166,7 +167,7 @@ func (m Model) View() string {
 	case ScenariosScreen:
 		screen = m.scenarioEditor.View()
 	case HelpScreen:
-		screen = m.RenderHelp()
+		screen = help.Render(m.width, m.height, &m.helpViewport)
 	default:
 		screen = m.RenderMainScreen(t)
 	}

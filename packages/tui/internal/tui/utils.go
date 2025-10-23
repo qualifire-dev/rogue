@@ -41,7 +41,6 @@ type AgentConfig struct {
 	ParallelRuns              int      `json:"parallel_runs"`
 }
 
-
 type EvaluationRequest struct {
 	AgentConfig    AgentConfig    `json:"agent_config"`
 	Scenarios      []EvalScenario `json:"scenarios"`
@@ -63,7 +62,6 @@ type EvaluationJob struct {
 	CreatedAt string  `json:"created_at"`
 	UpdatedAt string  `json:"updated_at"`
 }
-
 
 type WebSocketMessage struct {
 	Type  string `json:"type"`
