@@ -366,6 +366,7 @@ class BaseEvaluatorAgent(ABC):
         evaluation_passed: bool,
         reason: str,
         scenario_type: Optional[str],
+        **kwargs,
     ) -> None:
         """
         Logs the evaluation of the given scenario and test case.
