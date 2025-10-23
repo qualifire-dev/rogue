@@ -61,13 +61,48 @@ func generateMarkdownStyleConfig(backgroundColor compat.AdaptiveColor) ansi.Styl
 				},
 			},
 		},
-		Heading: darkTheme.Heading,
-		H1:      darkTheme.H1,
-		H2:      darkTheme.H2,
-		H3:      darkTheme.H3,
-		H4:      darkTheme.H4,
-		H5:      darkTheme.H5,
-		H6:      darkTheme.H6,
+		Heading: ansi.StyleBlock{
+			StylePrimitive: ansi.StylePrimitive{
+				Bold:  boolPtr(true),
+				Color: AdaptiveColorToString(t.MarkdownHeading()),
+			},
+		},
+		H1: ansi.StyleBlock{
+			StylePrimitive: ansi.StylePrimitive{
+				Bold:  boolPtr(true),
+				Color: AdaptiveColorToString(t.MarkdownHeading()),
+			},
+		},
+		H2: ansi.StyleBlock{
+			StylePrimitive: ansi.StylePrimitive{
+				Bold:  boolPtr(true),
+				Color: AdaptiveColorToString(t.MarkdownHeading()),
+			},
+		},
+		H3: ansi.StyleBlock{
+			StylePrimitive: ansi.StylePrimitive{
+				Bold:  boolPtr(true),
+				Color: AdaptiveColorToString(t.MarkdownHeading()),
+			},
+		},
+		H4: ansi.StyleBlock{
+			StylePrimitive: ansi.StylePrimitive{
+				Bold:  boolPtr(false),
+				Color: AdaptiveColorToString(t.MarkdownHeading()),
+			},
+		},
+		H5: ansi.StyleBlock{
+			StylePrimitive: ansi.StylePrimitive{
+				Bold:  boolPtr(false),
+				Color: AdaptiveColorToString(t.MarkdownHeading()),
+			},
+		},
+		H6: ansi.StyleBlock{
+			StylePrimitive: ansi.StylePrimitive{
+				Bold:  boolPtr(false),
+				Color: AdaptiveColorToString(t.MarkdownHeading()),
+			},
+		},
 		Strikethrough: ansi.StylePrimitive{
 			CrossedOut: boolPtr(true),
 			Color:      AdaptiveColorToString(t.TextMuted()),
