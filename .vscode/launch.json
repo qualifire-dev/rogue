@@ -64,6 +64,14 @@
             "envFile": "${workspaceFolder}/.env"
         },
         {
+            "name": "Rogue TUI",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/packages/tui/cmd/rogue/main.go",
+            "console": "integratedTerminal"
+        },
+        {
             "name": "Rogue AIO",
             "type": "debugpy",
             "request": "launch",

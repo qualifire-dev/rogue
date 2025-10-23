@@ -7,14 +7,34 @@ import (
 	"path/filepath"
 )
 
+type Protocol string
+
+const (
+	ProtocolA2A Protocol = "a2a"
+	ProtocolMCP Protocol = "mcp"
+)
+
+type Transport string
+
+const (
+	// mcp transports
+	TransportSSE            Transport = "sse"
+	TransportStreamableHTTP Transport = "streamable_http"
+
+	// a2a transports
+	TransportHTTP Transport = "http"
+)
+
 // Minimal state for eval screens
 type EvaluationViewState struct {
-	ServerURL    string // Used from config, not editable in form
-	AgentURL     string
-	JudgeModel   string
-	ParallelRuns int
-	DeepTest     bool
-	Scenarios    []EvalScenario
+	ServerURL      string // Used from config, not editable in form
+	AgentURL       string
+	AgentProtocol  Protocol
+	AgentTransport Transport
+	JudgeModel     string
+	ParallelRuns   int
+	DeepTest       bool
+	Scenarios      []EvalScenario
 
 	// Runtime
 	Running  bool
@@ -31,7 +51,7 @@ type EvaluationViewState struct {
 	StructuredSummary StructuredSummary
 
 	// Editing state for New Evaluation
-	currentField int // 0: AgentURL, 1: JudgeModel, 2: DeepTest, 3: StartButton
+	currentField int // 0: AgentURL, 1: Protocol, 2: Transport, 3: JudgeModel, 4: DeepTest, 5: StartButton
 	cursorPos    int // rune index in current text field
 }
 
@@ -74,7 +94,7 @@ func loadScenariosFromWorkdir() []EvalScenario {
 
 // startEval kicks off evaluation and consumes events into state
 func (m *Model) startEval(ctx context.Context, st *EvaluationViewState) {
-	ch, cancel, err := m.StartEvaluation(ctx, st.ServerURL, st.AgentURL, st.Scenarios, st.JudgeModel, st.ParallelRuns, st.DeepTest)
+	ch, cancel, err := m.StartEvaluation(ctx, st.ServerURL, st.AgentURL, st.AgentProtocol, st.AgentTransport, st.Scenarios, st.JudgeModel, st.ParallelRuns, st.DeepTest)
 	if err != nil {
 		st.Running = false
 		st.Status = "error"
@@ -122,4 +142,82 @@ func (m *Model) triggerSummaryGeneration() {
 
 	// Start spinner for automatic summary generation
 	m.summarySpinner.SetActive(true)
+}
+
+// getAllProtocols returns all available protocol options
+func getAllProtocols() []Protocol {
+	return []Protocol{ProtocolA2A, ProtocolMCP}
+}
+
+// getTransportsForProtocol returns valid transport options for a given protocol
+func getTransportsForProtocol(protocol Protocol) []Transport {
+	switch protocol {
+	case ProtocolMCP:
+		return []Transport{TransportStreamableHTTP, TransportSSE}
+	case ProtocolA2A:
+		return []Transport{TransportHTTP}
+	default:
+		return []Transport{}
+	}
+}
+
+// cycleProtocol cycles to the next protocol option
+func (st *EvaluationViewState) cycleProtocol(reverse bool) {
+	protocols := getAllProtocols()
+	currentIdx := -1
+	for i, p := range protocols {
+		if p == st.AgentProtocol {
+			currentIdx = i
+			break
+		}
+	}
+
+	if reverse {
+		currentIdx--
+		if currentIdx < 0 {
+			currentIdx = len(protocols) - 1
+		}
+	} else {
+		currentIdx++
+		if currentIdx >= len(protocols) {
+			currentIdx = 0
+		}
+	}
+
+	st.AgentProtocol = protocols[currentIdx]
+	// Reset transport to first valid option for new protocol
+	validTransports := getTransportsForProtocol(st.AgentProtocol)
+	if len(validTransports) > 0 {
+		st.AgentTransport = validTransports[0]
+	}
+}
+
+// cycleTransport cycles to the next transport option for the current protocol
+func (st *EvaluationViewState) cycleTransport(reverse bool) {
+	transports := getTransportsForProtocol(st.AgentProtocol)
+	if len(transports) == 0 {
+		return
+	}
+
+	currentIdx := -1
+	for i, t := range transports {
+		if t == st.AgentTransport {
+			currentIdx = i
+			break
+		}
+	}
+
+	if reverse {
+		currentIdx--
+		if currentIdx < 0 {
+			currentIdx = len(transports) - 1
+		}
+	} else {
+		currentIdx++
+		if currentIdx >= len(transports) {
+			currentIdx = 0
+		}
+	}
+
+	st.AgentTransport = transports[currentIdx]
 }
