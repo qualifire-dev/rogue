@@ -45,7 +45,7 @@ export class QualifireClient {
 
     const apiKey = request.qualifireApiKey;
     const baseUrl = request.qualifireUrl ?? "https://api.qualifire.com";
-    const endpoint = `${baseUrl}/api/evaluation/evaluate`;
+    const endpoint = `${baseUrl}/api/v1/evaluations`;
 
     if (!apiKey) {
       throw new Error("qualifireApiKey is required but was undefined");
