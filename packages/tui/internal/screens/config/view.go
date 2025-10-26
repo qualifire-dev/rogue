@@ -1,4 +1,4 @@
-package tui
+package config
 
 import (
 	"strings"
@@ -7,8 +7,8 @@ import (
 	"github.com/rogue/tui/internal/theme"
 )
 
-// RenderConfiguration renders the configuration screen
-func (m Model) RenderConfiguration() string {
+// Render renders the configuration screen
+func Render(width, height int, cfg *Config, configState *ConfigState) string {
 	t := theme.CurrentTheme()
 
 	// Main container style
@@ -17,8 +17,8 @@ func (m Model) RenderConfiguration() string {
 		BorderForeground(t.Border()).
 		BorderBackground(t.BackgroundPanel()).
 		Padding(1, 2).
-		Width(m.width - 4).
-		Height(m.height - 1).
+		Width(width - 4).
+		Height(height - 1).
 		Background(t.BackgroundPanel())
 
 	// Title style
@@ -27,7 +27,7 @@ func (m Model) RenderConfiguration() string {
 		Background(t.BackgroundPanel()).
 		Bold(true).
 		Align(lipgloss.Center).
-		Width(m.width - 8)
+		Width(width - 8)
 
 	// Section header style
 	sectionHeaderStyle := lipgloss.NewStyle().
@@ -75,7 +75,7 @@ func (m Model) RenderConfiguration() string {
 		Background(t.BackgroundPanel()).
 		Align(lipgloss.Center).
 		MarginTop(2).
-		Width(m.width - 8)
+		Width(width - 8)
 
 	// Build content sections
 	var sections []string
@@ -88,9 +88,9 @@ func (m Model) RenderConfiguration() string {
 
 	// Server URL field
 	var serverURLDisplay string
-	if m.configState != nil && m.configState.ActiveField == ConfigFieldServerURL {
+	if configState != nil && configState.ActiveField == ConfigFieldServerURL {
 		// Show editable field with cursor (similar to textarea approach)
-		urlText := m.configState.ServerURL
+		urlText := configState.ServerURL
 
 		// Define text style for normal characters
 		textStyle := lipgloss.NewStyle().
@@ -98,19 +98,19 @@ func (m Model) RenderConfiguration() string {
 			Background(t.BackgroundElement())
 
 		var renderedText string
-		if m.configState.CursorPos >= len(urlText) {
+		if configState.CursorPos >= len(urlText) {
 			// Cursor at end of input
 			cursorStyle := lipgloss.NewStyle().
 				Background(t.Primary()).
 				Foreground(t.Background())
 			renderedText = textStyle.Render(urlText) + cursorStyle.Render(" ")
-		} else if m.configState.CursorPos >= 0 && m.configState.CursorPos < len(urlText) {
+		} else if configState.CursorPos >= 0 && configState.CursorPos < len(urlText) {
 			// Cursor in middle of input - highlight the character at cursor position
-			before := urlText[:m.configState.CursorPos]
-			atCursor := string(urlText[m.configState.CursorPos])
+			before := urlText[:configState.CursorPos]
+			atCursor := string(urlText[configState.CursorPos])
 			after := ""
-			if m.configState.CursorPos+1 < len(urlText) {
-				after = urlText[m.configState.CursorPos+1:]
+			if configState.CursorPos+1 < len(urlText) {
+				after = urlText[configState.CursorPos+1:]
 			}
 
 			// Render with cursor highlighting the character
@@ -125,7 +125,7 @@ func (m Model) RenderConfiguration() string {
 
 		serverURLDisplay = activeValueStyle.Width(40).Render(renderedText)
 	} else {
-		serverURLDisplay = valueStyle.Width(40).Render(m.config.ServerURL)
+		serverURLDisplay = valueStyle.Width(40).Render(cfg.ServerURL)
 	}
 
 	serverURLLine := lipgloss.JoinHorizontal(lipgloss.Left,
@@ -136,26 +136,26 @@ func (m Model) RenderConfiguration() string {
 
 	// Qualifire Integration field
 	var qualifireDisplay string
-	if m.configState != nil && m.configState.ActiveField == ConfigFieldQualifire {
+	if configState != nil && configState.ActiveField == ConfigFieldQualifire {
 		// Show toggle state with highlight when active
-		if m.configState.QualifireEnabled {
+		if configState.QualifireEnabled {
 			qualifireDisplay = activeValueStyle.Width(20).Render("✅ Enabled")
 		} else {
 			qualifireDisplay = activeValueStyle.Width(20).Render("❌ Disabled")
 		}
 	} else {
 		// Show current state based on both API key and enabled flag
-		if m.config.QualifireAPIKey != "" && m.config.QualifireEnabled {
+		if cfg.QualifireAPIKey != "" && cfg.QualifireEnabled {
 			qualifireDisplay = valueStyle.Width(20).Render("✅ Enabled")
 			// Update config state if not initialized
-			if m.configState != nil {
-				m.configState.QualifireEnabled = true
+			if configState != nil {
+				configState.QualifireEnabled = true
 			}
 		} else {
 			qualifireDisplay = valueStyle.Width(20).Render("❌ Disabled")
 			// Update config state if not initialized
-			if m.configState != nil {
-				m.configState.QualifireEnabled = false
+			if configState != nil {
+				configState.QualifireEnabled = false
 			}
 		}
 	}
@@ -175,11 +175,11 @@ func (m Model) RenderConfiguration() string {
 
 	// Theme selector
 	var themeLines []string
-	if m.configState != nil && m.configState.ActiveField == ConfigFieldTheme && m.configState.IsEditing {
+	if configState != nil && configState.ActiveField == ConfigFieldTheme && configState.IsEditing {
 		// Show theme selection list only when editing
 		for i, themeName := range availableThemes {
 			var themeDisplay string
-			if i == m.configState.ThemeIndex {
+			if i == configState.ThemeIndex {
 				themeDisplay = selectedThemeStyle.Render("● " + themeName)
 			} else if themeName == currentTheme {
 				themeDisplay = themeOptionStyle.Foreground(t.Primary()).Render("● " + themeName)
@@ -191,7 +191,7 @@ func (m Model) RenderConfiguration() string {
 	} else {
 		// Show current theme with active field styling if selected
 		var themeDisplay string
-		if m.configState != nil && m.configState.ActiveField == ConfigFieldTheme {
+		if configState != nil && configState.ActiveField == ConfigFieldTheme {
 			themeDisplay = activeValueStyle.Width(20).Render(currentTheme)
 		} else {
 			themeDisplay = valueStyle.Width(20).Render(currentTheme)
@@ -210,9 +210,4 @@ func (m Model) RenderConfiguration() string {
 
 	content := strings.Join(sections, "\n")
 	return containerStyle.Render(content)
-}
-
-// renderScenarios renders the scenarios screen
-func (m Model) renderScenarios() string {
-	return m.scenarioEditor.View()
 }

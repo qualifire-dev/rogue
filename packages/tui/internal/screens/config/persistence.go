@@ -1,4 +1,4 @@
-package tui
+package config
 
 import (
 	"fmt"
@@ -8,8 +8,8 @@ import (
 	"github.com/pelletier/go-toml/v2"
 )
 
-// saveConfig saves the current configuration to file
-func (m *Model) saveConfig() error {
+// Save saves the current configuration to file
+func Save(cfg *Config) error {
 	// Get user config directory
 	configDir, err := os.UserConfigDir()
 	if err != nil {
@@ -26,7 +26,7 @@ func (m *Model) saveConfig() error {
 	configFile := filepath.Join(rogueConfigDir, "config.toml")
 
 	// Marshal config to TOML
-	data, err := toml.Marshal(m.config)
+	data, err := toml.Marshal(cfg)
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
@@ -39,8 +39,8 @@ func (m *Model) saveConfig() error {
 	return nil
 }
 
-// loadConfig loads configuration from file
-func (m *Model) loadConfig() error {
+// Load loads configuration from file
+func Load(cfg *Config) error {
 	// Get user config directory
 	configDir, err := os.UserConfigDir()
 	if err != nil {
@@ -63,7 +63,7 @@ func (m *Model) loadConfig() error {
 	}
 
 	// Unmarshal TOML
-	if err := toml.Unmarshal(data, &m.config); err != nil {
+	if err := toml.Unmarshal(data, cfg); err != nil {
 		return fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 

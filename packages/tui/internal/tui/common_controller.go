@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"github.com/rogue/tui/internal/screens/config"
 	"context"
 	"fmt"
 	"strings"
@@ -275,7 +276,7 @@ func (m Model) handleLLMConfigResultMsg(msg components.LLMConfigResultMsg) (Mode
 			}
 
 			// Save config to file
-			err := m.saveConfig()
+			err := config.Save(&m.config)
 			if err != nil {
 				// Show error dialog
 				dialog := components.ShowErrorDialog(
@@ -351,7 +352,7 @@ func (m Model) handleDialogClosedMsg(msg components.DialogClosedMsg) (Model, tea
 						m.dialog = &errorDialog
 					}
 
-					err = m.saveConfig()
+					err = config.Save(&m.config)
 					if err != nil {
 						// Show error dialog
 						errorDialog := components.ShowErrorDialog(
@@ -399,7 +400,7 @@ func (m Model) handleDialogClosedMsg(msg components.DialogClosedMsg) (Model, tea
 				}
 
 				// Save config to file
-				err := m.saveConfig()
+				err := config.Save(&m.config)
 				if err != nil {
 					// Show error dialog
 					errorDialog := components.ShowErrorDialog(
@@ -448,7 +449,7 @@ func (m Model) handleDialogClosedMsg(msg components.DialogClosedMsg) (Model, tea
 			if m.dialog != nil && m.dialog.Title == "Preserve Evaluation Report" {
 				// Save the preference and exit to dashboard
 				m.config.DontShowQualifirePrompt = true
-				m.saveConfig()
+				config.Save(&m.config)
 				m.dialog = nil
 				m.currentScreen = DashboardScreen
 				m.commandInput.SetFocus(true)

@@ -3,6 +3,7 @@ package tui
 import (
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/rogue/tui/internal/components"
+	"github.com/rogue/tui/internal/screens/config"
 	"github.com/rogue/tui/internal/theme"
 )
 
@@ -13,8 +14,25 @@ func HandleConfigEnter(m Model) (Model, tea.Cmd) {
 	}
 
 	if m.configState.IsEditing {
-		// Save changes
-		m.handleConfigSave()
+		// Exit editing mode and apply changes
+		m.configState.IsEditing = false
+
+		// Apply the edited value to config
+		if m.configState.ActiveField == ConfigFieldServerURL {
+			m.config.ServerURL = m.configState.ServerURL
+			m.configState.HasChanges = true
+			config.Save(&m.config)
+		} else if m.configState.ActiveField == ConfigFieldTheme {
+			// Apply the selected theme
+			availableThemes := theme.AvailableThemes()
+			if m.configState.ThemeIndex >= 0 && m.configState.ThemeIndex < len(availableThemes) {
+				selectedTheme := availableThemes[m.configState.ThemeIndex]
+				m.config.Theme = selectedTheme
+				theme.SetTheme(selectedTheme)
+				m.configState.HasChanges = true
+				config.Save(&m.config)
+			}
+		}
 		return m, nil
 	} else {
 		// Handle field-specific actions
@@ -43,7 +61,7 @@ func HandleConfigEnter(m Model) (Model, tea.Cmd) {
 				m.config.QualifireEnabled = m.configState.QualifireEnabled
 				m.configState.HasChanges = true
 				// Save the updated enabled state
-				m.saveConfig()
+				config.Save(&m.config)
 				return m, nil
 			}
 		} else {
@@ -169,7 +187,7 @@ func HandleConfigInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 				m.config.QualifireEnabled = m.configState.QualifireEnabled
 				m.configState.HasChanges = true
 				// Save the updated enabled state
-				m.saveConfig()
+				config.Save(&m.config)
 				return m, nil
 			}
 		}
@@ -234,7 +252,7 @@ func (m *Model) handleConfigSave() {
 
 	// Save to file if there were changes
 	if m.configState.HasChanges {
-		m.saveConfig()
+		config.Save(&m.config)
 		m.configState.HasChanges = false
 	}
 }

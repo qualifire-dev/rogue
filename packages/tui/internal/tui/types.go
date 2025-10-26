@@ -5,6 +5,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/glamour"
 	"github.com/rogue/tui/internal/components"
+	"github.com/rogue/tui/internal/screens/config"
 )
 
 // AutoRefreshMsg is sent periodically to refresh the evaluation screen
@@ -101,39 +102,17 @@ type Scenario struct {
 	Description string
 }
 
-// Config represents application configuration
-type Config struct {
-	ServerURL               string            `toml:"server_url"`
-	Theme                   string            `toml:"theme"`
-	APIKeys                 map[string]string `toml:"api_keys"`
-	SelectedModel           string            `toml:"selected_model"`
-	SelectedProvider        string            `toml:"selected_provider"`
-	InterviewModel          string            `toml:"interview_model"`
-	InterviewProvider       string            `toml:"interview_provider"`
-	QualifireAPIKey         string            `toml:"qualifire_api_key"`
-	QualifireEnabled        bool              `toml:"qualifire_enabled"`
-	DontShowQualifirePrompt bool              `toml:"dont_show_qualifire_prompt"`
-}
+// Type aliases for config package types
+type Config = config.Config
+type ConfigState = config.ConfigState
+type ConfigField = config.ConfigField
 
-// ConfigField represents different configuration fields
-type ConfigField int
-
+// Re-export constants
 const (
-	ConfigFieldServerURL ConfigField = iota
-	ConfigFieldTheme
-	ConfigFieldQualifire
+	ConfigFieldServerURL = config.ConfigFieldServerURL
+	ConfigFieldTheme     = config.ConfigFieldTheme
+	ConfigFieldQualifire = config.ConfigFieldQualifire
 )
-
-// ConfigState represents the configuration screen state
-type ConfigState struct {
-	ActiveField      ConfigField
-	ServerURL        string
-	CursorPos        int
-	ThemeIndex       int
-	IsEditing        bool
-	HasChanges       bool
-	QualifireEnabled bool
-}
 
 // EvalScenario represents a single evaluation scenario
 type EvalScenario struct {

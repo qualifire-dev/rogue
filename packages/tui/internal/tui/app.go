@@ -6,6 +6,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea/v2"
 
 	"github.com/rogue/tui/internal/components"
+	"github.com/rogue/tui/internal/screens/config"
 	"github.com/rogue/tui/internal/screens/dashboard"
 	"github.com/rogue/tui/internal/screens/help"
 	"github.com/rogue/tui/internal/screens/report"
@@ -55,7 +56,7 @@ func (a *App) Run() error {
 	}
 
 	// Load existing configuration
-	if err := model.loadConfig(); err != nil {
+	if err := config.Load(&model.config); err != nil {
 		// If config loading fails, continue with defaults
 		fmt.Printf("Warning: Failed to load config: %v\n", err)
 	}
@@ -172,7 +173,7 @@ func (m Model) View() string {
 	case InterviewScreen:
 		screen = m.RenderInterview()
 	case ConfigurationScreen:
-		screen = m.RenderConfiguration()
+		screen = config.Render(m.width, m.height, &m.config, m.configState)
 	case ScenariosScreen:
 		screen = m.scenarioEditor.View()
 	case HelpScreen:

@@ -315,7 +315,7 @@ func (m Model) routeKeyToScreen(msg tea.KeyMsg) (Model, tea.Cmd) {
 		canRegenerate := m.evalState != nil && m.evalState.JobID != "" && !m.summarySpinner.IsActive()
 		result := report.HandleInput(m.reportHistory, hasEvalState, canRegenerate, msg)
 		m.reportHistory = result.ReportHistory
-		
+
 		// Handle actions
 		switch result.Action {
 		case report.ActionBackToDashboard:
@@ -327,7 +327,7 @@ func (m Model) routeKeyToScreen(msg tea.KeyMsg) (Model, tea.Cmd) {
 				return m, tea.Batch(result.Cmd, m.summarySpinner.Start(), m.summaryGenerationCmd())
 			}
 		}
-		
+
 		return m, result.Cmd
 
 	case HelpScreen:
