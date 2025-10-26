@@ -1,10 +1,11 @@
 package tui
 
 import (
-	"github.com/rogue/tui/internal/screens/config"
 	"context"
 	"fmt"
 	"strings"
+
+	"github.com/rogue/tui/internal/screens/config"
 
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/rogue/tui/internal/components"
