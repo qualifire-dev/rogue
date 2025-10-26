@@ -1,4 +1,4 @@
-package tui
+package dashboard
 
 import (
 	"github.com/charmbracelet/lipgloss/v2"
@@ -7,9 +7,9 @@ import (
 	"github.com/rogue/tui/internal/theme"
 )
 
-// RenderMainScreen renders the main dashboard
-func (m Model) RenderMainScreen(t theme.Theme) string {
-	effectiveWidth := m.width - 4
+// Render renders the main dashboard
+func Render(width, height int, version string, commandInput *components.CommandInput, t theme.Theme) string {
+	effectiveWidth := width - 4
 	contentWidth := effectiveWidth
 	if contentWidth > 80 {
 		contentWidth = 80
@@ -32,7 +32,7 @@ func (m Model) RenderMainScreen(t theme.Theme) string {
 		Align(lipgloss.Center).
 		Background(t.Background())
 
-	version := versionStyle.Render(m.version)
+	versionText := versionStyle.Render(version)
 
 	instructionStyle := lipgloss.NewStyle().
 		Foreground(t.TextMuted()).
@@ -48,14 +48,14 @@ func (m Model) RenderMainScreen(t theme.Theme) string {
 		lipgloss.Center,
 		title,
 		"",
-		version,
+		versionText,
 		"",
 		"",
 		instructions,
 	)
 
 	// Get just the input field (no suggestions)
-	inputField := m.commandInput.ViewInput()
+	inputField := (*commandInput).ViewInput()
 	inputFieldCentered := lipgloss.NewStyle().
 		Width(contentWidth).
 		Align(lipgloss.Center).
@@ -72,7 +72,7 @@ func (m Model) RenderMainScreen(t theme.Theme) string {
 	// Create the base screen
 	baseScreen := lipgloss.Place(
 		effectiveWidth,
-		m.height-1,
+		height-1,
 		lipgloss.Center,
 		lipgloss.Center,
 		baseStyle.Render(fullContent),
@@ -80,8 +80,8 @@ func (m Model) RenderMainScreen(t theme.Theme) string {
 	)
 
 	// If suggestions are showing, create overlay-style layout
-	if m.commandInput.HasSuggestions() {
-		suggestions := m.commandInput.ViewSuggestions()
+	if (*commandInput).HasSuggestions() {
+		suggestions := (*commandInput).ViewSuggestions()
 		suggestionsCentered := lipgloss.NewStyle().
 			Width(contentWidth).
 			Align(lipgloss.Center).
@@ -100,7 +100,7 @@ func (m Model) RenderMainScreen(t theme.Theme) string {
 
 		return lipgloss.Place(
 			effectiveWidth,
-			m.height-1,
+			height-1,
 			lipgloss.Center,
 			lipgloss.Center,
 			baseStyle.Render(overlayLayout),

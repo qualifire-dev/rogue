@@ -4,6 +4,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/rogue/tui/internal/components"
 	"github.com/rogue/tui/internal/screens/help"
+	"github.com/rogue/tui/internal/screens/report"
 )
 
 // handleKeyMsg is the main keyboard input router
@@ -310,7 +311,24 @@ func (m Model) routeKeyToScreen(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return HandleEvalDetailInput(m, msg)
 
 	case ReportScreen:
-		return HandleReportInput(m, msg)
+		hasEvalState := m.evalState != nil
+		canRegenerate := m.evalState != nil && m.evalState.JobID != "" && !m.summarySpinner.IsActive()
+		result := report.HandleInput(m.reportHistory, hasEvalState, canRegenerate, msg)
+		m.reportHistory = result.ReportHistory
+		
+		// Handle actions
+		switch result.Action {
+		case report.ActionBackToDashboard:
+			m.currentScreen = DashboardScreen
+		case report.ActionRegenerateSummary:
+			if m.evalState != nil {
+				m.evalState.SummaryGenerated = false
+				m.summarySpinner.SetActive(true)
+				return m, tea.Batch(result.Cmd, m.summarySpinner.Start(), m.summaryGenerationCmd())
+			}
+		}
+		
+		return m, result.Cmd
 
 	case HelpScreen:
 		updatedViewport, cmd := help.HandleInput(&m.helpViewport, msg)

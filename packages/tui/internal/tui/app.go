@@ -6,7 +6,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea/v2"
 
 	"github.com/rogue/tui/internal/components"
+	"github.com/rogue/tui/internal/screens/dashboard"
 	"github.com/rogue/tui/internal/screens/help"
+	"github.com/rogue/tui/internal/screens/report"
 	"github.com/rogue/tui/internal/shared"
 	"github.com/rogue/tui/internal/theme"
 )
@@ -153,13 +155,20 @@ func (m Model) View() string {
 	var screen string
 	switch m.currentScreen {
 	case DashboardScreen:
-		screen = m.RenderMainScreen(t)
+		screen = dashboard.Render(m.width, m.height, m.version, &m.commandInput, t)
 	case NewEvaluationScreen:
 		screen = m.RenderNewEvaluation()
 	case EvaluationDetailScreen:
 		screen = m.RenderEvaluationDetail()
 	case ReportScreen:
-		screen = m.RenderReport()
+		var evalState *report.EvalState
+		if m.evalState != nil {
+			evalState = &report.EvalState{
+				Summary:   m.evalState.Summary,
+				Completed: m.evalState.Completed,
+			}
+		}
+		screen = report.Render(m.width, m.height, evalState, m.reportHistory, m.getMarkdownRenderer())
 	case InterviewScreen:
 		screen = m.RenderInterview()
 	case ConfigurationScreen:
@@ -169,7 +178,7 @@ func (m Model) View() string {
 	case HelpScreen:
 		screen = help.Render(m.width, m.height, &m.helpViewport)
 	default:
-		screen = m.RenderMainScreen(t)
+		screen = dashboard.Render(m.width, m.height, m.version, &m.commandInput, t)
 	}
 
 	mainLayout := m.RenderLayout(t, screen)
