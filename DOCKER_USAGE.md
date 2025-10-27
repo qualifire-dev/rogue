@@ -309,7 +309,6 @@ docker run -it --rm \
   -e OPENAI_API_KEY="sk-..." \
   -e GOOGLE_API_KEY="..." \
   -e ANTHROPIC_API_KEY="sk-..." \
-  -e GROQ_API_KEY="..." \
   -p 8000:8000 \
   rogue-app
 ```

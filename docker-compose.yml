@@ -32,6 +32,7 @@ services:
     container_name: rogue-ui
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GRADIO_SERVER_NAME=0.0.0.0
     ports:
       - "7860:7860"
     networks:
