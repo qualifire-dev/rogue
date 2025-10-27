@@ -9,6 +9,7 @@ import (
 	"github.com/rogue/tui/internal/screens/config"
 	"github.com/rogue/tui/internal/screens/dashboard"
 	"github.com/rogue/tui/internal/screens/help"
+	"github.com/rogue/tui/internal/screens/interview"
 	"github.com/rogue/tui/internal/screens/report"
 	"github.com/rogue/tui/internal/screens/scenarios"
 	"github.com/rogue/tui/internal/shared"
@@ -172,7 +173,7 @@ func (m Model) View() string {
 		}
 		screen = report.Render(m.width, m.height, evalState, m.reportHistory, m.getMarkdownRenderer())
 	case InterviewScreen:
-		screen = m.RenderInterview()
+		screen = interview.Render(m.width, m.height)
 	case ConfigurationScreen:
 		screen = config.Render(m.width, m.height, &m.config, m.configState)
 	case ScenariosScreen:

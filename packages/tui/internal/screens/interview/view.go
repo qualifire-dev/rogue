@@ -1,4 +1,4 @@
-package tui
+package interview
 
 import (
 	"fmt"
@@ -6,14 +6,14 @@ import (
 	"github.com/charmbracelet/lipgloss/v2"
 )
 
-// RenderInterview renders the interview screen
-func (m Model) RenderInterview() string {
+// Render renders the interview screen
+func Render(width, height int) string {
 	style := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("62")).
 		Padding(1, 2).
-		Width(m.width - 4).
-		Height(m.height - 4)
+		Width(width - 4).
+		Height(height - 4)
 
 	title := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("205")).
