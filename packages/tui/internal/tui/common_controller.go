@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/rogue/tui/internal/screens/config"
-
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/rogue/tui/internal/components"
+	"github.com/rogue/tui/internal/screens/config"
+	"github.com/rogue/tui/internal/screens/scenarios"
 )
 
 // handlePasteMsg handles clipboard paste messages
@@ -519,43 +519,43 @@ func (m Model) handleDialogClosedMsg(msg components.DialogClosedMsg) (Model, tea
 }
 
 // handleStartInterviewMsg handles starting an interview session
-func (m Model) handleStartInterviewMsg(msg StartInterviewMsg) (Model, tea.Cmd) {
+func (m Model) handleStartInterviewMsg(msg scenarios.StartInterviewMsg) (Model, tea.Cmd) {
 	return m, m.startInterviewCmd()
 }
 
 // handleSendInterviewMessageMsg handles sending an interview message
-func (m Model) handleSendInterviewMessageMsg(msg SendInterviewMessageMsg) (Model, tea.Cmd) {
+func (m Model) handleSendInterviewMessageMsg(msg scenarios.SendInterviewMessageMsg) (Model, tea.Cmd) {
 	return m, m.sendInterviewMessageCmd(msg.SessionID, msg.Message)
 }
 
 // handleInterviewStartedMsg forwards interview started events to scenario editor
-func (m Model) handleInterviewStartedMsg(msg InterviewStartedMsg) (Model, tea.Cmd) {
+func (m Model) handleInterviewStartedMsg(msg scenarios.InterviewStartedMsg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	m.scenarioEditor, cmd = m.scenarioEditor.Update(msg)
 	return m, cmd
 }
 
 // handleInterviewResponseMsg forwards interview response events to scenario editor
-func (m Model) handleInterviewResponseMsg(msg InterviewResponseMsg) (Model, tea.Cmd) {
+func (m Model) handleInterviewResponseMsg(msg scenarios.InterviewResponseMsg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	m.scenarioEditor, cmd = m.scenarioEditor.Update(msg)
 	return m, cmd
 }
 
 // handleGenerateScenariosMsg handles scenario generation requests
-func (m Model) handleGenerateScenariosMsg(msg GenerateScenariosMsg) (Model, tea.Cmd) {
+func (m Model) handleGenerateScenariosMsg(msg scenarios.GenerateScenariosMsg) (Model, tea.Cmd) {
 	return m, m.generateScenariosCmd(msg.BusinessContext)
 }
 
 // handleScenariosGeneratedMsg forwards generated scenarios to scenario editor
-func (m Model) handleScenariosGeneratedMsg(msg ScenariosGeneratedMsg) (Model, tea.Cmd) {
+func (m Model) handleScenariosGeneratedMsg(msg scenarios.ScenariosGeneratedMsg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	m.scenarioEditor, cmd = m.scenarioEditor.Update(msg)
 	return m, cmd
 }
 
 // handleScenarioEditorMsg handles messages from the scenario editor
-func (m Model) handleScenarioEditorMsg(msg ScenarioEditorMsg) (Model, tea.Cmd) {
+func (m Model) handleScenarioEditorMsg(msg scenarios.ScenarioEditorMsg) (Model, tea.Cmd) {
 	switch msg.Action {
 	case "saved":
 		// Show success message

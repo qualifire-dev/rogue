@@ -6,6 +6,7 @@ import (
 	"github.com/charmbracelet/glamour"
 	"github.com/rogue/tui/internal/components"
 	"github.com/rogue/tui/internal/screens/config"
+	"github.com/rogue/tui/internal/screens/scenarios"
 )
 
 // AutoRefreshMsg is sent periodically to refresh the evaluation screen
@@ -61,7 +62,7 @@ type Model struct {
 	dialog            *components.Dialog
 	dialogStack       []components.Dialog
 	llmDialog         *components.LLMConfigDialog
-	scenarioEditor    ScenarioEditor
+	scenarioEditor    scenarios.ScenarioEditor
 	detailedBreakdown []table.Row
 
 	// Spinners for loading states

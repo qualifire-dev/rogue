@@ -1,4 +1,4 @@
-package tui
+package scenarios
 
 // ScenarioData represents a single scenario aligned with Python schema
 type ScenarioData struct {

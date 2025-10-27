@@ -6,6 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/glamour"
+	"github.com/rogue/tui/internal/screens/scenarios"
 	"github.com/rogue/tui/internal/shared"
 	"github.com/rogue/tui/internal/theme"
 )
@@ -22,13 +23,13 @@ func (m *Model) startInterviewCmd() tea.Cmd {
 
 		if interviewModel == "" {
 			// Fall back to judge model if not set
-			return InterviewStartedMsg{
+			return scenarios.InterviewStartedMsg{
 				Error: fmt.Errorf("AI model not set, please use /models to set an AI model"),
 			}
 		}
 
 		if interviewAPIKey == "" {
-			return InterviewStartedMsg{
+			return scenarios.InterviewStartedMsg{
 				Error: fmt.Errorf("AI API key not set, please use /models to set an AI API key"),
 			}
 		}
@@ -36,12 +37,12 @@ func (m *Model) startInterviewCmd() tea.Cmd {
 		// Start interview
 		resp, err := sdk.StartInterview(ctx, interviewModel, interviewAPIKey)
 		if err != nil {
-			return InterviewStartedMsg{
+			return scenarios.InterviewStartedMsg{
 				Error: err,
 			}
 		}
 
-		return InterviewStartedMsg{
+		return scenarios.InterviewStartedMsg{
 			SessionID:      resp.SessionID,
 			InitialMessage: resp.InitialMessage,
 			Error:          nil,
@@ -58,12 +59,12 @@ func (m *Model) sendInterviewMessageCmd(sessionID, message string) tea.Cmd {
 		// Send message
 		resp, err := sdk.SendInterviewMessage(ctx, sessionID, message)
 		if err != nil {
-			return InterviewResponseMsg{
+			return scenarios.InterviewResponseMsg{
 				Error: err,
 			}
 		}
 
-		return InterviewResponseMsg{
+		return scenarios.InterviewResponseMsg{
 			Response:     resp.Response,
 			IsComplete:   resp.IsComplete,
 			MessageCount: resp.MessageCount,
@@ -96,15 +97,15 @@ func (m *Model) generateScenariosCmd(businessContext string) tea.Cmd {
 
 		resp, err := sdk.GenerateScenarios(ctx, request)
 		if err != nil {
-			return ScenariosGeneratedMsg{
+			return scenarios.ScenariosGeneratedMsg{
 				Error: err,
 			}
 		}
 
 		// Convert SDK scenario data to component scenario data
-		var scenarios []ScenarioData
+		var scenariosList []scenarios.ScenarioData
 		for _, s := range resp.Scenarios.Scenarios {
-			scenarios = append(scenarios, ScenarioData{
+			scenariosList = append(scenariosList, scenarios.ScenarioData{
 				Scenario:          s.Scenario,
 				ScenarioType:      s.ScenarioType,
 				Dataset:           s.Dataset,
@@ -113,8 +114,8 @@ func (m *Model) generateScenariosCmd(businessContext string) tea.Cmd {
 			})
 		}
 
-		return ScenariosGeneratedMsg{
-			Scenarios:       scenarios,
+		return scenarios.ScenariosGeneratedMsg{
+			Scenarios:       scenariosList,
 			BusinessContext: businessContext,
 			Error:           nil,
 		}

@@ -10,6 +10,7 @@ import (
 	"github.com/rogue/tui/internal/screens/dashboard"
 	"github.com/rogue/tui/internal/screens/help"
 	"github.com/rogue/tui/internal/screens/report"
+	"github.com/rogue/tui/internal/screens/scenarios"
 	"github.com/rogue/tui/internal/shared"
 	"github.com/rogue/tui/internal/theme"
 )
@@ -40,7 +41,7 @@ func (a *App) Run() error {
 		},
 		version:        shared.Version,
 		commandInput:   components.NewCommandInput(),
-		scenarioEditor: NewScenarioEditor(),
+		scenarioEditor: scenarios.NewScenarioEditor(),
 
 		// Initialize spinners
 		healthSpinner:  components.NewSpinner(1),
@@ -122,25 +123,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case components.DialogClosedMsg:
 		return m.handleDialogClosedMsg(msg)
 
-	case StartInterviewMsg:
+	case scenarios.StartInterviewMsg:
 		return m.handleStartInterviewMsg(msg)
 
-	case SendInterviewMessageMsg:
+	case scenarios.SendInterviewMessageMsg:
 		return m.handleSendInterviewMessageMsg(msg)
 
-	case InterviewStartedMsg:
+	case scenarios.InterviewStartedMsg:
 		return m.handleInterviewStartedMsg(msg)
 
-	case InterviewResponseMsg:
+	case scenarios.InterviewResponseMsg:
 		return m.handleInterviewResponseMsg(msg)
 
-	case GenerateScenariosMsg:
+	case scenarios.GenerateScenariosMsg:
 		return m.handleGenerateScenariosMsg(msg)
 
-	case ScenariosGeneratedMsg:
+	case scenarios.ScenariosGeneratedMsg:
 		return m.handleScenariosGeneratedMsg(msg)
 
-	case ScenarioEditorMsg:
+	case scenarios.ScenarioEditorMsg:
 		return m.handleScenarioEditorMsg(msg)
 
 	case tea.KeyMsg:

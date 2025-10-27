@@ -1,4 +1,4 @@
-package tui
+package scenarios
 
 import (
 	tea "github.com/charmbracelet/bubbletea/v2"

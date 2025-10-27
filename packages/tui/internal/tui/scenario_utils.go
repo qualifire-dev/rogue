@@ -8,6 +8,8 @@ import (
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/rogue/tui/internal/screens/scenarios"
 )
 
 // Scenario generation API types matching server's rogue_sdk.types
@@ -16,8 +18,8 @@ import (
 
 // ScenariosList represents the collection of scenarios with business context
 type ScenariosList struct {
-	BusinessContext *string        `json:"business_context"`
-	Scenarios       []ScenarioData `json:"scenarios"`
+	BusinessContext *string                  `json:"business_context"`
+	Scenarios       []scenarios.ScenarioData `json:"scenarios"`
 }
 
 // ScenarioGenerationRequest is the request to generate scenarios from business context
