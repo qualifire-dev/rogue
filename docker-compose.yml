@@ -1,0 +1,66 @@
+services:
+  # Rogue server - backend evaluation engine
+  rogue-server:
+    build: .
+    image: rogue-app:latest
+    command: rogue-ai server --host 0.0.0.0 --port 8000
+    container_name: rogue-server
+    environment:
+      # LLM API Keys - set these in .env file or export before running
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+    ports:
+      - "8000:8000"
+    networks:
+      - rogue-network
+    volumes:
+      # Persistent storage for scenarios, reports, and configuration
+      - rogue-data:/app/.rogue
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/api/v1/health\")' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # Rogue Web UI - Gradio interface
+  rogue-ui:
+    image: rogue-app:latest
+    command: rogue-ai ui --port 7860 --rogue-server-url http://rogue-server:8000
+    container_name: rogue-ui
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+    ports:
+      - "7860:7860"
+    networks:
+      - rogue-network
+    volumes:
+      - rogue-data:/app/.rogue
+    depends_on:
+      rogue-server:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Example: T-Shirt Store Agent (for testing)
+  # example-agent:
+  #   image: rogue-app:latest
+  #   command: rogue-ai-example-tshirt --host 0.0.0.0 --port 10001
+  #   container_name: tshirt-agent
+  #   environment:
+  #     - OPENAI_API_KEY=${OPENAI_API_KEY}
+  #   ports:
+  #     - "10001:10001"
+  #   networks:
+  #     - rogue-network
+  #   restart: unless-stopped
+
+networks:
+  rogue-network:
+    driver: bridge
+    name: rogue-network
+
+volumes:
+  rogue-data:
+    name: rogue-data
