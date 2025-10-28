@@ -1,13 +1,10 @@
 package tui
 
 import (
-	"log"
-	// "os"
-	// "path/filepath"
 	_ "embed"
+	"log"
 	"strings"
 
-	// "github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/rogue/tui/internal/theme"
 )
