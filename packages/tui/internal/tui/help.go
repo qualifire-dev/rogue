@@ -19,7 +19,7 @@ func (m Model) RenderHelp() string {
 	// Viewport configuration
 	viewportWidth := m.width - 11
 	viewportHeight := m.height - 9
-	contentWidth := viewportWidth - 9
+	contentWidth := viewportWidth - 6
 
 	// Render markdown with correct width for viewport content
 	renderer := GetMarkdownRenderer(contentWidth, t.Background())
@@ -33,7 +33,7 @@ func (m Model) RenderHelp() string {
 	// Main container style
 	mainStyle := lipgloss.NewStyle().
 		Width(m.width).
-		Height(m.height - 4).
+		Height(viewportHeight - 4).
 		Background(t.Background())
 
 	// Title style
@@ -59,7 +59,6 @@ func (m Model) RenderHelp() string {
 		BorderForeground(t.Border()).
 		BorderBackground(t.BackgroundPanel()).
 		Background(t.Background()).
-		MaxWidth(viewportWidth).
 		Padding(1, 2)
 
 	viewportContent := viewportStyle.Render(viewport.View())
