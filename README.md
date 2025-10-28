@@ -12,7 +12,8 @@ Join our [Discord community](https://discord.gg/EUfAt7ZDeK)!
 
 </div>
 
-Rogue is a powerful tool designed to evaluate the performance, compliance, and reliability of AI agents. It pits a dynamic `EvaluatorAgent` against your agent using Google's A2A protocol, testing it with a range of scenarios to ensure it behaves exactly as intended.
+Rogue is a powerful tool designed to evaluate the performance, compliance, and reliability of AI agents. It pits a dynamic `EvaluatorAgent` against your agent using various protocols, testing it with a range of scenarios to ensure it behaves exactly as intended.
+
 
 ## Architecture
 
@@ -27,6 +28,36 @@ Rogue operates on a **client-server architecture**:
 This architecture allows for flexible deployment and usage patterns, where the server can run independently and multiple clients can connect to it simultaneously.
 
 https://github.com/user-attachments/assets/b5c04772-6916-4aab-825b-6a7476d77787
+
+### Supported Protocols & Transports:
+Rogue can communicate with your agent using various protocols and transports:
+
+#### A2A
+Rogue supports [Google's A2A](https://a2a-protocol.org/latest/) protocol over these transports:
+1. HTTP
+
+To integrate your agent with Rogue via A2A:
+1. Build your agent using any framework of your choice
+2. Expose your agent through an A2A-compliant HTTP server
+3. Rogue will communicate with your agent using the standardized A2A protocol
+
+The A2A protocol provides a standardized way for agents to communicate, including support for streaming responses, task management, and agent capabilities discovery.
+
+For reference implementations, check out the A2A examples in the [`examples/tshirt_store_agent/`](./examples/tshirt_store_agent/) and [`examples/tshirt_store_langgraph_agent/`](./examples/tshirt_store_langgraph_agent/) directories.
+
+#### MCP
+Rogue supports the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/docs/getting-started/intro) over these transports:
+1. SSE (Server-Sent Events)
+2. STREAMABLE_HTTP
+
+To integrate your agent with Rogue via MCP:
+1. Build your agent using any framework of your choice
+2. Wrap your agent with an MCP server that exposes a tool named `send_message`
+3. Rogue will invoke this tool to communicate with and evaluate your agent
+
+The `send_message` tool should accept a message from Rogue and return your agent's response. This simple interface allows Rogue to interact with your agent regardless of its internal implementation.
+
+For reference implementations, check out the MCP examples in the [`examples/mcp/`](./examples/mcp/) directory, which demonstrates how to wrap a LangGraph agent with MCP for use with Rogue.
 
 ## 🔥 Quick Start
 

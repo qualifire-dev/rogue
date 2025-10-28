@@ -90,3 +90,6 @@ dist/
 .adk/
 **/.rogue
 bin/
+
+# Go TUI
+packages/tui/cmd/rogue/__debug*
