@@ -16,16 +16,18 @@ var helpContent string
 func (m Model) RenderHelp() string {
 	t := theme.CurrentTheme()
 
-	// Load markdown file
-	content := helpContent
+	// Viewport configuration 
+	viewportWidth := m.width - 11
+	viewportHeight := m.height - 9
+	contentWidth := viewportWidth - 9
 
-	// Render markdown using glamour
-	renderer := GetMarkdownRenderer(m.width-7, t.Background())
-	contentStr := strings.ReplaceAll(string(content), "\r\n", "\n")
+	// Render markdown with correct width for viewport content
+	renderer := GetMarkdownRenderer(contentWidth, t.Background())
+	contentStr := strings.ReplaceAll(helpContent, "\r\n", "\n")
 	renderedContent, err := renderer.Render(contentStr)
 	if err != nil {
 		log.Printf("Error rendering markdown: %v", err)
-		renderedContent = string(content)
+		renderedContent = helpContent
 	}
 
 	// Main container style
@@ -45,11 +47,8 @@ func (m Model) RenderHelp() string {
 
 	header := titleStyle.Render("❓ Rogue")
 
-	// Viewport configuration
-	viewportWidth := m.width - 1
-	viewportHeight := m.height - 9
 	viewport := m.helpViewport
-	viewport.SetSize(viewportWidth-4, viewportHeight)
+	viewport.SetSize(contentWidth, viewportHeight)
 	viewport.SetContent(renderedContent)
 
 	// Style the viewport with border
