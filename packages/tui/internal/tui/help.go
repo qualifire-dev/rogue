@@ -16,7 +16,7 @@ var helpContent string
 func (m Model) RenderHelp() string {
 	t := theme.CurrentTheme()
 
-	// Viewport configuration 
+	// Viewport configuration
 	viewportWidth := m.width - 11
 	viewportHeight := m.height - 9
 	contentWidth := viewportWidth - 9
