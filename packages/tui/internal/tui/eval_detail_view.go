@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/charmbracelet/lipgloss/v2"
+	"github.com/rogue/tui/internal/screens/evaluations"
 	"github.com/rogue/tui/internal/theme"
 )
 
@@ -20,74 +21,21 @@ func (m Model) RenderEvaluationDetail() string {
 			Render("No evaluation active")
 	}
 
-	// Main container style with full width and height background
-	mainStyle := lipgloss.NewStyle().
-		Width(m.width).
-		Height(m.height - 1). // -1 for footer
-		Background(t.Background())
-
-	// Title style
-	titleStyle := lipgloss.NewStyle().
-		Foreground(t.Primary()).
-		Background(t.Background()).
-		Bold(true).
-		Width(m.width).
-		Align(lipgloss.Center).
-		Padding(1, 0)
-
-	header := titleStyle.Render("📡 Evaluation Running")
-
-	// Status style
-	statusStyle := lipgloss.NewStyle().
-		Foreground(t.Text()).
-		Background(t.BackgroundPanel()).
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(t.Primary()).
-		Padding(0, 2).
-		Width(m.width - 4).
-		Align(lipgloss.Center)
-
-	var statusText string
-	if m.evalState.Status != "completed" && m.evalSpinner.IsActive() {
-		m.evalSpinner.Style = lipgloss.NewStyle().Foreground(t.Success())
-		statusText = fmt.Sprintf("Status: %s %s", m.evalState.Status, m.evalSpinner.View())
-	} else {
-		statusText = fmt.Sprintf("Status: %s", m.evalState.Status)
-		statusStyle = lipgloss.NewStyle().
-			Foreground(t.Success()).
-			Background(t.BackgroundPanel()).
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(t.Primary()).
-			Padding(0, 2).
-			Width(m.width - 4).
-			Align(lipgloss.Center)
-	}
-	status := statusStyle.Render(statusText)
-
 	// Calculate available height for content area
-	// Total layout: header(3) + mainContent + helpText(2) = m.height
-	// mainContent contains: status(3) + spacers(2-3) + events + [spacer + summary]
-	// Start with total height minus header and help
 	availableHeight := m.height - 5 // header(3) + helpText(2)
-
-	// Subtract status bar and spacers
-	statusAndSpacersHeight := 5 // status(3) + spacers(2)
+	statusAndSpacersHeight := 5
 
 	var eventsHeight, summaryHeight int
 	var showSummary bool
 
-	// If evaluation completed and we have a summary OR are generating one, split 50/50
+	// Determine if we show summary
 	if m.evalState.Completed && (m.evalState.Summary != "" || m.summarySpinner.IsActive()) {
 		showSummary = true
-		// Add one more spacer between events and summary
-		statusAndSpacersHeight = 6 // status(3) + spacers(3)
-
-		// Remaining height split between events and summary
+		statusAndSpacersHeight = 6
 		remainingHeight := availableHeight - statusAndSpacersHeight
 		eventsHeight = remainingHeight / 2
 		summaryHeight = remainingHeight - eventsHeight
 	} else {
-		// No summary, events take full remaining height
 		remainingHeight := availableHeight - statusAndSpacersHeight
 		eventsHeight = remainingHeight
 		summaryHeight = 0
@@ -104,7 +52,6 @@ func (m Model) RenderEvaluationDetail() string {
 				m.eventsHistory.AddMessage("system", fmt.Sprintf("✓ %s", ev.Status))
 			}
 		case "chat":
-			// Normalize role for MessageHistoryView
 			normalizedRole := normalizeEvaluationRole(ev.Role)
 			m.eventsHistory.AddMessage(normalizedRole, ev.Content)
 		case "error":
@@ -117,143 +64,55 @@ func (m Model) RenderEvaluationDetail() string {
 		m.eventsHistory.AddMessage("system", "Waiting for evaluation events...")
 	}
 
-	// Update size
+	// Update size and customize prefixes
 	m.eventsHistory.SetSize(m.width, eventsHeight)
-
-	// Customize prefixes to match the evaluation context
 	m.eventsHistory.SetPrefixes("🔍 Rogue: ", "🤖 Agent: ")
-
 	m.eventsHistory.SetColors(t.Primary(), t.Text())
 
 	// Render events using MessageHistoryView
-	var eventsContent string
-	if m.eventsHistory != nil {
-		eventsContent = m.eventsHistory.View(t)
-	}
+	eventsContent := m.eventsHistory.View(t)
 
-	// Help text style (for bottom of screen)
-	helpStyle := lipgloss.NewStyle().
-		Foreground(t.TextMuted()).
-		Background(t.Background()).
-		Width(m.width).
-		Align(lipgloss.Center).
-		Padding(0, 1)
-
-	var helpMsg string
-	if m.evalState.Completed && (m.evalState.Summary != "" || m.summarySpinner.IsActive()) {
-		// Both viewports are visible, show tab navigation
-		helpMsg = "b Back  s Stop  r Report  Tab Switch Focus  ↑↓ scroll end auto-scroll"
-	} else if m.evalState.Completed {
-		helpMsg = "b Back  s Stop  r Report  ↑↓ scroll end auto-scroll"
-	} else {
-		helpMsg = "b Back  s Stop  ↑↓ scroll end auto-scroll"
-	}
-	helpText := helpStyle.Render(helpMsg)
-
-	// Calculate main content area height (space between header and footer)
-	// This should match availableHeight calculated above
-	mainContentHeight := availableHeight
-
-	// Create content area for the main content (between header and footer)
-	contentArea := lipgloss.NewStyle().
-		Width(m.width).
-		Height(mainContentHeight).
-		Background(t.Background())
-
-	// Create spacing with background color
-	spacer := lipgloss.NewStyle().Background(t.Background()).Width(m.width).Render("")
-
-	// Create summary section if available
+	// Build summary content if needed
 	var summaryContent string
 	if showSummary {
-		var summaryTitleText string
-		if m.summarySpinner.IsActive() {
-			summaryTitleText = fmt.Sprintf("📊 Evaluation Summary %s", m.summarySpinner.View())
-		} else {
-			summaryTitleText = "📊 Evaluation Summary"
-		}
-
-		// Clear existing summary messages
 		m.summaryHistory.ClearMessages()
 
-		// Add title as a system message
-		m.summaryHistory.AddMessage("system", summaryTitleText)
-
-		if m.evalState.Summary == "" && m.summarySpinner.IsActive() {
-			// Show loading message when generating summary
-			m.summaryHistory.AddMessage("system", "Generating summary with LLM...")
+		if m.summarySpinner.IsActive() {
+			m.summaryHistory.AddMessage("system", "Generating evaluation summary...")
 		} else if m.evalState.Summary != "" {
-			// Add summary content as a single message
 			m.summaryHistory.AddMessage("assistant", m.evalState.Summary)
+		} else {
+			m.summaryHistory.AddMessage("system", "Summary not available")
 		}
 
-		// Update size for summary history
 		m.summaryHistory.SetSize(m.width, summaryHeight)
-
-		// Customize prefixes for summary view
 		m.summaryHistory.SetPrefixes("", "")
-
-		// Set colors for summary
 		m.summaryHistory.SetColors(t.Success(), t.Text())
 
-		// Enable markdown rendering for summary content
 		renderer := m.getMarkdownRenderer()
 		m.summaryHistory.SetMarkdownRenderer(renderer)
 
-		// Set focus state for border color
-		if m.focusedViewport == 1 {
-			m.summaryHistory.Focus()
-		} else {
-			m.summaryHistory.Blur()
-		}
-
-		// Render summary using MessageHistoryView
 		summaryContent = m.summaryHistory.View(t)
 	}
 
-	// Arrange content based on whether we have a summary or not
-	var mainContent string
+	// Convert to DetailState
+	detailState := &evaluations.DetailState{
+		Width:  m.width,
+		Height: m.height,
 
-	if showSummary {
-		// Split layout: events on top, summary on bottom
-		upperSection := lipgloss.JoinVertical(lipgloss.Center, spacer, status, spacer, eventsContent)
-		lowerSection := summaryContent
+		Status:    m.evalState.Status,
+		Progress:  m.evalState.Progress,
+		Completed: m.evalState.Completed,
 
-		// Create split layout
-		content := lipgloss.JoinVertical(lipgloss.Center, upperSection, spacer, lowerSection)
+		EvalSpinnerActive:    m.evalSpinner.IsActive(),
+		EvalSpinnerView:      m.evalSpinner.View(),
+		SummarySpinnerActive: m.summarySpinner.IsActive(),
+		SummarySpinnerView:   m.summarySpinner.View(),
 
-		mainContent = contentArea.Render(
-			lipgloss.Place(
-				m.width,
-				mainContentHeight,
-				lipgloss.Center,
-				lipgloss.Top,
-				content,
-				lipgloss.WithWhitespaceStyle(lipgloss.NewStyle().Background(t.Background())),
-			),
-		)
-	} else {
-		// Single layout: events take full space
-		content := lipgloss.JoinVertical(lipgloss.Center, spacer, status, spacer, eventsContent)
-
-		mainContent = contentArea.Render(
-			lipgloss.Place(
-				m.width,
-				mainContentHeight,
-				lipgloss.Center,
-				lipgloss.Top,
-				content,
-				lipgloss.WithWhitespaceStyle(lipgloss.NewStyle().Background(t.Background())),
-			),
-		)
+		EventsContent:  eventsContent,
+		SummaryContent: summaryContent,
+		HasSummary:     showSummary,
 	}
 
-	// Combine all sections
-	fullLayout := lipgloss.JoinVertical(lipgloss.Left,
-		header,
-		mainContent,
-		helpText,
-	)
-
-	return mainStyle.Render(fullLayout)
+	return evaluations.RenderDetail(detailState)
 }
