@@ -6,6 +6,13 @@ import (
 	tea "github.com/charmbracelet/bubbletea/v2"
 
 	"github.com/rogue/tui/internal/components"
+	"github.com/rogue/tui/internal/screens/config"
+	"github.com/rogue/tui/internal/screens/dashboard"
+	"github.com/rogue/tui/internal/screens/help"
+	"github.com/rogue/tui/internal/screens/interview"
+	"github.com/rogue/tui/internal/screens/report"
+	"github.com/rogue/tui/internal/screens/scenarios"
+	"github.com/rogue/tui/internal/shared"
 	"github.com/rogue/tui/internal/theme"
 )
 
@@ -33,9 +40,9 @@ func (a *App) Run() error {
 			Theme:     "aura",
 			APIKeys:   make(map[string]string),
 		},
-		version:        Version,
+		version:        shared.Version,
 		commandInput:   components.NewCommandInput(),
-		scenarioEditor: components.NewScenarioEditor(),
+		scenarioEditor: scenarios.NewScenarioEditor(),
 
 		// Initialize spinners
 		healthSpinner:  components.NewSpinner(1),
@@ -51,7 +58,7 @@ func (a *App) Run() error {
 	}
 
 	// Load existing configuration
-	if err := model.loadConfig(); err != nil {
+	if err := config.Load(&model.config); err != nil {
 		// If config loading fails, continue with defaults
 		fmt.Printf("Warning: Failed to load config: %v\n", err)
 	}
@@ -117,25 +124,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case components.DialogClosedMsg:
 		return m.handleDialogClosedMsg(msg)
 
-	case components.StartInterviewMsg:
+	case scenarios.StartInterviewMsg:
 		return m.handleStartInterviewMsg(msg)
 
-	case components.SendInterviewMessageMsg:
+	case scenarios.SendInterviewMessageMsg:
 		return m.handleSendInterviewMessageMsg(msg)
 
-	case components.InterviewStartedMsg:
+	case scenarios.InterviewStartedMsg:
 		return m.handleInterviewStartedMsg(msg)
 
-	case components.InterviewResponseMsg:
+	case scenarios.InterviewResponseMsg:
 		return m.handleInterviewResponseMsg(msg)
 
-	case components.GenerateScenariosMsg:
+	case scenarios.GenerateScenariosMsg:
 		return m.handleGenerateScenariosMsg(msg)
 
-	case components.ScenariosGeneratedMsg:
+	case scenarios.ScenariosGeneratedMsg:
 		return m.handleScenariosGeneratedMsg(msg)
 
-	case components.ScenarioEditorMsg:
+	case scenarios.ScenarioEditorMsg:
 		return m.handleScenarioEditorMsg(msg)
 
 	case tea.KeyMsg:
@@ -151,23 +158,30 @@ func (m Model) View() string {
 	var screen string
 	switch m.currentScreen {
 	case DashboardScreen:
-		screen = m.RenderMainScreen(t)
+		screen = dashboard.Render(m.width, m.height, m.version, &m.commandInput, t)
 	case NewEvaluationScreen:
-		screen = m.renderNewEvaluation()
+		screen = m.RenderNewEvaluation()
 	case EvaluationDetailScreen:
-		screen = m.renderEvaluationDetail()
+		screen = m.RenderEvaluationDetail()
 	case ReportScreen:
-		screen = m.renderReport()
+		var evalState *report.EvalState
+		if m.evalState != nil {
+			evalState = &report.EvalState{
+				Summary:   m.evalState.Summary,
+				Completed: m.evalState.Completed,
+			}
+		}
+		screen = report.Render(m.width, m.height, evalState, m.reportHistory, m.getMarkdownRenderer())
 	case InterviewScreen:
-		screen = m.RenderInterview()
+		screen = interview.Render(m.width, m.height)
 	case ConfigurationScreen:
-		screen = m.RenderConfiguration()
+		screen = config.Render(m.width, m.height, &m.config, m.configState)
 	case ScenariosScreen:
-		screen = m.renderScenarios()
+		screen = m.scenarioEditor.View()
 	case HelpScreen:
-		screen = m.RenderHelp()
+		screen = help.Render(m.width, m.height, &m.helpViewport)
 	default:
-		screen = m.RenderMainScreen(t)
+		screen = dashboard.Render(m.width, m.height, m.version, &m.commandInput, t)
 	}
 
 	mainLayout := m.RenderLayout(t, screen)

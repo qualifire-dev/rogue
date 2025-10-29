@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/rogue/tui/internal/commands"
-	"github.com/rogue/tui/internal/tui"
+	"github.com/rogue/tui/internal/shared"
 	"github.com/spf13/cobra"
 )
 
@@ -37,7 +37,7 @@ func main() {
 		Short: "Show version information",
 		Long:  "Display the current version of rogue-tui",
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("rogue-tui %s\n", tui.Version)
+			fmt.Printf("rogue-tui %s\n", shared.Version)
 		},
 	}
 	rootCmd.AddCommand(versionCmd)
@@ -48,7 +48,7 @@ func main() {
 	// Handle version flag on root command before execution
 	rootCmd.PreRun = func(cmd *cobra.Command, args []string) {
 		if showVersion {
-			fmt.Printf("rogue-tui %s\n", tui.Version)
+			fmt.Printf("rogue-tui %s\n", shared.Version)
 			os.Exit(0)
 		}
 	}
