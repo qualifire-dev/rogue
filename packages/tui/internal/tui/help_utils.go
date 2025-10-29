@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"log"
 	"strings"
 
 	"github.com/rogue/tui/internal/screens/help"
@@ -13,12 +12,9 @@ import (
 func (m *Model) initializeHelpViewport() {
 	// Only initialize if content is empty
 	if m.helpViewport.GetContent() != "" {
-		log.Printf("[TUI] Help viewport already initialized, resetting to top")
 		m.helpViewport.GotoTop()
 		return
 	}
-
-	log.Printf("[TUI] Initializing help viewport content")
 
 	// Calculate viewport dimensions
 	viewportWidth := m.width - 11
@@ -35,7 +31,6 @@ func (m *Model) initializeHelpViewport() {
 	contentStr := strings.ReplaceAll(helpContent, "\r\n", "\n")
 	renderedContent, err := renderer.Render(contentStr)
 	if err != nil {
-		log.Printf("[TUI] Error rendering help markdown: %v", err)
 		renderedContent = helpContent
 	}
 
@@ -43,7 +38,4 @@ func (m *Model) initializeHelpViewport() {
 	m.helpViewport.SetSize(contentWidth, actualViewportHeight)
 	m.helpViewport.SetContent(renderedContent)
 	m.helpViewport.GotoTop()
-
-	log.Printf("[TUI] Help viewport initialized: %dx%d, content lines: %d",
-		contentWidth, actualViewportHeight, len(strings.Split(renderedContent, "\n")))
 }

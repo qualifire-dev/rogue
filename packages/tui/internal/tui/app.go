@@ -2,8 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"log"
-	"os"
 
 	tea "github.com/charmbracelet/bubbletea/v2"
 
@@ -20,16 +18,6 @@ import (
 
 // NewApp creates a new TUI application
 func NewApp() *App {
-	// Set up debug logging to file
-	logFile, err := os.OpenFile("/tmp/rogue-debug.log", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
-	if err != nil {
-		fmt.Printf("Warning: Failed to create log file: %v\n", err)
-	} else {
-		log.SetOutput(logFile)
-		log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds)
-		log.Println("==== Rogue TUI Debug Log Started ====")
-	}
-
 	// Load themes before starting the app
 	if err := theme.LoadThemesFromJSON(); err != nil {
 		fmt.Printf("Warning: Failed to load themes: %v\n", err)

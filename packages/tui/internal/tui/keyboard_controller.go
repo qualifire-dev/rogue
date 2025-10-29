@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"log"
-
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/rogue/tui/internal/components"
 	"github.com/rogue/tui/internal/screens/help"
@@ -72,7 +70,6 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 
 	default:
 		// Route to screen-specific handlers
-		log.Printf("[TUI] handleKeyMsg default case, routing key %s to screen %v", msg.String(), m.currentScreen)
 		return m.routeKeyToScreen(msg)
 	}
 }
@@ -339,10 +336,8 @@ func (m Model) routeKeyToScreen(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m, result.Cmd
 
 	case HelpScreen:
-		log.Printf("[TUI] Routing key %s to help screen", msg.String())
 		updatedViewport, cmd := help.HandleInput(&m.helpViewport, msg)
 		m.helpViewport = *updatedViewport
-		log.Printf("[TUI] After HandleInput, helpViewport YOffset: %d", m.helpViewport.YOffset)
 		return m, cmd
 
 	case DashboardScreen:
