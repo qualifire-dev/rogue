@@ -1,0 +1,40 @@
+# Git and Docker specific files
+.git
+.gitignore
+.dockerignore
+Dockerfile*
+
+# Python virtual environment and cache
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.uv_cache/
+
+# Build artifacts
+dist/
+build/
+*.egg-info
+.eggs/
+
+# IDE, editor, and OS-specific files
+.idea/
+.DS_Store
+*.swo
+*.swp
+
+# Test and runtime artifacts
+.pytest_cache
+
+# Node.js (for JS examples if any)
+node_modules/
+
+# Documentation (not needed in runtime)
+docs/
+*.md
+!README.md
+
+# Pre-commit
+.pre-commit-config.yaml
