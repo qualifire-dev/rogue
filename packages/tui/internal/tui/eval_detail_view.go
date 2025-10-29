@@ -104,6 +104,8 @@ func (m Model) RenderEvaluationDetail() string {
 		Progress:  m.evalState.Progress,
 		Completed: m.evalState.Completed,
 
+		FocusedViewport: m.focusedViewport,
+
 		EvalSpinnerActive:    m.evalSpinner.IsActive(),
 		EvalSpinnerView:      m.evalSpinner.View(),
 		SummarySpinnerActive: m.summarySpinner.IsActive(),

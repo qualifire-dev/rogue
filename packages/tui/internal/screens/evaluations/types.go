@@ -36,6 +36,9 @@ type DetailState struct {
 	Progress  float64
 	Completed bool
 
+	// Focus state
+	FocusedViewport int // 0: events, 1: summary
+
 	// Spinner views (pre-rendered strings)
 	EvalSpinnerActive    bool
 	EvalSpinnerView      string

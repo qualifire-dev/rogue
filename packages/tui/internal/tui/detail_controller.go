@@ -54,7 +54,22 @@ func HandleEvalDetailInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 		// Switch focus between viewports
 		// Only switch if both viewports are visible (evaluation completed with summary)
 		if m.evalState.Completed && (m.evalState.Summary != "" || m.summarySpinner.IsActive()) {
+			// Blur the currently focused viewport
+			if m.focusedViewport == 0 && m.eventsHistory != nil {
+				m.eventsHistory.Blur()
+			} else if m.focusedViewport == 1 && m.summaryHistory != nil {
+				m.summaryHistory.Blur()
+			}
+
+			// Switch focus
 			m.focusedViewport = (m.focusedViewport + 1) % 2
+
+			// Focus the newly selected viewport
+			if m.focusedViewport == 0 && m.eventsHistory != nil {
+				m.eventsHistory.Focus()
+			} else if m.focusedViewport == 1 && m.summaryHistory != nil {
+				m.summaryHistory.Focus()
+			}
 		}
 		return m, nil
 
