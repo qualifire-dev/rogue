@@ -2,35 +2,28 @@ package help
 
 import (
 	_ "embed"
-	"log"
-	"strings"
 
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/rogue/tui/internal/components"
-	"github.com/rogue/tui/internal/shared"
 	"github.com/rogue/tui/internal/theme"
 )
 
 //go:embed help.md
 var helpContent string
 
+// GetHelpContent returns the embedded help markdown content
+func GetHelpContent() string {
+	return helpContent
+}
+
 // Render renders the help screen with viewport for scrollable content
 func Render(width, height int, viewport *components.Viewport) string {
 	t := theme.CurrentTheme()
 
-	// Viewport configuration
+	// Viewport configuration - content is initialized separately in initializeHelpViewport
+	// Just render the viewport as-is without modifying it
 	viewportWidth := width - 11
 	viewportHeight := height - 9
-	contentWidth := viewportWidth - 6
-
-	// Render markdown with correct width for viewport content
-	renderer := shared.GetMarkdownRenderer(contentWidth, t.Background())
-	contentStr := strings.ReplaceAll(helpContent, "\r\n", "\n")
-	renderedContent, err := renderer.Render(contentStr)
-	if err != nil {
-		log.Printf("Error rendering markdown: %v", err)
-		renderedContent = helpContent
-	}
 
 	// Main container style
 	mainStyle := lipgloss.NewStyle().
@@ -48,9 +41,6 @@ func Render(width, height int, viewport *components.Viewport) string {
 		Padding(1, 0)
 
 	header := titleStyle.Render("❓ Rogue")
-
-	viewport.SetSize(contentWidth, viewportHeight)
-	viewport.SetContent(renderedContent)
 
 	// Style the viewport with border
 	viewportStyle := lipgloss.NewStyle().

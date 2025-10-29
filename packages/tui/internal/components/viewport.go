@@ -1,6 +1,7 @@
 package components
 
 import (
+	"log"
 	"strings"
 	"unicode/utf8"
 
@@ -149,7 +150,10 @@ func (v *Viewport) SetWrapContent(wrapEnabled bool) {
 
 // SetYOffset sets the Y offset (vertical scroll position)
 func (v *Viewport) SetYOffset(offset int) {
-	v.YOffset = max(0, min(offset, v.maxYOffset))
+	oldOffset := v.YOffset
+	newOffset := max(0, min(offset, v.maxYOffset))
+	v.YOffset = newOffset
+	log.Printf("[VIEWPORT] SetYOffset: requested=%d, oldYOffset=%d, maxYOffset=%d, newYOffset=%d", offset, oldOffset, v.maxYOffset, newOffset)
 }
 
 // SetXOffset sets the X offset (horizontal scroll position)
@@ -164,11 +168,13 @@ func (v *Viewport) SetHorizontalStep(step int) {
 
 // ScrollUp moves the view up by the given number of lines
 func (v *Viewport) ScrollUp(lines int) {
+	log.Printf("[VIEWPORT] ScrollUp called: lines=%d, currentYOffset=%d", lines, v.YOffset)
 	v.SetYOffset(v.YOffset - lines)
 }
 
 // ScrollDown moves the view down by the given number of lines
 func (v *Viewport) ScrollDown(lines int) {
+	log.Printf("[VIEWPORT] ScrollDown called: lines=%d, currentYOffset=%d", lines, v.YOffset)
 	v.SetYOffset(v.YOffset + lines)
 }
 
@@ -257,24 +263,40 @@ func (v Viewport) VisibleLineCount() int {
 func (v *Viewport) Update(msg tea.Msg) (*Viewport, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		keyStr := msg.String()
+		log.Printf("[VIEWPORT] Update called with key: %s, YOffset: %d, maxYOffset: %d, lines: %d, height: %d",
+			keyStr, v.YOffset, v.maxYOffset, len(v.lines), v.Height)
+
 		switch {
 		case keyMatches(msg, v.KeyMap.Up):
+			log.Printf("[VIEWPORT] Matched Up key")
 			v.ScrollUp(1)
 		case keyMatches(msg, v.KeyMap.Down):
+			log.Printf("[VIEWPORT] Matched Down key")
 			v.ScrollDown(1)
 		case keyMatches(msg, v.KeyMap.Left):
+			log.Printf("[VIEWPORT] Matched Left key")
 			v.ScrollLeft(v.HorizontalStep)
 		case keyMatches(msg, v.KeyMap.Right):
+			log.Printf("[VIEWPORT] Matched Right key")
 			v.ScrollRight(v.HorizontalStep)
 		case keyMatches(msg, v.KeyMap.PageUp):
+			log.Printf("[VIEWPORT] Matched PageUp key")
 			v.PageUp()
 		case keyMatches(msg, v.KeyMap.PageDown):
+			log.Printf("[VIEWPORT] Matched PageDown key")
 			v.PageDown()
 		case keyMatches(msg, v.KeyMap.HalfPageUp):
+			log.Printf("[VIEWPORT] Matched HalfPageUp key")
 			v.HalfPageUp()
 		case keyMatches(msg, v.KeyMap.HalfPageDown):
+			log.Printf("[VIEWPORT] Matched HalfPageDown key")
 			v.HalfPageDown()
+		default:
+			log.Printf("[VIEWPORT] Key %s did not match any viewport keybinding", keyStr)
 		}
+
+		log.Printf("[VIEWPORT] After key handling, YOffset: %d", v.YOffset)
 
 	case tea.MouseMsg:
 		// Mouse wheel support can be added when needed
@@ -367,11 +389,13 @@ func (v Viewport) View() string {
 
 // updateBounds calculates the maximum scroll offsets based on content and viewport size
 func (v *Viewport) updateBounds() {
+	oldMaxYOffset := v.maxYOffset
 	if len(v.lines) <= v.Height {
 		v.maxYOffset = 0
 	} else {
 		v.maxYOffset = len(v.lines) - v.Height
 	}
+	log.Printf("[VIEWPORT] updateBounds: lines=%d, height=%d, oldMaxYOffset=%d, newMaxYOffset=%d", len(v.lines), v.Height, oldMaxYOffset, v.maxYOffset)
 
 	// Calculate max horizontal offset based on the longest line
 	maxLineWidth := 0

@@ -240,6 +240,8 @@ func (m Model) handleCommandSelectedMsg(msg components.CommandSelectedMsg) (Mode
 		}
 	case "help":
 		m.currentScreen = HelpScreen
+		// Initialize help viewport content if not already set
+		m.initializeHelpViewport()
 	case "quit":
 		// Show confirmation dialog before quitting
 		dialog := components.NewConfirmationDialog(
