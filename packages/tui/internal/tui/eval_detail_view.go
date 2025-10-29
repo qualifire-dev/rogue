@@ -69,6 +69,13 @@ func (m Model) RenderEvaluationDetail() string {
 	m.eventsHistory.SetPrefixes("🔍 Rogue: ", "🤖 Agent: ")
 	m.eventsHistory.SetColors(t.Primary(), t.Text())
 
+	// Set focus state for events history before rendering
+	if m.focusedViewport == 0 && showSummary {
+		m.eventsHistory.Focus()
+	} else if showSummary {
+		m.eventsHistory.Blur()
+	}
+
 	// Render events using MessageHistoryView
 	eventsContent := m.eventsHistory.View(t)
 
@@ -91,6 +98,13 @@ func (m Model) RenderEvaluationDetail() string {
 
 		renderer := m.getMarkdownRenderer()
 		m.summaryHistory.SetMarkdownRenderer(renderer)
+
+		// Set focus state for summary history before rendering
+		if m.focusedViewport == 1 {
+			m.summaryHistory.Focus()
+		} else {
+			m.summaryHistory.Blur()
+		}
 
 		summaryContent = m.summaryHistory.View(t)
 	}

@@ -96,51 +96,26 @@ func RenderDetail(state *DetailState) string {
 	// Build content based on whether summary is shown
 	var mainContent string
 	if showSummary {
-		// Create events section title with focus indicator
-		eventsTitle := lipgloss.NewStyle().
-			Foreground(t.Text()).
-			Background(t.Background()).
-			Bold(state.FocusedViewport == 0).
-			Width(state.Width).
-			Align(lipgloss.Center)
-
-		var eventsTitleText string
-		if state.FocusedViewport == 0 {
-			eventsTitleText = "▶ 💬 Conversation ◀"
-		} else {
-			eventsTitleText = "💬 Conversation"
-		}
-		eventsTitleRendered := eventsTitle.Render(eventsTitleText)
-
-		// Create summary section title with focus indicator
+		// Create summary section title
 		var summaryTitleText string
 		if state.SummarySpinnerActive {
-			if state.FocusedViewport == 1 {
-				summaryTitleText = fmt.Sprintf("▶ 📊 Evaluation Summary %s ◀", state.SummarySpinnerView)
-			} else {
-				summaryTitleText = fmt.Sprintf("📊 Evaluation Summary %s", state.SummarySpinnerView)
-			}
+			summaryTitleText = fmt.Sprintf("📊 Evaluation Summary %s", state.SummarySpinnerView)
 		} else {
-			if state.FocusedViewport == 1 {
-				summaryTitleText = "▶ 📊 Evaluation Summary ◀"
-			} else {
-				summaryTitleText = "📊 Evaluation Summary"
-			}
+			summaryTitleText = "📊 Evaluation Summary"
 		}
 
 		summaryTitle := lipgloss.NewStyle().
 			Foreground(t.Accent()).
 			Background(t.Background()).
-			Bold(state.FocusedViewport == 1).
+			Bold(true).
 			Width(state.Width).
 			Align(lipgloss.Center).
 			Render(summaryTitleText)
 
-		// Arrange: status, spacer, eventsTitle, events, spacer, summaryTitle, summary
+		// Arrange: status, spacer, events, spacer, summaryTitle, summary
 		content := lipgloss.JoinVertical(lipgloss.Left,
 			status,
 			spacer,
-			eventsTitleRendered,
 			state.EventsContent,
 			spacer,
 			summaryTitle,
