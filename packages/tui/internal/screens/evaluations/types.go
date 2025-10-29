@@ -8,13 +8,15 @@ type FormState struct {
 
 	// Form fields
 	AgentURL       string
+	Protocol       string
+	Transport      string
 	JudgeModel     string
 	DeepTest       bool
 	ServerURL      string
 	ScenariosCount int
 
 	// Editing state
-	CurrentField int // 0: AgentURL, 1: JudgeModel, 2: DeepTest, 3: StartButton
+	CurrentField int // 0: AgentURL, 1: Protocol, 2: Transport, 3: JudgeModel, 4: DeepTest, 5: StartButton
 	CursorPos    int
 
 	// UI state

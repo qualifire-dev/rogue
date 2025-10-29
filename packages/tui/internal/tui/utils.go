@@ -32,13 +32,15 @@ const (
 )
 
 type AgentConfig struct {
-	EvaluatedAgentURL         string   `json:"evaluated_agent_url"`
-	EvaluatedAgentAuthType    AuthType `json:"evaluated_agent_auth_type"`
-	EvaluatedAgentCredentials string   `json:"evaluated_agent_credentials,omitempty"`
-	JudgeLLMModel             string   `json:"judge_llm"`
-	InterviewMode             bool     `json:"interview_mode"`
-	DeepTestMode              bool     `json:"deep_test_mode"`
-	ParallelRuns              int      `json:"parallel_runs"`
+	EvaluatedAgentURL         string    `json:"evaluated_agent_url"`
+	EvaluatedAgentProtocol    Protocol  `json:"protocol"`
+	EvaluatedAgentTransport   Transport `json:"transport"`
+	EvaluatedAgentAuthType    AuthType  `json:"evaluated_agent_auth_type"`
+	EvaluatedAgentCredentials string    `json:"evaluated_agent_credentials,omitempty"`
+	JudgeLLMModel             string    `json:"judge_llm"`
+	InterviewMode             bool      `json:"interview_mode"`
+	DeepTestMode              bool      `json:"deep_test_mode"`
+	ParallelRuns              int       `json:"parallel_runs"`
 }
 
 type EvaluationRequest struct {
@@ -394,6 +396,8 @@ func (m *Model) StartEvaluation(
 	ctx context.Context,
 	serverURL string,
 	agentURL string,
+	agentProtocol Protocol,
+	agentTransport Transport,
 	scenarios []EvalScenario,
 	judgeModel string,
 	parallelRuns int,
@@ -412,12 +416,14 @@ func (m *Model) StartEvaluation(
 	// Build evaluation request
 	request := EvaluationRequest{
 		AgentConfig: AgentConfig{
-			EvaluatedAgentURL:      agentURL,
-			EvaluatedAgentAuthType: AuthTypeNoAuth,
-			JudgeLLMModel:          judgeModel,
-			InterviewMode:          true,
-			DeepTestMode:           deepTest,
-			ParallelRuns:           parallelRuns,
+			EvaluatedAgentURL:       agentURL,
+			EvaluatedAgentProtocol:  agentProtocol,
+			EvaluatedAgentTransport: agentTransport,
+			EvaluatedAgentAuthType:  AuthTypeNoAuth,
+			JudgeLLMModel:           judgeModel,
+			InterviewMode:           true,
+			DeepTestMode:            deepTest,
+			ParallelRuns:            parallelRuns,
 		},
 		MaxRetries:     3,
 		TimeoutSeconds: 600,

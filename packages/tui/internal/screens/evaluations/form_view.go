@@ -37,8 +37,8 @@ func RenderForm(state *FormState) string {
 
 	title := titleStyle.Render("🧪 New Evaluation")
 
-	// Helper function to render a field with inline label and value
-	renderField := func(fieldIndex int, label, value string) string {
+	// Helper function to render a text field with inline label and value
+	renderTextField := func(fieldIndex int, label, value string) string {
 		active := state.CurrentField == fieldIndex
 
 		labelStyle := lipgloss.NewStyle().
@@ -83,8 +83,86 @@ func RenderForm(state *FormState) string {
 		return fieldContainer.Render(fieldContent)
 	}
 
+	// Helper function to render a dropdown field with indicators
+	renderDropdownField := func(fieldIndex int, label, value string) string {
+		active := state.CurrentField == fieldIndex
+
+		labelStyle := lipgloss.NewStyle().
+			Foreground(t.TextMuted()).
+			Background(t.Background()).
+			Width(20).
+			Align(lipgloss.Right)
+
+		valueStyle := lipgloss.NewStyle().
+			Foreground(t.Text()).
+			Background(t.Background()).
+			Padding(0, 1)
+
+		if active {
+			labelStyle = labelStyle.Foreground(t.Primary()).Bold(true)
+			valueStyle = valueStyle.
+				Foreground(t.Primary()).
+				Background(t.Background()).
+				Bold(true)
+			// Add dropdown indicators
+			value = "◀ " + value + " ▶"
+		}
+
+		// Create a full-width container for the field
+		fieldContainer := lipgloss.NewStyle().
+			Width(state.Width-4).
+			Background(t.Background()).
+			Padding(0, 2)
+
+		fieldContent := lipgloss.JoinHorizontal(lipgloss.Left,
+			labelStyle.Render(label),
+			valueStyle.Render(value),
+		)
+
+		return fieldContainer.Render(fieldContent)
+	}
+
+	// Helper function to render a toggle field
+	renderToggleField := func(fieldIndex int, label, value string) string {
+		active := state.CurrentField == fieldIndex
+
+		labelStyle := lipgloss.NewStyle().
+			Foreground(t.TextMuted()).
+			Background(t.Background()).
+			Width(20).
+			Align(lipgloss.Right)
+
+		valueStyle := lipgloss.NewStyle().
+			Foreground(t.Text()).
+			Background(t.Background()).
+			Padding(0, 1)
+
+		if active {
+			labelStyle = labelStyle.Foreground(t.Primary()).Bold(true)
+			valueStyle = valueStyle.
+				Foreground(t.Primary()).
+				Background(t.Background()).
+				Bold(true)
+		}
+
+		// Create a full-width container for the field
+		fieldContainer := lipgloss.NewStyle().
+			Width(state.Width-4).
+			Background(t.Background()).
+			Padding(0, 2)
+
+		fieldContent := lipgloss.JoinHorizontal(lipgloss.Left,
+			labelStyle.Render(label),
+			valueStyle.Render(value),
+		)
+
+		return fieldContainer.Render(fieldContent)
+	}
+
 	// Prepare field values
 	agent := state.AgentURL
+	protocol := state.Protocol
+	transport := state.Transport
 	judge := state.JudgeModel
 	deep := "❌"
 	if state.DeepTest {
@@ -93,7 +171,7 @@ func RenderForm(state *FormState) string {
 
 	// Helper function to render the start button
 	renderStartButton := func() string {
-		active := state.CurrentField == 3
+		active := state.CurrentField == 5
 		var buttonText string
 
 		if state.EvalSpinnerActive {
@@ -151,9 +229,11 @@ func RenderForm(state *FormState) string {
 
 	// Build the content sections
 	formSection := lipgloss.JoinVertical(lipgloss.Left,
-		renderField(0, "Agent URL:", agent),
-		renderField(1, "Judge LLM:", judge),
-		renderField(2, "Deep Test:", deep),
+		renderTextField(0, "Agent URL:", agent),
+		renderDropdownField(1, "Protocol:", protocol),
+		renderDropdownField(2, "Transport:", transport),
+		renderTextField(3, "Judge LLM:", judge),
+		renderToggleField(4, "Deep Test:", deep),
 	)
 
 	var infoLines []string
@@ -168,7 +248,7 @@ func RenderForm(state *FormState) string {
 
 	buttonSection := renderStartButton()
 
-	helpText := helpStyle.Render("t Test Server   ↑/↓ switch fields   ←/→ move cursor    Space toggle   Enter activate   Esc Back")
+	helpText := helpStyle.Render("t Test Server   ↑/↓ switch fields   ←/→ move cursor/cycle dropdown    Space toggle   Enter activate   Esc Back")
 
 	// Calculate content area height (excluding title and help)
 	contentHeight := state.Height - 6 // title(3) + help(1) + margins(2)

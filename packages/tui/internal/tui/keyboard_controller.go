@@ -79,14 +79,17 @@ func (m Model) handleGlobalCtrlN() (Model, tea.Cmd) {
 		// Use the configured model in provider/model format
 		judgeModel = m.config.SelectedProvider + "/" + m.config.SelectedModel
 	}
+	// TODO read agent url and protocol .rogue/user_config.json
 	m.evalState = &EvaluationViewState{
-		ServerURL:    m.config.ServerURL,
-		AgentURL:     "http://localhost:10001",
-		JudgeModel:   judgeModel,
-		ParallelRuns: 1,
-		DeepTest:     false,
-		Scenarios:    loadScenariosFromWorkdir(),
-		cursorPos:    len([]rune("http://localhost:10001")), // Set cursor to end of Agent URL
+		ServerURL:      m.config.ServerURL,
+		AgentURL:       "http://localhost:10001",
+		AgentProtocol:  ProtocolA2A,
+		AgentTransport: TransportHTTP,
+		JudgeModel:     judgeModel,
+		ParallelRuns:   1,
+		DeepTest:       false,
+		Scenarios:      loadScenariosFromWorkdir(),
+		cursorPos:      len([]rune("http://localhost:10001")), // Set cursor to end of Agent URL
 	}
 	m.currentScreen = NewEvaluationScreen
 	return m, nil
@@ -141,7 +144,7 @@ func (m Model) handleGlobalSlash(msg tea.KeyMsg) (Model, tea.Cmd) {
 			runes := []rune(m.evalState.AgentURL)
 			m.evalState.AgentURL = string(runes[:m.evalState.cursorPos]) + s + string(runes[m.evalState.cursorPos:])
 			m.evalState.cursorPos++
-		case 1: // JudgeModel
+		case 3: // JudgeModel
 			runes := []rune(m.evalState.JudgeModel)
 			m.evalState.JudgeModel = string(runes[:m.evalState.cursorPos]) + s + string(runes[m.evalState.cursorPos:])
 			m.evalState.cursorPos++
@@ -268,11 +271,11 @@ func (m Model) handleGlobalEnter(msg tea.KeyMsg) (Model, tea.Cmd) {
 	}
 	// Handle NewEvaluationScreen enter for start button and LLM config
 	if m.currentScreen == NewEvaluationScreen && m.evalState != nil {
-		if m.evalState.currentField == 3 { // Start button field
+		if m.evalState.currentField == 5 { // Start button field
 			m.handleNewEvalEnter()
 			// Return command to start evaluation after showing spinner
 			return m, tea.Batch(m.evalSpinner.Start(), startEvaluationCmd())
-		} else if m.evalState.currentField == 1 { // Judge LLM field
+		} else if m.evalState.currentField == 3 { // Judge LLM field
 			// Open LLM config dialog when Enter is pressed on Judge LLM field
 			llmDialog := components.NewLLMConfigDialog(m.config.APIKeys, m.config.SelectedProvider, m.config.SelectedModel)
 			m.llmDialog = &llmDialog

@@ -15,7 +15,7 @@ load_dotenv()
     "--transport",
     "transport",
     default="streamable-http",
-    choices=["streamable-http", "sse"],
+    type=click.Choice(["streamable-http", "sse"]),
     help="Transport to use for the mcp server",
 )
 def main(host: str, port: int, transport: Literal["streamable-http", "sse"]) -> None:

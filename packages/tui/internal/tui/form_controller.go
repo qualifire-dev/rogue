@@ -26,7 +26,7 @@ func HandleEvalFormInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 			switch m.evalState.currentField {
 			case 0:
 				m.evalState.cursorPos = len([]rune(m.evalState.AgentURL))
-			case 1:
+			case 3:
 				m.evalState.cursorPos = len([]rune(m.evalState.JudgeModel))
 			default:
 				m.evalState.cursorPos = 0
@@ -35,13 +35,13 @@ func HandleEvalFormInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m, nil
 
 	case "down":
-		if m.evalState.currentField < 3 { // Now includes start button (0-3)
+		if m.evalState.currentField < 5 { // 0-5 fields (AgentURL, Protocol, Transport, JudgeModel, DeepTest, StartButton)
 			m.evalState.currentField++
 			// Set cursor to end of field content when switching fields
 			switch m.evalState.currentField {
 			case 0:
 				m.evalState.cursorPos = len([]rune(m.evalState.AgentURL))
-			case 1:
+			case 3:
 				m.evalState.cursorPos = len([]rune(m.evalState.JudgeModel))
 			default:
 				m.evalState.cursorPos = 0
@@ -50,23 +50,31 @@ func HandleEvalFormInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m, nil
 
 	case "left":
-		if m.evalState.currentField <= 1 && m.evalState.cursorPos > 0 { // Text fields 0-2
-			m.evalState.cursorPos--
+		switch m.evalState.currentField {
+		case 0, 3: // Text fields: AgentURL, JudgeModel
+			if m.evalState.cursorPos > 0 {
+				m.evalState.cursorPos--
+			}
+		case 1: // Protocol dropdown
+			m.evalState.cycleProtocol(true) // cycle backwards
+		case 2: // Transport dropdown
+			m.evalState.cycleTransport(true) // cycle backwards
 		}
 		return m, nil
 
 	case "right":
-		if m.evalState.currentField <= 1 { // Text fields 0-1
-			// Get current field length to limit cursor
-			var fieldLen int
-			switch m.evalState.currentField {
-			case 0:
-				fieldLen = len(m.evalState.AgentURL)
-			case 1:
-				fieldLen = len(m.evalState.JudgeModel)
-			case 2:
-				fieldLen = len(fmt.Sprintf("%d", m.evalState.ParallelRuns))
+		switch m.evalState.currentField {
+		case 0: // AgentURL text field
+			fieldLen := len(m.evalState.AgentURL)
+			if m.evalState.cursorPos < fieldLen {
+				m.evalState.cursorPos++
 			}
+		case 1: // Protocol dropdown
+			m.evalState.cycleProtocol(false) // cycle forwards
+		case 2: // Transport dropdown
+			m.evalState.cycleTransport(false) // cycle forwards
+		case 3: // JudgeModel text field
+			fieldLen := len(m.evalState.JudgeModel)
 			if m.evalState.cursorPos < fieldLen {
 				m.evalState.cursorPos++
 			}
@@ -74,14 +82,14 @@ func HandleEvalFormInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m, nil
 
 	case "space":
-		if m.evalState.currentField == 2 { // DeepTest field is now index 2
+		if m.evalState.currentField == 4 { // DeepTest field is now index 2
 			m.evalState.DeepTest = !m.evalState.DeepTest
 			return m, nil
 		}
 
 	case "tab":
 		// Open LLM config dialog when on Judge Model field
-		if m.evalState.currentField == 1 { // JudgeModel field
+		if m.evalState.currentField == 3 { // JudgeModel field
 			llmDialog := components.NewLLMConfigDialog(m.config.APIKeys, m.config.SelectedProvider, m.config.SelectedModel)
 			m.llmDialog = &llmDialog
 			return m, nil
@@ -89,7 +97,7 @@ func HandleEvalFormInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 
 	case "backspace":
 		// Handle backspace for text fields
-		if m.evalState.currentField <= 1 && m.evalState.cursorPos > 0 {
+		if m.evalState.currentField > 0 {
 			switch m.evalState.currentField {
 			case 0: // AgentURL
 				runes := []rune(m.evalState.AgentURL)
@@ -97,13 +105,13 @@ func HandleEvalFormInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 					m.evalState.AgentURL = string(runes[:m.evalState.cursorPos-1]) + string(runes[m.evalState.cursorPos:])
 					m.evalState.cursorPos--
 				}
-			case 1: // JudgeModel
+			case 3: // JudgeModel
 				runes := []rune(m.evalState.JudgeModel)
 				if m.evalState.cursorPos <= len(runes) {
 					m.evalState.JudgeModel = string(runes[:m.evalState.cursorPos-1]) + string(runes[m.evalState.cursorPos:])
 					m.evalState.cursorPos--
 				}
-			case 2: // ParallelRuns (special handling for numbers)
+			case 6: // ParallelRuns (special handling for numbers)
 				if m.evalState.ParallelRuns >= 10 {
 					m.evalState.ParallelRuns /= 10
 					m.evalState.cursorPos--
@@ -118,17 +126,17 @@ func HandleEvalFormInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 	default:
 		// insert character into text fields
 		s := msg.String()
-		if len(s) == 1 && m.evalState.currentField <= 2 { // Text fields 0-2
+		if len(s) == 1 {
 			switch m.evalState.currentField {
 			case 0: // AgentURL
 				runes := []rune(m.evalState.AgentURL)
 				m.evalState.AgentURL = string(runes[:m.evalState.cursorPos]) + s + string(runes[m.evalState.cursorPos:])
 				m.evalState.cursorPos++
-			case 1: // JudgeModel
+			case 3: // JudgeModel
 				runes := []rune(m.evalState.JudgeModel)
 				m.evalState.JudgeModel = string(runes[:m.evalState.cursorPos]) + s + string(runes[m.evalState.cursorPos:])
 				m.evalState.cursorPos++
-			case 2: // ParallelRuns (numeric only)
+			case 6: // ParallelRuns (numeric only)
 				if s[0] >= '0' && s[0] <= '9' {
 					numStr := fmt.Sprintf("%d", m.evalState.ParallelRuns)
 					runes := []rune(numStr)

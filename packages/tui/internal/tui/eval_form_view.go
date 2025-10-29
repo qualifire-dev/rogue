@@ -25,6 +25,8 @@ func (m Model) RenderNewEvaluation() string {
 		Height: m.height,
 
 		AgentURL:       m.evalState.AgentURL,
+		Protocol:       string(m.evalState.AgentProtocol),
+		Transport:      string(m.evalState.AgentTransport),
 		JudgeModel:     m.evalState.JudgeModel,
 		DeepTest:       m.evalState.DeepTest,
 		ServerURL:      m.evalState.ServerURL,
