@@ -97,17 +97,17 @@ func (m Model) handleEvalFormInput(msg tea.KeyMsg) (Model, tea.Cmd) {
 
 	case "backspace":
 		// Handle backspace for text fields
-		if m.evalState.currentField > 0 {
+		if m.evalState.currentField >= 0 {
 			switch m.evalState.currentField {
 			case 0: // AgentURL
 				runes := []rune(m.evalState.AgentURL)
-				if m.evalState.cursorPos <= len(runes) {
+				if m.evalState.cursorPos > 0 && m.evalState.cursorPos <= len(runes) && len(runes) > 0 {
 					m.evalState.AgentURL = string(runes[:m.evalState.cursorPos-1]) + string(runes[m.evalState.cursorPos:])
 					m.evalState.cursorPos--
 				}
 			case 3: // JudgeModel
 				runes := []rune(m.evalState.JudgeModel)
-				if m.evalState.cursorPos <= len(runes) {
+				if m.evalState.cursorPos > 0 && m.evalState.cursorPos <= len(runes) && len(runes) > 0 {
 					m.evalState.JudgeModel = string(runes[:m.evalState.cursorPos-1]) + string(runes[m.evalState.cursorPos:])
 					m.evalState.cursorPos--
 				}
