@@ -2,6 +2,7 @@ import asyncio
 import subprocess  # nosec: B404
 import sys
 import time
+import warnings
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
@@ -17,6 +18,18 @@ from .run_cli import run_cli, set_cli_args
 from .run_server import run_server, set_server_args
 from .run_tui import run_rogue_tui
 from .run_ui import run_ui, set_ui_args
+
+# Suppress the specific Uvicorn/websockets deprecation warnings
+warnings.filterwarnings(
+    "ignore",
+    category=DeprecationWarning,
+    message="websockets.legacy is deprecated",
+)
+warnings.filterwarnings(
+    "ignore",
+    category=DeprecationWarning,
+    message="websockets.server.WebSocketServerProtocol is deprecated",
+)
 
 load_dotenv()
 

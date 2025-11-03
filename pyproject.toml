@@ -9,7 +9,7 @@ dependencies = [
     "backoff>=2.2.1",
     "click>=8.0.0",
     "datasets==3.6.0",
-    "fastapi>=0.115.0",
+    "fastapi>=0.121.0",
     "fastmcp>=2.12.5",
     "google-adk==1.5.0",
     "gradio==5.35.0",
@@ -24,7 +24,7 @@ dependencies = [
     "requests>=2.32.4",
     "rich>=14.0.0",
     "rogue-ai-sdk>=0.1.3",
-    "uvicorn>=0.32.0",
+    "uvicorn>=0.38.0",
 ]
 
 [dependency-groups]
@@ -70,4 +70,3 @@ rogue-ai-sdk = { path = "sdks/python", editable = true }
 [project.scripts]
 rogue-ai = "rogue.__main__:main"
 rogue-ai-example-tshirt = "examples.tshirt_store_agent.__main__:main"
-
