@@ -45,6 +45,33 @@
             "envFile": "${workspaceFolder}/.env"
         },
         {
+            "name": "Rogue CLI MCP",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "./.venv/bin/python",
+            "module": "rogue",
+            "args": [
+                "cli",
+                "--evaluated-agent-url",
+                "http://localhost:10001/mcp",
+                "--protocol",
+                "mcp",
+                "--judge-llm",
+                "openai/o4-mini",
+                "--workdir",
+                "./examples/tshirt_store_agent/.rogue"
+            ],
+            "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "name": "Rogue TUI",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/packages/tui/cmd/rogue/main.go",
+            "console": "integratedTerminal"
+        },
+        {
             "name": "Rogue AIO",
             "type": "debugpy",
             "request": "launch",
@@ -58,7 +85,7 @@
             "type": "debugpy",
             "request": "launch",
             "python": "./.venv/bin/python",
-            "program": "./examples/tshirt_store_agent",
+            "module": "examples.tshirt_store_agent",
             "envFile": "${workspaceFolder}/examples/tshirt_store_agent/.env"
         },
         {
@@ -66,8 +93,8 @@
             "type": "debugpy",
             "request": "launch",
             "python": "./.venv/bin/python",
-            "program": "./examples/mcp/tshirt_store_mcp",
-            "envFile": "${workspaceFolder}/examples/mcp/tshirt_store_mcp/.env"
+            "module": "examples.mcp.tshirt_store_langgraph_mcp",
+            "envFile": "${workspaceFolder}/examples/mcp/tshirt_store_langgraph_mcp/.env"
         }
     ]
 }

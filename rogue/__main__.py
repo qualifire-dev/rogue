@@ -2,6 +2,7 @@ import asyncio
 import subprocess  # nosec: B404
 import sys
 import time
+import warnings
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
@@ -17,6 +18,18 @@ from .run_cli import run_cli, set_cli_args
 from .run_server import run_server, set_server_args
 from .run_tui import run_rogue_tui
 from .run_ui import run_ui, set_ui_args
+
+# Suppress the specific Uvicorn/websockets deprecation warnings
+warnings.filterwarnings(
+    "ignore",
+    category=DeprecationWarning,
+    message="websockets.legacy is deprecated",
+)
+warnings.filterwarnings(
+    "ignore",
+    category=DeprecationWarning,
+    message="websockets.server.WebSocketServerProtocol is deprecated",
+)
 
 load_dotenv()
 
@@ -44,8 +57,9 @@ def common_parser() -> ArgumentParser:
     parent_parser.add_argument(
         "--example",
         type=str,
-        choices=["tshirt_store"],
-        help="Run with an example agent (e.g., tshirt_store)",
+        choices=["tshirt_store", "tshirt_store_langgraph_mcp"],
+        help="Run with an example agent "
+        "(e.g., tshirt_store, tshirt_store_langgraph_mcp)",
     )
     parent_parser.add_argument(
         "--example-host",
@@ -131,6 +145,19 @@ def start_example_agent(
             host,
             "--port",
             str(port),
+        ]
+    elif example_name == "tshirt_store_langgraph_mcp":
+        # Use subprocess to run the example agent
+        cmd = [
+            sys.executable,
+            "-m",
+            "examples.mcp.tshirt_store_langgraph_mcp",
+            "--host",
+            host,
+            "--port",
+            str(port),
+            "--transport",
+            "streamable-http",
         ]
     else:
         logger.error(f"Unknown example: {example_name}")

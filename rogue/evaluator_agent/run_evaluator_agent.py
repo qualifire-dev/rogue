@@ -2,13 +2,11 @@ import asyncio
 from asyncio import Queue
 from typing import TYPE_CHECKING, Any, AsyncGenerator
 
-from google.genai import types
-from httpx import AsyncClient
 from loguru import logger
-from rogue_sdk.types import AuthType, EvaluationResults, Scenarios
+from rogue_sdk.types import AuthType, EvaluationResults, Protocol, Scenarios, Transport
 
 from ..common.agent_sessions import create_session
-from .evaluator_agent import EvaluatorAgent
+from .evaluator_agent_factory import get_evaluator_agent
 
 if TYPE_CHECKING:
     from google.adk.runners import Runner
@@ -20,15 +18,17 @@ async def _run_agent(
     input_text: str,
     session: "Session",
 ) -> str:
+    from google.genai.types import Content, Part
+
     input_text_preview = (
         input_text[:100] + "..." if len(input_text) > 100 else input_text
     )
     logger.info(f"🎯 running agent with input: '{input_text_preview}'")
 
     # Create content from user input
-    content = types.Content(
+    content = Content(
         role="user",
-        parts=[types.Part(text=input_text)],
+        parts=[Part(text=input_text)],
     )
 
     agent_output = ""
@@ -73,6 +73,8 @@ async def _run_agent(
 
 
 async def arun_evaluator_agent(
+    protocol: Protocol,
+    transport: Transport | None,
     evaluated_agent_url: str,
     auth_type: AuthType,
     auth_credentials: str | None,
@@ -89,6 +91,8 @@ async def arun_evaluator_agent(
     logger.info(
         "🤖 arun_evaluator_agent starting",
         extra={
+            "protocol": protocol.value,
+            "transport": transport.value if transport else None,
             "evaluated_agent_url": evaluated_agent_url,
             "auth_type": auth_type.value,
             "judge_llm": judge_llm,
@@ -104,20 +108,22 @@ async def arun_evaluator_agent(
         update_queue: Queue = Queue()
         results_queue: Queue = Queue()
 
-        logger.info("🌐 Creating HTTP client and evaluator agent")
-        async with AsyncClient(headers=headers, timeout=30) as httpx_client:
-            evaluator_agent = EvaluatorAgent(
-                http_client=httpx_client,
-                evaluated_agent_address=evaluated_agent_url,
-                scenarios=scenarios,
-                business_context=business_context,
-                chat_update_callback=update_queue.put_nowait,
-                deep_test_mode=deep_test_mode,
-                judge_llm=judge_llm,
-                judge_llm_auth=judge_llm_api_key,
-            )
-            logger.info("✅ EvaluatorAgent created successfully")
+        logger.info("🌐 Creating evaluator agent")
+        evaluator_agent = get_evaluator_agent(
+            protocol=protocol,
+            transport=transport,
+            evaluated_agent_address=evaluated_agent_url,
+            judge_llm=judge_llm,
+            scenarios=scenarios,
+            business_context=business_context,
+            headers=headers,
+            judge_llm_auth=judge_llm_api_key,
+            debug=False,
+            deep_test_mode=deep_test_mode,
+            chat_update_callback=update_queue.put_nowait,
+        )
 
+        async with evaluator_agent as evaluator_agent:
             session_service = InMemorySessionService()
             app_name = "evaluator_agent"
 
@@ -212,6 +218,8 @@ async def arun_evaluator_agent(
 
 
 def run_evaluator_agent(
+    protocol: Protocol,
+    transport: Transport | None,
     evaluated_agent_url: str,
     auth_type: AuthType,
     auth_credentials: str | None,
@@ -223,6 +231,8 @@ def run_evaluator_agent(
 ) -> EvaluationResults:
     async def run_evaluator_agent_task():
         async for update_type, data in arun_evaluator_agent(
+            protocol=protocol,
+            transport=transport,
             evaluated_agent_url=evaluated_agent_url,
             auth_type=auth_type,
             auth_credentials=auth_credentials,
