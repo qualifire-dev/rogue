@@ -43,7 +43,7 @@ class MCPEvaluatorAgent(BaseEvaluatorAgent):
 
         self._context_id_to_client: dict[
             str,
-            Client[SSETransport | StreamableHttpTransport],
+            "Client[SSETransport | StreamableHttpTransport]",
         ] = {}
 
     async def __aenter__(self) -> Self:
