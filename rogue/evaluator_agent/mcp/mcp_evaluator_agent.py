@@ -1,10 +1,14 @@
 from types import TracebackType
-from typing import Callable, Optional, Self, Type
+from typing import TYPE_CHECKING, Callable, Optional, Self, Type
 
 from loguru import logger
 from rogue_sdk.types import Protocol, Scenarios, Transport
 
 from ..base_evaluator_agent import BaseEvaluatorAgent
+
+if TYPE_CHECKING:
+    from fastmcp import Client
+    from fastmcp.client import SSETransport, StreamableHttpTransport
 
 
 class MCPEvaluatorAgent(BaseEvaluatorAgent):
@@ -23,9 +27,6 @@ class MCPEvaluatorAgent(BaseEvaluatorAgent):
         *args,
         **kwargs,
     ):
-        from fastmcp import Client
-        from fastmcp.client import SSETransport, StreamableHttpTransport
-
         super().__init__(
             evaluated_agent_address=evaluated_agent_address,
             protocol=Protocol.MCP,
@@ -40,27 +41,32 @@ class MCPEvaluatorAgent(BaseEvaluatorAgent):
             chat_update_callback=chat_update_callback,
         )
 
-        self._client: Client[SSETransport | StreamableHttpTransport]
+        self._context_id_to_client: dict[
+            str,
+            Client[SSETransport | StreamableHttpTransport],
+        ] = {}
 
-        if self._transport == Transport.SSE:
-            self._client = Client[SSETransport](
-                transport=SSETransport(
-                    url=evaluated_agent_address,
-                    headers=headers,
-                ),
-            )
-        elif self._transport == Transport.STREAMABLE_HTTP:
-            self._client = Client[StreamableHttpTransport](
-                transport=StreamableHttpTransport(
-                    url=evaluated_agent_address,
-                    headers=headers,
-                ),
-            )
-        else:
-            raise ValueError(f"Unsupported transport for MCP: {self._transport}")
+        # self._client: Client[SSETransport | StreamableHttpTransport]
+
+        # if self._transport == Transport.SSE:
+        #     self._client = Client[SSETransport](
+        #         transport=SSETransport(
+        #             url=evaluated_agent_address,
+        #             headers=headers,
+        #         ),
+        #     )
+        # elif self._transport == Transport.STREAMABLE_HTTP:
+        #     self._client = Client[StreamableHttpTransport](
+        #         transport=StreamableHttpTransport(
+        #             url=evaluated_agent_address,
+        #             headers=headers,
+        #         ),
+        #     )
+        # else:
+        #     raise ValueError(f"Unsupported transport for MCP: {self._transport}")
 
     async def __aenter__(self) -> Self:
-        await self._client.__aenter__()
+        # await self._client.__aenter__()
         return await super().__aenter__()
 
     async def __aexit__(
@@ -70,7 +76,47 @@ class MCPEvaluatorAgent(BaseEvaluatorAgent):
         traceback: Optional[TracebackType],
     ) -> None:
         await super().__aexit__(exc_type, exc_value, traceback)
-        await self._client.__aexit__(exc_type, exc_value, traceback)
+        # await self._client.__aexit__(exc_type, exc_value, traceback)
+        for client in self._context_id_to_client.values():
+            await client.__aexit__(exc_type, exc_value, traceback)
+
+    async def _create_client(self) -> "Client[SSETransport | StreamableHttpTransport]":
+        from fastmcp import Client
+        from fastmcp.client import SSETransport, StreamableHttpTransport
+
+        client: Client[SSETransport | StreamableHttpTransport] | None = None
+        if self._transport == Transport.SSE:
+            client = Client[SSETransport](
+                transport=SSETransport(
+                    url=self._evaluated_agent_address,
+                    headers=self._headers,
+                ),
+            )
+        elif self._transport == Transport.STREAMABLE_HTTP:
+            client = Client[StreamableHttpTransport](
+                transport=StreamableHttpTransport(
+                    url=self._evaluated_agent_address,
+                    headers=self._headers,
+                ),
+            )
+        else:
+            raise ValueError(f"Unsupported transport for MCP: {self._transport}")
+
+        if not client:
+            raise ValueError(
+                f"Failed to create client for transport: {self._transport}",
+            )
+
+        await client.__aenter__()
+        return client
+
+    async def _get_or_create_client(
+        self,
+        context_id: str,
+    ) -> "Client[SSETransport | StreamableHttpTransport]":
+        if context_id not in self._context_id_to_client:
+            self._context_id_to_client[context_id] = await self._create_client()
+        return self._context_id_to_client[context_id]
 
     async def _send_message_to_evaluated_agent(
         self,
@@ -88,7 +134,7 @@ class MCPEvaluatorAgent(BaseEvaluatorAgent):
         )
 
         self._add_message_to_chat_history(context_id, "user", message)
-        response = await self._invoke_mcp_agent(message)
+        response = await self._invoke_mcp_agent(context_id, message)
         # TODO: add support for multi-model responses (audio, images, etc.)
         if not response or not response.get("response"):
             logger.debug(
@@ -108,12 +154,14 @@ class MCPEvaluatorAgent(BaseEvaluatorAgent):
 
         return response
 
-    async def _invoke_mcp_agent(self, message: str) -> dict[str, str]:
+    async def _invoke_mcp_agent(self, context_id: str, message: str) -> dict[str, str]:
+        client = await self._get_or_create_client(context_id)
         try:
-            tool_result = await self._client.call_tool(
+            tool_result = await client.call_tool(
                 name="send_message",
                 arguments={
                     "message": message,
+                    "context_id": context_id,
                 },
             )
 
