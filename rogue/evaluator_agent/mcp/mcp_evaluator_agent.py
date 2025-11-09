@@ -46,27 +46,7 @@ class MCPEvaluatorAgent(BaseEvaluatorAgent):
             Client[SSETransport | StreamableHttpTransport],
         ] = {}
 
-        # self._client: Client[SSETransport | StreamableHttpTransport]
-
-        # if self._transport == Transport.SSE:
-        #     self._client = Client[SSETransport](
-        #         transport=SSETransport(
-        #             url=evaluated_agent_address,
-        #             headers=headers,
-        #         ),
-        #     )
-        # elif self._transport == Transport.STREAMABLE_HTTP:
-        #     self._client = Client[StreamableHttpTransport](
-        #         transport=StreamableHttpTransport(
-        #             url=evaluated_agent_address,
-        #             headers=headers,
-        #         ),
-        #     )
-        # else:
-        #     raise ValueError(f"Unsupported transport for MCP: {self._transport}")
-
     async def __aenter__(self) -> Self:
-        # await self._client.__aenter__()
         return await super().__aenter__()
 
     async def __aexit__(
@@ -76,7 +56,6 @@ class MCPEvaluatorAgent(BaseEvaluatorAgent):
         traceback: Optional[TracebackType],
     ) -> None:
         await super().__aexit__(exc_type, exc_value, traceback)
-        # await self._client.__aexit__(exc_type, exc_value, traceback)
         for client in self._context_id_to_client.values():
             await client.__aexit__(exc_type, exc_value, traceback)
 
