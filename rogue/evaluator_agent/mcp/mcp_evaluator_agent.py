@@ -140,7 +140,6 @@ class MCPEvaluatorAgent(BaseEvaluatorAgent):
                 name="send_message",
                 arguments={
                     "message": message,
-                    "context_id": context_id,
                 },
             )
 
