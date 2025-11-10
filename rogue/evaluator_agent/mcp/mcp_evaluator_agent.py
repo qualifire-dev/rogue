@@ -102,6 +102,16 @@ class MCPEvaluatorAgent(BaseEvaluatorAgent):
         context_id: str,
         message: str,
     ) -> dict[str, str]:
+        """
+        Sends a message to the evaluated agent and returns the agent's response.
+        :param message: the text to send to the other agent.
+        :param context_id: The context ID of the conversation.
+            Each conversation has a unique context_id. All messages in the conversation
+            have the same context_id.
+        :return: A dictionary containing the response from the evaluated agent.
+            - "response": the response string. If there is no response
+                from the other agent, the string is empty.
+        """
         logger.info(
             "🔗 Making MCP call to evaluated agent",
             extra={
