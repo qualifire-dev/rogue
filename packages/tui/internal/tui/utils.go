@@ -32,15 +32,19 @@ const (
 )
 
 type AgentConfig struct {
-	EvaluatedAgentURL         string    `json:"evaluated_agent_url"`
-	EvaluatedAgentProtocol    Protocol  `json:"protocol"`
-	EvaluatedAgentTransport   Transport `json:"transport"`
-	EvaluatedAgentAuthType    AuthType  `json:"evaluated_agent_auth_type"`
-	EvaluatedAgentCredentials string    `json:"evaluated_agent_credentials,omitempty"`
-	JudgeLLMModel             string    `json:"judge_llm"`
-	InterviewMode             bool      `json:"interview_mode"`
-	DeepTestMode              bool      `json:"deep_test_mode"`
-	ParallelRuns              int       `json:"parallel_runs"`
+	EvaluatedAgentURL          string    `json:"evaluated_agent_url"`
+	EvaluatedAgentProtocol     Protocol  `json:"protocol"`
+	EvaluatedAgentTransport    Transport `json:"transport"`
+	EvaluatedAgentAuthType     AuthType  `json:"evaluated_agent_auth_type"`
+	EvaluatedAgentCredentials  string    `json:"evaluated_agent_credentials,omitempty"`
+	JudgeLLMModel              string    `json:"judge_llm"`
+	JudgeLLMAPIKey             string    `json:"judge_llm_api_key,omitempty"`
+	JudgeLLMAWSAccessKeyID     string    `json:"judge_llm_aws_access_key_id,omitempty"`
+	JudgeLLMAWSSecretAccessKey string    `json:"judge_llm_aws_secret_access_key,omitempty"`
+	JudgeLLMAWSRegion          string    `json:"judge_llm_aws_region,omitempty"`
+	InterviewMode              bool      `json:"interview_mode"`
+	DeepTestMode               bool      `json:"deep_test_mode"`
+	ParallelRuns               int       `json:"parallel_runs"`
 }
 
 type EvaluationRequest struct {
@@ -413,17 +417,49 @@ func (m *Model) StartEvaluation(
 		return nil, nil, fmt.Errorf("invalid agent url: %w", err)
 	}
 
+	// Extract API key and AWS credentials from config based on judge model provider
+	var apiKey string
+	var awsAccessKeyID, awsSecretAccessKey, awsRegion string
+
+	// Extract provider from judge model (e.g. "openai/gpt-4" -> "openai" or "bedrock/anthropic.claude-..." -> "bedrock")
+	if parts := strings.Split(judgeModel, "/"); len(parts) >= 2 {
+		provider := parts[0]
+
+		// For Bedrock, extract AWS credentials from config (don't use api_key)
+		if provider == "bedrock" {
+			if accessKey, ok := m.config.APIKeys["bedrock_access_key"]; ok {
+				awsAccessKeyID = accessKey
+			}
+			if secretKey, ok := m.config.APIKeys["bedrock_secret_key"]; ok {
+				awsSecretAccessKey = secretKey
+			}
+			if region, ok := m.config.APIKeys["bedrock_region"]; ok {
+				awsRegion = region
+			}
+			// Don't set apiKey for Bedrock - use AWS credentials only
+		} else {
+			// For non-Bedrock providers, extract API key
+			if key, ok := m.config.APIKeys[provider]; ok {
+				apiKey = key
+			}
+		}
+	}
+
 	// Build evaluation request
 	request := EvaluationRequest{
 		AgentConfig: AgentConfig{
-			EvaluatedAgentURL:       agentURL,
-			EvaluatedAgentProtocol:  agentProtocol,
-			EvaluatedAgentTransport: agentTransport,
-			EvaluatedAgentAuthType:  AuthTypeNoAuth,
-			JudgeLLMModel:           judgeModel,
-			InterviewMode:           true,
-			DeepTestMode:            deepTest,
-			ParallelRuns:            parallelRuns,
+			EvaluatedAgentURL:          agentURL,
+			EvaluatedAgentProtocol:     agentProtocol,
+			EvaluatedAgentTransport:    agentTransport,
+			EvaluatedAgentAuthType:     AuthTypeNoAuth,
+			JudgeLLMModel:              judgeModel,
+			JudgeLLMAPIKey:             apiKey,
+			JudgeLLMAWSAccessKeyID:     awsAccessKeyID,
+			JudgeLLMAWSSecretAccessKey: awsSecretAccessKey,
+			JudgeLLMAWSRegion:          awsRegion,
+			InterviewMode:              true,
+			DeepTestMode:               deepTest,
+			ParallelRuns:               parallelRuns,
 		},
 		MaxRetries:     3,
 		TimeoutSeconds: 600,
@@ -448,6 +484,9 @@ func (sdk *RogueSDK) GenerateSummary(
 	qualifireAPIKey *string,
 	deepTest bool,
 	judgeModel string,
+	awsAccessKeyID *string,
+	awsSecretAccessKey *string,
+	awsRegion *string,
 ) (*SummaryResp, error) {
 	// First get the evaluation job to extract results
 	job, err := sdk.GetEvaluation(ctx, jobID)
@@ -476,6 +515,17 @@ func (sdk *RogueSDK) GenerateSummary(
 		}(),
 		"deep_test":   deepTest,
 		"judge_model": judgeModel,
+	}
+
+	// Add AWS credentials if provided (for Bedrock)
+	if awsAccessKeyID != nil && *awsAccessKeyID != "" {
+		summaryReq["aws_access_key_id"] = *awsAccessKeyID
+	}
+	if awsSecretAccessKey != nil && *awsSecretAccessKey != "" {
+		summaryReq["aws_secret_access_key"] = *awsSecretAccessKey
+	}
+	if awsRegion != nil && *awsRegion != "" {
+		summaryReq["aws_region"] = *awsRegion
 	}
 
 	body, err := json.Marshal(summaryReq)

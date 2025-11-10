@@ -159,10 +159,13 @@ type LLMConfigDialog struct {
 
 // LLMConfigResultMsg is sent when LLM configuration is complete
 type LLMConfigResultMsg struct {
-	Provider string
-	APIKey   string
-	Model    string
-	Action   string
+	Provider           string
+	APIKey             string
+	AWSAccessKeyID     string
+	AWSSecretAccessKey string
+	AWSRegion          string
+	Model              string
+	Action             string
 }
 
 // LLMDialogClosedMsg is sent when LLM dialog is closed
@@ -610,12 +613,19 @@ func (d LLMConfigDialog) handleEnter() (LLMConfigDialog, tea.Cmd) {
 			selectedModel := provider.Models[selectedItem.ModelIdx]
 
 			return d, func() tea.Msg {
-				return LLMConfigResultMsg{
+				msg := LLMConfigResultMsg{
 					Provider: provider.Name,
 					APIKey:   d.ConfiguredKeys[provider.Name], // Use existing API key
 					Model:    selectedModel,
 					Action:   "configure",
 				}
+				// For Bedrock, also get AWS credentials from config
+				if provider.Name == "bedrock" {
+					msg.AWSAccessKeyID = d.ConfiguredKeys["bedrock_access_key"]
+					msg.AWSSecretAccessKey = d.ConfiguredKeys["bedrock_secret_key"]
+					msg.AWSRegion = d.ConfiguredKeys["bedrock_region"]
+				}
+				return msg
 			}
 		} else if selectedItem.Type == "provider" {
 			// User selected an unconfigured provider - go to API key input
@@ -689,19 +699,20 @@ func (d LLMConfigDialog) handleEnter() (LLMConfigDialog, tea.Cmd) {
 		}
 		// Return command to start spinner and simulate API validation TODO implement the api validation
 		return d, func() tea.Msg {
-			// For Bedrock, encode credentials in APIKey field (or extend message structure)
-			apiKey := d.APIKeyInput
-			if provider.Name == "bedrock" {
-				// For now, use AWS Access Key as the main key
-				// TODO: Extend LLMConfigResultMsg to include separate fields for Bedrock
-				apiKey = d.AWSAccessKeyInput
-			}
-			return LLMConfigResultMsg{
+			msg := LLMConfigResultMsg{
 				Provider: provider.Name,
-				APIKey:   apiKey,
+				APIKey:   d.APIKeyInput,
 				Model:    selectedModel,
 				Action:   "configure",
 			}
+			// For Bedrock, include AWS credentials
+			if provider.Name == "bedrock" {
+				msg.APIKey = d.AWSAccessKeyInput
+				msg.AWSAccessKeyID = d.AWSAccessKeyInput
+				msg.AWSSecretAccessKey = d.AWSSecretKeyInput
+				msg.AWSRegion = d.AWSRegionInput
+			}
+			return msg
 		}
 
 	case ModelSelectionStep:
@@ -724,19 +735,20 @@ func (d LLMConfigDialog) handleEnter() (LLMConfigDialog, tea.Cmd) {
 		}
 
 		return d, func() tea.Msg {
-			// For Bedrock, encode credentials in APIKey field (or extend message structure)
-			apiKey := d.APIKeyInput
-			if provider.Name == "bedrock" {
-				// For now, use AWS Access Key as the main key
-				// TODO: Extend LLMConfigResultMsg to include separate fields for Bedrock
-				apiKey = d.AWSAccessKeyInput
-			}
-			return LLMConfigResultMsg{
+			msg := LLMConfigResultMsg{
 				Provider: provider.Name,
-				APIKey:   apiKey,
+				APIKey:   d.APIKeyInput,
 				Model:    selectedModel,
 				Action:   "configure",
 			}
+			// For Bedrock, include AWS credentials
+			if provider.Name == "bedrock" {
+				msg.APIKey = d.AWSAccessKeyInput
+				msg.AWSAccessKeyID = d.AWSAccessKeyInput
+				msg.AWSSecretAccessKey = d.AWSSecretKeyInput
+				msg.AWSRegion = d.AWSRegionInput
+			}
+			return msg
 		}
 
 	case ConfigurationCompleteStep:

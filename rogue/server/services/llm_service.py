@@ -171,6 +171,9 @@ class LLMService:
         model: str,
         context: str,
         llm_provider_api_key: Optional[str] = None,
+        aws_access_key_id: Optional[str] = None,
+        aws_secret_access_key: Optional[str] = None,
+        aws_region: Optional[str] = None,
     ) -> Scenarios:
         # litellm import takes a while, importing here to reduce startup time.
         from litellm import completion
@@ -181,6 +184,9 @@ class LLMService:
             model: LLM model to use for generation
             context: Business context description for scenario generation
             llm_provider_api_key: API key for the LLM provider
+            aws_access_key_id: AWS access key ID for Bedrock models
+            aws_secret_access_key: AWS secret access key for Bedrock models
+            aws_region: AWS region for Bedrock models
 
         Returns:
             Scenarios: Generated test scenarios
@@ -205,6 +211,9 @@ class LLMService:
                 messages=messages,
                 response_format=Scenarios,
                 api_key=api_key,
+                aws_access_key_id=aws_access_key_id,
+                aws_secret_access_key=aws_secret_access_key,
+                # aws_region=aws_region,
             )
 
             raw_data = (
@@ -226,6 +235,9 @@ class LLMService:
         model: str,
         results: EvaluationResults,
         llm_provider_api_key: Optional[str] = None,
+        aws_access_key_id: Optional[str] = None,
+        aws_secret_access_key: Optional[str] = None,
+        aws_region: Optional[str] = None,
     ) -> StructuredSummary:
         # litellm import takes a while, importing here to reduce startup time.
         from litellm import completion
@@ -253,6 +265,9 @@ class LLMService:
                 model=model,
                 messages=messages,
                 api_key=api_key,
+                aws_access_key_id=aws_access_key_id,
+                aws_secret_access_key=aws_secret_access_key,
+                # aws_region=aws_region,
             )
 
             # Parse the JSON response from the LLM

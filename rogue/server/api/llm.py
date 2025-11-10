@@ -4,24 +4,24 @@ LLM API endpoints - Server-native LLM operations.
 This module provides REST API endpoints for LLM operations.
 """
 
-from datetime import datetime, timezone
 import os
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException
 from rogue_sdk.types import (
     EvaluationResults,
+    ReportSummaryRequest,
+    ReportSummaryResponse,
     ScenarioGenerationRequest,
     ScenarioGenerationResponse,
     SummaryGenerationRequest,
-    ReportSummaryResponse,
-    ReportSummaryRequest,
 )
 
 from rogue.server.api.evaluation import get_evaluation_service
 from rogue.server.services.evaluation_service import EvaluationService
 
-from ..models.api_format import ServerSummaryGenerationResponse
-
 from ...common.logging import get_logger
+from ..models.api_format import ServerSummaryGenerationResponse
 from ..services.llm_service import LLMService
 from ..services.qualifire_service import QualifireService
 
@@ -50,6 +50,9 @@ async def generate_scenarios(request: ScenarioGenerationRequest):
             model=request.model,
             context=request.business_context,
             llm_provider_api_key=request.api_key,
+            aws_access_key_id=request.aws_access_key_id,
+            aws_secret_access_key=request.aws_secret_access_key,
+            aws_region=request.aws_region,
         )
 
         logger.info(f"Successfully generated {len(scenarios.scenarios)} scenarios")
@@ -93,6 +96,9 @@ async def generate_summary(
             model=request.model,
             results=request.results,
             llm_provider_api_key=request.api_key,
+            aws_access_key_id=request.aws_access_key_id,
+            aws_secret_access_key=request.aws_secret_access_key,
+            aws_region=request.aws_region,
         )
 
         logger.info("Successfully generated evaluation summary")

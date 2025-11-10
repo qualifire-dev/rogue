@@ -105,6 +105,9 @@ class EvaluationService:
                 ),
                 judge_llm=agent_config.judge_llm,
                 judge_llm_api_key=agent_config.judge_llm_api_key,
+                judge_llm_aws_access_key_id=agent_config.judge_llm_aws_access_key_id,
+                judge_llm_aws_secret_access_key=agent_config.judge_llm_aws_secret_access_key,  # noqa: E501
+                judge_llm_aws_region=agent_config.judge_llm_aws_region,
                 scenarios=scenarios,
                 business_context=agent_config.business_context,
                 deep_test_mode=agent_config.deep_test_mode,
