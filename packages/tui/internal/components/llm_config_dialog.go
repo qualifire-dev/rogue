@@ -1008,11 +1008,15 @@ func (d LLMConfigDialog) renderInputField(t theme.Theme, label string, value str
 		Width(d.Width - 4).
 		Align(lipgloss.Left)
 
-	// Input field style
+	// Input field style with conditional border color
+	borderColor := t.TextMuted()
+	if isActive && isFocused {
+		borderColor = t.Primary()
+	}
 	inputStyle := lipgloss.NewStyle().
 		Width(d.Width-6).
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(t.Primary()).
+		BorderForeground(borderColor).
 		Background(t.BackgroundPanel()).
 		Padding(0, 1)
 
