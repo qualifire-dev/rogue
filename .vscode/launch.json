@@ -8,6 +8,7 @@
             "python": "./.venv/bin/python",
             "module": "rogue",
             "args": [
+                "--debug",
                 "server",
                 "--host",
                 "0.0.0.0",
@@ -57,7 +58,7 @@
                 "--protocol",
                 "mcp",
                 "--judge-llm",
-                "openai/o4-mini",
+                "bedrock/us.anthropic.claude-sonnet-4-5-20250929-v1:0",
                 "--workdir",
                 "./examples/tshirt_store_agent/.rogue"
             ],

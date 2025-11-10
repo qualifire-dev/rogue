@@ -7,6 +7,7 @@ requires-python = ">=3.10"
 dependencies = [
     "a2a-sdk==0.2.10",
     "backoff>=2.2.1",
+    "boto3>=1.40.69",
     "click>=8.0.0",
     "datasets==3.6.0",
     "fastapi>=0.121.0",
