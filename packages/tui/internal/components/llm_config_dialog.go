@@ -201,7 +201,7 @@ func NewLLMConfigDialog(configuredKeys map[string]string, selectedProvider, sele
 			Name:        "anthropic",
 			DisplayName: "Anthropic",
 			APIKeyName:  "ANTHROPIC_API_KEY",
-			Models:      []string{"claude-3-5-sonnet", "claude-3-7-opus", "claude-3-7-sonnet", "claude-4-sonnet", "claude-4-opus"},
+			Models:      []string{"claude-4-5-sonnet", "claude-4-5-opus", "claude-4-sonnet", "claude-4-opus"},
 			Configured:  configuredKeys["anthropic"] != "",
 		},
 		{
@@ -215,8 +215,22 @@ func NewLLMConfigDialog(configuredKeys map[string]string, selectedProvider, sele
 			Name:        "bedrock",
 			DisplayName: "Bedrock",
 			APIKeyName:  "AWS_ACCESS_KEY_ID",
-			Models:      []string{"claude-3-5-sonnet", "claude-3-7-opus", "claude-3-7-sonnet", "claude-4-sonnet", "claude-4-opus"},
-			Configured:  configuredKeys["bedrock"] != "",
+			Models: []string{
+				"bedrock/anthropic.claude-opus-4-1-20250805-v1:0",
+				"bedrock/anthropic.claude-sonnet-4-5-20250929-v1:0",
+				"bedrock/anthropic.claude-haiku-4-5-20251001-v1:0",
+				"bedrock/eu.anthropic.claude-opus-4-1-20250805-v1:0",
+				"bedrock/eu.anthropic.claude-sonnet-4-5-20250929-v1:0",
+				"bedrock/eu.anthropic.claude-haiku-4-5-20251001-v1:0",
+				"bedrock/global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+				"bedrock/global.anthropic.claude-haiku-4-5-20251001-v1:0",
+				"bedrock/jp.anthropic.claude-haiku-4-5-20251001-v1:0",
+				"bedrock/jp.anthropic.claude-sonnet-4-5-20250929-v1:0",
+				"bedrock/us.anthropic.claude-opus-4-1-20250805-v1:0",
+				"bedrock/us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+				"bedrock/us.anthropic.claude-haiku-4-5-20251001-v1:0",
+			},
+			Configured: configuredKeys["bedrock"] != "",
 		},
 	}
 
@@ -449,10 +463,11 @@ func (d LLMConfigDialog) Update(msg tea.Msg) (LLMConfigDialog, tea.Cmd) {
 					// Navigate to next input field (for Bedrock) or move to buttons
 					provider := d.Providers[d.SelectedProvider]
 					if provider.Name == "bedrock" {
-						if d.ActiveInputField < 3 {
+						if d.ActiveInputField < 2 {
+							// Move to next field if not on last field
 							d.ActiveInputField++
 						} else {
-							// Move to buttons if on last field
+							// Move to buttons if on last field (AWS Region)
 							d.ButtonsFocused = true
 						}
 					} else {
