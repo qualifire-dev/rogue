@@ -201,7 +201,7 @@ func NewLLMConfigDialog(configuredKeys map[string]string, selectedProvider, sele
 			Name:        "anthropic",
 			DisplayName: "Anthropic",
 			APIKeyName:  "ANTHROPIC_API_KEY",
-			Models:      []string{"claude-4-5-sonnet", "claude-4-5-opus", "claude-4-sonnet", "claude-4-opus"},
+			Models:      []string{"claude-4-5-sonnet", "claude-4-5-opus", "claude-4-1-opus", "claude-4-sonnet", "claude-4-opus"},
 			Configured:  configuredKeys["anthropic"] != "",
 		},
 		{
