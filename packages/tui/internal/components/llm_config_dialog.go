@@ -129,14 +129,22 @@ const (
 // LLMConfigDialog represents the LLM configuration dialog
 type LLMConfigDialog struct {
 	Dialog
-	CurrentStep        LLMConfigStep
-	Providers          []LLMProvider
-	SelectedProvider   int
-	SelectedModelIdx   int // Index within the flattened provider+model list
-	ScrollOffset       int // Current scroll position
-	VisibleItems       int // Number of items that can be displayed
-	APIKeyInput        string
-	APIKeyCursor       int
+	CurrentStep      LLMConfigStep
+	Providers        []LLMProvider
+	SelectedProvider int
+	SelectedModelIdx int // Index within the flattened provider+model list
+	ScrollOffset     int // Current scroll position
+	VisibleItems     int // Number of items that can be displayed
+	APIKeyInput      string
+	APIKeyCursor     int
+	// Bedrock-specific fields
+	AWSAccessKeyInput  string
+	AWSAccessKeyCursor int
+	AWSSecretKeyInput  string
+	AWSSecretKeyCursor int
+	AWSRegionInput     string
+	AWSRegionCursor    int
+	ActiveInputField   int // 0=APIKey, 1=AWSAccessKey, 2=AWSSecretKey, 3=AWSRegion (for Bedrock)
 	AvailableModels    []string
 	SelectedModel      int
 	ConfiguredKeys     map[string]string
@@ -202,6 +210,13 @@ func NewLLMConfigDialog(configuredKeys map[string]string, selectedProvider, sele
 			APIKeyName:  "GOOGLE_API_KEY",
 			Models:      []string{"gemini-2.5-pro", "gemini-2.5-flash"},
 			Configured:  configuredKeys["google"] != "",
+		},
+		{
+			Name:        "bedrock",
+			DisplayName: "Bedrock",
+			APIKeyName:  "AWS_ACCESS_KEY_ID",
+			Models:      []string{"claude-3-5-sonnet", "claude-3-7-opus", "claude-3-7-sonnet", "claude-4-sonnet", "claude-4-opus"},
+			Configured:  configuredKeys["bedrock"] != "",
 		},
 	}
 
@@ -316,14 +331,34 @@ func (d LLMConfigDialog) Update(msg tea.Msg) (LLMConfigDialog, tea.Cmd) {
 			return d.handleEnter()
 
 		case "right":
-			// Navigate buttons if buttons are focused, otherwise move cursor in API key input
+			// Navigate buttons if buttons are focused, otherwise move cursor in input field
 			if d.CurrentStep == APIKeyInputStep && d.ButtonsFocused {
 				if len(d.Buttons) > 1 {
 					d.SelectedBtn = (d.SelectedBtn + 1) % len(d.Buttons)
 				}
 			} else if d.CurrentStep == APIKeyInputStep {
-				if d.APIKeyCursor < len(d.APIKeyInput) {
-					d.APIKeyCursor++
+				provider := d.Providers[d.SelectedProvider]
+				if provider.Name == "bedrock" {
+					// Handle cursor movement for Bedrock fields
+					switch d.ActiveInputField {
+					case 0: // AWS Access Key
+						if d.AWSAccessKeyCursor < len(d.AWSAccessKeyInput) {
+							d.AWSAccessKeyCursor++
+						}
+					case 1: // AWS Secret Key
+						if d.AWSSecretKeyCursor < len(d.AWSSecretKeyInput) {
+							d.AWSSecretKeyCursor++
+						}
+					case 2: // AWS Region
+						if d.AWSRegionCursor < len(d.AWSRegionInput) {
+							d.AWSRegionCursor++
+						}
+					}
+				} else {
+					// Handle cursor movement for regular API key
+					if d.APIKeyCursor < len(d.APIKeyInput) {
+						d.APIKeyCursor++
+					}
 				}
 			} else if len(d.Buttons) > 1 {
 				d.SelectedBtn = (d.SelectedBtn + 1) % len(d.Buttons)
@@ -331,14 +366,34 @@ func (d LLMConfigDialog) Update(msg tea.Msg) (LLMConfigDialog, tea.Cmd) {
 			return d, nil
 
 		case "left":
-			// Navigate buttons if buttons are focused, otherwise move cursor in API key input
+			// Navigate buttons if buttons are focused, otherwise move cursor in input field
 			if d.CurrentStep == APIKeyInputStep && d.ButtonsFocused {
 				if len(d.Buttons) > 1 {
 					d.SelectedBtn = (d.SelectedBtn - 1 + len(d.Buttons)) % len(d.Buttons)
 				}
 			} else if d.CurrentStep == APIKeyInputStep {
-				if d.APIKeyCursor > 0 {
-					d.APIKeyCursor--
+				provider := d.Providers[d.SelectedProvider]
+				if provider.Name == "bedrock" {
+					// Handle cursor movement for Bedrock fields
+					switch d.ActiveInputField {
+					case 0: // AWS Access Key
+						if d.AWSAccessKeyCursor > 0 {
+							d.AWSAccessKeyCursor--
+						}
+					case 1: // AWS Secret Key
+						if d.AWSSecretKeyCursor > 0 {
+							d.AWSSecretKeyCursor--
+						}
+					case 2: // AWS Region
+						if d.AWSRegionCursor > 0 {
+							d.AWSRegionCursor--
+						}
+					}
+				} else {
+					// Handle cursor movement for regular API key
+					if d.APIKeyCursor > 0 {
+						d.APIKeyCursor--
+					}
 				}
 			} else if len(d.Buttons) > 1 {
 				d.SelectedBtn = (d.SelectedBtn - 1 + len(d.Buttons)) % len(d.Buttons)
@@ -358,9 +413,17 @@ func (d LLMConfigDialog) Update(msg tea.Msg) (LLMConfigDialog, tea.Cmd) {
 					}
 				}
 			case APIKeyInputStep:
-				// Move focus from buttons back to input field
 				if d.ButtonsFocused {
+					// Move focus from buttons back to input fields
 					d.ButtonsFocused = false
+				} else {
+					// Navigate to previous input field (for Bedrock)
+					provider := d.Providers[d.SelectedProvider]
+					if provider.Name == "bedrock" {
+						if d.ActiveInputField > 0 {
+							d.ActiveInputField--
+						}
+					}
 				}
 			case ModelSelectionStep:
 				if d.SelectedModel > 0 {
@@ -382,9 +445,20 @@ func (d LLMConfigDialog) Update(msg tea.Msg) (LLMConfigDialog, tea.Cmd) {
 					}
 				}
 			case APIKeyInputStep:
-				// Move focus from input field to buttons
 				if !d.ButtonsFocused {
-					d.ButtonsFocused = true
+					// Navigate to next input field (for Bedrock) or move to buttons
+					provider := d.Providers[d.SelectedProvider]
+					if provider.Name == "bedrock" {
+						if d.ActiveInputField < 3 {
+							d.ActiveInputField++
+						} else {
+							// Move to buttons if on last field
+							d.ButtonsFocused = true
+						}
+					} else {
+						// Move focus from input field to buttons for non-Bedrock
+						d.ButtonsFocused = true
+					}
 				}
 			case ModelSelectionStep:
 				if d.SelectedModel < len(d.AvailableModels)-1 {
@@ -393,31 +467,107 @@ func (d LLMConfigDialog) Update(msg tea.Msg) (LLMConfigDialog, tea.Cmd) {
 			}
 			return d, nil
 		case "backspace":
-			if d.CurrentStep == APIKeyInputStep && !d.ButtonsFocused && d.APIKeyCursor > 0 && len(d.APIKeyInput) > 0 {
-				d.APIKeyInput = d.APIKeyInput[:d.APIKeyCursor-1] + d.APIKeyInput[d.APIKeyCursor:]
-				d.APIKeyCursor--
+			if d.CurrentStep == APIKeyInputStep && !d.ButtonsFocused {
+				provider := d.Providers[d.SelectedProvider]
+				if provider.Name == "bedrock" {
+					// Handle backspace for Bedrock fields
+					switch d.ActiveInputField {
+					case 0: // AWS Access Key
+						if d.AWSAccessKeyCursor > 0 && len(d.AWSAccessKeyInput) > 0 {
+							d.AWSAccessKeyInput = d.AWSAccessKeyInput[:d.AWSAccessKeyCursor-1] + d.AWSAccessKeyInput[d.AWSAccessKeyCursor:]
+							d.AWSAccessKeyCursor--
+						}
+					case 1: // AWS Secret Key
+						if d.AWSSecretKeyCursor > 0 && len(d.AWSSecretKeyInput) > 0 {
+							d.AWSSecretKeyInput = d.AWSSecretKeyInput[:d.AWSSecretKeyCursor-1] + d.AWSSecretKeyInput[d.AWSSecretKeyCursor:]
+							d.AWSSecretKeyCursor--
+						}
+					case 2: // AWS Region
+						if d.AWSRegionCursor > 0 && len(d.AWSRegionInput) > 0 {
+							d.AWSRegionInput = d.AWSRegionInput[:d.AWSRegionCursor-1] + d.AWSRegionInput[d.AWSRegionCursor:]
+							d.AWSRegionCursor--
+						}
+					}
+				} else {
+					// Handle backspace for regular API key
+					if d.APIKeyCursor > 0 && len(d.APIKeyInput) > 0 {
+						d.APIKeyInput = d.APIKeyInput[:d.APIKeyCursor-1] + d.APIKeyInput[d.APIKeyCursor:]
+						d.APIKeyCursor--
+					}
+				}
 			}
 			return d, nil
 
 		case "delete":
-			if d.CurrentStep == APIKeyInputStep && !d.ButtonsFocused && d.APIKeyCursor < len(d.APIKeyInput) {
-				d.APIKeyInput = d.APIKeyInput[:d.APIKeyCursor] + d.APIKeyInput[d.APIKeyCursor+1:]
+			if d.CurrentStep == APIKeyInputStep && !d.ButtonsFocused {
+				provider := d.Providers[d.SelectedProvider]
+				if provider.Name == "bedrock" {
+					// Handle delete for Bedrock fields
+					switch d.ActiveInputField {
+					case 0: // AWS Access Key
+						if d.AWSAccessKeyCursor < len(d.AWSAccessKeyInput) {
+							d.AWSAccessKeyInput = d.AWSAccessKeyInput[:d.AWSAccessKeyCursor] + d.AWSAccessKeyInput[d.AWSAccessKeyCursor+1:]
+						}
+					case 1: // AWS Secret Key
+						if d.AWSSecretKeyCursor < len(d.AWSSecretKeyInput) {
+							d.AWSSecretKeyInput = d.AWSSecretKeyInput[:d.AWSSecretKeyCursor] + d.AWSSecretKeyInput[d.AWSSecretKeyCursor+1:]
+						}
+					case 2: // AWS Region
+						if d.AWSRegionCursor < len(d.AWSRegionInput) {
+							d.AWSRegionInput = d.AWSRegionInput[:d.AWSRegionCursor] + d.AWSRegionInput[d.AWSRegionCursor+1:]
+						}
+					}
+				} else {
+					// Handle delete for regular API key
+					if d.APIKeyCursor < len(d.APIKeyInput) {
+						d.APIKeyInput = d.APIKeyInput[:d.APIKeyCursor] + d.APIKeyInput[d.APIKeyCursor+1:]
+					}
+				}
 			}
 			return d, nil
 
 		default:
-			// Handle regular character input for API key (only when input field is focused)
+			// Handle regular character input (only when input field is focused)
 			if d.CurrentStep == APIKeyInputStep && !d.ButtonsFocused {
 				keyStr := msg.String()
+				provider := d.Providers[d.SelectedProvider]
 
-				// Special handling for space key since it might have special representation
-				if keyStr == " " || keyStr == "space" {
-					d.APIKeyInput = d.APIKeyInput[:d.APIKeyCursor] + " " + d.APIKeyInput[d.APIKeyCursor:]
-					d.APIKeyCursor++
-				} else if len(keyStr) == 1 {
-					char := keyStr
-					d.APIKeyInput = d.APIKeyInput[:d.APIKeyCursor] + char + d.APIKeyInput[d.APIKeyCursor:]
-					d.APIKeyCursor++
+				if provider.Name == "bedrock" {
+					// Handle input for Bedrock fields
+					var input *string
+					var cursor *int
+					switch d.ActiveInputField {
+					case 0: // AWS Access Key
+						input = &d.AWSAccessKeyInput
+						cursor = &d.AWSAccessKeyCursor
+					case 1: // AWS Secret Key
+						input = &d.AWSSecretKeyInput
+						cursor = &d.AWSSecretKeyCursor
+					case 2: // AWS Region
+						input = &d.AWSRegionInput
+						cursor = &d.AWSRegionCursor
+					}
+
+					if input != nil && cursor != nil {
+						if keyStr == " " || keyStr == "space" {
+							*input = (*input)[:*cursor] + " " + (*input)[*cursor:]
+							*cursor++
+						} else if len(keyStr) == 1 {
+							char := keyStr
+							*input = (*input)[:*cursor] + char + (*input)[*cursor:]
+							*cursor++
+						}
+					}
+				} else {
+					// Handle input for regular API key
+					if keyStr == " " || keyStr == "space" {
+						d.APIKeyInput = d.APIKeyInput[:d.APIKeyCursor] + " " + d.APIKeyInput[d.APIKeyCursor:]
+						d.APIKeyCursor++
+					} else if len(keyStr) == 1 {
+						char := keyStr
+						d.APIKeyInput = d.APIKeyInput[:d.APIKeyCursor] + char + d.APIKeyInput[d.APIKeyCursor:]
+						d.APIKeyCursor++
+					}
 				}
 			}
 			return d, nil
@@ -463,8 +613,16 @@ func (d LLMConfigDialog) handleEnter() (LLMConfigDialog, tea.Cmd) {
 			d.SelectedBtn = 1
 			d.ButtonsFocused = false // Focus on input field when entering this step
 
+			// Reset all input fields
 			d.APIKeyInput = ""
 			d.APIKeyCursor = 0
+			d.AWSAccessKeyInput = ""
+			d.AWSAccessKeyCursor = 0
+			d.AWSSecretKeyInput = ""
+			d.AWSSecretKeyCursor = 0
+			d.AWSRegionInput = ""
+			d.AWSRegionCursor = 0
+			d.ActiveInputField = 0 // Start with first field
 
 		}
 
@@ -482,26 +640,50 @@ func (d LLMConfigDialog) handleEnter() (LLMConfigDialog, tea.Cmd) {
 			return d, nil
 		}
 
-		// Validate API key and fetch models
-		if d.APIKeyInput == "" {
-			d.ErrorMessage = "API key cannot be empty"
-			return d, nil
+		// Validate inputs based on provider
+		provider := d.Providers[d.SelectedProvider]
+		if provider.Name == "bedrock" {
+			// Validate all Bedrock fields
+			if d.AWSAccessKeyInput == "" {
+				d.ErrorMessage = "AWS Access Key cannot be empty"
+				return d, nil
+			}
+			if d.AWSSecretKeyInput == "" {
+				d.ErrorMessage = "AWS Secret Key cannot be empty"
+				return d, nil
+			}
+			if d.AWSRegionInput == "" {
+				d.ErrorMessage = "AWS Region cannot be empty"
+				return d, nil
+			}
+		} else {
+			// Validate API key for other providers
+			if d.APIKeyInput == "" {
+				d.ErrorMessage = "API key cannot be empty"
+				return d, nil
+			}
 		}
 
 		d.Loading = true
 		d.ErrorMessage = ""
 		d.loadingSpinner.SetActive(true)
 
-		provider := d.Providers[d.SelectedProvider]
 		selectedModel := ""
 		if d.SelectedModel < len(d.AvailableModels) {
 			selectedModel = d.AvailableModels[d.SelectedModel]
 		}
 		// Return command to start spinner and simulate API validation TODO implement the api validation
 		return d, func() tea.Msg {
+			// For Bedrock, encode credentials in APIKey field (or extend message structure)
+			apiKey := d.APIKeyInput
+			if provider.Name == "bedrock" {
+				// For now, use AWS Access Key as the main key
+				// TODO: Extend LLMConfigResultMsg to include separate fields for Bedrock
+				apiKey = d.AWSAccessKeyInput
+			}
 			return LLMConfigResultMsg{
 				Provider: provider.Name,
-				APIKey:   d.APIKeyInput,
+				APIKey:   apiKey,
 				Model:    selectedModel,
 				Action:   "configure",
 			}
@@ -527,9 +709,16 @@ func (d LLMConfigDialog) handleEnter() (LLMConfigDialog, tea.Cmd) {
 		}
 
 		return d, func() tea.Msg {
+			// For Bedrock, encode credentials in APIKey field (or extend message structure)
+			apiKey := d.APIKeyInput
+			if provider.Name == "bedrock" {
+				// For now, use AWS Access Key as the main key
+				// TODO: Extend LLMConfigResultMsg to include separate fields for Bedrock
+				apiKey = d.AWSAccessKeyInput
+			}
 			return LLMConfigResultMsg{
 				Provider: provider.Name,
-				APIKey:   d.APIKeyInput,
+				APIKey:   apiKey,
 				Model:    selectedModel,
 				Action:   "configure",
 			}
@@ -544,7 +733,7 @@ func (d LLMConfigDialog) handleEnter() (LLMConfigDialog, tea.Cmd) {
 	return d, nil
 }
 
-// handlePaste handles clipboard paste operation for API key input
+// handlePaste handles clipboard paste operation for input fields
 func (d LLMConfigDialog) handlePaste(clipboardText string) (LLMConfigDialog, tea.Cmd) {
 	// Clean the clipboard text (remove newlines and trim whitespace)
 	cleanText := strings.TrimSpace(strings.ReplaceAll(clipboardText, "\n", ""))
@@ -553,9 +742,25 @@ func (d LLMConfigDialog) handlePaste(clipboardText string) (LLMConfigDialog, tea
 		return d, nil
 	}
 
-	// Insert the clipboard content at the current cursor position
-	d.APIKeyInput = d.APIKeyInput[:d.APIKeyCursor] + cleanText + d.APIKeyInput[d.APIKeyCursor:]
-	d.APIKeyCursor += len(cleanText)
+	provider := d.Providers[d.SelectedProvider]
+	if provider.Name == "bedrock" {
+		// Handle paste for Bedrock fields
+		switch d.ActiveInputField {
+		case 0: // AWS Access Key
+			d.AWSAccessKeyInput = d.AWSAccessKeyInput[:d.AWSAccessKeyCursor] + cleanText + d.AWSAccessKeyInput[d.AWSAccessKeyCursor:]
+			d.AWSAccessKeyCursor += len(cleanText)
+		case 1: // AWS Secret Key
+			d.AWSSecretKeyInput = d.AWSSecretKeyInput[:d.AWSSecretKeyCursor] + cleanText + d.AWSSecretKeyInput[d.AWSSecretKeyCursor:]
+			d.AWSSecretKeyCursor += len(cleanText)
+		case 2: // AWS Region
+			d.AWSRegionInput = d.AWSRegionInput[:d.AWSRegionCursor] + cleanText + d.AWSRegionInput[d.AWSRegionCursor:]
+			d.AWSRegionCursor += len(cleanText)
+		}
+	} else {
+		// Handle paste for regular API key
+		d.APIKeyInput = d.APIKeyInput[:d.APIKeyCursor] + cleanText + d.APIKeyInput[d.APIKeyCursor:]
+		d.APIKeyCursor += len(cleanText)
+	}
 
 	return d, nil
 }
@@ -783,6 +988,72 @@ func (d LLMConfigDialog) renderProviderSelection(t theme.Theme) []string {
 	return content
 }
 
+// renderInputField renders a single input field with label and cursor
+func (d LLMConfigDialog) renderInputField(t theme.Theme, label string, value string, cursor int, isFocused bool, isActive bool) (string, string) {
+	// Label with focus indicator
+	var labelLine string
+	if isFocused && isActive {
+		focusIndicator := lipgloss.NewStyle().
+			Foreground(t.Primary()).
+			Background(t.BackgroundPanel()).
+			Bold(true)
+		labelLine = focusIndicator.Render("▶ " + label + ":")
+	} else {
+		labelLine = "  " + label + ":"
+	}
+
+	labelStyle := lipgloss.NewStyle().
+		Foreground(t.Text()).
+		Background(t.BackgroundPanel()).
+		Width(d.Width - 4).
+		Align(lipgloss.Left)
+
+	// Input field style
+	inputStyle := lipgloss.NewStyle().
+		Width(d.Width-6).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(t.Primary()).
+		Background(t.BackgroundPanel()).
+		Padding(0, 1)
+
+	// Render input with cursor (only if field is active)
+	var inputText string
+	textStyle := lipgloss.NewStyle().
+		Foreground(t.Text()).
+		Background(t.BackgroundPanel())
+
+	if isActive && isFocused {
+		// Only show cursor for the active field
+		if cursor >= len(value) {
+			// Cursor at end of input
+			cursorStyle := lipgloss.NewStyle().
+				Background(t.Primary()).
+				Foreground(t.BackgroundPanel())
+			inputText = textStyle.Render(value) + cursorStyle.Render(" ")
+		} else if cursor >= 0 && cursor < len(value) {
+			// Cursor in middle of input
+			before := value[:cursor]
+			atCursor := string(value[cursor])
+			after := ""
+			if cursor+1 < len(value) {
+				after = value[cursor+1:]
+			}
+			cursorStyle := lipgloss.NewStyle().
+				Background(t.Primary()).
+				Foreground(t.BackgroundPanel())
+			inputText = textStyle.Render(before) + cursorStyle.Render(atCursor) + textStyle.Render(after)
+		} else {
+			// Fallback for invalid cursor position
+			inputText = textStyle.Render(value)
+		}
+	} else {
+		// No cursor for inactive fields
+		inputText = textStyle.Render(value)
+	}
+
+	return labelStyle.Render(labelLine), inputStyle.Render(inputText)
+}
+
 // renderAPIKeyInput renders the API key input step
 func (d LLMConfigDialog) renderAPIKeyInput(t theme.Theme) []string {
 	var content []string
@@ -794,82 +1065,64 @@ func (d LLMConfigDialog) renderAPIKeyInput(t theme.Theme) []string {
 		Width(d.Width - 4).
 		Align(lipgloss.Left)
 
-	content = append(content, instructionStyle.Render(fmt.Sprintf("Enter your %s API key:", provider.DisplayName)))
+	if provider.Name == "bedrock" {
+		content = append(content, instructionStyle.Render(fmt.Sprintf("Enter your %s credentials:", provider.DisplayName)))
+	} else {
+		content = append(content, instructionStyle.Render(fmt.Sprintf("Enter your %s API key:", provider.DisplayName)))
+	}
 	content = append(content, "")
 
-	// Add focus indicator for input field
-	var inputFieldLine string
-	if !d.ButtonsFocused {
-		// Input field is focused - show triangle indicator
-		focusIndicator := lipgloss.NewStyle().
-			Foreground(t.Primary()).
-			Background(t.BackgroundPanel()).
-			Bold(true)
-		inputFieldLine = focusIndicator.Render("▶ API Key:")
+	if provider.Name == "bedrock" {
+		// Render Bedrock-specific fields
+		// AWS Access Key
+		isFocused := !d.ButtonsFocused
+		isActive := d.ActiveInputField == 0
+		label, input := d.renderInputField(t, "AWS Access Key", d.AWSAccessKeyInput, d.AWSAccessKeyCursor, isFocused, isActive)
+		content = append(content, label)
+		content = append(content, input)
+		content = append(content, "")
+
+		// AWS Secret Key
+		isActive = d.ActiveInputField == 1
+		label, input = d.renderInputField(t, "AWS Secret Key", d.AWSSecretKeyInput, d.AWSSecretKeyCursor, isFocused, isActive)
+		content = append(content, label)
+		content = append(content, input)
+		content = append(content, "")
+
+		// AWS Region
+		isActive = d.ActiveInputField == 2
+		label, input = d.renderInputField(t, "AWS Region", d.AWSRegionInput, d.AWSRegionCursor, isFocused, isActive)
+		content = append(content, label)
+		content = append(content, input)
+		content = append(content, "")
+
+		// Add help text
+		helpStyle := lipgloss.NewStyle().
+			Foreground(t.TextMuted()).
+			Width(d.Width - 4).
+			Align(lipgloss.Left).
+			Italic(true)
+
+		content = append(content, helpStyle.Render("Environment variables: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION"))
 	} else {
-		// Input field not focused
-		inputFieldLine = "  API Key:"
+		// Render regular API key field
+		isFocused := !d.ButtonsFocused
+		isActive := true // Only one field for non-Bedrock
+		label, input := d.renderInputField(t, "API Key", d.APIKeyInput, d.APIKeyCursor, isFocused, isActive)
+		content = append(content, label)
+		content = append(content, input)
+		content = append(content, "")
+
+		// Add help text
+		helpStyle := lipgloss.NewStyle().
+			Foreground(t.TextMuted()).
+			Width(d.Width - 4).
+			Align(lipgloss.Left).
+			Italic(true)
+
+		content = append(content, helpStyle.Render(fmt.Sprintf("Environment variable: %s", provider.APIKeyName)))
 	}
 
-	labelStyle := lipgloss.NewStyle().
-		Foreground(t.Text()).
-		Background(t.BackgroundPanel()).
-		Width(d.Width - 4).
-		Align(lipgloss.Left)
-	content = append(content, labelStyle.Render(inputFieldLine))
-
-	// API key input field
-	inputStyle := lipgloss.NewStyle().
-		Width(d.Width-6).
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(t.Primary()).
-		Background(t.BackgroundPanel()).
-		Padding(0, 1)
-
-	// Render input with cursor (similar to textarea approach)
-	var inputText string
-
-	// Define text style for normal characters
-	textStyle := lipgloss.NewStyle().
-		Foreground(t.Text()).
-		Background(t.BackgroundPanel())
-
-	if d.APIKeyCursor >= len(d.APIKeyInput) {
-		// Cursor at end of input
-		cursorStyle := lipgloss.NewStyle().
-			Background(t.Primary()).
-			Foreground(t.BackgroundPanel())
-		inputText = textStyle.Render(d.APIKeyInput) + cursorStyle.Render(" ")
-	} else if d.APIKeyCursor >= 0 && d.APIKeyCursor < len(d.APIKeyInput) {
-		// Cursor in middle of input - highlight the character at cursor position
-		before := d.APIKeyInput[:d.APIKeyCursor]
-		atCursor := string(d.APIKeyInput[d.APIKeyCursor])
-		after := ""
-		if d.APIKeyCursor+1 < len(d.APIKeyInput) {
-			after = d.APIKeyInput[d.APIKeyCursor+1:]
-		}
-
-		// Render with cursor highlighting the character
-		cursorStyle := lipgloss.NewStyle().
-			Background(t.Primary()).
-			Foreground(t.BackgroundPanel())
-		inputText = textStyle.Render(before) + cursorStyle.Render(atCursor) + textStyle.Render(after)
-	} else {
-		// Fallback for invalid cursor position
-		inputText = textStyle.Render(d.APIKeyInput)
-	}
-
-	content = append(content, inputStyle.Render(inputText))
-	content = append(content, "")
-
-	// Add help text
-	helpStyle := lipgloss.NewStyle().
-		Foreground(t.TextMuted()).
-		Width(d.Width - 4).
-		Align(lipgloss.Left).
-		Italic(true)
-
-	content = append(content, helpStyle.Render(fmt.Sprintf("Environment variable: %s", provider.APIKeyName)))
 	content = append(content, "")
 
 	// Add navigation hints
@@ -879,10 +1132,18 @@ func (d LLMConfigDialog) renderAPIKeyInput(t theme.Theme) []string {
 		Align(lipgloss.Center).
 		Italic(true)
 
-	if d.ButtonsFocused {
-		content = append(content, navHintStyle.Render("↑ Input field • ←→ Navigate buttons • Enter: Execute"))
+	if provider.Name == "bedrock" {
+		if d.ButtonsFocused {
+			content = append(content, navHintStyle.Render("↑ Input fields • ←→ Navigate buttons • Enter: Execute"))
+		} else {
+			content = append(content, navHintStyle.Render("↑↓ Navigate fields • ←→ Move cursor • ↓ Buttons • Enter: Execute"))
+		}
 	} else {
-		content = append(content, navHintStyle.Render("↓ Buttons • ←→ Move cursor • Enter: Execute"))
+		if d.ButtonsFocused {
+			content = append(content, navHintStyle.Render("↑ Input field • ←→ Navigate buttons • Enter: Execute"))
+		} else {
+			content = append(content, navHintStyle.Render("↓ Buttons • ←→ Move cursor • Enter: Execute"))
+		}
 	}
 
 	return content
