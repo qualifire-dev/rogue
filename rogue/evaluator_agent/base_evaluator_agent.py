@@ -1,3 +1,4 @@
+import json
 from abc import ABC, abstractmethod
 from types import TracebackType
 from typing import TYPE_CHECKING, Any, Callable, Optional, Self, Type
@@ -365,7 +366,6 @@ class BaseEvaluatorAgent(ABC):
         context_id: str,
         evaluation_passed: bool,
         reason: str,
-        scenario_type: Optional[str],
         **kwargs,
     ) -> None:
         """
@@ -395,7 +395,19 @@ class BaseEvaluatorAgent(ABC):
                     "context_id": context_id,
                 },
             )
-            scenario_dict = {"scenario": scenario}
+
+            try:
+                scenario_dict = json.loads(scenario)
+            except json.JSONDecodeError:
+                logger.warning(
+                    "⚠️ Failed to parse scenario dict as JSON - recovering",
+                    extra={
+                        "scenario": scenario,
+                        "context_id": context_id,
+                    },
+                )
+                scenario_dict = {"scenario": scenario}
+                return
         elif isinstance(scenario, dict):
             scenario_dict = scenario
         else:
@@ -423,7 +435,10 @@ class BaseEvaluatorAgent(ABC):
                 ),
                 "evaluation_passed (from agent)": evaluation_passed,
                 "reason (from agent)": reason,
-                "scenario_type": scenario_type,
+                "scenario_type": scenario_dict.get(
+                    "scenario_type",
+                    ScenarioType.POLICY.value,
+                ),
                 "expected_outcome": scenario_dict.get(
                     "expected_outcome",
                     "None",
