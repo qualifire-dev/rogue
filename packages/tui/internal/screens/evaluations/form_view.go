@@ -159,87 +159,11 @@ func RenderForm(state *FormState) string {
 		return fieldContainer.Render(fieldContent)
 	}
 
-	// Helper function to render a dropdown field with indicators
-	renderDropdownField := func(fieldIndex int, label, value string) string {
-		active := m.evalState.currentField == fieldIndex
-
-		labelStyle := lipgloss.NewStyle().
-			Foreground(t.TextMuted()).
-			Background(t.Background()).
-			Width(20).
-			Align(lipgloss.Right)
-
-		valueStyle := lipgloss.NewStyle().
-			Foreground(t.Text()).
-			Background(t.Background()).
-			Padding(0, 1)
-
-		if active {
-			labelStyle = labelStyle.Foreground(t.Primary()).Bold(true)
-			valueStyle = valueStyle.
-				Foreground(t.Primary()).
-				Background(t.Background()).
-				Bold(true)
-			// Add dropdown indicators
-			value = "◀ " + value + " ▶"
-		}
-
-		// Create a full-width container for the field
-		fieldContainer := lipgloss.NewStyle().
-			Width(m.width-4).
-			Background(t.Background()).
-			Padding(0, 2)
-
-		fieldContent := lipgloss.JoinHorizontal(lipgloss.Left,
-			labelStyle.Render(label),
-			valueStyle.Render(value),
-		)
-
-		return fieldContainer.Render(fieldContent)
-	}
-
-	// Helper function to render a toggle field
-	renderToggleField := func(fieldIndex int, label, value string) string {
-		active := m.evalState.currentField == fieldIndex
-
-		labelStyle := lipgloss.NewStyle().
-			Foreground(t.TextMuted()).
-			Background(t.Background()).
-			Width(20).
-			Align(lipgloss.Right)
-
-		valueStyle := lipgloss.NewStyle().
-			Foreground(t.Text()).
-			Background(t.Background()).
-			Padding(0, 1)
-
-		if active {
-			labelStyle = labelStyle.Foreground(t.Primary()).Bold(true)
-			valueStyle = valueStyle.
-				Foreground(t.Primary()).
-				Background(t.Background()).
-				Bold(true)
-		}
-
-		// Create a full-width container for the field
-		fieldContainer := lipgloss.NewStyle().
-			Width(m.width-4).
-			Background(t.Background()).
-			Padding(0, 2)
-
-		fieldContent := lipgloss.JoinHorizontal(lipgloss.Left,
-			labelStyle.Render(label),
-			valueStyle.Render(value),
-		)
-
-		return fieldContainer.Render(fieldContent)
-	}
-
 	// Prepare field values
-	agent := m.evalState.AgentURL
-	protocol := string(m.evalState.AgentProtocol)
-	transport := string(m.evalState.AgentTransport)
-	judge := m.evalState.JudgeModel
+	agent := state.AgentURL
+	protocol := string(state.Protocol)
+	transport := string(state.Transport)
+	judge := state.JudgeModel
 	deep := "❌"
 	if state.DeepTest {
 		deep = "✅"
@@ -247,7 +171,7 @@ func RenderForm(state *FormState) string {
 
 	// Helper function to render the start button
 	renderStartButton := func() string {
-		active := m.evalState.currentField == 5
+		active := state.CurrentField == 5
 		var buttonText string
 
 		if state.EvalSpinnerActive {

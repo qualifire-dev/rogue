@@ -41,11 +41,6 @@ type AgentConfig struct {
 	InterviewMode             bool      `json:"interview_mode"`
 	DeepTestMode              bool      `json:"deep_test_mode"`
 	ParallelRuns              int       `json:"parallel_runs"`
-
-type EvalScenario struct {
-	Scenario        string       `json:"scenario"`
-	ScenarioType    ScenarioType `json:"scenario_type"`
-	ExpectedOutcome string       `json:"expected_outcome,omitempty"`
 }
 
 type EvaluationRequest struct {
