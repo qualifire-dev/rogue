@@ -4,6 +4,24 @@ Rogue Agent Evaluator - Core Library
 This module provides a clean, library-oriented API for agent evaluation.
 """
 
+import warnings
+
+warnings.filterwarnings(
+    "ignore",
+    category=DeprecationWarning,
+    message="websockets.legacy is deprecated",
+)
+warnings.filterwarnings(
+    "ignore",
+    category=DeprecationWarning,
+    message="websockets.server.WebSocketServerProtocol is deprecated",
+)
+warnings.filterwarnings(
+    "ignore",
+    category=DeprecationWarning,
+    message="remove second argument of ws_handler",
+)
+
 # Import submodules for backward compatibility
 from . import (
     common,
