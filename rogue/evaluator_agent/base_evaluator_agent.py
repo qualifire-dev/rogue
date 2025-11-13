@@ -366,6 +366,7 @@ class BaseEvaluatorAgent(ABC):
         context_id: str,
         evaluation_passed: bool,
         reason: str,
+        scenario_type: Optional[str],
         **kwargs,
     ) -> None:
         """
