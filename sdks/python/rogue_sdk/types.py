@@ -117,6 +117,9 @@ class AgentConfig(BaseModel):
     deep_test_mode: bool = False
     parallel_runs: int = 1
     judge_llm_api_key: Optional[str] = None
+    judge_llm_aws_access_key_id: Optional[str] = None
+    judge_llm_aws_secret_access_key: Optional[str] = None
+    judge_llm_aws_region: Optional[str] = None
     business_context: str = ""
     qualifire_api_key: Optional[str] = None
 
@@ -372,6 +375,9 @@ class StartInterviewRequest(BaseModel):
 
     model: str = "openai/gpt-4o-mini"
     api_key: Optional[str] = None
+    aws_access_key_id: Optional[str] = None
+    aws_secret_access_key: Optional[str] = None
+    aws_region: Optional[str] = None
 
 
 class StartInterviewResponse(BaseModel):
@@ -463,6 +469,9 @@ class ScenarioGenerationRequest(BaseModel):
     business_context: str
     model: str = "openai/gpt-4.1"
     api_key: Optional[str] = None
+    aws_access_key_id: Optional[str] = None
+    aws_secret_access_key: Optional[str] = None
+    aws_region: Optional[str] = None
     count: int = 10
 
 
@@ -479,6 +488,9 @@ class SummaryGenerationRequest(BaseModel):
     results: EvaluationResults
     model: str = "openai/gpt-4.1"
     api_key: Optional[str] = None
+    aws_access_key_id: Optional[str] = None
+    aws_secret_access_key: Optional[str] = None
+    aws_region: Optional[str] = None
     job_id: Optional[str] = None
     deep_test: bool = False
     judge_model: Optional[str] = None

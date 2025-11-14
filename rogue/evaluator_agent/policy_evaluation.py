@@ -140,6 +140,9 @@ def evaluate_policy(
     business_context: str,
     expected_outcome: str | None = None,
     api_key: str | None = None,
+    aws_access_key_id: str | None = None,
+    aws_secret_access_key: str | None = None,
+    aws_region: str | None = None,
 ) -> PolicyEvaluationResult:
     # litellm import takes a while, importing here to reduce startup time.
     from litellm import completion
@@ -174,6 +177,9 @@ def evaluate_policy(
     response = completion(
         model=model,
         api_key=api_key,
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+        # aws_region=aws_region,
         messages=[
             {
                 "role": "system",

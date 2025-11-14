@@ -83,6 +83,9 @@ async def arun_evaluator_agent(
     scenarios: Scenarios,
     business_context: str,
     deep_test_mode: bool,
+    judge_llm_aws_access_key_id: str | None = None,
+    judge_llm_aws_secret_access_key: str | None = None,
+    judge_llm_aws_region: str | None = None,
 ) -> AsyncGenerator[tuple[str, Any], None]:
     # adk imports take a while, importing them here to reduce rogue startup time.
     from google.adk.runners import Runner
@@ -118,6 +121,9 @@ async def arun_evaluator_agent(
             business_context=business_context,
             headers=headers,
             judge_llm_auth=judge_llm_api_key,
+            judge_llm_aws_access_key_id=judge_llm_aws_access_key_id,
+            judge_llm_aws_secret_access_key=judge_llm_aws_secret_access_key,
+            judge_llm_aws_region=judge_llm_aws_region,
             debug=False,
             deep_test_mode=deep_test_mode,
             chat_update_callback=update_queue.put_nowait,
