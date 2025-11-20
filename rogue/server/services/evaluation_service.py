@@ -111,6 +111,21 @@ class EvaluationService:
                 scenarios=scenarios,
                 business_context=agent_config.business_context,
                 deep_test_mode=agent_config.deep_test_mode,
+                evaluation_mode=getattr(
+                    agent_config,
+                    "evaluation_mode",
+                    None,
+                ),
+                owasp_categories=getattr(
+                    agent_config,
+                    "owasp_categories",
+                    None,
+                ),
+                attacks_per_category=getattr(
+                    agent_config,
+                    "attacks_per_category",
+                    5,
+                ),
             )
 
             logger.info(

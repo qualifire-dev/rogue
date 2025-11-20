@@ -469,11 +469,35 @@ class BaseEvaluatorAgent(ABC):
                 },
             )
             try:
-                # Try to construct with just the scenario text
+                # Normalize scenario_type if it's an OWASP category ID
+                scenario_type = scenario_dict.get("scenario_type", "policy")
+                if scenario_type not in [st.value for st in ScenarioType]:
+                    # Likely an OWASP category ID (e.g., "LLM_01")
+                    # Use POLICY type and preserve OWASP info in expected_outcome
+                    scenario_type = ScenarioType.POLICY.value
+                    expected_outcome = scenario_dict.get("expected_outcome", "")
+                    owasp_cat = scenario_dict.get("scenario_type")
+                    if (
+                        owasp_cat
+                        and isinstance(owasp_cat, str)
+                        and owasp_cat not in expected_outcome  # noqa: E501
+                    ):
+                        # Add OWASP category to expected_outcome if not already there
+                        if expected_outcome:
+                            expected_outcome = (
+                                f"{expected_outcome} (OWASP: {owasp_cat})"
+                            )
+                        else:
+                            expected_outcome = f"OWASP Category: {owasp_cat}"
+                else:
+                    expected_outcome = scenario_dict.get("expected_outcome") or ""
+
+                # Try to construct with normalized scenario
                 scenario_text = scenario_dict.get("scenario", str(scenario_dict))
                 scenario_parsed = Scenario(
                     scenario=scenario_text,
-                    scenario_type=ScenarioType.POLICY,  # Default to policy
+                    scenario_type=ScenarioType(scenario_type),
+                    expected_outcome=expected_outcome,
                 )
             except Exception:
                 logger.exception(

@@ -1,9 +1,16 @@
 import asyncio
 from asyncio import Queue
-from typing import TYPE_CHECKING, Any, AsyncGenerator
+from typing import TYPE_CHECKING, Any, AsyncGenerator, List, Optional
 
 from loguru import logger
-from rogue_sdk.types import AuthType, EvaluationResults, Protocol, Scenarios, Transport
+from rogue_sdk.types import (
+    AuthType,
+    EvaluationMode,
+    EvaluationResults,
+    Protocol,
+    Scenarios,
+    Transport,
+)
 
 from ..common.agent_sessions import create_session
 from .evaluator_agent_factory import get_evaluator_agent
@@ -86,6 +93,8 @@ async def arun_evaluator_agent(
     judge_llm_aws_access_key_id: str | None = None,
     judge_llm_aws_secret_access_key: str | None = None,
     judge_llm_aws_region: str | None = None,
+    evaluation_mode: EvaluationMode = EvaluationMode.POLICY,
+    owasp_categories: Optional[List[str]] = None,
 ) -> AsyncGenerator[tuple[str, Any], None]:
     # adk imports take a while, importing them here to reduce rogue startup time.
     from google.adk.runners import Runner
@@ -127,6 +136,8 @@ async def arun_evaluator_agent(
             debug=False,
             deep_test_mode=deep_test_mode,
             chat_update_callback=update_queue.put_nowait,
+            evaluation_mode=evaluation_mode,
+            owasp_categories=owasp_categories,
         )
 
         async with evaluator_agent as evaluator_agent:

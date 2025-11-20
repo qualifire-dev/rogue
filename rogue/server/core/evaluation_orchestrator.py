@@ -2,12 +2,20 @@
 Evaluation orchestrator - Server-native evaluation logic.
 """
 
-from typing import Any, AsyncGenerator, Tuple
+from typing import Any, AsyncGenerator, List, Optional, Tuple
 
-from rogue_sdk.types import AuthType, EvaluationResults, Protocol, Scenarios, Transport
+from rogue_sdk.types import (
+    AuthType,
+    EvaluationMode,
+    EvaluationResults,
+    Protocol,
+    Scenarios,
+    Transport,
+)
 
 from ...common.logging import get_logger
 from ...evaluator_agent.run_evaluator_agent import arun_evaluator_agent
+from ..services.red_team_scenario_generator import RedTeamScenarioGenerator
 
 
 class EvaluationOrchestrator:
@@ -34,6 +42,9 @@ class EvaluationOrchestrator:
         judge_llm_aws_access_key_id: str | None = None,
         judge_llm_aws_secret_access_key: str | None = None,
         judge_llm_aws_region: str | None = None,
+        evaluation_mode: Optional[EvaluationMode] = None,
+        owasp_categories: Optional[List[str]] = None,
+        attacks_per_category: int = 5,
     ):
         self.protocol = protocol
         self.transport = transport
@@ -48,6 +59,9 @@ class EvaluationOrchestrator:
         self.scenarios = scenarios
         self.business_context = business_context
         self.deep_test_mode = deep_test_mode
+        self.evaluation_mode = evaluation_mode or EvaluationMode.POLICY
+        self.owasp_categories = owasp_categories or []
+        self.attacks_per_category = attacks_per_category
         self.results = EvaluationResults()
         self.logger = get_logger(__name__)
 
@@ -68,19 +82,49 @@ class EvaluationOrchestrator:
                 "agent_url": self.evaluated_agent_url,
                 "judge_llm": self.judge_llm,
                 "deep_test_mode": self.deep_test_mode,
+                "evaluation_mode": (
+                    self.evaluation_mode.value
+                    if self.evaluation_mode
+                    else EvaluationMode.POLICY.value
+                ),
+                "owasp_categories": self.owasp_categories,
             },
         )
 
-        if not self.scenarios.scenarios:
+        # Generate scenarios if in red team mode and none provided
+        scenarios_to_use = self.scenarios
+        if (
+            self.evaluation_mode == EvaluationMode.RED_TEAM
+            and not self.scenarios.scenarios
+            and self.owasp_categories
+        ):
+            self.logger.info(
+                "🔴 Generating red team scenarios from OWASP categories",
+                extra={"owasp_categories": self.owasp_categories},
+            )
+            generator = RedTeamScenarioGenerator()
+            scenarios_to_use = await generator.generate_scenarios(
+                owasp_categories=self.owasp_categories,
+                business_context=self.business_context,
+                attacks_per_category=self.attacks_per_category,
+            )
+            self.logger.info(
+                f"🔴 Generated {len(scenarios_to_use.scenarios)} red team scenarios",
+            )
+
+        if not scenarios_to_use.scenarios:
             self.logger.warning("⚠️ No scenarios to evaluate")
             yield "status", "No scenarios to evaluate."
             yield "results", self.results
             return
 
         # Prepare status message
-        scenario_list = [scenario.scenario for scenario in self.scenarios.scenarios]
-        status_msg = "Running scenarios:\n" + "\n".join(scenario_list)
-        self.logger.info(f"📋 Starting evaluation of {len(scenario_list)} scenarios")
+        mode_prefix = "🔴" if self.evaluation_mode == EvaluationMode.RED_TEAM else "📋"
+        scenario_list = [scenario.scenario for scenario in scenarios_to_use.scenarios]
+        status_msg = f"{mode_prefix} Running scenarios:\n" + "\n".join(scenario_list)
+        self.logger.info(
+            f"{mode_prefix} Starting evaluation of {len(scenario_list)} scenarios",
+        )
         yield "status", status_msg
 
         try:
@@ -99,9 +143,11 @@ class EvaluationOrchestrator:
                 judge_llm_aws_access_key_id=self.judge_llm_aws_access_key_id,
                 judge_llm_aws_secret_access_key=self.judge_llm_aws_secret_access_key,
                 judge_llm_aws_region=self.judge_llm_aws_region,
-                scenarios=self.scenarios,
+                scenarios=scenarios_to_use,
                 business_context=self.business_context,
                 deep_test_mode=self.deep_test_mode,
+                evaluation_mode=self.evaluation_mode,
+                owasp_categories=self.owasp_categories,
             ):
                 update_count += 1
                 self.logger.info(

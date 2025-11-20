@@ -1,9 +1,17 @@
-from typing import Any, AsyncGenerator
+from typing import Any, AsyncGenerator, List, Optional
 
 from loguru import logger
-from rogue_sdk.types import AuthType, EvaluationResults, Protocol, Scenarios, Transport
+from rogue_sdk.types import (
+    AuthType,
+    EvaluationMode,
+    EvaluationResults,
+    Protocol,
+    Scenarios,
+    Transport,
+)
 
 from ...evaluator_agent.run_evaluator_agent import arun_evaluator_agent
+from .red_team_scenario_generator import RedTeamScenarioGenerator
 
 
 class ScenarioEvaluationService:
@@ -19,6 +27,9 @@ class ScenarioEvaluationService:
         scenarios: Scenarios,
         business_context: str,
         deep_test_mode: bool,
+        evaluation_mode: EvaluationMode = EvaluationMode.POLICY,
+        owasp_categories: Optional[List[str]] = None,
+        attacks_per_category: int = 5,
     ):
         self._protocol = protocol
         self._transport = transport
@@ -30,6 +41,9 @@ class ScenarioEvaluationService:
         self._scenarios = scenarios
         self._business_context = business_context
         self._deep_test_mode = deep_test_mode
+        self._evaluation_mode = evaluation_mode
+        self._owasp_categories = owasp_categories or []
+        self._attacks_per_category = attacks_per_category
         self._results = EvaluationResults()
 
     async def evaluate_scenarios(self) -> AsyncGenerator[tuple[str, Any], None]:
@@ -40,18 +54,44 @@ class ScenarioEvaluationService:
                 "agent_url": self._evaluated_agent_url,
                 "judge_llm": self._judge_llm,
                 "deep_test_mode": self._deep_test_mode,
+                "evaluation_mode": self._evaluation_mode.value,
+                "owasp_categories": self._owasp_categories,
             },
         )
 
-        if not self._scenarios.scenarios:
+        # Generate scenarios if in red team mode and none provided
+        scenarios_to_use = self._scenarios
+        if (
+            self._evaluation_mode == EvaluationMode.RED_TEAM
+            and not self._scenarios.scenarios
+            and self._owasp_categories
+        ):
+            logger.info(
+                "🔴 Generating red team scenarios from OWASP categories",
+                extra={"owasp_categories": self._owasp_categories},
+            )
+            generator = RedTeamScenarioGenerator()
+            scenarios_to_use = await generator.generate_scenarios(
+                owasp_categories=self._owasp_categories,
+                business_context=self._business_context,
+                attacks_per_category=self._attacks_per_category,
+            )
+            logger.info(
+                f"🔴 Generated {len(scenarios_to_use.scenarios)} red team scenarios",
+            )
+
+        if not scenarios_to_use.scenarios:
             logger.warning("⚠️ No scenarios to evaluate")
             yield "status", "No scenarios to evaluate."
             yield "done", self._results
             return
 
-        scenario_list = [scenario.scenario for scenario in self._scenarios.scenarios]
-        status_msg = "Running scenarios:\n" + "\n".join(scenario_list)
-        logger.info(f"📋 Starting evaluation of {len(scenario_list)} scenarios")
+        scenario_list = [scenario.scenario for scenario in scenarios_to_use.scenarios]
+        mode_prefix = "🔴" if self._evaluation_mode == EvaluationMode.RED_TEAM else "📋"
+        status_msg = f"{mode_prefix} Running scenarios:\n" + "\n".join(scenario_list)
+        logger.info(
+            f"{mode_prefix} Starting evaluation of {len(scenario_list)} scenarios",
+        )
         yield "status", status_msg
 
         try:
@@ -66,9 +106,13 @@ class ScenarioEvaluationService:
                 auth_credentials=self._evaluated_agent_auth_credentials,
                 judge_llm=self._judge_llm,
                 judge_llm_api_key=self._judge_llm_api_key,
-                scenarios=self._scenarios,
+                scenarios=scenarios_to_use,
                 business_context=self._business_context,
                 deep_test_mode=self._deep_test_mode,
+                evaluation_mode=self._evaluation_mode,
+                owasp_categories=(
+                    self._owasp_categories if self._owasp_categories else None
+                ),
             ):
                 update_count += 1
                 logger.info(

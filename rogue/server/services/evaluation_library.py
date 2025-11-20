@@ -6,7 +6,12 @@ import asyncio
 from typing import Any, AsyncGenerator, Callable, Optional
 
 from loguru import logger
-from rogue_sdk.types import AgentConfig, EvaluationResults, Scenarios
+from rogue_sdk.types import (
+    AgentConfig,
+    EvaluationMode,
+    EvaluationResults,
+    Scenarios,
+)
 
 from .scenario_evaluation_service import ScenarioEvaluationService
 
@@ -67,6 +72,21 @@ class EvaluationLibrary:
                 scenarios=scenarios,
                 business_context=business_context,
                 deep_test_mode=agent_config.deep_test_mode,
+                evaluation_mode=getattr(
+                    agent_config,
+                    "evaluation_mode",
+                    EvaluationMode.POLICY,
+                ),
+                owasp_categories=getattr(
+                    agent_config,
+                    "owasp_categories",
+                    None,
+                ),
+                attacks_per_category=getattr(
+                    agent_config,
+                    "attacks_per_category",
+                    5,
+                ),
             )
 
             logger.info("📋 ScenarioEvaluationService created successfully")
@@ -158,6 +178,21 @@ class EvaluationLibrary:
             scenarios=scenarios,
             business_context=business_context,
             deep_test_mode=agent_config.deep_test_mode,
+            evaluation_mode=getattr(
+                agent_config,
+                "evaluation_mode",
+                EvaluationMode.POLICY,
+            ),
+            owasp_categories=getattr(
+                agent_config,
+                "owasp_categories",
+                None,
+            ),
+            attacks_per_category=getattr(
+                agent_config,
+                "attacks_per_category",
+                5,
+            ),
         )
 
         async for update_type, data in service.evaluate_scenarios():

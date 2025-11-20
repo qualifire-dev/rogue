@@ -55,6 +55,13 @@ class ScenarioType(str, Enum):
     PROMPT_INJECTION = "prompt_injection"
 
 
+class EvaluationMode(str, Enum):
+    """Evaluation mode for agent testing."""
+
+    POLICY = "policy"  # Existing: business rule testing
+    RED_TEAM = "red_team"  # New: security testing
+
+
 class EvaluationStatus(str, Enum):
     """Status of evaluation jobs."""
 
@@ -122,6 +129,21 @@ class AgentConfig(BaseModel):
     judge_llm_aws_region: Optional[str] = None
     business_context: str = ""
     qualifire_api_key: Optional[str] = None
+    evaluation_mode: EvaluationMode = Field(
+        default=EvaluationMode.POLICY,
+        description="Evaluation mode: policy testing or red teaming",
+    )
+    owasp_categories: Optional[List[str]] = Field(
+        default=None,
+        description=(
+            "OWASP categories to test in red team mode "
+            "(e.g., ['LLM_01', 'LLM_06', 'LLM_07'])"
+        ),
+    )
+    attacks_per_category: int = Field(
+        default=5,
+        description="Number of attacks to generate per OWASP category",
+    )
 
     @model_validator(mode="after")
     def check_auth_credentials(self) -> "AgentConfig":
@@ -237,10 +259,38 @@ class EvaluationResult(BaseModel):
     passed: bool
 
 
+class RedTeamingResult(BaseModel):
+    """Result of a red teaming attack."""
+
+    owasp_category: str = Field(description="OWASP category ID (e.g., 'LLM_01')")
+    vulnerability_type: str = Field(description="Type of vulnerability found")
+    attack_method: str = Field(description="Attack method used")
+    severity: str = Field(
+        description="Severity: 'critical', 'high', 'medium', or 'low'",
+    )
+    conversation_id: str = Field(description="ID of the conversation")
+    reproduction_steps: List[ChatMessage] = Field(
+        default_factory=list,
+        description="Messages that reproduced the vulnerability",
+    )
+    remediation: Optional[str] = Field(
+        default=None,
+        description="Recommended remediation steps",
+    )
+
+
 class EvaluationResults(BaseModel):
     """Collection of evaluation results."""
 
     results: List[EvaluationResult] = Field(default_factory=list)
+    red_teaming_results: Optional[List[RedTeamingResult]] = Field(
+        default=None,
+        description="Red teaming attack results (only in red team mode)",
+    )
+    owasp_summary: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="OWASP category pass/fail summary",
+    )
 
     def add_result(self, new_result: EvaluationResult):
         for result in self.results:
@@ -254,6 +304,10 @@ class EvaluationResults(BaseModel):
         if other and other.results:
             for result in other.results:
                 self.add_result(result)
+        if other and other.red_teaming_results:
+            if self.red_teaming_results is None:
+                self.red_teaming_results = []
+            self.red_teaming_results.extend(other.red_teaming_results)
 
 
 # New API Format Types

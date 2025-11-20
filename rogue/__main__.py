@@ -9,7 +9,17 @@ import platformdirs
 from dotenv import load_dotenv
 from loguru import logger
 
-from . import __version__
+try:
+    from . import __version__
+except ImportError:
+    # Fallback if running directly
+    # Add parent directory to path
+    import sys  # noqa: F811
+    from pathlib import Path  # noqa: F811
+
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    from rogue import __version__  # noqa: F401
+
 from .common.logging.config import configure_logger
 from .common.tui_installer import RogueTuiInstaller
 from .common.update_checker import check_for_updates
