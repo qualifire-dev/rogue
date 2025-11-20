@@ -474,9 +474,31 @@ class EvaluationRequest(BaseModel):
     """Request to create an evaluation job."""
 
     agent_config: AgentConfig
-    scenarios: List[Scenario]
+    scenarios: Optional[List[Scenario]] = None
     max_retries: int = 3
     timeout_seconds: int = 600
+
+    @model_validator(mode="after")
+    def validate_scenarios(self) -> "EvaluationRequest":
+        """Validate that scenarios are provided for policy mode."""
+        evaluation_mode = self.agent_config.evaluation_mode
+
+        # For policy mode, scenarios are required
+        if evaluation_mode == EvaluationMode.POLICY:
+            if not self.scenarios:
+                raise ValueError(
+                    "scenarios are required for policy evaluation mode",
+                )
+
+        # For red team mode, scenarios are optional (will be generated if not provided)
+        # OWASP categories are required instead
+        elif evaluation_mode == EvaluationMode.RED_TEAM:
+            if not self.agent_config.owasp_categories:
+                raise ValueError(
+                    "owasp_categories are required for red team evaluation mode",
+                )
+
+        return self
 
 
 class EvaluationJob(BaseModel):

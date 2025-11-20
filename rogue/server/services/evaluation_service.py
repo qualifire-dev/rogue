@@ -81,7 +81,9 @@ class EvaluationService:
                 "Starting evaluation job",
                 extra={
                     "job_status": "running",
-                    "scenario_count": len(job.request.scenarios),
+                    "scenario_count": (
+                        len(job.request.scenarios) if job.request.scenarios else 0
+                    ),
                     "agent_url": str(job.request.agent_config.evaluated_agent_url),
                     "judge_llm": job.request.agent_config.judge_llm,
                 },
@@ -91,7 +93,9 @@ class EvaluationService:
             job.started_at = datetime.now(timezone.utc)
             self._notify_job_update(job)
 
-            scenarios = Scenarios(scenarios=job.request.scenarios)
+            scenarios = Scenarios(
+                scenarios=job.request.scenarios if job.request.scenarios else [],
+            )
 
             # Create evaluation orchestrator (server-native)
             agent_config = job.request.agent_config

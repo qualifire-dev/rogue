@@ -91,39 +91,80 @@ class EvaluationOrchestrator:
             },
         )
 
-        # Generate scenarios if in red team mode and none provided
-        scenarios_to_use = self.scenarios
-        if (
-            self.evaluation_mode == EvaluationMode.RED_TEAM
-            and not self.scenarios.scenarios
-            and self.owasp_categories
-        ):
-            self.logger.info(
-                "🔴 Generating red team scenarios from OWASP categories",
-                extra={"owasp_categories": self.owasp_categories},
-            )
-            generator = RedTeamScenarioGenerator()
-            scenarios_to_use = await generator.generate_scenarios(
-                owasp_categories=self.owasp_categories,
-                business_context=self.business_context,
-                attacks_per_category=self.attacks_per_category,
-            )
-            self.logger.info(
-                f"🔴 Generated {len(scenarios_to_use.scenarios)} red team scenarios",
-            )
+        # For red team mode, generate scenarios for status display only
+        # Red team agents don't need scenarios - they work with OWASP categories
+        scenarios_for_status = self.scenarios
+        scenarios_for_agent = self.scenarios
 
-        if not scenarios_to_use.scenarios:
-            self.logger.warning("⚠️ No scenarios to evaluate")
-            yield "status", "No scenarios to evaluate."
-            yield "results", self.results
-            return
+        if self.evaluation_mode == EvaluationMode.RED_TEAM:
+            # In red team mode, always pass empty scenarios to agents
+            # They work purely with OWASP categories
+            scenarios_for_agent = Scenarios(scenarios=[])
+
+            # Generate scenarios for status display if none provided
+            if not self.scenarios.scenarios and self.owasp_categories:
+                self.logger.info(
+                    (
+                        "🔴 Generating red team scenarios from OWASP categories "
+                        "(for status display)"
+                    ),
+                    extra={"owasp_categories": self.owasp_categories},
+                )
+                generator = RedTeamScenarioGenerator()
+                scenarios_for_status = await generator.generate_scenarios(
+                    owasp_categories=self.owasp_categories,
+                    business_context=self.business_context,
+                    attacks_per_category=self.attacks_per_category,
+                )
+                scenario_count = len(scenarios_for_status.scenarios)
+                self.logger.info(
+                    f"🔴 Generated {scenario_count} red team scenarios",
+                )
+
+            # Check if we have OWASP categories
+            if not self.owasp_categories:
+                warning_msg = (
+                    "⚠️ No OWASP categories provided for red team evaluation"
+                )
+                self.logger.warning(warning_msg)
+                yield "status", "No OWASP categories provided for red team evaluation."
+                yield "results", self.results
+                return
+        else:
+            # Policy mode: use provided scenarios
+            if not self.scenarios.scenarios:
+                self.logger.warning("⚠️ No scenarios to evaluate")
+                yield "status", "No scenarios to evaluate."
+                yield "results", self.results
+                return
 
         # Prepare status message
-        mode_prefix = "🔴" if self.evaluation_mode == EvaluationMode.RED_TEAM else "📋"
-        scenario_list = [scenario.scenario for scenario in scenarios_to_use.scenarios]
-        status_msg = f"{mode_prefix} Running scenarios:\n" + "\n".join(scenario_list)
+        mode_prefix = (
+            "🔴" if self.evaluation_mode == EvaluationMode.RED_TEAM else "📋"
+        )
+        if scenarios_for_status.scenarios:
+            scenario_list = [
+                scenario.scenario for scenario in scenarios_for_status.scenarios
+            ]
+            status_msg = f"{mode_prefix} Running scenarios:\n" + "\n".join(
+                scenario_list,
+            )
+        else:
+            categories_str = ", ".join(self.owasp_categories)
+            status_msg = (
+                f"{mode_prefix} Running red team evaluation with "
+                f"OWASP categories: {categories_str}"
+            )
         self.logger.info(
-            f"{mode_prefix} Starting evaluation of {len(scenario_list)} scenarios",
+            f"{mode_prefix} Starting evaluation",
+            extra={
+                "scenario_count": (
+                    len(scenarios_for_status.scenarios)
+                    if scenarios_for_status.scenarios
+                    else 0
+                ),
+                "owasp_categories": self.owasp_categories,
+            },
         )
         yield "status", status_msg
 
@@ -132,6 +173,7 @@ class EvaluationOrchestrator:
             update_count = 0
 
             # Call the evaluator agent directly
+            # Pass empty scenarios for red team mode, actual scenarios for policy mode
             async for update_type, data in arun_evaluator_agent(
                 protocol=self.protocol,
                 transport=self.transport,
@@ -143,7 +185,7 @@ class EvaluationOrchestrator:
                 judge_llm_aws_access_key_id=self.judge_llm_aws_access_key_id,
                 judge_llm_aws_secret_access_key=self.judge_llm_aws_secret_access_key,
                 judge_llm_aws_region=self.judge_llm_aws_region,
-                scenarios=scenarios_to_use,
+                scenarios=scenarios_for_agent,
                 business_context=self.business_context,
                 deep_test_mode=self.deep_test_mode,
                 evaluation_mode=self.evaluation_mode,
