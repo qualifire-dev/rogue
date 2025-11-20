@@ -25,6 +25,13 @@ const (
 	TransportHTTP Transport = "http"
 )
 
+type EvaluationMode string
+
+const (
+	EvaluationModePolicy  EvaluationMode = "policy"
+	EvaluationModeRedTeam EvaluationMode = "red_team"
+)
+
 // EvaluationViewState is defined in tui package to avoid import cycles
 type EvaluationViewState struct {
 	ServerURL      string // Used from config, not editable in form
@@ -35,6 +42,11 @@ type EvaluationViewState struct {
 	ParallelRuns   int
 	DeepTest       bool
 	Scenarios      []EvalScenario
+
+	// Red teaming mode
+	EvaluationMode     EvaluationMode
+	OWASPCategories    []string // e.g., ["LLM_01", "LLM_06", "LLM_07"]
+	AttacksPerCategory int
 
 	// Runtime
 	Running  bool
@@ -51,7 +63,7 @@ type EvaluationViewState struct {
 	StructuredSummary StructuredSummary
 
 	// Editing state for New Evaluation
-	currentField int // 0: AgentURL, 1: Protocol, 2: Transport, 3: JudgeModel, 4: DeepTest, 5: StartButton
+	currentField int // 0: AgentURL, 1: Protocol, 2: Transport, 3: JudgeModel, 4: DeepTest, 5: EvaluationMode, 6: StartButton
 	cursorPos    int // rune index in current text field
 }
 
@@ -94,7 +106,20 @@ func loadScenariosFromWorkdir() []EvalScenario {
 
 // startEval kicks off evaluation and consumes events into state
 func (m *Model) startEval(ctx context.Context, st *EvaluationViewState) {
-	ch, cancel, err := m.StartEvaluation(ctx, st.ServerURL, st.AgentURL, st.AgentProtocol, st.AgentTransport, st.Scenarios, st.JudgeModel, st.ParallelRuns, st.DeepTest)
+	ch, cancel, err := m.StartEvaluation(
+		ctx,
+		st.ServerURL,
+		st.AgentURL,
+		st.AgentProtocol,
+		st.AgentTransport,
+		st.Scenarios,
+		st.JudgeModel,
+		st.ParallelRuns,
+		st.DeepTest,
+		string(st.EvaluationMode),
+		st.OWASPCategories,
+		st.AttacksPerCategory,
+	)
 	if err != nil {
 		st.Running = false
 		st.Status = "error"
@@ -220,4 +245,29 @@ func (st *EvaluationViewState) cycleTransport(reverse bool) {
 	}
 
 	st.AgentTransport = transports[currentIdx]
+}
+
+// cycleEvaluationMode cycles between Policy and Red Team modes
+func (st *EvaluationViewState) cycleEvaluationMode(reverse bool) {
+	if reverse {
+		if st.EvaluationMode == EvaluationModeRedTeam {
+			st.EvaluationMode = EvaluationModePolicy
+		} else {
+			st.EvaluationMode = EvaluationModeRedTeam
+			// Default OWASP categories if none set
+			if len(st.OWASPCategories) == 0 {
+				st.OWASPCategories = []string{"LLM_01", "LLM_06", "LLM_07"}
+			}
+		}
+	} else {
+		if st.EvaluationMode == EvaluationModePolicy {
+			st.EvaluationMode = EvaluationModeRedTeam
+			// Default OWASP categories if none set
+			if len(st.OWASPCategories) == 0 {
+				st.OWASPCategories = []string{"LLM_01", "LLM_06", "LLM_07"}
+			}
+		} else {
+			st.EvaluationMode = EvaluationModePolicy
+		}
+	}
 }

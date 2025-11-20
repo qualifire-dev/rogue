@@ -5,7 +5,7 @@ Combines HTTP client and WebSocket client for complete functionality.
 """
 
 import asyncio
-from typing import Any, Callable, Optional, Tuple
+from typing import Any, Callable, List, Optional, Tuple
 
 from loguru import logger
 from pydantic import HttpUrl
@@ -15,6 +15,7 @@ from .types import (
     AgentConfig,
     AuthType,
     EvaluationJob,
+    EvaluationMode,
     EvaluationRequest,
     EvaluationResponse,
     EvaluationResults,
@@ -249,6 +250,9 @@ class RogueSDK:
         auth_credentials: Optional[str] = None,
         deep_test: bool = False,
         timeout: float = 600.0,
+        evaluation_mode: Optional[EvaluationMode] = None,
+        owasp_categories: Optional[List[str]] = None,
+        attacks_per_category: int = 5,
     ) -> EvaluationJob:
         """Quick evaluation helper."""
 
@@ -264,6 +268,9 @@ class RogueSDK:
             interview_mode=True,
             parallel_runs=1,
             business_context=business_context,
+            evaluation_mode=evaluation_mode or EvaluationMode.POLICY,
+            owasp_categories=owasp_categories,
+            attacks_per_category=attacks_per_category,
         )
 
         request = EvaluationRequest(

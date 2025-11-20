@@ -35,7 +35,7 @@ func HandleEvalFormInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m, nil
 
 	case "down":
-		if m.evalState.currentField < 5 { // 0-5 fields (AgentURL, Protocol, Transport, JudgeModel, DeepTest, StartButton)
+		if m.evalState.currentField < 6 { // 0-6 fields (AgentURL, Protocol, Transport, JudgeModel, DeepTest, Mode, StartButton)
 			m.evalState.currentField++
 			// Set cursor to end of field content when switching fields
 			switch m.evalState.currentField {
@@ -59,6 +59,8 @@ func HandleEvalFormInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 			m.evalState.cycleProtocol(true) // cycle backwards
 		case 2: // Transport dropdown
 			m.evalState.cycleTransport(true) // cycle backwards
+		case 5: // EvaluationMode dropdown
+			m.evalState.cycleEvaluationMode(true) // cycle backwards
 		}
 		return m, nil
 
@@ -78,6 +80,8 @@ func HandleEvalFormInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 			if m.evalState.cursorPos < fieldLen {
 				m.evalState.cursorPos++
 			}
+		case 5: // EvaluationMode dropdown
+			m.evalState.cycleEvaluationMode(false) // cycle forwards
 		}
 		return m, nil
 

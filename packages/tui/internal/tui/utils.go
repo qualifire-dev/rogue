@@ -45,6 +45,9 @@ type AgentConfig struct {
 	InterviewMode              bool      `json:"interview_mode"`
 	DeepTestMode               bool      `json:"deep_test_mode"`
 	ParallelRuns               int       `json:"parallel_runs"`
+	EvaluationMode             string    `json:"evaluation_mode,omitempty"`
+	OWASPCategories            []string  `json:"owasp_categories,omitempty"`
+	AttacksPerCategory         int       `json:"attacks_per_category,omitempty"`
 }
 
 type EvaluationRequest struct {
@@ -406,6 +409,9 @@ func (m *Model) StartEvaluation(
 	judgeModel string,
 	parallelRuns int,
 	deepTest bool,
+	evaluationMode string,
+	owaspCategories []string,
+	attacksPerCategory int,
 ) (<-chan EvaluationEvent, func() error, error) {
 	sdk := NewRogueSDK(serverURL)
 
@@ -460,6 +466,9 @@ func (m *Model) StartEvaluation(
 			InterviewMode:              true,
 			DeepTestMode:               deepTest,
 			ParallelRuns:               parallelRuns,
+			EvaluationMode:             evaluationMode,
+			OWASPCategories:            owaspCategories,
+			AttacksPerCategory:         attacksPerCategory,
 		},
 		MaxRetries:     3,
 		TimeoutSeconds: 600,

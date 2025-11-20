@@ -2,6 +2,7 @@ package evaluations
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/rogue/tui/internal/theme"
@@ -35,7 +36,19 @@ func RenderForm(state *FormState) string {
 		Align(lipgloss.Center).
 		Padding(1, 0)
 
-	title := titleStyle.Render("🧪 New Evaluation")
+	// Show mode badge in title
+	titleText := "🧪 New Evaluation"
+	if state.EvaluationMode == "red_team" {
+		// Red team mode - show red badge
+		badgeStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FF0000")).
+			Background(lipgloss.Color("#330000")).
+			Bold(true).
+			Padding(0, 1).
+			MarginLeft(1)
+		titleText = "🧪 New Evaluation " + badgeStyle.Render("🔴 RED TEAM MODE")
+	}
+	title := titleStyle.Render(titleText)
 
 	// Helper function to render a text field with inline label and value
 	renderTextField := func(fieldIndex int, label, value string) string {
@@ -168,10 +181,18 @@ func RenderForm(state *FormState) string {
 	if state.DeepTest {
 		deep = "✅"
 	}
+	evalMode := "Policy"
+	if state.EvaluationMode == "red_team" {
+		evalMode = "🔴 Red Team"
+	}
+	owaspInfo := ""
+	if state.EvaluationMode == "red_team" && len(state.OWASPCategories) > 0 {
+		owaspInfo = fmt.Sprintf(" (%s)", strings.Join(state.OWASPCategories, ", "))
+	}
 
 	// Helper function to render the start button
 	renderStartButton := func() string {
-		active := state.CurrentField == 5
+		active := state.CurrentField == 6 // StartButton is field 6 (after Mode field 5)
 		var buttonText string
 
 		if state.EvalSpinnerActive {
@@ -234,6 +255,7 @@ func RenderForm(state *FormState) string {
 		renderDropdownField(2, "Transport:", transport),
 		renderTextField(3, "Judge LLM:", judge),
 		renderToggleField(4, "Deep Test:", deep),
+		renderDropdownField(5, "Mode:", evalMode+owaspInfo),
 	)
 
 	var infoLines []string

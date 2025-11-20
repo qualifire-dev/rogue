@@ -210,15 +210,18 @@ func (m Model) handleCommandSelectedMsg(msg components.CommandSelectedMsg) (Mode
 		}
 		// TODO read agent url and protocol .rogue/user_config.json
 		m.evalState = &EvaluationViewState{
-			ServerURL:      m.config.ServerURL,
-			AgentURL:       "http://localhost:10001",
-			AgentProtocol:  ProtocolA2A,
-			AgentTransport: TransportHTTP,
-			JudgeModel:     judgeModel,
-			ParallelRuns:   1,
-			DeepTest:       false,
-			Scenarios:      loadScenariosFromWorkdir(),
-			cursorPos:      len([]rune("http://localhost:10001")), // Set cursor to end of Agent URL
+			ServerURL:          m.config.ServerURL,
+			AgentURL:           "http://localhost:10001",
+			AgentProtocol:      ProtocolA2A,
+			AgentTransport:     TransportHTTP,
+			JudgeModel:         judgeModel,
+			ParallelRuns:       1,
+			DeepTest:           false,
+			Scenarios:          loadScenariosFromWorkdir(),
+			EvaluationMode:     EvaluationModePolicy,
+			OWASPCategories:    []string{},
+			AttacksPerCategory: 5,
+			cursorPos:          len([]rune("http://localhost:10001")), // Set cursor to end of Agent URL
 		}
 	case "configure_models":
 		// Open LLM configuration dialog

@@ -15,6 +15,7 @@ from rogue_sdk.types import (
     PROTOCOL_TO_TRANSPORTS,
     AgentConfig,
     AuthType,
+    EvaluationMode,
     EvaluationResults,
     Protocol,
     Scenarios,
@@ -104,7 +105,27 @@ def set_cli_args(parser: ArgumentParser) -> None:
         action="store_true",
         help="Enable deep test mode",
     )
-
+    parser.add_argument(
+        "--evaluation-mode",
+        choices=[e.value for e in EvaluationMode],
+        type=EvaluationMode,
+        default=EvaluationMode.POLICY,
+        help="Evaluation mode: 'policy' for policy testing, "
+        "'red_team' for OWASP red teaming",
+    )
+    parser.add_argument(
+        "--owasp-categories",
+        nargs="+",
+        help="OWASP categories to test in red team mode "
+        "(e.g., LLM_01 LLM_06 LLM_07). Required when --evaluation-mode=red_team",
+    )
+    parser.add_argument(
+        "--attacks-per-category",
+        type=int,
+        default=5,
+        help="Number of attack scenarios to generate per OWASP category "
+        "(default: 5)",
+    )
     parser.add_argument(
         "--qualifire-api-key",
         required=False,
@@ -137,6 +158,9 @@ async def run_scenarios(
     evaluation_results_output_path: Path,
     business_context: str,
     deep_test_mode: bool,
+    evaluation_mode: EvaluationMode = EvaluationMode.POLICY,
+    owasp_categories: list[str] | None = None,
+    attacks_per_category: int = 5,
 ) -> Tuple[EvaluationResults | None, str | None]:
     evaluated_agent_auth_credentials = (
         evaluated_agent_auth_credentials_secret.get_secret_value()
@@ -163,6 +187,9 @@ async def run_scenarios(
         evaluation_results_output_path=evaluation_results_output_path,
         business_context=business_context,
         deep_test_mode=deep_test_mode,
+        evaluation_mode=evaluation_mode,
+        owasp_categories=owasp_categories,
+        attacks_per_category=attacks_per_category,
     )
 
 
@@ -179,6 +206,9 @@ async def _run_scenarios_with_sdk(
     evaluation_results_output_path: Path,
     business_context: str,
     deep_test_mode: bool,
+    evaluation_mode: EvaluationMode = EvaluationMode.POLICY,
+    owasp_categories: list[str] | None = None,
+    attacks_per_category: int = 5,
 ) -> Tuple[EvaluationResults | None, str | None]:
     """Run scenarios using the new SDK."""
 
@@ -205,6 +235,9 @@ async def _run_scenarios_with_sdk(
             judge_model=judge_llm,
             judge_llm_api_key=judge_llm_api_key,
             deep_test=deep_test_mode,
+            evaluation_mode=evaluation_mode,
+            owasp_categories=owasp_categories,
+            attacks_per_category=attacks_per_category,
         )
 
         logger.info(f"Started evaluation job {job.job_id} using SDK")
@@ -469,6 +502,9 @@ async def run_cli(args: Namespace) -> int:
         evaluation_results_output_path=args.workdir / "evaluation_results.json",
         business_context=cli_input.business_context,
         deep_test_mode=cli_input.deep_test_mode,
+        evaluation_mode=cli_input.evaluation_mode,
+        owasp_categories=cli_input.owasp_categories,
+        attacks_per_category=cli_input.attacks_per_category,
     )
     if not results:
         raise ValueError(

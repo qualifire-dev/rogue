@@ -7,16 +7,18 @@ type FormState struct {
 	Height int
 
 	// Form fields
-	AgentURL       string
-	Protocol       string
-	Transport      string
-	JudgeModel     string
-	DeepTest       bool
-	ServerURL      string
-	ScenariosCount int
+	AgentURL        string
+	Protocol        string
+	Transport       string
+	JudgeModel      string
+	DeepTest        bool
+	ServerURL       string
+	ScenariosCount  int
+	EvaluationMode  string
+	OWASPCategories []string
 
 	// Editing state
-	CurrentField int // 0: AgentURL, 1: Protocol, 2: Transport, 3: JudgeModel, 4: DeepTest, 5: StartButton
+	CurrentField int // 0: AgentURL, 1: Protocol, 2: Transport, 3: JudgeModel, 4: DeepTest, 5: EvaluationMode, 6: StartButton
 	CursorPos    int
 
 	// UI state
