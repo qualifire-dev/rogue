@@ -123,9 +123,7 @@ class EvaluationOrchestrator:
 
             # Check if we have OWASP categories
             if not self.owasp_categories:
-                warning_msg = (
-                    "⚠️ No OWASP categories provided for red team evaluation"
-                )
+                warning_msg = "⚠️ No OWASP categories provided for red team evaluation"
                 self.logger.warning(warning_msg)
                 yield "status", "No OWASP categories provided for red team evaluation."
                 yield "results", self.results
@@ -139,9 +137,7 @@ class EvaluationOrchestrator:
                 return
 
         # Prepare status message
-        mode_prefix = (
-            "🔴" if self.evaluation_mode == EvaluationMode.RED_TEAM else "📋"
-        )
+        mode_prefix = "🔴" if self.evaluation_mode == EvaluationMode.RED_TEAM else "📋"
         if scenarios_for_status.scenarios:
             scenario_list = [
                 scenario.scenario for scenario in scenarios_for_status.scenarios

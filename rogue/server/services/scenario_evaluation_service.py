@@ -91,9 +91,7 @@ class ScenarioEvaluationService:
 
             # Check if we have OWASP categories
             if not self._owasp_categories:
-                warning_msg = (
-                    "⚠️ No OWASP categories provided for red team evaluation"
-                )
+                warning_msg = "⚠️ No OWASP categories provided for red team evaluation"
                 logger.warning(warning_msg)
                 yield "status", "No OWASP categories provided for red team evaluation."
                 yield "done", self._results
@@ -107,9 +105,7 @@ class ScenarioEvaluationService:
                 return
 
         # Prepare status message
-        mode_prefix = (
-            "🔴" if self._evaluation_mode == EvaluationMode.RED_TEAM else "📋"
-        )
+        mode_prefix = "🔴" if self._evaluation_mode == EvaluationMode.RED_TEAM else "📋"
         if scenarios_for_status.scenarios:
             scenario_list = [
                 scenario.scenario for scenario in scenarios_for_status.scenarios
