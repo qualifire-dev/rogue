@@ -3,6 +3,7 @@ package tui
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/glamour"
@@ -28,14 +29,40 @@ func (m *Model) startInterviewCmd() tea.Cmd {
 			}
 		}
 
-		if interviewAPIKey == "" {
+		// Extract provider from interview model to determine if we need API key or AWS credentials
+		var provider string
+		if parts := strings.Split(interviewModel, "/"); len(parts) >= 2 {
+			provider = parts[0]
+		}
+
+		// For Bedrock, we don't need an API key - only AWS credentials
+		// For other providers, we need an API key
+		if provider != "bedrock" && interviewAPIKey == "" {
 			return scenarios.InterviewStartedMsg{
 				Error: fmt.Errorf("AI API key not set, please use /models to set an AI API key"),
 			}
 		}
 
+		// Extract AWS credentials from config based on interview model provider
+		var awsAccessKeyID, awsSecretAccessKey, awsRegion string
+
+		// For Bedrock, extract AWS credentials from config
+		if provider == "bedrock" {
+			if accessKey, ok := m.config.APIKeys["bedrock_access_key"]; ok {
+				awsAccessKeyID = accessKey
+			}
+			if secretKey, ok := m.config.APIKeys["bedrock_secret_key"]; ok {
+				awsSecretAccessKey = secretKey
+			}
+			if region, ok := m.config.APIKeys["bedrock_region"]; ok {
+				awsRegion = region
+			}
+			// Don't use interviewAPIKey for Bedrock - it might be set to access key ID
+			interviewAPIKey = ""
+		}
+
 		// Start interview
-		resp, err := sdk.StartInterview(ctx, interviewModel, interviewAPIKey)
+		resp, err := sdk.StartInterview(ctx, interviewModel, interviewAPIKey, awsAccessKeyID, awsSecretAccessKey, awsRegion)
 		if err != nil {
 			return scenarios.InterviewStartedMsg{
 				Error: err,
@@ -87,12 +114,39 @@ func (m *Model) generateScenariosCmd(businessContext string) tea.Cmd {
 			interviewModel = "openai/gpt-4o"
 		}
 
+		// Extract provider from interview model to determine if we need API key or AWS credentials
+		var provider string
+		if parts := strings.Split(interviewModel, "/"); len(parts) >= 2 {
+			provider = parts[0]
+		}
+
+		// Extract AWS credentials from config based on interview model provider
+		var awsAccessKeyID, awsSecretAccessKey, awsRegion string
+
+		// For Bedrock, extract AWS credentials from config (don't use api_key)
+		if provider == "bedrock" {
+			if accessKey, ok := m.config.APIKeys["bedrock_access_key"]; ok {
+				awsAccessKeyID = accessKey
+			}
+			if secretKey, ok := m.config.APIKeys["bedrock_secret_key"]; ok {
+				awsSecretAccessKey = secretKey
+			}
+			if region, ok := m.config.APIKeys["bedrock_region"]; ok {
+				awsRegion = region
+			}
+			// Don't use interviewAPIKey for Bedrock - it might be set to access key ID
+			interviewAPIKey = ""
+		}
+
 		// Generate scenarios
 		request := ScenarioGenerationRequest{
-			BusinessContext: businessContext,
-			Model:           interviewModel,
-			APIKey:          interviewAPIKey,
-			Count:           10, // Default to 10 scenarios
+			BusinessContext:    businessContext,
+			Model:              interviewModel,
+			APIKey:             interviewAPIKey,
+			AWSAccessKeyID:     awsAccessKeyID,
+			AWSSecretAccessKey: awsSecretAccessKey,
+			AWSRegion:          awsRegion,
+			Count:              10, // Default to 10 scenarios
 		}
 
 		resp, err := sdk.GenerateScenarios(ctx, request)
@@ -126,10 +180,22 @@ func (m *Model) generateScenariosCmd(businessContext string) tea.Cmd {
 func (m *Model) configureScenarioEditorWithInterviewModel() {
 	interviewModel := "openai/gpt-4o" // Default fallback
 	if m.config.InterviewProvider != "" && m.config.InterviewModel != "" {
-		interviewModel = m.config.InterviewProvider + "/" + m.config.InterviewModel
+		// Check if model already has provider prefix (e.g., "bedrock/anthropic.claude-...")
+		// If it does, use it as-is; otherwise, add the provider prefix
+		if strings.Contains(m.config.InterviewModel, "/") {
+			interviewModel = m.config.InterviewModel
+		} else {
+			interviewModel = m.config.InterviewProvider + "/" + m.config.InterviewModel
+		}
 	} else if m.config.SelectedProvider != "" && m.config.SelectedModel != "" {
 		// Fall back to selected judge model if interview model not set
-		interviewModel = m.config.SelectedProvider + "/" + m.config.SelectedModel
+		// Check if model already has provider prefix (e.g., "bedrock/anthropic.claude-...")
+		// If it does, use it as-is; otherwise, add the provider prefix
+		if strings.Contains(m.config.SelectedModel, "/") {
+			interviewModel = m.config.SelectedModel
+		} else {
+			interviewModel = m.config.SelectedProvider + "/" + m.config.SelectedModel
+		}
 	}
 	interviewAPIKey := ""
 	if m.config.InterviewProvider != "" {

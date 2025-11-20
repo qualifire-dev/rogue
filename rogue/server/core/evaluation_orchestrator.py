@@ -31,6 +31,9 @@ class EvaluationOrchestrator:
         scenarios: Scenarios,
         business_context: str,
         deep_test_mode: bool,
+        judge_llm_aws_access_key_id: str | None = None,
+        judge_llm_aws_secret_access_key: str | None = None,
+        judge_llm_aws_region: str | None = None,
     ):
         self.protocol = protocol
         self.transport = transport
@@ -39,6 +42,9 @@ class EvaluationOrchestrator:
         self.evaluated_agent_auth_credentials = evaluated_agent_auth_credentials
         self.judge_llm = judge_llm
         self.judge_llm_api_key = judge_llm_api_key
+        self.judge_llm_aws_access_key_id = judge_llm_aws_access_key_id
+        self.judge_llm_aws_secret_access_key = judge_llm_aws_secret_access_key
+        self.judge_llm_aws_region = judge_llm_aws_region
         self.scenarios = scenarios
         self.business_context = business_context
         self.deep_test_mode = deep_test_mode
@@ -90,6 +96,9 @@ class EvaluationOrchestrator:
                 auth_credentials=self.evaluated_agent_auth_credentials,
                 judge_llm=self.judge_llm,
                 judge_llm_api_key=self.judge_llm_api_key,
+                judge_llm_aws_access_key_id=self.judge_llm_aws_access_key_id,
+                judge_llm_aws_secret_access_key=self.judge_llm_aws_secret_access_key,
+                judge_llm_aws_region=self.judge_llm_aws_region,
                 scenarios=self.scenarios,
                 business_context=self.business_context,
                 deep_test_mode=self.deep_test_mode,

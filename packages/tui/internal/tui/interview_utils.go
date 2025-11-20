@@ -20,8 +20,11 @@ type InterviewMessage struct {
 
 // StartInterviewRequest is the request to start a new interview session
 type StartInterviewRequest struct {
-	Model  string `json:"model"`
-	APIKey string `json:"api_key"`
+	Model              string `json:"model"`
+	APIKey             string `json:"api_key"`
+	AWSAccessKeyID     string `json:"aws_access_key_id,omitempty"`
+	AWSSecretAccessKey string `json:"aws_secret_access_key,omitempty"`
+	AWSRegion          string `json:"aws_region,omitempty"`
 }
 
 // StartInterviewResponse is the response from starting an interview
@@ -54,10 +57,13 @@ type GetConversationResponse struct {
 }
 
 // StartInterview starts a new interview session
-func (sdk *RogueSDK) StartInterview(ctx context.Context, model, apiKey string) (*StartInterviewResponse, error) {
+func (sdk *RogueSDK) StartInterview(ctx context.Context, model, apiKey string, awsAccessKeyID, awsSecretAccessKey, awsRegion string) (*StartInterviewResponse, error) {
 	request := StartInterviewRequest{
-		Model:  model,
-		APIKey: apiKey,
+		Model:              model,
+		APIKey:             apiKey,
+		AWSAccessKeyID:     awsAccessKeyID,
+		AWSSecretAccessKey: awsSecretAccessKey,
+		AWSRegion:          awsRegion,
 	}
 
 	body, err := json.Marshal(request)

@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"strings"
+
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/rogue/tui/internal/components"
 	"github.com/rogue/tui/internal/screens/help"
@@ -79,7 +81,13 @@ func (m Model) handleGlobalCtrlN() (Model, tea.Cmd) {
 	judgeModel := "openai/gpt-4.1" // fallback default
 	if m.config.SelectedModel != "" && m.config.SelectedProvider != "" {
 		// Use the configured model in provider/model format
-		judgeModel = m.config.SelectedProvider + "/" + m.config.SelectedModel
+		// Check if model already has provider prefix (e.g., "bedrock/anthropic.claude-...")
+		// If it does, use it as-is; otherwise, add the provider prefix
+		if strings.Contains(m.config.SelectedModel, "/") {
+			judgeModel = m.config.SelectedModel
+		} else {
+			judgeModel = m.config.SelectedProvider + "/" + m.config.SelectedModel
+		}
 	}
 	// TODO read agent url and protocol .rogue/user_config.json
 	m.evalState = &EvaluationViewState{
