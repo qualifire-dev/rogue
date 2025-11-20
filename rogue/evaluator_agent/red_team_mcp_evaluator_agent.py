@@ -4,6 +4,7 @@ Red Team MCP Evaluator Agent.
 Extends MCPEvaluatorAgent with red teaming capabilities.
 """
 
+import random
 from typing import TYPE_CHECKING, Callable, List, Optional
 
 from loguru import logger
@@ -159,6 +160,11 @@ class RedTeamMCPEvaluatorAgent(MCPEvaluatorAgent):
             **kwargs,
         )
         self._owasp_categories = owasp_categories or []
+        # Load OWASP framework for attack selection
+        # (lazy import to avoid circular dependency)
+        self._owasp_framework = None
+        # Track current scenario context for attack selection
+        self._context_to_scenario: dict[str, str] = {}
 
     def get_underlying_agent(self) -> "LlmAgent":
         """Create the underlying LLM agent with red team instructions."""
@@ -235,3 +241,181 @@ class RedTeamMCPEvaluatorAgent(MCPEvaluatorAgent):
             "LLM_10": "Unbounded Consumption - Test for resource exhaustion",
         }
         return descriptions.get(category_id, f"OWASP Category {category_id}")
+
+    def _extract_owasp_category_from_scenario(
+        self,
+        scenario_text: str,
+    ) -> Optional[str]:
+        """
+        Extract OWASP category ID from scenario text.
+
+        Scenarios contain OWASP category IDs in their expected_outcome
+        or scenario text (e.g., "LLM_01", "LLM_07").
+        """
+        # Check scenario text for OWASP category pattern
+        for category_id in self._owasp_categories:
+            if category_id in scenario_text:
+                return category_id
+        return None
+
+    def _get_owasp_framework(self):
+        """Lazy load OWASP framework to avoid circular imports."""
+        if self._owasp_framework is None and self._owasp_categories:
+            # Lazy import to avoid circular dependency
+            from ..server.red_teaming.frameworks.owasp import OWASPTop10
+
+            self._owasp_framework = OWASPTop10(
+                categories=self._owasp_categories,  # type: ignore[arg-type]
+            )
+        return self._owasp_framework
+
+    def _get_attacks_for_category(self, category_id: str) -> List:
+        """Get available attacks for an OWASP category."""
+        framework = self._get_owasp_framework()
+        if not framework:
+            return []
+
+        for category in framework.get_categories():
+            if category.id == category_id:
+                return category.attacks
+        return []
+
+    def _select_and_enhance_attack(
+        self,
+        message: str,
+        context_id: str,
+    ) -> str:
+        """
+        Select an appropriate attack and enhance the message.
+
+        Strategy:
+        - 70% chance to enhance with an attack (to make it natural)
+        - 30% chance to send raw message
+        - Select attack based on scenario's OWASP category
+        - Weight attacks by their weight property
+        """
+        # Check if we should enhance (70% probability)
+        if random.random() > 0.7:  # nosec B311
+            return message
+
+        # Try to find OWASP category for this context
+        # First check if we've tracked a scenario for this context
+        scenario_text = self._context_to_scenario.get(context_id, "")
+
+        # If not tracked, try to extract from scenarios
+        if not scenario_text:
+            # Look through scenarios to find one matching this context
+            # We'll match by checking if any scenario's expected_outcome
+            # contains an OWASP category
+            for scenario in self._scenarios.scenarios:
+                if scenario.expected_outcome:
+                    category_id = self._extract_owasp_category_from_scenario(
+                        scenario.expected_outcome,
+                    )
+                    if category_id:
+                        self._context_to_scenario[context_id] = (
+                            scenario.expected_outcome
+                        )
+                        scenario_text = scenario.expected_outcome
+                        break
+
+        # Extract OWASP category from scenario
+        category_id = self._extract_owasp_category_from_scenario(scenario_text)
+        if not category_id:
+            # Fallback: randomly select from available categories
+            if self._owasp_categories:
+                category_id = random.choice(self._owasp_categories)  # nosec B311
+
+        if not category_id:
+            return message
+
+        # Get attacks for this category
+        attacks = self._get_attacks_for_category(category_id)
+        if not attacks:
+            return message
+
+        # Select attack based on weights
+        # Create weighted list
+        weighted_attacks = []
+        for attack in attacks:
+            weight = getattr(attack, "weight", 1)
+            weighted_attacks.extend([attack] * weight)
+
+        if not weighted_attacks:
+            return message
+
+        # Select random attack from weighted list
+        selected_attack = random.choice(weighted_attacks)  # nosec B311
+
+        # Enhance message
+        try:
+            enhanced_message = selected_attack.enhance(message)
+            logger.debug(
+                "🔴 Enhanced message with attack",
+                extra={
+                    "attack_name": selected_attack.get_name(),
+                    "category_id": category_id,
+                    "context_id": context_id,
+                    "original_length": len(message),
+                    "enhanced_length": len(enhanced_message),
+                },
+            )
+            return enhanced_message
+        except Exception as e:
+            logger.warning(
+                "⚠️ Failed to enhance message with attack",
+                extra={
+                    "attack_name": selected_attack.get_name(),
+                    "error": str(e),
+                    "context_id": context_id,
+                },
+            )
+            return message
+
+    async def _send_message_to_evaluated_agent(
+        self,
+        context_id: str,
+        message: str,
+    ) -> dict[str, str]:
+        """
+        Send message to evaluated agent with attack enhancement.
+
+        Overrides parent method to enhance messages with attack strategies
+        based on the OWASP category being tested.
+        """
+        # Enhance message with attack if applicable
+        enhanced_message = self._select_and_enhance_attack(message, context_id)
+
+        # Call parent method with enhanced message
+        return await super()._send_message_to_evaluated_agent(
+            context_id,
+            enhanced_message,
+        )
+
+    def _log_evaluation(
+        self,
+        scenario: dict[str, str],
+        context_id: str,
+        evaluation_passed: bool,
+        reason: str,
+        **kwargs,
+    ) -> None:
+        """
+        Log evaluation and track scenario for attack selection.
+
+        Overrides parent to track which scenario is being tested
+        for better attack selection.
+        """
+        # Track scenario for this context
+        scenario_text = scenario.get("scenario", "")
+        if scenario_text:
+            self._context_to_scenario[context_id] = scenario_text
+
+        # Call parent method
+        return super()._log_evaluation(
+            scenario,
+            context_id,
+            evaluation_passed,
+            reason,
+            **kwargs,
+        )
