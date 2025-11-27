@@ -667,26 +667,9 @@ func (d LLMConfigDialog) handleEnter() (LLMConfigDialog, tea.Cmd) {
 
 		// Validate inputs based on provider
 		provider := d.Providers[d.SelectedProvider]
-		if provider.Name == "bedrock" {
-			// Validate all Bedrock fields
-			if d.AWSAccessKeyInput == "" {
-				d.ErrorMessage = "AWS Access Key cannot be empty"
-				return d, nil
-			}
-			if d.AWSSecretKeyInput == "" {
-				d.ErrorMessage = "AWS Secret Key cannot be empty"
-				return d, nil
-			}
-			if d.AWSRegionInput == "" {
-				d.ErrorMessage = "AWS Region cannot be empty"
-				return d, nil
-			}
-		} else {
-			// Validate API key for other providers
-			if d.APIKeyInput == "" {
-				d.ErrorMessage = "API key cannot be empty"
-				return d, nil
-			}
+		if provider.Name != "bedrock" || provider.Name != "lm_studio" && d.APIKeyInput == "" {
+			d.ErrorMessage = "API key cannot be empty"
+			return d, nil
 		}
 
 		d.Loading = true
