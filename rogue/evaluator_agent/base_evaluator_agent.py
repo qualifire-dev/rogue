@@ -165,6 +165,9 @@ class BaseEvaluatorAgent(ABC):
         business_context: Optional[str],
         headers: Optional[dict[str, str]] = None,
         judge_llm_auth: Optional[str] = None,
+        judge_llm_aws_access_key_id: Optional[str] = None,
+        judge_llm_aws_secret_access_key: Optional[str] = None,
+        judge_llm_aws_region: Optional[str] = None,
         debug: bool = False,
         deep_test_mode: bool = False,
         chat_update_callback: Optional[Callable[[dict], None]] = None,
@@ -180,6 +183,9 @@ class BaseEvaluatorAgent(ABC):
         self._headers = headers or {}
         self._judge_llm = judge_llm
         self._judge_llm_auth = judge_llm_auth
+        self._judge_llm_aws_access_key_id = judge_llm_aws_access_key_id
+        self._judge_llm_aws_secret_access_key = judge_llm_aws_secret_access_key
+        self._judge_llm_aws_region = judge_llm_aws_region
         self._scenarios = scenarios
         self._evaluation_results: EvaluationResults = EvaluationResults()
         self._context_id_to_chat_history: dict[str, ChatHistory] = {}
@@ -348,6 +354,9 @@ class BaseEvaluatorAgent(ABC):
                 business_context=self._business_context,
                 expected_outcome=scenario.expected_outcome,
                 api_key=self._judge_llm_auth,
+                aws_access_key_id=self._judge_llm_aws_access_key_id,
+                aws_secret_access_key=self._judge_llm_aws_secret_access_key,
+                aws_region=self._judge_llm_aws_region,
             )
             return policy_evaluation_result.passed, policy_evaluation_result.reason
         elif scenario.scenario_type == ScenarioType.PROMPT_INJECTION:

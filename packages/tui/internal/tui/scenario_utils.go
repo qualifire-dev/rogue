@@ -24,10 +24,13 @@ type ScenariosList struct {
 
 // ScenarioGenerationRequest is the request to generate scenarios from business context
 type ScenarioGenerationRequest struct {
-	BusinessContext string `json:"business_context"`
-	Model           string `json:"model"`
-	APIKey          string `json:"api_key"`
-	Count           int    `json:"count,omitempty"`
+	BusinessContext    string `json:"business_context"`
+	Model              string `json:"model"`
+	APIKey             string `json:"api_key"`
+	AWSAccessKeyID     string `json:"aws_access_key_id,omitempty"`
+	AWSSecretAccessKey string `json:"aws_secret_access_key,omitempty"`
+	AWSRegion          string `json:"aws_region,omitempty"`
+	Count              int    `json:"count,omitempty"`
 }
 
 // ScenarioGenerationResponse is the response from scenario generation

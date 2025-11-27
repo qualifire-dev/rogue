@@ -200,7 +200,13 @@ func (m Model) handleCommandSelectedMsg(msg components.CommandSelectedMsg) (Mode
 		judgeModel := "openai/gpt-4.1" // fallback default
 		if m.config.SelectedModel != "" && m.config.SelectedProvider != "" {
 			// Use the configured model in provider/model format
-			judgeModel = m.config.SelectedProvider + "/" + m.config.SelectedModel
+			// Check if model already has provider prefix (e.g., "bedrock/anthropic.claude-...")
+			// If it does, use it as-is; otherwise, add the provider prefix
+			if strings.Contains(m.config.SelectedModel, "/") {
+				judgeModel = m.config.SelectedModel
+			} else {
+				judgeModel = m.config.SelectedProvider + "/" + m.config.SelectedModel
+			}
 		}
 		// TODO read agent url and protocol .rogue/user_config.json
 		m.evalState = &EvaluationViewState{
@@ -274,9 +280,28 @@ func (m Model) handleLLMConfigResultMsg(msg components.LLMConfigResultMsg) (Mode
 			m.config.SelectedProvider = msg.Provider
 			m.config.SelectedModel = msg.Model
 
+			// For Bedrock, also save AWS credentials separately
+			if msg.Provider == "bedrock" {
+				if msg.AWSAccessKeyID != "" {
+					m.config.APIKeys["bedrock_access_key"] = msg.AWSAccessKeyID
+				}
+				if msg.AWSSecretAccessKey != "" {
+					m.config.APIKeys["bedrock_secret_key"] = msg.AWSSecretAccessKey
+				}
+				if msg.AWSRegion != "" {
+					m.config.APIKeys["bedrock_region"] = msg.AWSRegion
+				}
+			}
+
 			// If we're on the evaluation screen, update the judge model
 			if m.currentScreen == NewEvaluationScreen && m.evalState != nil {
-				m.evalState.JudgeModel = msg.Provider + "/" + msg.Model
+				// Check if model already has provider prefix (e.g., "bedrock/anthropic.claude-...")
+				// If it does, use it as-is; otherwise, add the provider prefix
+				if strings.Contains(msg.Model, "/") {
+					m.evalState.JudgeModel = msg.Model
+				} else {
+					m.evalState.JudgeModel = msg.Provider + "/" + msg.Model
+				}
 			}
 
 			// Save config to file

@@ -51,6 +51,9 @@ async def start_interview(request: StartInterviewRequest):
         interviewer = InterviewerService(
             model=request.model,
             llm_provider_api_key=request.api_key,
+            aws_access_key_id=request.aws_access_key_id,
+            aws_secret_access_key=request.aws_secret_access_key,
+            # aws_region=request.aws_region,
         )
 
         # Store in session storage

@@ -47,12 +47,18 @@ class InterviewerService:
         self,
         model: str | None = None,
         llm_provider_api_key: str | None = None,
+        aws_access_key_id: str | None = None,
+        aws_secret_access_key: str | None = None,
+        aws_region: str | None = None,
     ):
         self._model = model
 
         if llm_provider_api_key == "":
             llm_provider_api_key = None
         self._llm_provider_api_key = llm_provider_api_key
+        self._aws_access_key_id = aws_access_key_id
+        self._aws_secret_access_key = aws_secret_access_key
+        self._aws_region = aws_region
 
         self._messages = [
             {"role": "system", "content": INTERVIEWER_SYSTEM_PROMPT},
@@ -95,6 +101,9 @@ class InterviewerService:
                 model=self._model,
                 messages=messages,
                 api_key=self._llm_provider_api_key,
+                aws_access_key_id=self._aws_access_key_id,
+                aws_secret_access_key=self._aws_secret_access_key,
+                # aws_region=self._aws_region,
             )
 
             self._messages.append(
