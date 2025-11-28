@@ -161,8 +161,8 @@ func RenderForm(state *FormState) string {
 
 	// Prepare field values
 	agent := state.AgentURL
-	protocol := state.Protocol
-	transport := state.Transport
+	protocol := string(state.Protocol)
+	transport := string(state.Transport)
 	judge := state.JudgeModel
 	deep := "❌"
 	if state.DeepTest {
