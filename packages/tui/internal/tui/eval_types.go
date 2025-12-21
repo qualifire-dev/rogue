@@ -25,6 +25,21 @@ const (
 	TransportHTTP Transport = "http"
 )
 
+// EvalFormField represents the field indices for the evaluation form
+type EvalFormField int
+
+const (
+	EvalFieldAgentURL    EvalFormField = 0
+	EvalFieldProtocol    EvalFormField = 1
+	EvalFieldTransport   EvalFormField = 2
+	EvalFieldJudgeModel  EvalFormField = 3
+	EvalFieldDeepTest    EvalFormField = 4
+	EvalFieldStartButton EvalFormField = 5
+
+	// EvalFieldCount is the total number of fields (for bounds checking)
+	EvalFieldCount = 6
+)
+
 // EvaluationViewState is defined in tui package to avoid import cycles
 type EvaluationViewState struct {
 	ServerURL      string // Used from config, not editable in form
@@ -51,8 +66,8 @@ type EvaluationViewState struct {
 	StructuredSummary StructuredSummary
 
 	// Editing state for New Evaluation
-	currentField int // 0: AgentURL, 1: Protocol, 2: Transport, 3: JudgeModel, 4: DeepTest, 5: StartButton
-	cursorPos    int // rune index in current text field
+	currentField EvalFormField // Field index for form navigation
+	cursorPos    int           // rune index in current text field
 }
 
 // loadScenariosFromWorkdir reads .rogue/scenarios.json upward from CWD

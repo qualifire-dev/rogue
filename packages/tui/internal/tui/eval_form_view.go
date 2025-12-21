@@ -32,7 +32,7 @@ func (m Model) RenderNewEvaluation() string {
 		ServerURL:      m.evalState.ServerURL,
 		ScenariosCount: len(m.evalState.Scenarios),
 
-		CurrentField: m.evalState.currentField,
+		CurrentField: int(m.evalState.currentField),
 		CursorPos:    m.evalState.cursorPos,
 
 		EvalSpinnerActive:   m.evalSpinner.IsActive(),
