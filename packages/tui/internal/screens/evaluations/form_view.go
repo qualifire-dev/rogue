@@ -171,7 +171,7 @@ func RenderForm(state *FormState) string {
 
 	// Helper function to render the start button
 	renderStartButton := func() string {
-		active := state.CurrentField == FormFieldStartButton
+		active := state.CurrentField == int(FormFieldStartButton)
 		var buttonText string
 
 		if state.EvalSpinnerActive {

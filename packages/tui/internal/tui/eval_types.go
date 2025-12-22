@@ -29,15 +29,15 @@ const (
 type EvalFormField int
 
 const (
-	EvalFieldAgentURL    EvalFormField = 0
-	EvalFieldProtocol    EvalFormField = 1
-	EvalFieldTransport   EvalFormField = 2
-	EvalFieldJudgeModel  EvalFormField = 3
-	EvalFieldDeepTest    EvalFormField = 4
-	EvalFieldStartButton EvalFormField = 5
+	EvalFieldAgentURL EvalFormField = iota
+	EvalFieldProtocol
+	EvalFieldTransport
+	EvalFieldJudgeModel
+	EvalFieldDeepTest
+	EvalFieldStartButton
 
 	// EvalFieldCount is the total number of fields (for bounds checking)
-	EvalFieldCount = 6
+	EvalFieldCount
 )
 
 // EvaluationViewState is defined in tui package to avoid import cycles
