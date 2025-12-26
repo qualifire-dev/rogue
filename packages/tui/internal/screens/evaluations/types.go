@@ -1,5 +1,19 @@
 package evaluations
 
+// FormField represents the field indices for the evaluation form
+// These constants mirror the EvalFormField constants in the tui package
+// to avoid import cycles while maintaining consistency
+type FormField int
+
+const (
+	FormFieldAgentURL FormField = iota
+	FormFieldProtocol
+	FormFieldTransport
+	FormFieldJudgeModel
+	FormFieldDeepTest
+	FormFieldStartButton
+)
+
 // FormState contains all data needed to render the evaluation form
 type FormState struct {
 	// Dimensions
@@ -16,7 +30,7 @@ type FormState struct {
 	ScenariosCount int
 
 	// Editing state
-	CurrentField int // 0: AgentURL, 1: Protocol, 2: Transport, 3: JudgeModel, 4: DeepTest, 5: StartButton
+	CurrentField int // Use FormField* constants for field indices
 	CursorPos    int
 
 	// UI state
