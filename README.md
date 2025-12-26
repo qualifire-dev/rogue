@@ -115,6 +115,69 @@ uvx rogue-ai cli
     GOOGLE_API_KEY="..."
     ```
 
+#### Option 3: Docker Installation
+
+Run Rogue in an isolated container environment:
+
+1.  **Build the Docker image:**
+
+    ```bash
+    git clone https://github.com/qualifire-dev/rogue.git
+    cd rogue
+    docker build -t rogue-app .
+    ```
+
+2.  **Run Rogue with Docker:**
+
+    ```bash
+    # Default mode (Server + TUI)
+    docker run -it --rm \
+      -e OPENAI_API_KEY="sk-..." \
+      -e GOOGLE_API_KEY="..." \
+      -p 8000:8000 \
+      rogue-app
+
+    # With persistent configuration
+    docker run -it --rm \
+      -e OPENAI_API_KEY="sk-..." \
+      -p 8000:8000 \
+      -v rogue-config:/root/.config/rogue \
+      -v rogue-workdir:/app/.rogue \
+      rogue-app
+    ```
+
+3.  **Run individual components:**
+
+    ```bash
+    # Server only (background)
+    docker run -d --rm \
+      -e OPENAI_API_KEY="sk-..." \
+      -p 8000:8000 \
+      --name rogue-server \
+      rogue-app \
+      rogue-ai server
+
+    # Web UI
+    docker run -d --rm \
+      -e OPENAI_API_KEY="sk-..." \
+      -p 8000:8000 \
+      -p 7860:7860 \
+      rogue-app \
+      rogue-ai ui
+
+    # CLI (for CI/CD)
+    docker run --rm \
+      -e OPENAI_API_KEY="sk-..." \
+      -v $(pwd)/.rogue:/app/.rogue \
+      rogue-app \
+      rogue-ai cli \
+        --evaluated-agent-url http://host.docker.internal:10001 \
+        --judge-llm openai/gpt-4o-mini \
+        --business-context-file /app/.rogue/business_context.md
+    ```
+
+**Note:** See [DOCKER_USAGE.md](./DOCKER_USAGE.md) for detailed Docker usage, including docker-compose examples and troubleshooting.
+
 ### Running Rogue
 
 Rogue operates on a client-server architecture where the core evaluation logic runs in a backend server, and various clients connect to it for different interfaces.
@@ -410,6 +473,67 @@ Rogue's workflow is designed to be simple and intuitive, managed entirely throug
 2.  **Generate Scenarios**: You input the "business context" or a high-level description of what your agent is supposed to do. Rogue's `LLM Service` uses this context to generate a list of relevant test scenarios. You can review and edit these scenarios.
 3.  **Run & Evaluate**: You start the evaluation. The `Scenario Evaluation Service` spins up the `EvaluatorAgent`, which begins a conversation with your agent for each scenario. You can watch this conversation happen live.
 4.  **View Report**: Once all scenarios are complete, the `LLM Service` analyzes the results and generates a Markdown-formatted report, giving you a clear summary of your agent's performance.
+
+---
+
+## 🐳 Docker Deployment
+
+Rogue can be fully containerized for production deployment or development isolation.
+
+### Quick Start
+
+```bash
+# Build the image
+docker build -t rogue-app .
+
+# Run (default: server + TUI)
+docker run -it --rm \
+  -e OPENAI_API_KEY="sk-..." \
+  -p 8000:8000 \
+  rogue-app
+```
+
+### All Components Supported
+
+All Rogue modes work in Docker:
+
+| Mode | Command | Use Case |
+|------|---------|----------|
+| **Default** | `docker run -it --rm -p 8000:8000 rogue-app` | Interactive TUI |
+| **Server** | `docker run -d -p 8000:8000 rogue-app rogue-ai server` | Backend only |
+| **Web UI** | `docker run -d -p 7860:7860 -p 8000:8000 rogue-app rogue-ai ui` | Web interface |
+| **CLI** | `docker run --rm rogue-app rogue-ai cli [OPTIONS]` | CI/CD pipelines |
+
+### Production Setup with Docker Compose
+
+The repository includes a production-ready `docker-compose.yml`:
+
+```bash
+# Set environment variables
+export OPENAI_API_KEY="sk-..."
+
+# Start all services
+docker-compose up -d
+
+# View status
+docker-compose ps
+
+# View logs
+docker-compose logs -f
+
+# Stop services
+docker-compose down
+```
+
+**Services included:**
+- `rogue-server`: Backend server with health checks (port 8000)
+- `rogue-ui`: Gradio web interface (port 7860)
+
+**Access:**
+- API Docs: http://localhost:8000/docs
+- Web UI: http://localhost:7860
+
+**For detailed Docker usage, see [DOCKER_USAGE.md](./DOCKER_USAGE.md)**
 
 ---
 
