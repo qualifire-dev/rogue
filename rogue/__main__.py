@@ -97,11 +97,18 @@ def parse_args() -> Namespace:
     set_cli_args(cli_parser)
 
     # TUI mode
-    subparsers.add_parser(
+    tui_parser = subparsers.add_parser(
         "tui",
         help="Run the TUI binary directly",
         parents=[common_parser()],
     )
+    tui_parser.add_argument(
+        "--with-server",
+        action="store_true",
+        default=False,
+        help="Start the rogue server alongside the TUI",
+    )
+    set_server_args(tui_parser)
 
     return parser.parse_args()
 
@@ -263,7 +270,27 @@ def main() -> None:
             if not RogueTuiInstaller().install_rogue_tui():
                 logger.error("Failed to install rogue-tui. Exiting.")
                 sys.exit(1)
-            exit_code = run_rogue_tui()
+
+            server_process = None
+            if args.with_server:
+                server_process = run_server(
+                    args,
+                    background=True,
+                    log_file=log_file_path,
+                )
+                if not server_process:
+                    logger.error("Failed to start rogue server. Exiting.")
+                    sys.exit(1)
+
+            try:
+                exit_code = run_rogue_tui()
+            except KeyboardInterrupt:
+                logger.info("Keyboard interrupt received. Exiting.")
+                exit_code = 0
+            finally:
+                if server_process:
+                    server_process.terminate()
+                    server_process.join()
             sys.exit(exit_code)
         else:
             raise ValueError(f"Unknown mode: {args.mode}")
