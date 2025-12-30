@@ -1,4 +1,4 @@
-# Rogue - The AI Agent Evaluator
+# Rogue — AI Agent Evaluator & Red Team Platform
 
 ![](https://pixel.qualifire.ai/api/record/rogue)
 
@@ -8,73 +8,87 @@
 
 <img src="./freddy-rogue.png" width="200"/>
 
-Join our [Discord community](https://discord.gg/EUfAt7ZDeK)!
+**Stress-test your AI agents before attackers do.**
+
+[Discord Community](https://discord.gg/EUfAt7ZDeK) · [Quick Start](#-quick-start) · [Documentation](./docs/)
 
 </div>
 
-Rogue is a powerful tool designed to evaluate the performance, compliance, and reliability of AI agents. It pits a dynamic `EvaluatorAgent` against your agent using various protocols, testing it with a range of scenarios to ensure it behaves exactly as intended.
+---
 
+## Two Ways to Harden Your Agent
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+### 🎯 Automatic Evaluation
+
+Test your agent against **business policies** and expected behaviors.
+
+- Define scenarios & expected outcomes
+- Verify compliance with business rules
+- Watch live conversations as Rogue probes your agent
+- Get detailed pass/fail reports with reasoning
+
+**Best for:** Regression testing, behavior validation, policy compliance
+
+</td>
+<td width="50%" valign="top">
+
+### 🔴 Red Teaming
+
+Simulate **adversarial attacks** to find security vulnerabilities.
+
+- 75+ vulnerabilities across 12 security categories
+- 20 attack techniques (encoding, social engineering, injection)
+- CVSS-based risk scoring
+- 8 compliance frameworks (OWASP, MITRE, NIST, GDPR, EU AI Act)
+
+**Best for:** Security audits, penetration testing, compliance reporting
+
+</td>
+</tr>
+</table>
+
+---
 
 ## Architecture
 
-Rogue operates on a **client-server architecture**:
+Rogue operates on a **client-server architecture** with multiple interfaces:
 
-- **Rogue Server**: Contains the core evaluation logic
-- **Client Interfaces**: Multiple interfaces that connect to the server:
-  - **TUI (Terminal UI)**: Modern terminal interface built with Go and Bubble Tea
-  - **Web UI**: Gradio-based web interface
-  - **CLI**: Command-line interface for automated evaluation and CI/CD
-
-This architecture allows for flexible deployment and usage patterns, where the server can run independently and multiple clients can connect to it simultaneously.
+| Component  | Description                                 |
+| ---------- | ------------------------------------------- |
+| **Server** | Core evaluation & red team logic            |
+| **TUI**    | Modern terminal interface (Go + Bubble Tea) |
+| **Web UI** | Gradio-based web interface                  |
+| **CLI**    | Non-interactive mode for CI/CD pipelines    |
 
 https://github.com/user-attachments/assets/b5c04772-6916-4aab-825b-6a7476d77787
 
-### Supported Protocols & Transports:
-Rogue can communicate with your agent using various protocols and transports:
+### Supported Protocols
 
-#### A2A
-Rogue supports [Google's A2A](https://a2a-protocol.org/latest/) protocol over these transports:
-1. HTTP
+| Protocol | Transport            | Description                                                                        |
+| -------- | -------------------- | ---------------------------------------------------------------------------------- |
+| **A2A**  | HTTP                 | [Google's Agent-to-Agent](https://a2a-protocol.org/latest/) protocol               |
+| **MCP**  | SSE, STREAMABLE_HTTP | [Model Context Protocol](https://modelcontextprotocol.io/) via `send_message` tool |
 
-To integrate your agent with Rogue via A2A:
-1. Build your agent using any framework of your choice
-2. Expose your agent through an A2A-compliant HTTP server
-3. Rogue will communicate with your agent using the standardized A2A protocol
+See examples in [`examples/`](./examples/) for reference implementations.
 
-The A2A protocol provides a standardized way for agents to communicate, including support for streaming responses, task management, and agent capabilities discovery.
-
-For reference implementations, check out the A2A examples in the [`examples/tshirt_store_agent/`](./examples/tshirt_store_agent/) and [`examples/tshirt_store_langgraph_agent/`](./examples/tshirt_store_langgraph_agent/) directories.
-
-#### MCP
-Rogue supports the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/docs/getting-started/intro) over these transports:
-1. SSE (Server-Sent Events)
-2. STREAMABLE_HTTP
-
-To integrate your agent with Rogue via MCP:
-1. Build your agent using any framework of your choice
-2. Wrap your agent with an MCP server that exposes a tool named `send_message`
-3. Rogue will invoke this tool to communicate with and evaluate your agent
-
-The `send_message` tool should accept a message from Rogue and return your agent's response. This simple interface allows Rogue to interact with your agent regardless of its internal implementation.
-
-For reference implementations, check out the MCP examples in the [`examples/mcp/`](./examples/mcp/) directory, which demonstrates how to wrap a LangGraph agent with MCP for use with Rogue.
+---
 
 ## 🔥 Quick Start
 
 ### Prerequisites
 
-- `uvx` - If not installed, follow [uv installation guide](https://docs.astral.sh/uv/getting-started/installation/)
+- `uvx` — [Install uv](https://docs.astral.sh/uv/getting-started/installation/)
 - Python 3.10+
-- An API key for an LLM provider (e.g., OpenAI, Google, Anthropic).
+- LLM API key (OpenAI, Anthropic, or Google)
 
 ### Installation
 
-#### Option 1: Quick Install (Recommended)
-
-Use our automated install script to get up and running quickly:
-
 ```bash
-# TUI
+# TUI (recommended)
 uvx rogue-ai
 
 # Web UI
@@ -84,353 +98,164 @@ uvx rogue-ai ui
 uvx rogue-ai cli
 ```
 
-#### Option 2: Manual Installation
-
-1.  **Clone the repository:**
-
-    ```bash
-    git clone https://github.com/qualifire-dev/rogue.git
-    cd rogue
-    ```
-
-2.  **Install dependencies:**
-
-    If you are using uv:
-
-    ```bash
-    uv sync
-    ```
-
-    Or, if you are using pip:
-
-    ```bash
-    pip install -e .
-    ```
-
-3.  **OPTIONALLY: Set up your environment variables:**
-    Create a `.env` file in the root directory and add your API keys. Rogue uses `LiteLLM`, so you can set keys for various providers.
-    ```env
-    OPENAI_API_KEY="sk-..."
-    ANTHROPIC_API_KEY="sk-..."
-    GOOGLE_API_KEY="..."
-    ```
-
-### Running Rogue
-
-Rogue operates on a client-server architecture where the core evaluation logic runs in a backend server, and various clients connect to it for different interfaces.
-
-#### Default Behavior
-
-When you run `uvx rogue-ai` without any mode specified, it:
-
-1. Starts the Rogue server in the background
-2. Launches the TUI (Terminal User Interface) client
+### Try It With the Example Agent
 
 ```bash
-uvx rogue-ai
-```
-
-#### Available Modes
-
-- **Default (Server + TUI)**: `uvx rogue-ai` - Starts server in background + TUI client
-- **Server**: `uvx rogue-ai server` - Runs only the backend server
-- **TUI**: `uvx rogue-ai tui` - Runs only the TUI client (requires server running)
-- **Web UI**: `uvx rogue-ai ui` - Runs only the Gradio web interface client (requires server running)
-- **CLI**: `uvx rogue-ai cli` - Runs non-interactive command-line evaluation (requires server running, ideal for CI/CD)
-
-#### Mode Arguments
-
-##### Server Mode
-
-```bash
-uvx rogue-ai server [OPTIONS]
-```
-
-**Options:**
-
-- `--host HOST` - Host to run the server on (default: 127.0.0.1 or HOST env var)
-- `--port PORT` - Port to run the server on (default: 8000 or PORT env var)
-- `--debug` - Enable debug logging
-
-##### TUI Mode
-
-```bash
-uvx rogue-ai tui [OPTIONS]
-```
-
-##### Web UI Mode
-
-```bash
-uvx rogue-ai ui [OPTIONS]
-```
-
-**Options:**
-
-- `--rogue-server-url URL` - Rogue server URL (default: http://localhost:8000)
-- `--port PORT` - Port to run the UI on
-- `--workdir WORKDIR` - Working directory (default: ./.rogue)
-- `--debug` - Enable debug logging
-
-##### CLI Mode
-
-```bash
-uvx rogue-ai cli [OPTIONS]
-```
-
-**Options:**
-
-- `--config-file FILE` - Path to config file
-- `--rogue-server-url URL` - Rogue server URL (default: http://localhost:8000)
-- `--evaluated-agent-url URL` - URL of the agent to evaluate
-- `--evaluated-agent-auth-type TYPE` - Auth method (no_auth, api_key, bearer_token, basic)
-- `--evaluated-agent-credentials CREDS` - Credentials for the agent
-- `--input-scenarios-file FILE` - Path to scenarios file (default: <workdir>/scenarios.json)
-- `--output-report-file FILE` - Path to output report file
-- `--judge-llm MODEL` - Model for evaluation and report generation
-- `--judge-llm-api-key KEY` - API key for LLM provider
-- `--business-context TEXT` - Business context description
-- `--business-context-file FILE` - Path to business context file
-- `--deep-test-mode` - Enable deep test mode
-- `--workdir WORKDIR` - Working directory (default: ./.rogue)
-- `--debug` - Enable debug logging
-
-#### Web UI Mode
-
-To launch the Gradio web UI specifically:
-
-```bash
-uvx rogue-ai ui
-```
-
-Navigate to the URL displayed in your terminal (usually `http://127.0.0.1:7860`) to begin.
-
----
-
-## Example: Testing the T-Shirt Store Agent
-
-This repository includes a simple example agent that sells T-shirts. You can use it to see Rogue in action.
-
-### Option 1: All-in-One (Recommended)
-
-The easiest way to try Rogue with the example agent is to use the `--example` flag, which starts both Rogue and the example agent automatically:
-
-```bash
+# All-in-one: starts both Rogue and a sample T-shirt store agent
 uvx rogue-ai --example=tshirt_store
 ```
 
-This will:
+Configure in the UI:
 
-- Start the T-Shirt Store agent on `http://localhost:10001`
-- Launch Rogue with the TUI interface
-- Automatically clean up when you exit
-
-You can customize the host and port:
-
-```bash
-uvx rogue-ai --example=tshirt_store --example-host localhost --example-port 10001
-```
-
-### Option 2: Manual Setup
-
-If you prefer to run the example agent separately:
-
-1. **Install example dependencies:**
-
-   If you are using uv:
-
-   ```bash
-   uv sync --group examples
-   ```
-
-   or, if you are using pip:
-
-   ```bash
-   pip install -e .[examples]
-   ```
-
-2. **Start the example agent server** in a separate terminal:
-
-   If you are using uv:
-
-   ```bash
-   uv run python -m examples.tshirt_store_agent
-   ```
-
-   Or using the script command:
-
-   ```bash
-   uv run rogue-ai-example-tshirt
-   ```
-
-   Or if installed:
-
-   ```bash
-   uvx rogue-ai-example-tshirt
-   ```
-
-   This will start the agent on `http://localhost:10001`.
-
-3. **Configure Rogue** in the UI to point to the example agent:
-
-   - **Agent URL**: `http://localhost:10001`
-   - **Authentication**: `no-auth`
-
-4. **Run the evaluation** and watch Rogue test the T-Shirt agent's policies!
-
-   You can use either the TUI (`uvx rogue-ai`) or Web UI (`uvx rogue-ai ui`) mode.
+- **Agent URL**: `http://localhost:10001`
+- **Mode**: Choose `Automatic Evaluation` or `Red Teaming`
 
 ---
 
-## 🔧 CLI Mode
+## Running Modes
 
-The CLI mode provides a **non-interactive** command-line interface for evaluating AI agents against predefined scenarios. It connects to the Rogue server to perform evaluations and is **ideal for CI/CD pipelines** and automated testing workflows.
+| Mode    | Command               | Description             |
+| ------- | --------------------- | ----------------------- |
+| Default | `uvx rogue-ai`        | Server + TUI            |
+| Server  | `uvx rogue-ai server` | Backend only            |
+| TUI     | `uvx rogue-ai tui`    | Terminal client         |
+| Web UI  | `uvx rogue-ai ui`     | Gradio interface        |
+| CLI     | `uvx rogue-ai cli`    | Non-interactive (CI/CD) |
 
-### 🚀 Usage
-
-The CLI mode requires the Rogue server to be running. You can either:
-
-1. **Start server separately:**
-
-   ```bash
-   # Terminal 1: Start the server
-   uvx rogue-ai server
-
-   # Terminal 2: Run CLI evaluation
-   uvx rogue-ai cli [OPTIONS]
-   ```
-
-2. **Use the default mode (starts server + TUI, then use TUI for evaluation)**
-
-For development or if you prefer to install locally:
+### Server Options
 
 ```bash
-git clone https://github.com/qualifire-dev/rogue.git
-cd rogue
-uv sync
-uv run -m rogue cli [OPTIONS]
+uvx rogue-ai server --host 0.0.0.0 --port 8000 --debug
 ```
 
-Or, if you are using pip:
+### CLI Options
 
 ```bash
-git clone https://github.com/qualifire-dev/rogue.git
-cd rogue
-pip install -e .
-uv run -m rogue cli [OPTIONS]
+uvx rogue-ai cli \
+  --evaluated-agent-url http://localhost:10001 \
+  --judge-llm openai/gpt-4o-mini \
+  --business-context-file ./.rogue/business_context.md
 ```
+
+| Option                   | Description                                 |
+| ------------------------ | ------------------------------------------- |
+| `--config-file`          | Path to config JSON                         |
+| `--evaluated-agent-url`  | Agent endpoint (required)                   |
+| `--judge-llm`            | LLM for evaluation (required)               |
+| `--business-context`     | Context string or `--business-context-file` |
+| `--input-scenarios-file` | Scenarios JSON                              |
+| `--output-report-file`   | Report output path                          |
+| `--deep-test-mode`       | Extended testing                            |
 
 ---
 
-### 📓 CLI Arguments
+## Red Teaming
 
-> **Note**: CLI mode is **non-interactive** and designed for automated evaluation workflows, making it perfect for CI/CD pipelines.
+### Scan Types
 
-| Argument                      | Required                                               | Default Value                   | Description                                                                                                                                             |
-| ----------------------------- | ------------------------------------------------------ | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| --workdir                     | No                                                     | `./.rogue`                      | Directory to store outputs and defaults.                                                                                                                |
-| --config-file                 | No                                                     | `<workdir>/user_config.json`    | Path to a config file generated by the UI. Values from this file are used unless overridden via CLI. If the file does not exist, only cli will be used. |
-| --rogue-server-url            | No                                                     | `http://localhost:8000`         | URL of the Rogue server to connect to.                                                                                                                  |
-| --evaluated-agent-url         | Yes                                                    |                                 | The URL of the agent to evaluate.                                                                                                                       |
-| --evaluated-agent-auth-type   | No                                                     | `no_auth`                       | Auth method. Can be one of: `no_auth`, `api_key`, `bearer_token`, `basic`.                                                                              |
-| --evaluated-agent-credentials | Yes\*<br/>if `auth_type` is not `no_auth`              |                                 | Credentials for the agent (if required).                                                                                                                |
-| --input-scenarios-file        | Yes                                                    | `<workdir>/scenarios.json`      | Path to scenarios file.                                                                                                                                 |
-| --output-report-file          | No                                                     | `<workdir>/report.md`           | Where to save the markdown report.                                                                                                                      |
-| --judge-llm                   | Yes                                                    |                                 | Model name for LLM evaluation (Litellm format).                                                                                                         |
-| --judge-llm-api-key           | No                                                     |                                 | API key for LLM (see environment section).                                                                                                              |
-| --business-context            | Yes\*<br/>Unless `--business-context-file` is supplied |                                 | Business context as a string.                                                                                                                           |
-| --business-context-file       | Yes\*<br/>Unless `--business-context` is supplied      | `<workdir>/business_context.md` | OR path to file containing the business context.<br/>If both given, `--business-context` has priority                                                   |
-| --deep-test-mode              | No                                                     | `False`                         | Enables extended testing behavior.                                                                                                                      |
-| --debug                       | No                                                     | `False`                         | Enable verbose logging.                                                                                                                                 |
+| Type       | Vulnerabilities | Attacks       | Time       |
+| ---------- | --------------- | ------------- | ---------- |
+| **Basic**  | 5 curated       | 6             | ~2-3 min   |
+| **Full**   | 75+             | 40+           | ~30-45 min |
+| **Custom** | User-selected   | User-selected | Varies     |
 
-### 📊 Config file
+### Compliance Frameworks
 
-The config file is automatically generated when running the UI. \
-We will check for a config file in `<workdir>/user_config.json` and use it if it exists. \
-The config file is a JSON object that can contain all or a subset of the fields from the CLI arguments, except for `--config-file`. \
-Other keys in the config file are ignored. \
-Just remember to use snake_case keys. (e.g. `--evaluated-agent-url` becomes `evaluated_agent_url`).
+- **OWASP LLM Top 10** — Prompt injection, sensitive data exposure, excessive agency
+- **MITRE ATLAS** — Adversarial threat landscape for AI systems
+- **NIST AI RMF** — AI risk management framework
+- **ISO/IEC 42001** — AI management system standard
+- **EU AI Act** — European AI regulation compliance
+- **GDPR** — Data protection requirements
+- **OWASP API Top 10** — API security best practices
 
-### Notes
+### Attack Categories
 
-1. ⚠️ Either `--business-context` or `--business-context-file` must be provided.
-2. ⚠️ Fields marked as Required are required unless supplied via the config file.
+| Category           | Examples                                |
+| ------------------ | --------------------------------------- |
+| Encoding           | Base64, ROT13, Leetspeak                |
+| Social Engineering | Roleplay, trust building                |
+| Injection          | Prompt injection, SQL injection         |
+| Semantic           | Goal redirection, context poisoning     |
+| Technical          | Gray-box probing, permission escalation |
+
+### Risk Scoring (CVSS-based)
+
+Each vulnerability receives a **0-10 risk score** based on:
+
+- **Impact** — Severity if exploited
+- **Exploitability** — Success rate likelihood
+- **Human Factor** — Manual exploitation potential
+- **Complexity** — Attack difficulty
+
+### Reproducible Scans
+
+```bash
+# Use random seeds for reproducible results
+uvx rogue-ai cli --random-seed 42
+```
+
+Perfect for regression testing and validating security fixes.
 
 ---
 
-### Examples
+## Configuration
 
-### With only a config file:
+### Environment Variables
 
-with our business context located at `./.rogue/business_context.md`
+```bash
+OPENAI_API_KEY="sk-..."
+ANTHROPIC_API_KEY="sk-..."
+GOOGLE_API_KEY="..."
+```
 
-#### `./.rogue/user_config.json`
+### Config File (`.rogue/user_config.json`)
 
 ```json
 {
   "evaluated_agent_url": "http://localhost:10001",
-  "judge_llm": "openai/o4-mini"
+  "judge_llm": "openai/gpt-4o-mini"
 }
-```
-
-#### Execution
-
-```bash
-uvx rogue-ai cli
-```
-
-### Same example without a config file:
-
-#### Execution
-
-```bash
-uvx rogue-ai cli \
-    --evaluated-agent-url http://localhost:10001 \
-    --judge-llm openai/o4-mini \
-    --business-context-file './.rogue/business_context.md'
 ```
 
 ---
 
 ## Key Features
 
-- **🔄 Dynamic Scenario Generation**: Automatically creates a comprehensive test suite from your high-level business context.
-- **👀 Live Evaluation Monitoring**: Watch the interaction between the Evaluator and your agent in a real-time chat interface.
-- **📊 Comprehensive Reporting**: Generates a detailed summary of the evaluation, including pass/fail rates, key findings, and recommendations.
-- **🔍 Multi-Faceted Testing**: Natively supports testing for policy compliance, with a flexible framework to expand to other areas like prompt injection or safety.
-- **🤖 Broad Model Support**: Compatible with a wide range of models from providers like OpenAI, Google (Gemini), and Anthropic.
-- **🎯 User-Friendly Interface**: A simple, step-by-step Gradio UI guides you through configuration, execution, and reporting.
+| Feature                  | Description                                  |
+| ------------------------ | -------------------------------------------- |
+| 🔄 Dynamic Scenarios     | Auto-generate tests from business context    |
+| 👀 Live Monitoring       | Watch agent conversations in real-time       |
+| 📊 Comprehensive Reports | Markdown, CSV, JSON exports                  |
+| 🔍 Multi-Faceted Testing | Policy compliance + security vulnerabilities |
+| 🤖 Model Support         | OpenAI, Anthropic, Google (via LiteLLM)      |
+| 🛡️ CVSS Scoring          | Industry-standard risk assessment            |
+| 🔁 Reproducible          | Deterministic scans with random seeds        |
 
 ---
 
-## How It Works
+## Documentation
 
-Rogue's workflow is designed to be simple and intuitive, managed entirely through its web interface.
-
-1.  **Configure**: You provide the endpoint and authentication details for the agent you want to test, and select the LLMs you want Rogue to use for its services (scenario generation, judging).
-2.  **Generate Scenarios**: You input the "business context" or a high-level description of what your agent is supposed to do. Rogue's `LLM Service` uses this context to generate a list of relevant test scenarios. You can review and edit these scenarios.
-3.  **Run & Evaluate**: You start the evaluation. The `Scenario Evaluation Service` spins up the `EvaluatorAgent`, which begins a conversation with your agent for each scenario. You can watch this conversation happen live.
-4.  **View Report**: Once all scenarios are complete, the `LLM Service` analyzes the results and generates a Markdown-formatted report, giving you a clear summary of your agent's performance.
+- **[Quick Reference](./docs/QUICK_REFERENCE.md)** — One-page cheat sheet
+- **[Red Team Workflow](./docs/RED_TEAM_WORKFLOW.md)** — Technical deep-dive
+- **[Implementation Status](./docs/IMPLEMENTATION_STATUS.md)** — Feature breakdown
+- **[Attack Mapping](./docs/ATTACK_VULNERABILITY_MAPPING.md)** — Vulnerability coverage
 
 ---
 
 ## Contributing
 
-Contributions are welcome! If you'd like to contribute, please follow these steps:
+1. Fork the repository
+2. Create a branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-1.  Fork the repository.
-2.  Create a new branch (`git checkout -b feature/your-feature-name`).
-3.  Make your changes and commit them (`git commit -m 'Add some feature'`).
-4.  Push to the branch (`git push origin feature/your-feature-name`).
-5.  Open a pull request.
-
-Please make sure to update tests as appropriate.
+---
 
 ## License
 
-This project is licensed under a License - see the [LICENSE](LICENSE.md) file for details.
-This means that you can use this freely and forever but you are not allowed to host and sell this software.
+Licensed under a proprietary license — see [LICENSE](LICENSE.md).
 
-If you have any queries about the license and commercial use for this project please email `admin@qualifire.ai`
-
-
-
+Free for personal and internal use. Commercial hosting requires licensing.
+Contact: `admin@qualifire.ai`
