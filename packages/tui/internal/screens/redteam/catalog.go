@@ -81,8 +81,8 @@ var AttackCatalog = map[string]*Attack{
 	"semantic-manipulation": {ID: "semantic-manipulation", Name: "Semantic Manipulation", Category: AttackCategorySingleTurn, Description: "Uses semantic tricks", Premium: false},
 	"math-problem":          {ID: "math-problem", Name: "Math Prompt", Category: AttackCategorySingleTurn, Description: "Encodes in math problems", Premium: false},
 
-	// Multi-Turn (Free)
-	"social-engineering-prompt-extraction": {ID: "social-engineering-prompt-extraction", Name: "Social Engineering Prompt Extraction", Category: AttackCategoryMultiTurn, Description: "Uses trust-building and social engineering to extract system prompts", Premium: false},
+	// Multi-Turn (Premium)
+	"social-engineering-prompt-extraction": {ID: "social-engineering-prompt-extraction", Name: "Social Engineering Prompt Extraction", Category: AttackCategoryMultiTurn, Description: "Uses trust-building and social engineering to extract system prompts", Premium: true},
 
 	// Single-Turn (Premium)
 	"homoglyph":        {ID: "homoglyph", Name: "Homoglyph Encoding", Category: AttackCategorySingleTurn, Description: "Uses similar Unicode characters", Premium: true},
