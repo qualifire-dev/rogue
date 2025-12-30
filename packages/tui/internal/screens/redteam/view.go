@@ -72,7 +72,9 @@ func RenderConfigScreen(state *RedTeamConfigState, width, height int) string {
 	b.WriteString("\n\n")
 
 	// Calculate panel dimensions
-	panelWidth := (width - 6) / 2
+	// Account for: 2 borders per panel (4 total) + 2 padding per panel (4 total) + 2 space between
+	// Total overhead = 10, so each panel gets (width - 10) / 2
+	panelWidth := (width - 10) / 2
 	panelHeight := height - 12 // Leave room for title, status bar, and help
 
 	// Render panels side by side
