@@ -10,6 +10,8 @@ import (
 	"github.com/rogue/tui/internal/screens/dashboard"
 	"github.com/rogue/tui/internal/screens/help"
 	"github.com/rogue/tui/internal/screens/interview"
+	"github.com/rogue/tui/internal/screens/redteam"
+	"github.com/rogue/tui/internal/screens/redteam_report"
 	"github.com/rogue/tui/internal/screens/report"
 	"github.com/rogue/tui/internal/screens/scenarios"
 	"github.com/rogue/tui/internal/shared"
@@ -50,11 +52,12 @@ func (a *App) Run() error {
 		evalSpinner:    components.NewSpinner(3),
 
 		// Initialize viewports and message history
-		eventsHistory:   components.NewMessageHistoryView(1, 80, 20, theme.CurrentTheme()),
-		summaryHistory:  components.NewMessageHistoryView(2, 80, 20, theme.CurrentTheme()),
-		reportHistory:   components.NewMessageHistoryView(3, 80, 15, theme.CurrentTheme()),
-		helpViewport:    components.NewViewport(4, 80, 20),
-		focusedViewport: 0, // Start with events viewport focused
+		eventsHistory:         components.NewMessageHistoryView(1, 80, 20, theme.CurrentTheme()),
+		summaryHistory:        components.NewMessageHistoryView(2, 80, 20, theme.CurrentTheme()),
+		reportHistory:         components.NewMessageHistoryView(3, 80, 15, theme.CurrentTheme()),
+		helpViewport:          components.NewViewport(4, 80, 20),
+		redTeamReportViewport: components.NewViewport(5, 80, 20),
+		focusedViewport:       0, // Start with events viewport focused
 	}
 
 	// Load existing configuration
@@ -62,6 +65,14 @@ func (a *App) Run() error {
 		// If config loading fails, continue with defaults
 		fmt.Printf("Warning: Failed to load config: %v\n", err)
 	}
+
+	// Debug: Log loaded config
+	if model.config.QualifireAPIKey != "" {
+		fmt.Printf("DEBUG: Loaded QualifireAPIKey from config (length: %d)\n", len(model.config.QualifireAPIKey))
+	} else {
+		fmt.Printf("DEBUG: QualifireAPIKey is empty after loading config\n")
+	}
+	fmt.Printf("DEBUG: QualifireEnabled: %v\n", model.config.QualifireEnabled)
 
 	theme.SetTheme(model.config.Theme)
 
@@ -109,6 +120,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case SummaryGeneratedMsg:
 		return m.handleSummaryGeneratedMsg(msg)
 
+	case RedTeamReportFetchedMsg:
+		return m.handleRedTeamReportFetchedMsg(msg)
+
 	case components.CommandSelectedMsg:
 		return m.handleCommandSelectedMsg(msg)
 
@@ -145,6 +159,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case scenarios.ScenarioEditorMsg:
 		return m.handleScenarioEditorMsg(msg)
 
+	case redteam.OpenAPIKeyDialogMsg:
+		return m.handleOpenAPIKeyDialogMsg(msg)
+
 	case tea.KeyMsg:
 		return m.handleKeyMsg(msg)
 	}
@@ -165,13 +182,19 @@ func (m Model) View() string {
 		screen = m.RenderEvaluationDetail()
 	case ReportScreen:
 		var evalState *report.EvalState
+		var needsRebuild bool
 		if m.evalState != nil {
 			evalState = &report.EvalState{
 				Summary:   m.evalState.Summary,
 				Completed: m.evalState.Completed,
 			}
+			// Check if summary has changed since last render
+			needsRebuild = m.cachedReportSummary != m.evalState.Summary
+			if needsRebuild {
+				m.cachedReportSummary = m.evalState.Summary
+			}
 		}
-		screen = report.Render(m.width, m.height, evalState, m.reportHistory, m.getMarkdownRenderer())
+		screen = report.Render(m.width, m.height, evalState, m.reportHistory, m.getMarkdownRenderer(), needsRebuild)
 	case InterviewScreen:
 		screen = interview.Render(m.width, m.height)
 	case ConfigurationScreen:
@@ -180,6 +203,16 @@ func (m Model) View() string {
 		screen = m.scenarioEditor.View()
 	case HelpScreen:
 		screen = help.Render(m.width, m.height, &m.helpViewport)
+	case RedTeamConfigScreen:
+		if m.redTeamConfigState != nil {
+			screen = redteam.RenderConfigScreen(m.redTeamConfigState, m.width, m.height)
+		} else {
+			screen = dashboard.Render(m.width, m.height, m.version, &m.commandInput, t)
+		}
+	case RedTeamReportScreen:
+		// Render the red team report with scrolling support
+		// Content is initialized in handleRedTeamReportFetchedMsg
+		screen = redteam_report.Render(m.width, m.height, &m.redTeamReportViewport)
 	default:
 		screen = dashboard.Render(m.width, m.height, m.version, &m.commandInput, t)
 	}

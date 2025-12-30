@@ -2,7 +2,13 @@ from typing import TYPE_CHECKING
 
 from loguru import logger
 from pydantic import ValidationError
-from rogue_sdk.types import PROTOCOL_TO_TRANSPORTS, AgentConfig, AuthType, Protocol
+from rogue_sdk.types import (
+    PROTOCOL_TO_TRANSPORTS,
+    AgentConfig,
+    AuthType,
+    EvaluationMode,
+    Protocol,
+)
 
 from ...common.workdir_utils import dump_config
 
@@ -85,6 +91,41 @@ def create_config_screen(
         gr.Markdown(
             "When enabled, the evaluator will "
             "approach each scenario from different angles",
+        )
+
+        gr.Markdown("**Evaluation Mode**")
+        evaluation_mode = gr.Dropdown(
+            label="Evaluation Mode",
+            choices=[e.value for e in EvaluationMode],
+            value=config_data.get(
+                "evaluation_mode",
+                EvaluationMode.POLICY.value,
+            ),
+            info="Policy mode tests agent policies. Red Team mode performs OWASP security testing.",  # noqa: E501
+        )
+
+        owasp_categories = gr.CheckboxGroup(
+            label="OWASP Categories (Red Team Mode)",
+            choices=[
+                "LLM_01",
+                "LLM_06",
+                "LLM_07",
+            ],
+            value=config_data.get("owasp_categories", []),
+            visible=config_data.get("evaluation_mode", EvaluationMode.POLICY.value)
+            == EvaluationMode.RED_TEAM.value,
+            info="Select OWASP categories to test. Required for Red Team mode.",
+        )
+
+        attacks_per_category = gr.Slider(
+            label="Attacks per Category",
+            minimum=1,
+            maximum=10,
+            step=1,
+            value=config_data.get("attacks_per_category", 5),
+            visible=config_data.get("evaluation_mode", EvaluationMode.POLICY.value)
+            == EvaluationMode.RED_TEAM.value,
+            info="Number of attack scenarios to generate per OWASP category",
         )
 
         gr.Markdown("### Parallel Runs")
@@ -182,6 +223,20 @@ def create_config_screen(
         state["config"][key] = value
         return state
 
+    def toggle_owasp_fields(mode_val):
+        """Show/hide OWASP fields based on evaluation mode."""
+        is_visible = mode_val == EvaluationMode.RED_TEAM.value
+        return (
+            gr.update(visible=is_visible),
+            gr.update(visible=is_visible),
+        )
+
+    evaluation_mode.change(
+        fn=toggle_owasp_fields,
+        inputs=[evaluation_mode],
+        outputs=[owasp_categories, attacks_per_category],
+    )
+
     for component, key in [
         (agent_url, "agent_url"),
         (protocol, "protocol"),
@@ -195,6 +250,9 @@ def create_config_screen(
         # (huggingface_api_key, "huggingface_api_key"),
         (deep_test_mode, "deep_test_mode"),
         (parallel_runs, "parallel_runs"),
+        (evaluation_mode, "evaluation_mode"),
+        (owasp_categories, "owasp_categories"),
+        (attacks_per_category, "attacks_per_category"),
     ]:
         component.change(  # type: ignore
             fn=update_state,
@@ -238,6 +296,9 @@ def create_config_screen(
         service_llm_val,
         llm,
         llm_key,
+        eval_mode_val,
+        owasp_cats,
+        attacks_per_cat,
         # hf_key,
     ):
         # Start by creating updates to clear all error labels
@@ -260,6 +321,9 @@ def create_config_screen(
                 interview_mode=interview_mode_val,
                 parallel_runs=parallel_runs_val,
                 business_context="",
+                evaluation_mode=eval_mode_val,
+                owasp_categories=owasp_cats if owasp_cats else None,
+                attacks_per_category=attacks_per_cat if attacks_per_cat else 5,
             )
 
             config_dict = config.model_dump(mode="json")
@@ -312,6 +376,9 @@ def create_config_screen(
             service_llm,
             judge_llm,
             judge_llm_api_key,
+            evaluation_mode,
+            owasp_categories,
+            attacks_per_category,
             # huggingface_api_key,
         ],
         outputs=[

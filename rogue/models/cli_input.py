@@ -1,7 +1,8 @@
 from pathlib import Path
+from typing import List, Optional
 
 from pydantic import BaseModel, Field, HttpUrl, SecretStr, model_validator
-from rogue_sdk.types import AuthType, Protocol, Scenarios, Transport
+from rogue_sdk.types import AuthType, EvaluationMode, Protocol, Scenarios, Transport
 
 
 class CLIInput(BaseModel):
@@ -22,6 +23,10 @@ class CLIInput(BaseModel):
     output_report_file: Path = workdir / "report.md"
     business_context: str
     deep_test_mode: bool = False
+    evaluation_mode: EvaluationMode = EvaluationMode.POLICY
+    owasp_categories: Optional[List[str]] = None
+    attacks_per_category: int = 5
+    min_tests_per_attack: int = 3
 
     def get_scenarios_from_file(self) -> Scenarios:
         if not self.input_scenarios_file.exists():
@@ -46,6 +51,18 @@ class CLIInput(BaseModel):
             )
         return self
 
+    @model_validator(mode="after")
+    def check_red_team_mode(self) -> "CLIInput":
+        """Validate that OWASP categories are provided in red team mode."""
+        if (
+            self.evaluation_mode == EvaluationMode.RED_TEAM
+            and not self.owasp_categories
+        ):
+            raise ValueError(
+                "owasp_categories must be provided when evaluation_mode is 'red_team'",
+            )
+        return self
+
 
 class PartialCLIInput(BaseModel):
     """
@@ -66,6 +83,10 @@ class PartialCLIInput(BaseModel):
     input_scenarios_file: Path = None  # type: ignore # fixed in model_post_init
     output_report_file: Path = None  # type: ignore # fixed in model_post_init
     deep_test_mode: bool = False
+    evaluation_mode: EvaluationMode = Field(default=EvaluationMode.POLICY)
+    owasp_categories: Optional[List[str]] = None
+    attacks_per_category: int = Field(default=5)
+    min_tests_per_attack: int = Field(default=3)
     qualifire_api_key: SecretStr | None = None
 
     def model_post_init(self, __context):

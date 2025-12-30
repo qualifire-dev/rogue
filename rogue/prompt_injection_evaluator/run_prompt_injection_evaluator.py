@@ -84,6 +84,7 @@ async def _judge_injection_attempt(
         conversation_history=chat_history.model_dump_json(indent=2),
         payload=payload.payload,
     )
+
     response = completion(
         model=judge_llm,
         messages=[
@@ -91,7 +92,6 @@ async def _judge_injection_attempt(
             {"role": "user", "content": "Begin your evaluation now."},
         ],
         api_key=judge_llm_api_key,
-        temperature=0.0,
         response_format={"type": "json_object"},  # TODO: pass a pydantic model instead
     )
     try:
@@ -126,7 +126,8 @@ async def arun_prompt_injection_evaluator(
     from datasets import load_dataset
 
     headers = auth_type.get_auth_header(auth_credentials)
-    dataset_dict = load_dataset(dataset_name)
+    # dataset_name is user-provided; for evaluation, latest version is acceptable
+    dataset_dict = load_dataset(dataset_name)  # nosec B615
 
     # Pick a split to use. Prioritize 'train', then take the first available.
     if "train" in dataset_dict:

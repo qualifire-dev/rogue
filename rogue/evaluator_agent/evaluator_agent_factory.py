@@ -1,3 +1,11 @@
+"""
+Evaluator Agent Factory.
+
+Creates the appropriate evaluator agent based on protocol.
+Policy evaluation uses these agents, while red team evaluation
+is handled by the server's red_teaming.orchestrator module.
+"""
+
 from typing import Callable, Optional
 
 from rogue_sdk.types import Protocol, Scenarios, Transport
@@ -14,7 +22,7 @@ _PROTOCOL_TO_AGENT_CLASS = {
 
 def get_evaluator_agent(
     protocol: Protocol,
-    transport: Transport | None,
+    transport: Optional[Transport],
     evaluated_agent_address: str,
     judge_llm: str,
     scenarios: Scenarios,
@@ -29,6 +37,33 @@ def get_evaluator_agent(
     chat_update_callback: Optional[Callable[[dict], None]] = None,
     **kwargs,
 ) -> BaseEvaluatorAgent:
+    """
+    Get an evaluator agent based on protocol.
+
+    This factory creates agents for policy-based scenario evaluation.
+    Red team (vulnerability-centric) evaluation is handled separately
+    by the server's red_teaming.orchestrator module.
+
+    Args:
+        protocol: Communication protocol (A2A or MCP)
+        transport: Transport mechanism
+        evaluated_agent_address: URL of the agent to evaluate
+        judge_llm: LLM to use for evaluation
+        scenarios: Scenarios to test
+        business_context: Business context for the target agent
+        headers: HTTP headers for agent connection
+        judge_llm_auth: API key for judge LLM
+        judge_llm_aws_access_key_id: AWS access key ID for judge LLM
+        judge_llm_aws_secret_access_key: AWS secret access key for judge LLM
+        judge_llm_aws_region: AWS region for judge LLM
+        debug: Enable debug logging
+        deep_test_mode: Enable deep testing mode
+        chat_update_callback: Callback for chat updates
+        **kwargs: Additional keyword arguments
+
+    Returns:
+        BaseEvaluatorAgent instance
+    """
     agent_class = _PROTOCOL_TO_AGENT_CLASS.get(protocol, None)
     if not agent_class:
         raise ValueError(f"Invalid protocol: {protocol}")

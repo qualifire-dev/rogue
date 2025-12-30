@@ -41,11 +41,28 @@ func HandleEvalDetailInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 	case "r":
 		// Navigate to report if evaluation completed
 		if m.evalState.Completed {
-			m.currentScreen = ReportScreen
-			// Report content will be built in renderReport()
-			// Focus the report so user can immediately scroll
-			if m.reportHistory != nil {
-				m.reportHistory.Focus()
+			// For red team evaluations, navigate to RedTeamReportScreen
+			if m.evalState.EvaluationMode == EvaluationModeRedTeam {
+				// If we already have report data, just navigate to the report screen
+				if m.redTeamReportData != nil {
+					m.currentScreen = RedTeamReportScreen
+					return m, nil
+				}
+				// Otherwise, fetch report data first (will navigate after fetch completes)
+				if m.evalState.JobID != "" {
+					cmd := m.fetchRedTeamReport(m.evalState.JobID)
+					return m, cmd
+				}
+			} else {
+				// For policy evaluations, navigate to ReportScreen
+				m.currentScreen = ReportScreen
+				// Clear cache to ensure report is rebuilt when first shown
+				m.cachedReportSummary = ""
+				// Report content will be built in renderReport()
+				// Focus the report so user can immediately scroll
+				if m.reportHistory != nil {
+					m.reportHistory.Focus()
+				}
 			}
 		}
 		return m, nil

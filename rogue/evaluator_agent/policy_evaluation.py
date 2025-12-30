@@ -1,3 +1,4 @@
+import json
 import os
 import re
 
@@ -6,6 +7,30 @@ from pydantic import ValidationError
 from rogue_sdk.types import ChatHistory
 
 from ..models.evaluation_result import PolicyEvaluationResult
+
+JSON_FIX_PROMPT = """You are a JSON repair assistant. Your task is to fix malformed \
+JSON and ensure it conforms to the expected schema.
+
+The expected JSON schema is:
+{{
+    "reason": <string - explanation for the judgment>,
+    "passed": <boolean - true or false>,
+    "policy": <string - the policy rule that was evaluated>
+}}
+
+Here is the malformed JSON output that needs to be fixed:
+<malformed_json>
+{MALFORMED_JSON}
+</malformed_json>
+
+Please fix this JSON to conform to the expected schema. Key rules:
+1. "reason" must be a string
+2. "passed" must be a boolean (true or false)
+3. "policy" must be a string (if it's an object, convert it to a JSON string)
+
+Return ONLY the fixed JSON object, nothing else. No explanation, no markdown \
+code blocks, just the raw JSON.
+"""
 
 POLICY_EVALUATION_PROMPT = """
 You are tasked with evaluating an AI's adherence to a specific policy rule in a given conversation.
@@ -67,6 +92,11 @@ llm_output_regexes = [
 ]
 
 
+def _clean_json_string(output: str) -> str:
+    """Clean JSON string by removing markdown code blocks."""
+    return output.replace("```json", "").replace("```", "").strip()
+
+
 def _try_parse_raw_json(output: str) -> PolicyEvaluationResult | None:
     logger.debug(
         "Attempting to parse LLM output as raw JSON",
@@ -74,13 +104,7 @@ def _try_parse_raw_json(output: str) -> PolicyEvaluationResult | None:
             "output": output,
         },
     )
-    cleaned_output = output.replace(
-        "```json",
-        "",
-    ).replace(
-        "```",
-        "",
-    )
+    cleaned_output = _clean_json_string(output)
     try:
         return PolicyEvaluationResult.model_validate_json(cleaned_output)
     except ValidationError:
@@ -126,11 +150,203 @@ def _try_parse_regex(output: str) -> PolicyEvaluationResult | None:
     return None
 
 
-def _parse_llm_output(output: str) -> PolicyEvaluationResult:
-    evaluation_result = _try_parse_raw_json(output) or _try_parse_regex(output)
-    if evaluation_result is None:
-        raise ValueError("Failed to parse LLM output")
-    return evaluation_result
+def _try_fix_json_schema(output: str) -> PolicyEvaluationResult | None:
+    """
+    Try to fix common schema issues in the JSON output without using an LLM.
+    For example, if 'policy' is a dict instead of a string, convert it to JSON string.
+    """
+    logger.debug(
+        "Attempting to fix JSON schema issues",
+        extra={"output": output},
+    )
+    cleaned_output = _clean_json_string(output)
+
+    # Try to extract JSON from the output
+    json_match = None
+    for regex in llm_output_regexes:
+        match = regex.search(cleaned_output)
+        if match:
+            json_match = match.group(1) if match.lastindex else match.group(0)
+            break
+
+    if not json_match:
+        json_match = cleaned_output
+
+    try:
+        data = json.loads(json_match)
+    except json.JSONDecodeError:
+        logger.debug("Failed to parse JSON for schema fixing")
+        return None
+
+    if not isinstance(data, dict):
+        return None
+
+    # Fix common schema issues
+    fixed = False
+
+    # If 'policy' is a dict or list, convert to string
+    if "policy" in data and not isinstance(data["policy"], str):
+        logger.debug(
+            "Converting 'policy' from non-string to string",
+            extra={"original_type": type(data["policy"]).__name__},
+        )
+        # If it's a dict with a 'scenarios' key (like the error shows),
+        # extract the scenario text
+        if isinstance(data["policy"], dict) and "scenarios" in data["policy"]:
+            scenarios = data["policy"]["scenarios"]
+            if isinstance(scenarios, list) and len(scenarios) > 0:
+                # Get the first scenario's text
+                first_scenario = scenarios[0]
+                if isinstance(first_scenario, dict) and "scenario" in first_scenario:
+                    data["policy"] = first_scenario["scenario"]
+                else:
+                    data["policy"] = json.dumps(data["policy"])
+            else:
+                data["policy"] = json.dumps(data["policy"])
+        else:
+            # Otherwise just convert to JSON string
+            data["policy"] = json.dumps(data["policy"])
+        fixed = True
+
+    # If 'reason' is not a string, convert it
+    if "reason" in data and not isinstance(data["reason"], str):
+        logger.debug(
+            "Converting 'reason' from non-string to string",
+            extra={"original_type": type(data["reason"]).__name__},
+        )
+        data["reason"] = str(data["reason"])
+        fixed = True
+
+    # If 'passed' is a string, try to convert to bool
+    if "passed" in data and isinstance(data["passed"], str):
+        logger.debug("Converting 'passed' from string to bool")
+        data["passed"] = data["passed"].lower() in ("true", "yes", "1")
+        fixed = True
+
+    if fixed:
+        logger.info(
+            "Fixed JSON schema issues",
+            extra={"fixed_data_keys": list(data.keys())},
+        )
+
+    try:
+        return PolicyEvaluationResult.model_validate(data)
+    except ValidationError as e:
+        logger.debug(
+            "Schema fix attempt failed validation",
+            extra={"error": str(e)},
+        )
+        return None
+
+
+def _try_fix_with_llm(
+    output: str,
+    model: str,
+    api_key: str | None = None,
+    aws_access_key_id: str | None = None,
+    aws_secret_access_key: str | None = None,
+) -> PolicyEvaluationResult | None:
+    """
+    Use an LLM to fix malformed JSON output as a last resort.
+    """
+    from litellm import completion
+
+    logger.warning(
+        "🔧 Attempting to fix malformed JSON with LLM",
+        extra={"output_preview": output[:200] + "..." if len(output) > 200 else output},
+    )
+
+    prompt = JSON_FIX_PROMPT.format(MALFORMED_JSON=output)
+
+    try:
+        response = completion(
+            model=model,
+            api_key=api_key,
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt,
+                },
+            ],
+            temperature=0,  # Use deterministic output for JSON fixing
+        )
+
+        fixed_output = response.choices[0].message.content
+        logger.debug(
+            "LLM JSON fix response",
+            extra={"fixed_output": fixed_output},
+        )
+
+        # Try to parse the fixed output - first raw, then with schema fix
+        result = _try_parse_raw_json(fixed_output)
+        if result:
+            logger.info("✅ Successfully fixed JSON with LLM")
+            return result
+
+        # Try schema fix on LLM output
+        result = _try_fix_json_schema(fixed_output)
+        if result:
+            logger.info("✅ Successfully fixed JSON with LLM + schema fix")
+            return result
+
+        logger.error(
+            "LLM JSON fix output still invalid",
+            extra={"fixed_output": fixed_output},
+        )
+        return None
+
+    except Exception as e:
+        logger.error(
+            "Failed to fix JSON with LLM",
+            extra={"error": str(e)},
+        )
+        return None
+
+
+def _parse_llm_output(
+    output: str,
+    model: str | None = None,
+    api_key: str | None = None,
+    aws_access_key_id: str | None = None,
+    aws_secret_access_key: str | None = None,
+) -> PolicyEvaluationResult:
+    """
+    Parse LLM output with multiple fallback strategies:
+    1. Try raw JSON parsing
+    2. Try regex-based extraction
+    3. Try fixing common schema issues
+    4. Try using LLM to fix the JSON (if model is provided)
+    """
+    # Strategy 1: Raw JSON parsing
+    evaluation_result = _try_parse_raw_json(output)
+    if evaluation_result:
+        return evaluation_result
+
+    # Strategy 2: Regex-based extraction
+    evaluation_result = _try_parse_regex(output)
+    if evaluation_result:
+        return evaluation_result
+
+    # Strategy 3: Fix common schema issues (e.g., policy as dict instead of string)
+    evaluation_result = _try_fix_json_schema(output)
+    if evaluation_result:
+        return evaluation_result
+
+    # Strategy 4: Use LLM to fix the JSON (last resort)
+    if model:
+        evaluation_result = _try_fix_with_llm(
+            output,
+            model=model,
+            api_key=api_key,
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+        )
+        if evaluation_result:
+            return evaluation_result
+
+    raise ValueError("Failed to parse LLM output after all fix attempts")
 
 
 def evaluate_policy(
@@ -192,7 +408,13 @@ def evaluate_policy(
         ],
     )
 
-    result = _parse_llm_output(response.choices[0].message.content)
+    result = _parse_llm_output(
+        response.choices[0].message.content,
+        model=model,
+        api_key=api_key,
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+    )
 
     logger.info(
         "📊 Policy evaluation completed",

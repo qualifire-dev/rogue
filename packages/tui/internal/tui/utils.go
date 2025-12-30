@@ -32,19 +32,23 @@ const (
 )
 
 type AgentConfig struct {
-	EvaluatedAgentURL          string    `json:"evaluated_agent_url"`
-	EvaluatedAgentProtocol     Protocol  `json:"protocol"`
-	EvaluatedAgentTransport    Transport `json:"transport"`
-	EvaluatedAgentAuthType     AuthType  `json:"evaluated_agent_auth_type"`
-	EvaluatedAgentCredentials  string    `json:"evaluated_agent_credentials,omitempty"`
-	JudgeLLMModel              string    `json:"judge_llm"`
-	JudgeLLMAPIKey             string    `json:"judge_llm_api_key,omitempty"`
-	JudgeLLMAWSAccessKeyID     string    `json:"judge_llm_aws_access_key_id,omitempty"`
-	JudgeLLMAWSSecretAccessKey string    `json:"judge_llm_aws_secret_access_key,omitempty"`
-	JudgeLLMAWSRegion          string    `json:"judge_llm_aws_region,omitempty"`
-	InterviewMode              bool      `json:"interview_mode"`
-	DeepTestMode               bool      `json:"deep_test_mode"`
-	ParallelRuns               int       `json:"parallel_runs"`
+	EvaluatedAgentURL          string                 `json:"evaluated_agent_url"`
+	EvaluatedAgentProtocol     Protocol               `json:"protocol"`
+	EvaluatedAgentTransport    Transport              `json:"transport"`
+	EvaluatedAgentAuthType     AuthType               `json:"evaluated_agent_auth_type"`
+	EvaluatedAgentCredentials  string                 `json:"evaluated_agent_credentials,omitempty"`
+	JudgeLLMModel              string                 `json:"judge_llm"`
+	JudgeLLMAPIKey             string                 `json:"judge_llm_api_key,omitempty"`
+	JudgeLLMAWSAccessKeyID     string                 `json:"judge_llm_aws_access_key_id,omitempty"`
+	JudgeLLMAWSSecretAccessKey string                 `json:"judge_llm_aws_secret_access_key,omitempty"`
+	JudgeLLMAWSRegion          string                 `json:"judge_llm_aws_region,omitempty"`
+	InterviewMode              bool                   `json:"interview_mode"`
+	DeepTestMode               bool                   `json:"deep_test_mode"`
+	ParallelRuns               int                    `json:"parallel_runs"`
+	EvaluationMode             string                 `json:"evaluation_mode,omitempty"`
+	RedTeamConfig              map[string]interface{} `json:"red_team_config,omitempty"`
+	QualifireAPIKey            string                 `json:"qualifire_api_key,omitempty"`
+	BusinessContext            string                 `json:"business_context,omitempty"`
 }
 
 type EvaluationRequest struct {
@@ -64,7 +68,7 @@ type EvaluationJob struct {
 	Status    string  `json:"status"`
 	Progress  float64 `json:"progress"`
 	Error     string  `json:"error_message,omitempty"`
-	Results   []any   `json:"results,omitempty"`
+	Results   any     `json:"results,omitempty"` // Can be []any for policy eval or map for red team
 	CreatedAt string  `json:"created_at"`
 	UpdatedAt string  `json:"updated_at"`
 }
@@ -125,12 +129,48 @@ func (sdk *RogueSDK) Health(ctx context.Context) (map[string]string, error) {
 
 // CreateEvaluation starts a new evaluation
 func (sdk *RogueSDK) CreateEvaluation(ctx context.Context, request EvaluationRequest) (*EvaluationResponse, error) {
-	body, err := json.Marshal(request)
+	var body []byte
+	var err error
+	var endpoint string
+
+	// Route to appropriate endpoint based on evaluation mode
+	if request.AgentConfig.EvaluationMode == "red_team" {
+		// Transform to RedTeamRequest format
+		redTeamReq := map[string]interface{}{
+			"red_team_config":                    request.AgentConfig.RedTeamConfig,
+			"evaluated_agent_url":                request.AgentConfig.EvaluatedAgentURL,
+			"evaluated_agent_protocol":           request.AgentConfig.EvaluatedAgentProtocol,
+			"evaluated_agent_transport":          request.AgentConfig.EvaluatedAgentTransport,
+			"evaluated_agent_auth_type":          request.AgentConfig.EvaluatedAgentAuthType,
+			"evaluated_agent_auth_credentials":   nil,
+			"judge_llm":                          request.AgentConfig.JudgeLLMModel,
+			"judge_llm_api_key":                  request.AgentConfig.JudgeLLMAPIKey,
+			"judge_llm_aws_access_key_id":        request.AgentConfig.JudgeLLMAWSAccessKeyID,
+			"judge_llm_aws_secret_access_key":    request.AgentConfig.JudgeLLMAWSSecretAccessKey,
+			"judge_llm_aws_region":               request.AgentConfig.JudgeLLMAWSRegion,
+			"attacker_llm":                       request.AgentConfig.JudgeLLMModel, // Use same as judge for now
+			"attacker_llm_api_key":               request.AgentConfig.JudgeLLMAPIKey,
+			"attacker_llm_aws_access_key_id":     request.AgentConfig.JudgeLLMAWSAccessKeyID,
+			"attacker_llm_aws_secret_access_key": request.AgentConfig.JudgeLLMAWSSecretAccessKey,
+			"attacker_llm_aws_region":            request.AgentConfig.JudgeLLMAWSRegion,
+			"business_context":                   request.AgentConfig.BusinessContext,
+			"qualifire_api_key":                  request.AgentConfig.QualifireAPIKey,
+			"max_retries":                        request.MaxRetries,
+			"timeout_seconds":                    request.TimeoutSeconds,
+		}
+		body, err = json.Marshal(redTeamReq)
+		endpoint = "/api/v1/red-team"
+	} else {
+		// Use standard EvaluationRequest format
+		body, err = json.Marshal(request)
+		endpoint = "/api/v1/evaluations"
+	}
+
 	if err != nil {
 		return nil, err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", sdk.baseURL+"/api/v1/evaluations", bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, "POST", sdk.baseURL+endpoint, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
@@ -156,30 +196,59 @@ func (sdk *RogueSDK) CreateEvaluation(ctx context.Context, request EvaluationReq
 }
 
 // GetEvaluation gets the current status of an evaluation
+// Tries both red-team and evaluations endpoints to support both job types
 func (sdk *RogueSDK) GetEvaluation(ctx context.Context, jobID string) (*EvaluationJob, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", sdk.baseURL+"/api/v1/evaluations/"+url.PathEscape(jobID), nil)
-	if err != nil {
-		return nil, err
+	// Try red-team endpoint first (newer jobs will likely be here)
+	endpoints := []string{
+		"/api/v1/red-team/" + url.PathEscape(jobID),
+		"/api/v1/evaluations/" + url.PathEscape(jobID),
 	}
 
-	resp, err := sdk.httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
+	var lastErr error
+	for _, endpoint := range endpoints {
+		req, err := http.NewRequestWithContext(ctx, "GET", sdk.baseURL+endpoint, nil)
+		if err != nil {
+			lastErr = err
+			continue
+		}
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("get evaluation failed: %d %s", resp.StatusCode, string(body))
+		resp, err := sdk.httpClient.Do(req)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode == http.StatusOK {
+			var job EvaluationJob
+			if err := json.NewDecoder(resp.Body).Decode(&job); err != nil {
+				lastErr = err
+				continue
+			}
+			return &job, nil
+		} else if resp.StatusCode == http.StatusNotFound {
+			// Try next endpoint
+			continue
+		} else {
+			body, _ := io.ReadAll(resp.Body)
+			lastErr = fmt.Errorf("get evaluation failed: %d %s", resp.StatusCode, string(body))
+		}
 	}
 
-	var job EvaluationJob
-	if err := json.NewDecoder(resp.Body).Decode(&job); err != nil {
-		return nil, err
+	if lastErr != nil {
+		return nil, lastErr
 	}
-
-	return &job, nil
+	return nil, fmt.Errorf("job not found: %s", jobID)
 }
+
+// WebSocket keepalive configuration
+// These values should match or exceed the server's ping interval to prevent timeout errors
+// during long-running operations like red team scans (which can last up to an hour or more)
+const (
+	wsPingInterval = 20 * time.Second  // How often to send pings (matches server)
+	wsPongWait     = 120 * time.Second // Time to wait for pong response (2 minutes, generous for network hiccups)
+	wsWriteWait    = 30 * time.Second  // Time to wait for write operations
+)
 
 // ConnectWebSocket establishes a WebSocket connection for real-time updates
 func (sdk *RogueSDK) ConnectWebSocket(ctx context.Context, jobID string) error {
@@ -189,13 +258,64 @@ func (sdk *RogueSDK) ConnectWebSocket(ctx context.Context, jobID string) error {
 	wsURL += "/api/v1/ws/" + url.PathEscape(jobID)
 
 	dialer := websocket.DefaultDialer
+	// Set handshake timeout for initial connection
+	dialer.HandshakeTimeout = 30 * time.Second
+
 	conn, _, err := dialer.DialContext(ctx, wsURL, nil)
 	if err != nil {
 		return fmt.Errorf("websocket connection failed: %w", err)
 	}
 
+	// Configure keepalive settings to prevent timeout during long operations
+	// Set read deadline - will be extended by pong handler
+	conn.SetReadDeadline(time.Now().Add(wsPongWait))
+
+	// Set pong handler to extend read deadline when pong received
+	conn.SetPongHandler(func(string) error {
+		conn.SetReadDeadline(time.Now().Add(wsPongWait))
+		return nil
+	})
+
+	// Set ping handler to respond to server pings and extend deadline
+	conn.SetPingHandler(func(appData string) error {
+		conn.SetReadDeadline(time.Now().Add(wsPongWait))
+		// Send pong response
+		err := conn.WriteControl(websocket.PongMessage, []byte(appData), time.Now().Add(wsWriteWait))
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
 	sdk.ws = conn
+
+	// Start a goroutine to send periodic pings to keep connection alive
+	go sdk.wsKeepalive(ctx)
+
 	return nil
+}
+
+// wsKeepalive sends periodic ping messages to keep the WebSocket connection alive
+func (sdk *RogueSDK) wsKeepalive(ctx context.Context) {
+	ticker := time.NewTicker(wsPingInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if sdk.ws == nil {
+				return
+			}
+
+			sdk.ws.SetWriteDeadline(time.Now().Add(wsWriteWait))
+			if err := sdk.ws.WriteMessage(websocket.PingMessage, nil); err != nil {
+				// Connection likely closed, exit goroutine
+				return
+			}
+		}
+	}
 }
 
 // ReadWebSocketMessage reads a message from the WebSocket connection
@@ -204,64 +324,95 @@ func (sdk *RogueSDK) ReadWebSocketMessage() (*EvaluationEvent, error) {
 		return nil, fmt.Errorf("websocket not connected")
 	}
 
-	var msg WebSocketMessage
-	if err := sdk.ws.ReadJSON(&msg); err != nil {
-		return nil, err
-	}
+	for {
+		// Extend read deadline before each read
+		sdk.ws.SetReadDeadline(time.Now().Add(wsPongWait))
 
-	// Convert the message to an EvaluationEvent
-	event := &EvaluationEvent{
-		Type: msg.Type,
-	}
-
-	// Handle different message types - server sends "job_update" and "chat_update"
-	switch msg.Type {
-	case "job_update":
-		// Convert job_update to status event
-		event.Type = "status"
-		if data, ok := msg.Data.(map[string]interface{}); ok {
-			if status, ok := data["status"].(string); ok {
-				event.Status = status
-			}
-			if progress, ok := data["progress"].(float64); ok {
-				event.Progress = progress
-			}
-			if errorMsg, ok := data["error_message"].(string); ok && errorMsg != "" {
-				event.Message = errorMsg
-			}
+		messageType, data, err := sdk.ws.ReadMessage()
+		if err != nil {
+			return nil, err
 		}
-		event.JobID = msg.JobID
 
-	case "chat_update":
-		// Convert chat_update to chat event
-		event.Type = "chat"
-		if data, ok := msg.Data.(map[string]interface{}); ok {
-			if role, ok := data["role"].(string); ok {
-				event.Role = role
-			}
-			if content, ok := data["content"].(string); ok {
-				event.Content = content
-			}
+		// Handle binary messages (keepalive pings from server)
+		if messageType == websocket.BinaryMessage {
+			// Server sends binary "ping" as keepalive - just continue reading
+			// The pong response is handled automatically by the ping/pong handlers
+			continue
 		}
-		event.JobID = msg.JobID
 
-	case "error":
-		if data, ok := msg.Data.(map[string]interface{}); ok {
-			if message, ok := data["message"].(string); ok {
-				event.Message = message
-			}
+		// Handle text messages (the actual job updates)
+		if messageType != websocket.TextMessage {
+			// Skip other message types
+			continue
 		}
-		event.JobID = msg.JobID
 
+		var msg WebSocketMessage
+		if err := json.Unmarshal(data, &msg); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal websocket message: %w", err)
+		}
+
+		// Convert the message to an EvaluationEvent
+		event := &EvaluationEvent{
+			Type: msg.Type,
+		}
+
+		// Handle different message types - server sends "job_update" and "chat_update"
+		switch msg.Type {
+		case "job_update":
+			// Convert job_update to status event
+			event.Type = "status"
+			if data, ok := msg.Data.(map[string]interface{}); ok {
+				if status, ok := data["status"].(string); ok {
+					event.Status = status
+				}
+				if progress, ok := data["progress"].(float64); ok {
+					event.Progress = progress
+				}
+				if errorMsg, ok := data["error_message"].(string); ok && errorMsg != "" {
+					event.Message = errorMsg
+				}
+			}
+			event.JobID = msg.JobID
+
+		case "chat_update":
+			// Convert chat_update to chat event
+			event.Type = "chat"
+			if data, ok := msg.Data.(map[string]interface{}); ok {
+				if role, ok := data["role"].(string); ok {
+					event.Role = role
+				}
+				if content, ok := data["content"].(string); ok {
+					event.Content = content
+				}
+			}
+			event.JobID = msg.JobID
+
+		case "error":
+			if data, ok := msg.Data.(map[string]interface{}); ok {
+				if message, ok := data["message"].(string); ok {
+					event.Message = message
+				}
+			}
+			event.JobID = msg.JobID
+		}
+
+		return event, nil
 	}
-
-	return event, nil
 }
 
-// CloseWebSocket closes the WebSocket connection
+// CloseWebSocket closes the WebSocket connection gracefully
 func (sdk *RogueSDK) CloseWebSocket() error {
 	if sdk.ws != nil {
-		err := sdk.ws.Close()
+		// Send close message with normal closure
+		sdk.ws.SetWriteDeadline(time.Now().Add(wsWriteWait))
+		err := sdk.ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+		if err != nil {
+			// If we can't send close message, just close the connection
+			sdk.ws.Close()
+			sdk.ws = nil
+			return err
+		}
+		err = sdk.ws.Close()
 		sdk.ws = nil
 		return err
 	}
@@ -375,24 +526,44 @@ func (sdk *RogueSDK) pollEvaluationStatus(ctx context.Context, jobID string, eve
 }
 
 // CancelEvaluation cancels a running evaluation
+// Tries both red-team and evaluations endpoints to support both job types
 func (sdk *RogueSDK) CancelEvaluation(ctx context.Context, jobID string) error {
-	req, err := http.NewRequestWithContext(ctx, "DELETE", sdk.baseURL+"/api/v1/evaluations/"+url.PathEscape(jobID), nil)
-	if err != nil {
-		return err
+	// Try red-team endpoint first (newer jobs will likely be here)
+	endpoints := []string{
+		"/api/v1/red-team/" + url.PathEscape(jobID),
+		"/api/v1/evaluations/" + url.PathEscape(jobID),
 	}
 
-	resp, err := sdk.httpClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
+	var lastErr error
+	for _, endpoint := range endpoints {
+		req, err := http.NewRequestWithContext(ctx, "DELETE", sdk.baseURL+endpoint, nil)
+		if err != nil {
+			lastErr = err
+			continue
+		}
 
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("cancel evaluation failed: %d %s", resp.StatusCode, string(body))
+		resp, err := sdk.httpClient.Do(req)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusNoContent {
+			return nil
+		} else if resp.StatusCode == http.StatusNotFound {
+			// Try next endpoint
+			continue
+		} else {
+			body, _ := io.ReadAll(resp.Body)
+			lastErr = fmt.Errorf("cancel evaluation failed: %d %s", resp.StatusCode, string(body))
+		}
 	}
 
-	return nil
+	if lastErr != nil {
+		return lastErr
+	}
+	return fmt.Errorf("job not found: %s", jobID)
 }
 
 // StartEvaluation is the main entry point used by the TUI
@@ -406,6 +577,9 @@ func (m *Model) StartEvaluation(
 	judgeModel string,
 	parallelRuns int,
 	deepTest bool,
+	evaluationMode string,
+	redTeamConfig map[string]interface{},
+	businessContext string,
 ) (<-chan EvaluationEvent, func() error, error) {
 	sdk := NewRogueSDK(serverURL)
 
@@ -445,6 +619,12 @@ func (m *Model) StartEvaluation(
 		}
 	}
 
+	// Get Qualifire API key from config
+	qualifireAPIKey := ""
+	if m.config.QualifireEnabled && m.config.QualifireAPIKey != "" {
+		qualifireAPIKey = m.config.QualifireAPIKey
+	}
+
 	// Build evaluation request
 	request := EvaluationRequest{
 		AgentConfig: AgentConfig{
@@ -460,6 +640,10 @@ func (m *Model) StartEvaluation(
 			InterviewMode:              true,
 			DeepTestMode:               deepTest,
 			ParallelRuns:               parallelRuns,
+			EvaluationMode:             evaluationMode,
+			RedTeamConfig:              redTeamConfig,
+			QualifireAPIKey:            qualifireAPIKey,
+			BusinessContext:            businessContext,
 		},
 		MaxRetries:     3,
 		TimeoutSeconds: 600,
@@ -478,6 +662,7 @@ func (m *Model) StartEvaluation(
 }
 
 // GenerateSummary generates a markdown summary from evaluation results
+// Routes to the appropriate endpoint based on job type (red team vs policy)
 func (sdk *RogueSDK) GenerateSummary(
 	ctx context.Context,
 	jobID, model, apiKey string,
@@ -498,46 +683,76 @@ func (sdk *RogueSDK) GenerateSummary(
 		return nil, fmt.Errorf("no results available for job %s", jobID)
 	}
 
-	// Prepare summary request - match server's SummaryGenerationRequest format
-
-	summaryReq := map[string]interface{}{
-		"model":   model,
-		"api_key": apiKey,
-		"results": map[string]interface{}{
-			"results": job.Results,
-		},
-		"job_id": jobID,
-		"qualifire_api_key": func() string {
-			if qualifireAPIKey == nil {
-				return ""
-			}
-			return *qualifireAPIKey
-		}(),
-		"deep_test":   deepTest,
-		"judge_model": judgeModel,
+	// Detect if this is a red team job or policy evaluation job
+	isRedTeamJob := false
+	switch job.Results.(type) {
+	case map[string]interface{}:
+		// Red team results are objects
+		isRedTeamJob = true
+	case []interface{}:
+		// Policy results are arrays
+		isRedTeamJob = false
 	}
 
-	// Add AWS credentials if provided (for Bedrock)
-	if awsAccessKeyID != nil && *awsAccessKeyID != "" {
-		summaryReq["aws_access_key_id"] = *awsAccessKeyID
-	}
-	if awsSecretAccessKey != nil && *awsSecretAccessKey != "" {
-		summaryReq["aws_secret_access_key"] = *awsSecretAccessKey
-	}
-	if awsRegion != nil && *awsRegion != "" {
-		summaryReq["aws_region"] = *awsRegion
+	var endpoint string
+	var summaryReq map[string]interface{}
+
+	if isRedTeamJob {
+		// Use dedicated red team summary endpoint (no request body needed)
+		endpoint = fmt.Sprintf("/api/v1/red-team/%s/summary", url.PathEscape(jobID))
+		summaryReq = nil // POST with no body
+	} else {
+		// Use standard policy evaluation summary endpoint
+		endpoint = "/api/v1/llm/summary"
+		summaryReq = map[string]interface{}{
+			"model":   model,
+			"api_key": apiKey,
+			"results": map[string]interface{}{
+				"results": job.Results,
+			},
+			"job_id": jobID,
+			"qualifire_api_key": func() string {
+				if qualifireAPIKey == nil {
+					return ""
+				}
+				return *qualifireAPIKey
+			}(),
+			"deep_test":   deepTest,
+			"judge_model": judgeModel,
+		}
 	}
 
-	body, err := json.Marshal(summaryReq)
-	if err != nil {
-		return nil, err
-	}
+	var req *http.Request
 
-	req, err := http.NewRequestWithContext(ctx, "POST", sdk.baseURL+"/api/v1/llm/summary", bytes.NewReader(body))
-	if err != nil {
-		return nil, err
+	if isRedTeamJob {
+		// Red team endpoint doesn't need request body
+		req, err = http.NewRequestWithContext(ctx, "POST", sdk.baseURL+endpoint, nil)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		// Policy evaluation - add AWS credentials and marshal request
+		if awsAccessKeyID != nil && *awsAccessKeyID != "" {
+			summaryReq["aws_access_key_id"] = *awsAccessKeyID
+		}
+		if awsSecretAccessKey != nil && *awsSecretAccessKey != "" {
+			summaryReq["aws_secret_access_key"] = *awsSecretAccessKey
+		}
+		if awsRegion != nil && *awsRegion != "" {
+			summaryReq["aws_region"] = *awsRegion
+		}
+
+		body, err := json.Marshal(summaryReq)
+		if err != nil {
+			return nil, err
+		}
+
+		req, err = http.NewRequestWithContext(ctx, "POST", sdk.baseURL+endpoint, bytes.NewReader(body))
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Content-Type", "application/json")
 	}
-	req.Header.Set("Content-Type", "application/json")
 
 	// Use a longer timeout client for summary generation (LLM operations can be slow)
 	longTimeoutClient := &http.Client{

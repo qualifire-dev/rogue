@@ -8,6 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/rogue/tui/internal/components"
 	"github.com/rogue/tui/internal/screens/config"
+	"github.com/rogue/tui/internal/screens/redteam"
 	"github.com/rogue/tui/internal/screens/scenarios"
 )
 
@@ -48,12 +49,12 @@ func (m Model) handlePasteMsg(msg tea.PasteMsg) (Model, tea.Cmd) {
 
 		// Only paste into text fields (Agent URL and Judge Model)
 		switch m.evalState.currentField {
-		case EvalFieldAgentURL:
+		case 0: // Agent URL
 			// Insert at cursor position
 			runes := []rune(m.evalState.AgentURL)
 			m.evalState.AgentURL = string(runes[:m.evalState.cursorPos]) + cleanText + string(runes[m.evalState.cursorPos:])
 			m.evalState.cursorPos += len([]rune(cleanText))
-		case EvalFieldJudgeModel:
+		case 3: // Judge Model
 			// Insert at cursor position
 			runes := []rune(m.evalState.JudgeModel)
 			m.evalState.JudgeModel = string(runes[:m.evalState.cursorPos]) + cleanText + string(runes[m.evalState.cursorPos:])
@@ -119,6 +120,12 @@ func (m Model) handleWindowSizeMsg(msg tea.WindowSizeMsg) (Model, tea.Cmd) {
 		m.reportHistory.SetSize(viewportWidth, viewportHeight)
 	}
 	m.helpViewport.SetSize(viewportWidth, viewportHeight)
+
+	// Reinitialize red team report viewport if we have data (content needs to be rebuilt for new width)
+	if m.redTeamReportData != nil {
+		m.initializeRedTeamReportViewport()
+	}
+
 	return m, nil
 }
 
@@ -191,6 +198,24 @@ func (m Model) handleSummaryGeneratedMsg(msg SummaryGeneratedMsg) (Model, tea.Cm
 	return m, nil
 }
 
+// handleRedTeamReportFetchedMsg handles red team report fetch completion
+func (m Model) handleRedTeamReportFetchedMsg(msg RedTeamReportFetchedMsg) (Model, tea.Cmd) {
+	if msg.Err != nil {
+		// Show error in evalState
+		if m.evalState != nil {
+			m.evalState.Summary = fmt.Sprintf("# Report Fetch Failed\n\nError: %v\n\nPress 'r' to retry", msg.Err)
+		}
+	} else {
+		// Store report data and initialize viewport content
+		m.redTeamReportData = msg.ReportData
+		// Initialize the red team report viewport with content
+		m.initializeRedTeamReportViewport()
+		// Navigate to the red team report screen
+		m.currentScreen = RedTeamReportScreen
+	}
+	return m, nil
+}
+
 // handleCommandSelectedMsg handles command selection from the command palette
 func (m Model) handleCommandSelectedMsg(msg components.CommandSelectedMsg) (Model, tea.Cmd) {
 	switch msg.Command.Action {
@@ -209,16 +234,26 @@ func (m Model) handleCommandSelectedMsg(msg components.CommandSelectedMsg) (Mode
 			}
 		}
 		// TODO read agent url and protocol .rogue/user_config.json
+		scenariosWithContext := loadScenariosWithContextFromWorkdir()
 		m.evalState = &EvaluationViewState{
-			ServerURL:      m.config.ServerURL,
-			AgentURL:       "http://localhost:10001",
-			AgentProtocol:  ProtocolA2A,
-			AgentTransport: TransportHTTP,
-			JudgeModel:     judgeModel,
-			ParallelRuns:   1,
-			DeepTest:       false,
-			Scenarios:      loadScenariosFromWorkdir(),
-			cursorPos:      len([]rune("http://localhost:10001")), // Set cursor to end of Agent URL
+			ServerURL:       m.config.ServerURL,
+			AgentURL:        "http://localhost:10001",
+			AgentProtocol:   ProtocolA2A,
+			AgentTransport:  TransportHTTP,
+			JudgeModel:      judgeModel,
+			ParallelRuns:    1,
+			DeepTest:        false,
+			Scenarios:       scenariosWithContext.Scenarios,
+			BusinessContext: scenariosWithContext.BusinessContext,
+			EvaluationMode:  EvaluationModePolicy,
+			RedTeamConfig: &RedTeamConfig{
+				ScanType:                ScanTypeBasic,
+				Vulnerabilities:         []string{},
+				Attacks:                 []string{},
+				AttacksPerVulnerability: 3,
+				Frameworks:              []string{},
+			},
+			cursorPos: len([]rune("http://localhost:10001")), // Set cursor to end of Agent URL
 		}
 	case "configure_models":
 		// Open LLM configuration dialog
@@ -454,6 +489,27 @@ func (m Model) handleDialogClosedMsg(msg components.DialogClosedMsg) (Model, tea
 					return m, nil
 				}
 			}
+		case "save_redteam_api_key":
+			// Handle Qualifire API key save from red team config screen
+			if m.redTeamConfigState != nil {
+				m.redTeamConfigState.QualifireAPIKey = msg.Input
+				// Save the updated configuration
+				if err := redteam.SaveRedTeamConfig(m.redTeamConfigState); err != nil {
+					fmt.Printf("DEBUG: Error saving red team config: %v\n", err)
+				}
+			}
+			// Also update main config so StartEvaluation can use it
+			m.config.QualifireAPIKey = msg.Input
+			m.config.QualifireEnabled = msg.Input != ""
+			// Save the config so it persists
+			if err := config.Save(&m.config); err != nil {
+				fmt.Printf("DEBUG: Error saving main config: %v\n", err)
+			} else {
+				fmt.Printf("DEBUG: Saved QualifireAPIKey (length: %d) to config\n", len(msg.Input))
+			}
+			m.dialog = nil
+			return m, nil
+
 		case "configure_qualifire":
 			// Handle "Configure Qualifire" from report persistence dialog
 			if m.dialog != nil && m.dialog.Title == "Preserve Evaluation Report" {
@@ -605,5 +661,24 @@ func (m Model) handleScenarioEditorMsg(msg scenarios.ScenarioEditorMsg) (Model, 
 		m.commandInput.SetFocus(true)
 		m.commandInput.SetValue("")
 	}
+	return m, nil
+}
+
+// handleOpenAPIKeyDialogMsg handles opening the API key dialog from the red team config screen
+func (m Model) handleOpenAPIKeyDialogMsg(msg redteam.OpenAPIKeyDialogMsg) (Model, tea.Cmd) {
+	dialog := components.NewInputDialog(
+		"Configure Qualifire API Key",
+		"Enter your Qualifire API key to enable premium features.\nGet your key at: https://qualifire.ai/api-keys",
+		msg.CurrentKey,
+	)
+	// Customize the buttons
+	dialog.Buttons = []components.DialogButton{
+		{Label: "Cancel", Action: "cancel", Style: components.SecondaryButton},
+		{Label: "Save", Action: "save_redteam_api_key", Style: components.PrimaryButton},
+	}
+	// Position cursor at end of existing key if there is one
+	dialog.InputCursor = len(msg.CurrentKey)
+	dialog.SelectedBtn = 1 // Default to Save button
+	m.dialog = &dialog
 	return m, nil
 }
