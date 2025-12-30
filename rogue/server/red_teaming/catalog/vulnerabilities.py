@@ -10,7 +10,7 @@ from typing import Dict, List, Optional
 from ..models import VulnerabilityCategory, VulnerabilityDef
 
 # =============================================================================
-# CONTENT SAFETY VULNERABILITIES
+# CONTENT SAFETY VULNERABILITIES (Premium tier)
 # =============================================================================
 
 CONTENT_SAFETY_VULNERABILITIES = [
@@ -20,6 +20,7 @@ CONTENT_SAFETY_VULNERABILITIES = [
         category=VulnerabilityCategory.CONTENT_SAFETY,
         description="Tests handling of hate speech and discriminatory content",
         default_attacks=["prompt-injection", "roleplay", "context-poisoning"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="explicit-content",
@@ -27,6 +28,7 @@ CONTENT_SAFETY_VULNERABILITIES = [
         category=VulnerabilityCategory.CONTENT_SAFETY,
         description="Tests handling of explicit sexual content",
         default_attacks=["prompt-injection", "roleplay", "goal-redirection"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="violent-crime",
@@ -34,6 +36,7 @@ CONTENT_SAFETY_VULNERABILITIES = [
         category=VulnerabilityCategory.CONTENT_SAFETY,
         description="Tests handling of violent crime content",
         default_attacks=["prompt-injection", "roleplay", "semantic-manipulation"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="sexual-crime",
@@ -41,6 +44,7 @@ CONTENT_SAFETY_VULNERABILITIES = [
         category=VulnerabilityCategory.CONTENT_SAFETY,
         description="Tests handling of sexual crime content",
         default_attacks=["prompt-injection", "roleplay", "context-poisoning"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="child-exploitation",
@@ -48,6 +52,7 @@ CONTENT_SAFETY_VULNERABILITIES = [
         category=VulnerabilityCategory.CONTENT_SAFETY,
         description="Tests handling of child exploitation content",
         default_attacks=["prompt-injection", "roleplay"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="harassment",
@@ -55,6 +60,7 @@ CONTENT_SAFETY_VULNERABILITIES = [
         category=VulnerabilityCategory.CONTENT_SAFETY,
         description="Tests handling of harassment and bullying content",
         default_attacks=["prompt-injection", "roleplay", "goal-redirection"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="personal-attacks",
@@ -62,6 +68,7 @@ CONTENT_SAFETY_VULNERABILITIES = [
         category=VulnerabilityCategory.CONTENT_SAFETY,
         description="Tests handling of personal attacks and insults",
         default_attacks=["prompt-injection", "roleplay"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="profanity",
@@ -69,6 +76,7 @@ CONTENT_SAFETY_VULNERABILITIES = [
         category=VulnerabilityCategory.CONTENT_SAFETY,
         description="Tests handling of profane or inappropriate language",
         default_attacks=["prompt-injection", "leetspeak", "rot13"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="graphic-content",
@@ -76,6 +84,7 @@ CONTENT_SAFETY_VULNERABILITIES = [
         category=VulnerabilityCategory.CONTENT_SAFETY,
         description="Tests handling of graphic or violent content",
         default_attacks=["prompt-injection", "roleplay", "semantic-manipulation"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="self-harm",
@@ -83,6 +92,7 @@ CONTENT_SAFETY_VULNERABILITIES = [
         category=VulnerabilityCategory.CONTENT_SAFETY,
         description="Tests handling of self-harm and suicide content",
         default_attacks=["prompt-injection", "roleplay", "context-poisoning"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="dangerous-activity",
@@ -90,6 +100,7 @@ CONTENT_SAFETY_VULNERABILITIES = [
         category=VulnerabilityCategory.CONTENT_SAFETY,
         description="Tests handling of dangerous activity instructions",
         default_attacks=["prompt-injection", "roleplay", "math-problem"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="wordplay",
@@ -98,6 +109,7 @@ CONTENT_SAFETY_VULNERABILITIES = [
         description="Tests whether AI systems can be tricked into generating "
         "profanity through wordplay",
         default_attacks=["prompt-injection", "leetspeak", "semantic-manipulation"],
+        premium=True,
     ),
 ]
 
@@ -160,7 +172,7 @@ PII_PROTECTION_VULNERABILITIES = [
 ]
 
 # =============================================================================
-# TECHNICAL VULNERABILITIES
+# TECHNICAL VULNERABILITIES (Premium tier)
 # =============================================================================
 
 TECHNICAL_VULNERABILITIES = [
@@ -170,6 +182,7 @@ TECHNICAL_VULNERABILITIES = [
         category=VulnerabilityCategory.TECHNICAL,
         description="Tests for SQL injection vulnerabilities",
         default_attacks=["prompt-injection", "input-bypass", "base64"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="shell-injection",
@@ -177,6 +190,7 @@ TECHNICAL_VULNERABILITIES = [
         category=VulnerabilityCategory.TECHNICAL,
         description="Tests for command injection vulnerabilities",
         default_attacks=["prompt-injection", "input-bypass", "base64"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="ssrf",
@@ -184,6 +198,7 @@ TECHNICAL_VULNERABILITIES = [
         category=VulnerabilityCategory.TECHNICAL,
         description="Tests for server-side request forgery vulnerabilities",
         default_attacks=["prompt-injection", "input-bypass", "gray-box"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="debug-access",
@@ -191,6 +206,7 @@ TECHNICAL_VULNERABILITIES = [
         category=VulnerabilityCategory.TECHNICAL,
         description="Tests for exposed debugging interfaces and commands",
         default_attacks=["prompt-probing", "gray-box", "permission-escalation"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="malicious-code",
@@ -198,11 +214,12 @@ TECHNICAL_VULNERABILITIES = [
         category=VulnerabilityCategory.TECHNICAL,
         description="Tests creation of malicious code",
         default_attacks=["prompt-injection", "roleplay", "base64"],
+        premium=True,
     ),
 ]
 
 # =============================================================================
-# BIAS & FAIRNESS VULNERABILITIES
+# BIAS & FAIRNESS VULNERABILITIES (Premium tier)
 # =============================================================================
 
 BIAS_FAIRNESS_VULNERABILITIES = [
@@ -212,6 +229,7 @@ BIAS_FAIRNESS_VULNERABILITIES = [
         category=VulnerabilityCategory.BIAS_FAIRNESS,
         description="Age-related bias detection",
         default_attacks=["prompt-injection", "roleplay", "semantic-manipulation"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="bias-gender",
@@ -219,6 +237,7 @@ BIAS_FAIRNESS_VULNERABILITIES = [
         category=VulnerabilityCategory.BIAS_FAIRNESS,
         description="Gender-related bias detection",
         default_attacks=["prompt-injection", "roleplay", "semantic-manipulation"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="bias-race",
@@ -226,6 +245,7 @@ BIAS_FAIRNESS_VULNERABILITIES = [
         category=VulnerabilityCategory.BIAS_FAIRNESS,
         description="Race-related bias detection",
         default_attacks=["prompt-injection", "roleplay", "semantic-manipulation"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="bias-disability",
@@ -233,6 +253,7 @@ BIAS_FAIRNESS_VULNERABILITIES = [
         category=VulnerabilityCategory.BIAS_FAIRNESS,
         description="Disability-related bias detection",
         default_attacks=["prompt-injection", "roleplay", "semantic-manipulation"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="bias-religion",
@@ -240,6 +261,7 @@ BIAS_FAIRNESS_VULNERABILITIES = [
         category=VulnerabilityCategory.BIAS_FAIRNESS,
         description="Tests handling of religious content and bias",
         default_attacks=["prompt-injection", "roleplay", "semantic-manipulation"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="bias-political",
@@ -247,6 +269,7 @@ BIAS_FAIRNESS_VULNERABILITIES = [
         category=VulnerabilityCategory.BIAS_FAIRNESS,
         description="Tests handling of political content and bias",
         default_attacks=["prompt-injection", "roleplay", "goal-redirection"],
+        premium=True,
     ),
 ]
 
@@ -266,7 +289,7 @@ PROMPT_SECURITY_VULNERABILITIES = [
             "gray-box",
             "base64",
             "rot13",
-            "social-engineering-prompt-extraction",
+            # Note: social-engineering-prompt-extraction is a premium multi-turn attack
         ],
     ),
     VulnerabilityDef(
@@ -323,7 +346,7 @@ PROMPT_SECURITY_VULNERABILITIES = [
 ]
 
 # =============================================================================
-# ACCESS CONTROL VULNERABILITIES
+# ACCESS CONTROL VULNERABILITIES (Premium tier)
 # =============================================================================
 
 ACCESS_CONTROL_VULNERABILITIES = [
@@ -333,6 +356,7 @@ ACCESS_CONTROL_VULNERABILITIES = [
         category=VulnerabilityCategory.ACCESS_CONTROL,
         description="Tests role-based access control implementation",
         default_attacks=["permission-escalation", "gray-box", "prompt-injection"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="bola",
@@ -341,6 +365,7 @@ ACCESS_CONTROL_VULNERABILITIES = [
         description="Tests for broken object-level authorization "
         "vulnerabilities (OWASP API 1)",
         default_attacks=["permission-escalation", "gray-box", "input-bypass"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="bfla",
@@ -349,6 +374,7 @@ ACCESS_CONTROL_VULNERABILITIES = [
         description="Tests for broken function-level authorization "
         "vulnerabilities (OWASP API 5)",
         default_attacks=["permission-escalation", "gray-box", "prompt-injection"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="excessive-agency",
@@ -361,11 +387,12 @@ ACCESS_CONTROL_VULNERABILITIES = [
             "permission-escalation",
             "context-poisoning",
         ],
+        premium=True,
     ),
 ]
 
 # =============================================================================
-# BUSINESS LOGIC VULNERABILITIES
+# BUSINESS LOGIC VULNERABILITIES (Premium tier)
 # =============================================================================
 
 BUSINESS_LOGIC_VULNERABILITIES = [
@@ -375,6 +402,7 @@ BUSINESS_LOGIC_VULNERABILITIES = [
         category=VulnerabilityCategory.BUSINESS_LOGIC,
         description="Tests for unauthorized contractual commitments and legal exposure",
         default_attacks=["roleplay", "goal-redirection", "context-poisoning"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="unauthorized-advice",
@@ -382,6 +410,7 @@ BUSINESS_LOGIC_VULNERABILITIES = [
         category=VulnerabilityCategory.BUSINESS_LOGIC,
         description="Tests handling of unauthorized professional advice",
         default_attacks=["roleplay", "prompt-injection", "goal-redirection"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="competitors",
@@ -389,6 +418,7 @@ BUSINESS_LOGIC_VULNERABILITIES = [
         category=VulnerabilityCategory.BUSINESS_LOGIC,
         description="Tests for unauthorized competitor mentions and endorsements",
         default_attacks=["prompt-injection", "roleplay", "goal-redirection"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="imitation",
@@ -396,6 +426,7 @@ BUSINESS_LOGIC_VULNERABILITIES = [
         category=VulnerabilityCategory.BUSINESS_LOGIC,
         description="Tests handling of unauthorized impersonation of entities",
         default_attacks=["roleplay", "context-poisoning", "prompt-injection"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="goal-misalignment",
@@ -404,6 +435,7 @@ BUSINESS_LOGIC_VULNERABILITIES = [
         description="Tests whether AI systems recognize when optimizing proxy "
         "metrics might not align with true goals",
         default_attacks=["goal-redirection", "roleplay", "semantic-manipulation"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="off-topic",
@@ -412,6 +444,7 @@ BUSINESS_LOGIC_VULNERABILITIES = [
         description="Tests whether AI systems can be manipulated to go off-topic "
         "from their intended purpose",
         default_attacks=["goal-redirection", "context-poisoning", "roleplay"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="hijacking",
@@ -419,11 +452,12 @@ BUSINESS_LOGIC_VULNERABILITIES = [
         category=VulnerabilityCategory.BUSINESS_LOGIC,
         description="Tests for unauthorized resource usage and purpose deviation",
         default_attacks=["goal-redirection", "permission-escalation", "roleplay"],
+        premium=True,
     ),
 ]
 
 # =============================================================================
-# INTELLECTUAL PROPERTY VULNERABILITIES
+# INTELLECTUAL PROPERTY VULNERABILITIES (Premium tier)
 # =============================================================================
 
 IP_VULNERABILITIES = [
@@ -433,6 +467,7 @@ IP_VULNERABILITIES = [
         category=VulnerabilityCategory.INTELLECTUAL_PROPERTY,
         description="Tests handling of intellectual property violations",
         default_attacks=["prompt-injection", "roleplay", "goal-redirection"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="ip-theft",
@@ -440,11 +475,12 @@ IP_VULNERABILITIES = [
         category=VulnerabilityCategory.INTELLECTUAL_PROPERTY,
         description="Tests handling of IP theft and violations",
         default_attacks=["prompt-injection", "roleplay", "context-poisoning"],
+        premium=True,
     ),
 ]
 
 # =============================================================================
-# INFORMATION QUALITY VULNERABILITIES
+# INFORMATION QUALITY VULNERABILITIES (Premium tier)
 # =============================================================================
 
 INFO_QUALITY_VULNERABILITIES = [
@@ -454,6 +490,7 @@ INFO_QUALITY_VULNERABILITIES = [
         category=VulnerabilityCategory.INFORMATION_QUALITY,
         description="Tests for fabrication of false or misleading information",
         default_attacks=["prompt-injection", "roleplay", "goal-redirection"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="unverifiable-claims",
@@ -461,6 +498,7 @@ INFO_QUALITY_VULNERABILITIES = [
         category=VulnerabilityCategory.INFORMATION_QUALITY,
         description="Tests for claims that cannot be verified or fact-checked",
         default_attacks=["prompt-injection", "roleplay", "semantic-manipulation"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="misinformation-disinformation",
@@ -468,6 +506,7 @@ INFO_QUALITY_VULNERABILITIES = [
         category=VulnerabilityCategory.INFORMATION_QUALITY,
         description="Tests handling of false information campaigns",
         default_attacks=["prompt-injection", "roleplay", "context-poisoning"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="overreliance",
@@ -475,11 +514,12 @@ INFO_QUALITY_VULNERABILITIES = [
         category=VulnerabilityCategory.INFORMATION_QUALITY,
         description="Tests for overreliance on system assumptions",
         default_attacks=["prompt-injection", "context-poisoning", "gray-box"],
+        premium=True,
     ),
 ]
 
 # =============================================================================
-# COMPLIANCE VULNERABILITIES
+# COMPLIANCE VULNERABILITIES (Premium tier)
 # =============================================================================
 
 COMPLIANCE_VULNERABILITIES = [
@@ -490,6 +530,7 @@ COMPLIANCE_VULNERABILITIES = [
         description="Tests for COPPA (Children's Online Privacy Protection Act) "
         "compliance violations",
         default_attacks=["prompt-injection", "roleplay", "goal-redirection"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="ferpa",
@@ -498,11 +539,12 @@ COMPLIANCE_VULNERABILITIES = [
         description="Tests for compliance with Family Educational Rights and "
         "Privacy Act",
         default_attacks=["prompt-injection", "permission-escalation", "gray-box"],
+        premium=True,
     ),
 ]
 
 # =============================================================================
-# SPECIALIZED THREATS
+# SPECIALIZED THREATS (Premium tier)
 # =============================================================================
 
 SPECIALIZED_THREATS_VULNERABILITIES = [
@@ -512,6 +554,7 @@ SPECIALIZED_THREATS_VULNERABILITIES = [
         category=VulnerabilityCategory.SPECIALIZED_THREATS,
         description="Tests handling of cybercrime-related content",
         default_attacks=["prompt-injection", "roleplay", "base64"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="wmd-content",
@@ -519,6 +562,7 @@ SPECIALIZED_THREATS_VULNERABILITIES = [
         category=VulnerabilityCategory.SPECIALIZED_THREATS,
         description="Tests handling of WMD-related content",
         default_attacks=["prompt-injection", "roleplay", "semantic-manipulation"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="weapons-content",
@@ -526,6 +570,7 @@ SPECIALIZED_THREATS_VULNERABILITIES = [
         category=VulnerabilityCategory.SPECIALIZED_THREATS,
         description="Tests handling of weapons-related content",
         default_attacks=["prompt-injection", "roleplay", "math-problem"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="ied-content",
@@ -533,6 +578,7 @@ SPECIALIZED_THREATS_VULNERABILITIES = [
         category=VulnerabilityCategory.SPECIALIZED_THREATS,
         description="Tests handling of Improvised Explosive Devices",
         default_attacks=["prompt-injection", "roleplay", "semantic-manipulation"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="drugs",
@@ -540,6 +586,7 @@ SPECIALIZED_THREATS_VULNERABILITIES = [
         category=VulnerabilityCategory.SPECIALIZED_THREATS,
         description="Tests handling of illegal drug-related content",
         default_attacks=["prompt-injection", "roleplay", "semantic-manipulation"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="methamphetamine",
@@ -547,6 +594,7 @@ SPECIALIZED_THREATS_VULNERABILITIES = [
         category=VulnerabilityCategory.SPECIALIZED_THREATS,
         description="Tests handling of methamphetamine-related content",
         default_attacks=["prompt-injection", "roleplay", "base64"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="extremism",
@@ -554,6 +602,7 @@ SPECIALIZED_THREATS_VULNERABILITIES = [
         category=VulnerabilityCategory.SPECIALIZED_THREATS,
         description="Tests handling of extremist content and recruitment",
         default_attacks=["prompt-injection", "roleplay", "context-poisoning"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="illegal-activity",
@@ -561,6 +610,7 @@ SPECIALIZED_THREATS_VULNERABILITIES = [
         category=VulnerabilityCategory.SPECIALIZED_THREATS,
         description="Tests handling of general illegal activities",
         default_attacks=["prompt-injection", "roleplay", "goal-redirection"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="non-violent-crime",
@@ -568,11 +618,12 @@ SPECIALIZED_THREATS_VULNERABILITIES = [
         category=VulnerabilityCategory.SPECIALIZED_THREATS,
         description="Tests handling of non-violent criminal content",
         default_attacks=["prompt-injection", "roleplay", "semantic-manipulation"],
+        premium=True,
     ),
 ]
 
 # =============================================================================
-# AGENT-SPECIFIC VULNERABILITIES
+# AGENT-SPECIFIC VULNERABILITIES (Premium tier)
 # =============================================================================
 
 AGENT_SPECIFIC_VULNERABILITIES = [
@@ -606,6 +657,7 @@ AGENT_SPECIFIC_VULNERABILITIES = [
         category=VulnerabilityCategory.AGENT_SPECIFIC,
         description="Tests for enumeration of available tools and function calls",
         default_attacks=["prompt-probing", "gray-box", "prompt-injection"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="mcp-vulnerabilities",
@@ -618,7 +670,7 @@ AGENT_SPECIFIC_VULNERABILITIES = [
 ]
 
 # =============================================================================
-# RESOURCE ATTACK VULNERABILITIES
+# RESOURCE ATTACK VULNERABILITIES (Premium tier)
 # =============================================================================
 
 RESOURCE_ATTACK_VULNERABILITIES = [
@@ -628,6 +680,7 @@ RESOURCE_ATTACK_VULNERABILITIES = [
         category=VulnerabilityCategory.RESOURCE_ATTACKS,
         description="Tests for resource exhaustion vulnerabilities",
         default_attacks=["prompt-injection", "goal-redirection"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="reasoning-dos",
@@ -636,6 +689,7 @@ RESOURCE_ATTACK_VULNERABILITIES = [
         description="Tests for vulnerabilities to computational resource exhaustion "
         "through excessive reasoning patterns",
         default_attacks=["prompt-injection", "math-problem"],
+        premium=True,
     ),
     VulnerabilityDef(
         id="divergent-repetition",
@@ -644,6 +698,7 @@ RESOURCE_ATTACK_VULNERABILITIES = [
         description="Tests for training data leaks through repetitive pattern "
         "exploitation that causes model divergence",
         default_attacks=["prompt-injection", "goal-redirection"],
+        premium=True,
     ),
 ]
 
@@ -709,14 +764,22 @@ def get_basic_scan_vulnerabilities() -> List[str]:
     Get vulnerability IDs for basic (free) scan.
 
     Returns a curated list of essential vulnerabilities that don't require
-    a Qualifire API key.
+    a Qualifire API key. Only includes free vulnerabilities from
+    Prompt Security and PII Protection categories.
     """
     return [
+        # Prompt Security (free)
         "prompt-extraction",
         "prompt-override",
+        "indirect-injection",
+        "ascii-smuggling",
+        "special-token-injection",
+        # PII Protection (free)
         "pii-direct",
-        "sql-injection",
-        "excessive-agency",
+        "pii-api-db",
+        "pii-session",
+        "cross-session-leakage",
+        "privacy-violation",
     ]
 
 

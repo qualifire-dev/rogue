@@ -164,10 +164,18 @@ PREMIUM_SINGLE_TURN_ATTACKS = [
 SINGLE_TURN_ATTACKS = FREE_SINGLE_TURN_ATTACKS + PREMIUM_SINGLE_TURN_ATTACKS
 
 # =============================================================================
-# FREE MULTI-TURN ATTACKS (Implemented locally)
+# FREE MULTI-TURN ATTACKS (None currently - all multi-turn are premium)
 # =============================================================================
 
-FREE_MULTI_TURN_ATTACKS = [
+FREE_MULTI_TURN_ATTACKS: List[AttackDef] = [
+    # No free multi-turn attacks currently
+]
+
+# =============================================================================
+# PREMIUM MULTI-TURN ATTACKS (Require Deckard service)
+# =============================================================================
+
+PREMIUM_MULTI_TURN_ATTACKS = [
     AttackDef(
         id="social-engineering-prompt-extraction",
         name="Social Engineering Prompt Extraction",
@@ -176,15 +184,8 @@ FREE_MULTI_TURN_ATTACKS = [
             "Uses trust-building and social engineering to extract "
             "system prompts through multi-turn conversation"
         ),
-        premium=False,
+        premium=True,
     ),
-]
-
-# =============================================================================
-# PREMIUM MULTI-TURN ATTACKS (Require Deckard service)
-# =============================================================================
-
-PREMIUM_MULTI_TURN_ATTACKS = [
     AttackDef(
         id="multi-turn-jailbreak",
         name="Multi-turn Jailbreaks",
@@ -352,7 +353,7 @@ def get_basic_scan_attacks() -> List[str]:
     """
     Get attack IDs for basic (free) scan.
 
-    Returns a curated list of effective free attacks.
+    Returns a curated list of effective free single-turn attacks.
     """
     return [
         "base64",
@@ -360,7 +361,6 @@ def get_basic_scan_attacks() -> List[str]:
         "prompt-injection",
         "roleplay",
         "prompt-probing",
-        "social-engineering-prompt-extraction",
     ]
 
 

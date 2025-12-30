@@ -512,13 +512,19 @@ func initRedTeamConfigState(config *RedTeamConfig, qualifireAPIKey string) *redt
 			}
 		}
 	} else {
-		// Copy existing selections
+		// Copy existing selections, filtering out premium items if no API key
 		for _, v := range config.Vulnerabilities {
-			state.SelectedVulnerabilities[v] = true
+			vuln := redteam.GetVulnerability(v)
+			if vuln != nil && (!vuln.Premium || state.QualifireAPIKey != "") {
+				state.SelectedVulnerabilities[v] = true
+			}
 		}
 
 		for _, a := range config.Attacks {
-			state.SelectedAttacks[a] = true
+			attack := redteam.GetAttack(a)
+			if attack != nil && (!attack.Premium || state.QualifireAPIKey != "") {
+				state.SelectedAttacks[a] = true
+			}
 		}
 	}
 

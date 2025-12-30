@@ -134,16 +134,22 @@ func LoadRedTeamConfig(state *RedTeamConfigState) error {
 		}
 	}
 
-	// Load selected vulnerabilities
+	// Load selected vulnerabilities, filtering out premium if no API key
 	state.SelectedVulnerabilities = make(map[string]bool)
 	for _, id := range config.SelectedVulnerabilities {
-		state.SelectedVulnerabilities[id] = true
+		vuln := GetVulnerability(id)
+		if vuln != nil && (!vuln.Premium || state.QualifireAPIKey != "") {
+			state.SelectedVulnerabilities[id] = true
+		}
 	}
 
-	// Load selected attacks
+	// Load selected attacks, filtering out premium if no API key
 	state.SelectedAttacks = make(map[string]bool)
 	for _, id := range config.SelectedAttacks {
-		state.SelectedAttacks[id] = true
+		attack := GetAttack(id)
+		if attack != nil && (!attack.Premium || state.QualifireAPIKey != "") {
+			state.SelectedAttacks[id] = true
+		}
 	}
 
 	// Load selected frameworks
