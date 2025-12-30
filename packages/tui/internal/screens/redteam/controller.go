@@ -61,9 +61,10 @@ func HandleKeyPress(state *RedTeamConfigState, msg tea.KeyMsg) (*RedTeamConfigSt
 		// Open framework dialog
 		state.ShowFrameworkDialog = true
 
-	case "q":
-		// Return command to open API key dialog via main controller
-		return state, OpenAPIKeyDialogCmd(state.QualifireAPIKey)
+	// TODO: Re-enable when Qualifire API key feature is released
+	// case "q":
+	// 	// Return command to open API key dialog via main controller
+	// 	return state, OpenAPIKeyDialogCmd(state.QualifireAPIKey)
 
 	case "+", "=":
 		// Increase attacks per vulnerability

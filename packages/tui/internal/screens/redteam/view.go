@@ -292,7 +292,7 @@ func renderHelpText(state *RedTeamConfigState) string {
 		return "Enter API key | Enter: Save | Esc: Cancel"
 	}
 
-	return "Tab: Switch panel | ↑/↓: Navigate | ←/→: Collapse/Expand | Space: Toggle | f: Frameworks | q: API Key | 1: Basic | 2: Full | Esc: Back"
+	return "Tab: Switch panel | ↑/↓: Navigate | ←/→: Collapse/Expand | Space: Toggle | f: Frameworks | 1: Basic | 2: Full | Esc: Back"
 }
 
 // RenderFrameworkDialog renders the framework selection dialog.
