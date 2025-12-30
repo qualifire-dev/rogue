@@ -136,29 +136,32 @@ var VulnerabilityCatalog = map[string]*Vulnerability{
 // Synchronized with Python backend catalog.
 var AttackCatalog = map[string]*Attack{
 	// ==========================================================================
-	// SINGLE-TURN FREE ATTACKS (Implemented locally)
+	// SINGLE-TURN FREE ATTACKS (Used in basic scans)
 	// ==========================================================================
-	"base64":                {ID: "base64", Name: "Base64 Encoding", Category: AttackCategorySingleTurn, Description: "Encodes the attack input in Base64 to bypass text-based filters", Premium: false},
-	"rot13":                 {ID: "rot13", Name: "ROT13 Encoding", Category: AttackCategorySingleTurn, Description: "Encodes the attack input using ROT13 cipher to bypass filters", Premium: false},
-	"hex":                   {ID: "hex", Name: "Hex Encoding", Category: AttackCategorySingleTurn, Description: "Encodes the attack input in hexadecimal to bypass filters", Premium: false},
-	"leetspeak":             {ID: "leetspeak", Name: "Leetspeak", Category: AttackCategorySingleTurn, Description: "Transforms text using leetspeak (1337) character substitutions", Premium: false},
-	"prompt-injection":      {ID: "prompt-injection", Name: "Prompt Injection", Category: AttackCategorySingleTurn, Description: "Direct prompt injection to override system instructions", Premium: false},
-	"math-problem":          {ID: "math-problem", Name: "Math Prompt", Category: AttackCategorySingleTurn, Description: "Encodes harmful requests in math to distract filters", Premium: false},
-	"roleplay":              {ID: "roleplay", Name: "Roleplay", Category: AttackCategorySingleTurn, Description: "Uses roleplay scenarios to bypass safety filters", Premium: false},
-	"prompt-probing":        {ID: "prompt-probing", Name: "Prompt Probing", Category: AttackCategorySingleTurn, Description: "Attempts to extract system prompts through probing questions", Premium: false},
-	"gray-box":              {ID: "gray-box", Name: "Gray Box", Category: AttackCategorySingleTurn, Description: "Injects fake internal info to gain trust or trick model", Premium: false},
-	"multilingual":          {ID: "multilingual", Name: "Multilingual", Category: AttackCategorySingleTurn, Description: "Uses translation framing to bypass language-specific filters", Premium: false},
-	"context-poisoning":     {ID: "context-poisoning", Name: "Context Poisoning", Category: AttackCategorySingleTurn, Description: "Injects malicious context or instructions to alter model behavior", Premium: false},
-	"goal-redirection":      {ID: "goal-redirection", Name: "Goal Redirection", Category: AttackCategorySingleTurn, Description: "Attempts to shift the goal of the conversation mid-prompt", Premium: false},
-	"input-bypass":          {ID: "input-bypass", Name: "Input Bypass", Category: AttackCategorySingleTurn, Description: "Splits payload or uses delimiters to bypass regex filters", Premium: false},
-	"permission-escalation": {ID: "permission-escalation", Name: "Permission Escalation", Category: AttackCategorySingleTurn, Description: "Attempts to bypass permission checks by claiming elevated status", Premium: false},
-	"system-override":       {ID: "system-override", Name: "System Override", Category: AttackCategorySingleTurn, Description: "Uses explicit system override commands to bypass restrictions", Premium: false},
-	"semantic-manipulation": {ID: "semantic-manipulation", Name: "Semantic Manipulation", Category: AttackCategorySingleTurn, Description: "Uses semantic tricks and complex phrasing to disguise intent", Premium: false},
+	"base64":           {ID: "base64", Name: "Base64 Encoding", Category: AttackCategorySingleTurn, Description: "Encodes the attack input in Base64 to bypass text-based filters", Premium: false},
+	"rot13":            {ID: "rot13", Name: "ROT13 Encoding", Category: AttackCategorySingleTurn, Description: "Encodes the attack input using ROT13 cipher to bypass filters", Premium: false},
+	"prompt-injection": {ID: "prompt-injection", Name: "Prompt Injection", Category: AttackCategorySingleTurn, Description: "Direct prompt injection to override system instructions", Premium: false},
+	"roleplay":         {ID: "roleplay", Name: "Roleplay", Category: AttackCategorySingleTurn, Description: "Uses roleplay scenarios to bypass safety filters", Premium: false},
+	"prompt-probing":   {ID: "prompt-probing", Name: "Prompt Probing", Category: AttackCategorySingleTurn, Description: "Attempts to extract system prompts through probing questions", Premium: false},
 
 	// ==========================================================================
 	// SINGLE-TURN PREMIUM ATTACKS (Require Deckard service)
 	// ==========================================================================
-	"homoglyph":        {ID: "homoglyph", Name: "Homoglyph Encoding", Category: AttackCategorySingleTurn, Description: "Uses visually similar Unicode characters to bypass text filters", Premium: true},
+	// Encoding-based attacks (premium)
+	"hex":       {ID: "hex", Name: "Hex Encoding", Category: AttackCategorySingleTurn, Description: "Encodes the attack input in hexadecimal to bypass filters", Premium: true},
+	"leetspeak": {ID: "leetspeak", Name: "Leetspeak", Category: AttackCategorySingleTurn, Description: "Transforms text using leetspeak (1337) character substitutions", Premium: true},
+	"homoglyph": {ID: "homoglyph", Name: "Homoglyph Encoding", Category: AttackCategorySingleTurn, Description: "Uses visually similar Unicode characters to bypass text filters", Premium: true},
+	// Context/manipulation attacks (premium)
+	"math-problem":          {ID: "math-problem", Name: "Math Prompt", Category: AttackCategorySingleTurn, Description: "Encodes harmful requests in math to distract filters", Premium: true},
+	"gray-box":              {ID: "gray-box", Name: "Gray Box", Category: AttackCategorySingleTurn, Description: "Injects fake internal info to gain trust or trick model", Premium: true},
+	"multilingual":          {ID: "multilingual", Name: "Multilingual", Category: AttackCategorySingleTurn, Description: "Uses translation framing to bypass language-specific filters", Premium: true},
+	"context-poisoning":     {ID: "context-poisoning", Name: "Context Poisoning", Category: AttackCategorySingleTurn, Description: "Injects malicious context or instructions to alter model behavior", Premium: true},
+	"goal-redirection":      {ID: "goal-redirection", Name: "Goal Redirection", Category: AttackCategorySingleTurn, Description: "Attempts to shift the goal of the conversation mid-prompt", Premium: true},
+	"input-bypass":          {ID: "input-bypass", Name: "Input Bypass", Category: AttackCategorySingleTurn, Description: "Splits payload or uses delimiters to bypass regex filters", Premium: true},
+	"permission-escalation": {ID: "permission-escalation", Name: "Permission Escalation", Category: AttackCategorySingleTurn, Description: "Attempts to bypass permission checks by claiming elevated status", Premium: true},
+	"system-override":       {ID: "system-override", Name: "System Override", Category: AttackCategorySingleTurn, Description: "Uses explicit system override commands to bypass restrictions", Premium: true},
+	"semantic-manipulation": {ID: "semantic-manipulation", Name: "Semantic Manipulation", Category: AttackCategorySingleTurn, Description: "Uses semantic tricks and complex phrasing to disguise intent", Premium: true},
+	// Advanced premium attacks
 	"citation":         {ID: "citation", Name: "Citation", Category: AttackCategorySingleTurn, Description: "Frames harmful content as academic citations or references", Premium: true},
 	"gcg":              {ID: "gcg", Name: "GCG (Greedy Coordinate Gradient)", Category: AttackCategorySingleTurn, Description: "Gradient-based adversarial suffix generation", Premium: true},
 	"likert-jailbreak": {ID: "likert-jailbreak", Name: "Likert-based Jailbreaks", Category: AttackCategorySingleTurn, Description: "Uses Likert scale framing to manipulate responses", Premium: true},

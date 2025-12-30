@@ -66,14 +66,6 @@ func (a *App) Run() error {
 		fmt.Printf("Warning: Failed to load config: %v\n", err)
 	}
 
-	// Debug: Log loaded config
-	if model.config.QualifireAPIKey != "" {
-		fmt.Printf("DEBUG: Loaded QualifireAPIKey from config (length: %d)\n", len(model.config.QualifireAPIKey))
-	} else {
-		fmt.Printf("DEBUG: QualifireAPIKey is empty after loading config\n")
-	}
-	fmt.Printf("DEBUG: QualifireEnabled: %v\n", model.config.QualifireEnabled)
-
 	theme.SetTheme(model.config.Theme)
 
 	// Set command input as focused by default

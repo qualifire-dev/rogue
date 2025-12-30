@@ -16,7 +16,7 @@ from typing import Dict, List, Optional
 from ..models import AttackCategory, AttackDef
 
 # =============================================================================
-# FREE SINGLE-TURN ATTACKS (Implemented locally)
+# FREE SINGLE-TURN ATTACKS (Implemented locally - used in basic scans)
 # =============================================================================
 
 FREE_SINGLE_TURN_ATTACKS = [
@@ -33,28 +33,10 @@ FREE_SINGLE_TURN_ATTACKS = [
         description="Encodes the attack input using ROT13 cipher to bypass filters",
     ),
     AttackDef(
-        id="hex",
-        name="Hex Encoding",
-        category=AttackCategory.SINGLE_TURN,
-        description="Encodes the attack input in hexadecimal to bypass filters",
-    ),
-    AttackDef(
-        id="leetspeak",
-        name="Leetspeak",
-        category=AttackCategory.SINGLE_TURN,
-        description="Transforms text using leetspeak (1337) character substitutions",
-    ),
-    AttackDef(
         id="prompt-injection",
         name="Prompt Injection",
         category=AttackCategory.SINGLE_TURN,
         description="Direct prompt injection to override system instructions",
-    ),
-    AttackDef(
-        id="math-problem",
-        name="Math Prompt",
-        category=AttackCategory.SINGLE_TURN,
-        description="Encodes harmful requests in math to distract filters",
     ),
     AttackDef(
         id="roleplay",
@@ -68,54 +50,6 @@ FREE_SINGLE_TURN_ATTACKS = [
         category=AttackCategory.SINGLE_TURN,
         description="Attempts to extract system prompts through probing questions",
     ),
-    AttackDef(
-        id="gray-box",
-        name="Gray Box",
-        category=AttackCategory.SINGLE_TURN,
-        description="Injects fake internal info to gain trust or trick model",
-    ),
-    AttackDef(
-        id="multilingual",
-        name="Multilingual",
-        category=AttackCategory.SINGLE_TURN,
-        description="Uses translation framing to bypass language-specific filters",
-    ),
-    AttackDef(
-        id="context-poisoning",
-        name="Context Poisoning",
-        category=AttackCategory.SINGLE_TURN,
-        description="Injects malicious context or instructions to alter model behavior",
-    ),
-    AttackDef(
-        id="goal-redirection",
-        name="Goal Redirection",
-        category=AttackCategory.SINGLE_TURN,
-        description="Attempts to shift the goal of the conversation mid-prompt",
-    ),
-    AttackDef(
-        id="input-bypass",
-        name="Input Bypass",
-        category=AttackCategory.SINGLE_TURN,
-        description="Splits payload or uses delimiters to bypass regex filters",
-    ),
-    AttackDef(
-        id="permission-escalation",
-        name="Permission Escalation",
-        category=AttackCategory.SINGLE_TURN,
-        description="Attempts to bypass permission checks by claiming elevated status",
-    ),
-    AttackDef(
-        id="system-override",
-        name="System Override",
-        category=AttackCategory.SINGLE_TURN,
-        description="Uses explicit system override commands to bypass restrictions",
-    ),
-    AttackDef(
-        id="semantic-manipulation",
-        name="Semantic Manipulation",
-        category=AttackCategory.SINGLE_TURN,
-        description="Uses semantic tricks and complex phrasing to disguise intent",
-    ),
 ]
 
 # =============================================================================
@@ -123,6 +57,21 @@ FREE_SINGLE_TURN_ATTACKS = [
 # =============================================================================
 
 PREMIUM_SINGLE_TURN_ATTACKS = [
+    # Encoding-based attacks (premium)
+    AttackDef(
+        id="hex",
+        name="Hex Encoding",
+        category=AttackCategory.SINGLE_TURN,
+        description="Encodes the attack input in hexadecimal to bypass filters",
+        premium=True,
+    ),
+    AttackDef(
+        id="leetspeak",
+        name="Leetspeak",
+        category=AttackCategory.SINGLE_TURN,
+        description="Transforms text using leetspeak (1337) character substitutions",
+        premium=True,
+    ),
     AttackDef(
         id="homoglyph",
         name="Homoglyph Encoding",
@@ -130,6 +79,71 @@ PREMIUM_SINGLE_TURN_ATTACKS = [
         description="Uses visually similar Unicode characters to bypass text filters",
         premium=True,
     ),
+    # Context/manipulation attacks (premium)
+    AttackDef(
+        id="math-problem",
+        name="Math Prompt",
+        category=AttackCategory.SINGLE_TURN,
+        description="Encodes harmful requests in math to distract filters",
+        premium=True,
+    ),
+    AttackDef(
+        id="gray-box",
+        name="Gray Box",
+        category=AttackCategory.SINGLE_TURN,
+        description="Injects fake internal info to gain trust or trick model",
+        premium=True,
+    ),
+    AttackDef(
+        id="multilingual",
+        name="Multilingual",
+        category=AttackCategory.SINGLE_TURN,
+        description="Uses translation framing to bypass language-specific filters",
+        premium=True,
+    ),
+    AttackDef(
+        id="context-poisoning",
+        name="Context Poisoning",
+        category=AttackCategory.SINGLE_TURN,
+        description="Injects malicious context or instructions to alter model behavior",
+        premium=True,
+    ),
+    AttackDef(
+        id="goal-redirection",
+        name="Goal Redirection",
+        category=AttackCategory.SINGLE_TURN,
+        description="Attempts to shift the goal of the conversation mid-prompt",
+        premium=True,
+    ),
+    AttackDef(
+        id="input-bypass",
+        name="Input Bypass",
+        category=AttackCategory.SINGLE_TURN,
+        description="Splits payload or uses delimiters to bypass regex filters",
+        premium=True,
+    ),
+    AttackDef(
+        id="permission-escalation",
+        name="Permission Escalation",
+        category=AttackCategory.SINGLE_TURN,
+        description="Attempts to bypass permission checks by claiming elevated status",
+        premium=True,
+    ),
+    AttackDef(
+        id="system-override",
+        name="System Override",
+        category=AttackCategory.SINGLE_TURN,
+        description="Uses explicit system override commands to bypass restrictions",
+        premium=True,
+    ),
+    AttackDef(
+        id="semantic-manipulation",
+        name="Semantic Manipulation",
+        category=AttackCategory.SINGLE_TURN,
+        description="Uses semantic tricks and complex phrasing to disguise intent",
+        premium=True,
+    ),
+    # Advanced premium attacks
     AttackDef(
         id="citation",
         name="Citation",
