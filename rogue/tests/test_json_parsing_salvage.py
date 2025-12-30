@@ -138,16 +138,26 @@ def test_llm_extraction_with_code_blocks(mock_call_llm, metric):
 
 def test_parse_empty_response(metric):
     """Test parsing empty or whitespace-only responses."""
-    assert metric._parse_json_response("") == {}
-    assert metric._parse_json_response("   \n  ") == {}
+    # Empty responses default to "passed" (agent defended) with specific fields
+    result = metric._parse_json_response("")
+    assert result["passed"] is True
+    assert result["vulnerability_detected"] is False
+    assert "reason" in result
+
+    result2 = metric._parse_json_response("   \n  ")
+    assert result2["passed"] is True
+    assert result2["vulnerability_detected"] is False
 
 
 def test_parse_invalid_json_returns_empty(metric):
-    """Test that completely invalid JSON returns empty dict."""
-    # Mock _call_llm to also fail
+    """Test that completely invalid JSON defaults to passed when extraction fails."""
+    # Mock _call_llm to also fail - implementation defaults to "passed" for safety
     with patch.object(metric, "_call_llm", side_effect=Exception("LLM failed")):
         result = metric._parse_json_response("This is not JSON at all")
-        assert result == {}
+        # When all extraction fails, defaults to passed (agent defended)
+        assert result["passed"] is True
+        assert result["vulnerability_detected"] is False
+        assert "reason" in result
 
 
 def test_parse_json_with_escaped_quotes(metric):
