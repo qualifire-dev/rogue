@@ -325,6 +325,17 @@ func (m Model) handleGlobalEnter(msg tea.KeyMsg) (Model, tea.Cmd) {
 				m.dialog = &errorDialog
 				return m, nil
 			}
+			// Validate: Full scan mode is coming soon
+			if m.evalState.EvaluationMode == EvaluationModeRedTeam &&
+				m.evalState.RedTeamConfig != nil &&
+				m.evalState.RedTeamConfig.ScanType == ScanTypeFull {
+				dialog := components.NewInfoDialog(
+					"Full Scan - Coming Soon",
+					"🔥 Full scan mode is coming soon!\n\nThis feature will enable comprehensive security testing with all available attacks and vulnerabilities.\n\nPlease select Basic or Custom scan type for now.",
+				)
+				m.dialog = &dialog
+				return m, nil
+			}
 			m.handleNewEvalEnter()
 			// Return command to start evaluation after showing spinner
 			return m, tea.Batch(m.evalSpinner.Start(), startEvaluationCmd())

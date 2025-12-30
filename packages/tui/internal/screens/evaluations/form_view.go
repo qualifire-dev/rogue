@@ -189,7 +189,8 @@ func RenderForm(state *FormState) string {
 	// Prepare scan type display value (only for Red Team mode)
 	scanTypeDisplay := "Basic"
 	if state.ScanType == "full" {
-		scanTypeDisplay = "🔥 Full"
+		// TODO: Re-enable when Full scan is released
+		scanTypeDisplay = "🔒 Full (Coming Soon)"
 	} else if state.ScanType == "custom" {
 		scanTypeDisplay = "⚙️ Custom"
 	} else {

@@ -3,13 +3,13 @@ package redteam
 
 // VulnerabilityCatalog contains all vulnerability definitions.
 var VulnerabilityCatalog = map[string]*Vulnerability{
-	// Content Safety
-	"hate-speech":      {ID: "hate-speech", Name: "Hate Speech", Category: CategoryContentSafety, Description: "Tests handling of hate speech content", DefaultAttacks: []string{"prompt-injection", "roleplay"}, Premium: false},
-	"explicit-content": {ID: "explicit-content", Name: "Explicit Content", Category: CategoryContentSafety, Description: "Tests handling of explicit content", DefaultAttacks: []string{"prompt-injection", "roleplay"}, Premium: false},
-	"violent-crime":    {ID: "violent-crime", Name: "Violent Crime Content", Category: CategoryContentSafety, Description: "Tests handling of violent crime content", DefaultAttacks: []string{"prompt-injection", "roleplay"}, Premium: false},
-	"harassment":       {ID: "harassment", Name: "Harassment", Category: CategoryContentSafety, Description: "Tests handling of harassment content", DefaultAttacks: []string{"prompt-injection", "roleplay"}, Premium: false},
-	"self-harm":        {ID: "self-harm", Name: "Self-Harm", Category: CategoryContentSafety, Description: "Tests handling of self-harm content", DefaultAttacks: []string{"prompt-injection", "roleplay"}, Premium: false},
-	"profanity":        {ID: "profanity", Name: "Profanity", Category: CategoryContentSafety, Description: "Tests handling of profane language", DefaultAttacks: []string{"prompt-injection", "leetspeak"}, Premium: false},
+	// Content Safety (Premium)
+	"hate-speech":      {ID: "hate-speech", Name: "Hate Speech", Category: CategoryContentSafety, Description: "Tests handling of hate speech content", DefaultAttacks: []string{"prompt-injection", "roleplay"}, Premium: true},
+	"explicit-content": {ID: "explicit-content", Name: "Explicit Content", Category: CategoryContentSafety, Description: "Tests handling of explicit content", DefaultAttacks: []string{"prompt-injection", "roleplay"}, Premium: true},
+	"violent-crime":    {ID: "violent-crime", Name: "Violent Crime Content", Category: CategoryContentSafety, Description: "Tests handling of violent crime content", DefaultAttacks: []string{"prompt-injection", "roleplay"}, Premium: true},
+	"harassment":       {ID: "harassment", Name: "Harassment", Category: CategoryContentSafety, Description: "Tests handling of harassment content", DefaultAttacks: []string{"prompt-injection", "roleplay"}, Premium: true},
+	"self-harm":        {ID: "self-harm", Name: "Self-Harm", Category: CategoryContentSafety, Description: "Tests handling of self-harm content", DefaultAttacks: []string{"prompt-injection", "roleplay"}, Premium: true},
+	"profanity":        {ID: "profanity", Name: "Profanity", Category: CategoryContentSafety, Description: "Tests handling of profane language", DefaultAttacks: []string{"prompt-injection", "leetspeak"}, Premium: true},
 
 	// PII Protection
 	"pii-direct":            {ID: "pii-direct", Name: "PII via Direct Exposure", Category: CategoryPIIProtection, Description: "Tests for direct PII exposure", DefaultAttacks: []string{"prompt-injection", "prompt-probing"}, Premium: false},
@@ -18,18 +18,18 @@ var VulnerabilityCatalog = map[string]*Vulnerability{
 	"pii-social":            {ID: "pii-social", Name: "PII via Social Engineering", Category: CategoryPIIProtection, Description: "Tests for PII exposure via social engineering", DefaultAttacks: []string{"roleplay", "goal-redirection"}, Premium: true},
 	"cross-session-leakage": {ID: "cross-session-leakage", Name: "Cross-Session Data Leakage", Category: CategoryPIIProtection, Description: "Tests for data leakage between sessions", DefaultAttacks: []string{"prompt-injection", "context-poisoning"}, Premium: false},
 
-	// Technical
-	"sql-injection":   {ID: "sql-injection", Name: "SQL Injection", Category: CategoryTechnical, Description: "Tests for SQL injection vulnerabilities", DefaultAttacks: []string{"prompt-injection", "input-bypass"}, Premium: false},
-	"shell-injection": {ID: "shell-injection", Name: "Command Injection", Category: CategoryTechnical, Description: "Tests for command injection vulnerabilities", DefaultAttacks: []string{"prompt-injection", "input-bypass"}, Premium: false},
-	"ssrf":            {ID: "ssrf", Name: "SSRF Vulnerability", Category: CategoryTechnical, Description: "Tests for SSRF vulnerabilities", DefaultAttacks: []string{"prompt-injection", "gray-box"}, Premium: false},
-	"debug-access":    {ID: "debug-access", Name: "Debug Interface Exposure", Category: CategoryTechnical, Description: "Tests for exposed debug interfaces", DefaultAttacks: []string{"prompt-probing", "gray-box"}, Premium: false},
-	"malicious-code":  {ID: "malicious-code", Name: "Malicious Code", Category: CategoryTechnical, Description: "Tests creation of malicious code", DefaultAttacks: []string{"prompt-injection", "roleplay"}, Premium: false},
+	// Technical (Premium)
+	"sql-injection":   {ID: "sql-injection", Name: "SQL Injection", Category: CategoryTechnical, Description: "Tests for SQL injection vulnerabilities", DefaultAttacks: []string{"prompt-injection", "input-bypass"}, Premium: true},
+	"shell-injection": {ID: "shell-injection", Name: "Command Injection", Category: CategoryTechnical, Description: "Tests for command injection vulnerabilities", DefaultAttacks: []string{"prompt-injection", "input-bypass"}, Premium: true},
+	"ssrf":            {ID: "ssrf", Name: "SSRF Vulnerability", Category: CategoryTechnical, Description: "Tests for SSRF vulnerabilities", DefaultAttacks: []string{"prompt-injection", "gray-box"}, Premium: true},
+	"debug-access":    {ID: "debug-access", Name: "Debug Interface Exposure", Category: CategoryTechnical, Description: "Tests for exposed debug interfaces", DefaultAttacks: []string{"prompt-probing", "gray-box"}, Premium: true},
+	"malicious-code":  {ID: "malicious-code", Name: "Malicious Code", Category: CategoryTechnical, Description: "Tests creation of malicious code", DefaultAttacks: []string{"prompt-injection", "roleplay"}, Premium: true},
 
-	// Bias & Fairness
-	"bias-age":      {ID: "bias-age", Name: "Age Bias", Category: CategoryBiasFairness, Description: "Age-related bias detection", DefaultAttacks: []string{"prompt-injection", "roleplay"}, Premium: false},
-	"bias-gender":   {ID: "bias-gender", Name: "Gender Bias", Category: CategoryBiasFairness, Description: "Gender-related bias detection", DefaultAttacks: []string{"prompt-injection", "roleplay"}, Premium: false},
-	"bias-race":     {ID: "bias-race", Name: "Race Bias", Category: CategoryBiasFairness, Description: "Race-related bias detection", DefaultAttacks: []string{"prompt-injection", "roleplay"}, Premium: false},
-	"bias-religion": {ID: "bias-religion", Name: "Religious Bias", Category: CategoryBiasFairness, Description: "Religious bias detection", DefaultAttacks: []string{"prompt-injection", "roleplay"}, Premium: false},
+	// Bias & Fairness (Premium)
+	"bias-age":      {ID: "bias-age", Name: "Age Bias", Category: CategoryBiasFairness, Description: "Age-related bias detection", DefaultAttacks: []string{"prompt-injection", "roleplay"}, Premium: true},
+	"bias-gender":   {ID: "bias-gender", Name: "Gender Bias", Category: CategoryBiasFairness, Description: "Gender-related bias detection", DefaultAttacks: []string{"prompt-injection", "roleplay"}, Premium: true},
+	"bias-race":     {ID: "bias-race", Name: "Race Bias", Category: CategoryBiasFairness, Description: "Race-related bias detection", DefaultAttacks: []string{"prompt-injection", "roleplay"}, Premium: true},
+	"bias-religion": {ID: "bias-religion", Name: "Religious Bias", Category: CategoryBiasFairness, Description: "Religious bias detection", DefaultAttacks: []string{"prompt-injection", "roleplay"}, Premium: true},
 
 	// Prompt Security
 	"prompt-extraction":  {ID: "prompt-extraction", Name: "System Prompt Disclosure", Category: CategoryPromptSecurity, Description: "Tests for system prompt disclosure", DefaultAttacks: []string{"prompt-probing", "system-override", "social-engineering-prompt-extraction"}, Premium: false},
@@ -37,29 +37,29 @@ var VulnerabilityCatalog = map[string]*Vulnerability{
 	"indirect-injection": {ID: "indirect-injection", Name: "Indirect Prompt Injection", Category: CategoryPromptSecurity, Description: "Tests for indirect injection via variables", DefaultAttacks: []string{"prompt-injection", "context-poisoning"}, Premium: false},
 	"ascii-smuggling":    {ID: "ascii-smuggling", Name: "ASCII Smuggling", Category: CategoryPromptSecurity, Description: "Tests for Unicode tag-based attacks", DefaultAttacks: []string{"base64", "rot13"}, Premium: false},
 
-	// Access Control
-	"rbac":             {ID: "rbac", Name: "RBAC Implementation", Category: CategoryAccessControl, Description: "Tests RBAC implementation", DefaultAttacks: []string{"permission-escalation", "gray-box"}, Premium: false},
-	"bola":             {ID: "bola", Name: "Object-Level Authorization Bypass", Category: CategoryAccessControl, Description: "Tests for BOLA vulnerabilities", DefaultAttacks: []string{"permission-escalation", "gray-box"}, Premium: false},
-	"excessive-agency": {ID: "excessive-agency", Name: "Excessive Agency", Category: CategoryAccessControl, Description: "Tests for unauthorized actions", DefaultAttacks: []string{"roleplay", "goal-redirection"}, Premium: false},
+	// Access Control (Premium)
+	"rbac":             {ID: "rbac", Name: "RBAC Implementation", Category: CategoryAccessControl, Description: "Tests RBAC implementation", DefaultAttacks: []string{"permission-escalation", "gray-box"}, Premium: true},
+	"bola":             {ID: "bola", Name: "Object-Level Authorization Bypass", Category: CategoryAccessControl, Description: "Tests for BOLA vulnerabilities", DefaultAttacks: []string{"permission-escalation", "gray-box"}, Premium: true},
+	"excessive-agency": {ID: "excessive-agency", Name: "Excessive Agency", Category: CategoryAccessControl, Description: "Tests for unauthorized actions", DefaultAttacks: []string{"roleplay", "goal-redirection"}, Premium: true},
 
-	// Business Logic
-	"unauthorized-commitments": {ID: "unauthorized-commitments", Name: "Unauthorized Commitments", Category: CategoryBusinessLogic, Description: "Tests for unauthorized contractual commitments", DefaultAttacks: []string{"roleplay", "goal-redirection"}, Premium: false},
-	"unauthorized-advice":      {ID: "unauthorized-advice", Name: "Unauthorized Advice", Category: CategoryBusinessLogic, Description: "Tests handling of unauthorized advice", DefaultAttacks: []string{"roleplay", "prompt-injection"}, Premium: false},
-	"competitors":              {ID: "competitors", Name: "Competitors", Category: CategoryBusinessLogic, Description: "Tests for competitor mentions", DefaultAttacks: []string{"prompt-injection", "roleplay"}, Premium: false},
-	"off-topic":                {ID: "off-topic", Name: "Off-Topic Manipulation", Category: CategoryBusinessLogic, Description: "Tests for off-topic manipulation", DefaultAttacks: []string{"goal-redirection", "context-poisoning"}, Premium: false},
+	// Business Logic (Premium)
+	"unauthorized-commitments": {ID: "unauthorized-commitments", Name: "Unauthorized Commitments", Category: CategoryBusinessLogic, Description: "Tests for unauthorized contractual commitments", DefaultAttacks: []string{"roleplay", "goal-redirection"}, Premium: true},
+	"unauthorized-advice":      {ID: "unauthorized-advice", Name: "Unauthorized Advice", Category: CategoryBusinessLogic, Description: "Tests handling of unauthorized advice", DefaultAttacks: []string{"roleplay", "prompt-injection"}, Premium: true},
+	"competitors":              {ID: "competitors", Name: "Competitors", Category: CategoryBusinessLogic, Description: "Tests for competitor mentions", DefaultAttacks: []string{"prompt-injection", "roleplay"}, Premium: true},
+	"off-topic":                {ID: "off-topic", Name: "Off-Topic Manipulation", Category: CategoryBusinessLogic, Description: "Tests for off-topic manipulation", DefaultAttacks: []string{"goal-redirection", "context-poisoning"}, Premium: true},
 
-	// Information Quality
-	"hallucination":                 {ID: "hallucination", Name: "Hallucination", Category: CategoryInfoQuality, Description: "Tests for fabrication of false information", DefaultAttacks: []string{"prompt-injection", "roleplay"}, Premium: false},
-	"misinformation-disinformation": {ID: "misinformation-disinformation", Name: "Disinformation Campaigns", Category: CategoryInfoQuality, Description: "Tests handling of false information", DefaultAttacks: []string{"prompt-injection", "roleplay"}, Premium: false},
+	// Information Quality (Premium)
+	"hallucination":                 {ID: "hallucination", Name: "Hallucination", Category: CategoryInfoQuality, Description: "Tests for fabrication of false information", DefaultAttacks: []string{"prompt-injection", "roleplay"}, Premium: true},
+	"misinformation-disinformation": {ID: "misinformation-disinformation", Name: "Disinformation Campaigns", Category: CategoryInfoQuality, Description: "Tests handling of false information", DefaultAttacks: []string{"prompt-injection", "roleplay"}, Premium: true},
 
-	// Agent-Specific
+	// Agent-Specific (Premium)
 	"memory-poisoning": {ID: "memory-poisoning", Name: "Agentic Memory Poisoning", Category: CategoryAgentSpecific, Description: "Tests for memory poisoning attacks", DefaultAttacks: []string{"context-poisoning", "prompt-injection"}, Premium: true},
 	"rag-poisoning":    {ID: "rag-poisoning", Name: "RAG Poisoning", Category: CategoryAgentSpecific, Description: "Tests for RAG retrieval poisoning", DefaultAttacks: []string{"context-poisoning", "prompt-injection"}, Premium: true},
-	"tool-discovery":   {ID: "tool-discovery", Name: "Tool Discovery", Category: CategoryAgentSpecific, Description: "Tests for tool enumeration", DefaultAttacks: []string{"prompt-probing", "gray-box"}, Premium: false},
+	"tool-discovery":   {ID: "tool-discovery", Name: "Tool Discovery", Category: CategoryAgentSpecific, Description: "Tests for tool enumeration", DefaultAttacks: []string{"prompt-probing", "gray-box"}, Premium: true},
 
-	// Resource Attacks
-	"unbounded-consumption": {ID: "unbounded-consumption", Name: "Unbounded Consumption", Category: CategoryResourceAttacks, Description: "Tests for resource exhaustion", DefaultAttacks: []string{"prompt-injection", "goal-redirection"}, Premium: false},
-	"reasoning-dos":         {ID: "reasoning-dos", Name: "Reasoning DoS", Category: CategoryResourceAttacks, Description: "Tests for computational exhaustion", DefaultAttacks: []string{"prompt-injection", "math-problem"}, Premium: false},
+	// Resource Attacks (Premium)
+	"unbounded-consumption": {ID: "unbounded-consumption", Name: "Unbounded Consumption", Category: CategoryResourceAttacks, Description: "Tests for resource exhaustion", DefaultAttacks: []string{"prompt-injection", "goal-redirection"}, Premium: true},
+	"reasoning-dos":         {ID: "reasoning-dos", Name: "Reasoning DoS", Category: CategoryResourceAttacks, Description: "Tests for computational exhaustion", DefaultAttacks: []string{"prompt-injection", "math-problem"}, Premium: true},
 }
 
 // AttackCatalog contains all attack technique definitions.
@@ -299,13 +299,19 @@ func GetUniqueVulnerabilitiesForFrameworks(frameworkIDs []string) []string {
 }
 
 // GetBasicScanVulnerabilities returns vulnerability IDs for basic scan.
+// Only includes non-premium vulnerabilities from Prompt Security and PII Protection categories.
 func GetBasicScanVulnerabilities() []string {
 	return []string{
+		// Prompt Security (free)
 		"prompt-extraction",
 		"prompt-override",
+		"indirect-injection",
+		"ascii-smuggling",
+		// PII Protection (free)
 		"pii-direct",
-		"sql-injection",
-		"excessive-agency",
+		"pii-api-db",
+		"pii-session",
+		"cross-session-leakage",
 	}
 }
 
