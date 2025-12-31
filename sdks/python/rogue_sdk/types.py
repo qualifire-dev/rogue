@@ -244,6 +244,8 @@ class RedTeamResults(BaseModel):
     overall_risk_score: Optional[float] = Field(
         default=None,
         description="Overall risk score 0-10",
+        ge=0.0,
+        le=10.0,
     )
 
 
