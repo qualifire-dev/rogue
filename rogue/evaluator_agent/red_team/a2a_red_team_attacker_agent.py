@@ -133,7 +133,7 @@ class A2ARedTeamAttackerAgent(BaseRedTeamAttackerAgent):
                                     response_text += str(text_content)
                             elif hasattr(root, "text"):
                                 # Fallback: try direct text access
-                                text_content = getattr(root, "text", None)
+                                text_content =root.text
                                 if text_content:
                                     response_text += str(text_content)
 
