@@ -6,343 +6,359 @@ These mappings are used for compliance report generation only -
 they do not drive test execution.
 """
 
+from enum import Enum
 from typing import Dict, List, Optional
 
 from ..models import FrameworkDef
+from .vulnerabilities import VulnerabilityId
+
+
+class FrameworkId(str, Enum):
+    """Enum of all framework IDs for type safety."""
+
+    OWASP_LLM = "owasp-llm"
+    MITRE_ATLAS = "mitre-atlas"
+    NIST_AI = "nist-ai"
+    ISO_42001 = "iso-42001"
+    EU_AI_ACT = "eu-ai-act"
+    GDPR = "gdpr"
+    OWASP_API = "owasp-api"
+    BASIC_SECURITY = "basic-security"
+
 
 # =============================================================================
 # FRAMEWORK DEFINITIONS
 # =============================================================================
 
 OWASP_LLM_TOP_10 = FrameworkDef(
-    id="owasp-llm",
+    id=FrameworkId.OWASP_LLM,
     name="OWASP LLM Top 10",
     description="OWASP Top 10 for LLM Applications 2025",
     vulnerabilities=[
         # LLM01: Prompt Injection
-        "prompt-extraction",
-        "prompt-override",
-        "indirect-injection",
-        "ascii-smuggling",
+        VulnerabilityId.PROMPT_EXTRACTION,
+        VulnerabilityId.PROMPT_OVERRIDE,
+        VulnerabilityId.INDIRECT_INJECTION,
+        VulnerabilityId.ASCII_SMUGGLING,
         # LLM02: Sensitive Information Disclosure
-        "pii-direct",
-        "pii-api-db",
-        "pii-session",
-        "pii-social",
-        "cross-session-leakage",
+        VulnerabilityId.PII_DIRECT,
+        VulnerabilityId.PII_API_DB,
+        VulnerabilityId.PII_SESSION,
+        VulnerabilityId.PII_SOCIAL,
+        VulnerabilityId.CROSS_SESSION_LEAKAGE,
         # LLM03: Supply Chain
-        "ip-violations",
+        VulnerabilityId.IP_VIOLATIONS,
         # LLM04: Data and Model Poisoning
-        "memory-poisoning",
-        "rag-poisoning",
+        VulnerabilityId.MEMORY_POISONING,
+        VulnerabilityId.RAG_POISONING,
         # LLM05: Improper Output Handling
-        "sql-injection",
-        "shell-injection",
-        "malicious-code",
+        VulnerabilityId.SQL_INJECTION,
+        VulnerabilityId.SHELL_INJECTION,
+        VulnerabilityId.MALICIOUS_CODE,
         # LLM06: Excessive Agency
-        "excessive-agency",
-        "rbac",
-        "bola",
-        "bfla",
+        VulnerabilityId.EXCESSIVE_AGENCY,
+        VulnerabilityId.RBAC,
+        VulnerabilityId.BOLA,
+        VulnerabilityId.BFLA,
         # LLM07: System Prompt Leakage
-        "prompt-extraction",
+        VulnerabilityId.PROMPT_EXTRACTION,
         # LLM08: Vector and Embedding Weaknesses
-        "rag-exfiltration",
+        VulnerabilityId.RAG_EXFILTRATION,
         # LLM09: Misinformation
-        "hallucination",
-        "unverifiable-claims",
-        "misinformation-disinformation",
-        "overreliance",
+        VulnerabilityId.HALLUCINATION,
+        VulnerabilityId.UNVERIFIABLE_CLAIMS,
+        VulnerabilityId.MISINFORMATION_DISINFORMATION,
+        VulnerabilityId.OVERRELIANCE,
         # LLM10: Unbounded Consumption
-        "unbounded-consumption",
-        "reasoning-dos",
-        "divergent-repetition",
+        VulnerabilityId.UNBOUNDED_CONSUMPTION,
+        VulnerabilityId.REASONING_DOS,
+        VulnerabilityId.DIVERGENT_REPETITION,
         # Content safety
-        "hate-speech",
-        "explicit-content",
-        "violent-crime",
-        "sexual-crime",
-        "child-exploitation",
-        "harassment",
-        "personal-attacks",
-        "profanity",
-        "graphic-content",
-        "self-harm",
-        "dangerous-activity",
+        VulnerabilityId.HATE_SPEECH,
+        VulnerabilityId.EXPLICIT_CONTENT,
+        VulnerabilityId.VIOLENT_CRIME,
+        VulnerabilityId.SEXUAL_CRIME,
+        VulnerabilityId.CHILD_EXPLOITATION,
+        VulnerabilityId.HARASSMENT,
+        VulnerabilityId.PERSONAL_ATTACKS,
+        VulnerabilityId.PROFANITY,
+        VulnerabilityId.GRAPHIC_CONTENT,
+        VulnerabilityId.SELF_HARM,
+        VulnerabilityId.DANGEROUS_ACTIVITY,
         # Bias
-        "bias-age",
-        "bias-gender",
-        "bias-race",
-        "bias-disability",
+        VulnerabilityId.BIAS_AGE,
+        VulnerabilityId.BIAS_GENDER,
+        VulnerabilityId.BIAS_RACE,
+        VulnerabilityId.BIAS_DISABILITY,
         # Technical
-        "ssrf",
-        "debug-access",
+        VulnerabilityId.SSRF,
+        VulnerabilityId.DEBUG_ACCESS,
         # Specialized threats
-        "cybercrime",
-        "wmd-content",
-        "weapons-content",
-        "ied-content",
-        "drugs",
-        "methamphetamine",
-        "extremism",
-        "illegal-activity",
-        "non-violent-crime",
-        "ip-theft",
-        "unauthorized-advice",
+        VulnerabilityId.CYBERCRIME,
+        VulnerabilityId.WMD_CONTENT,
+        VulnerabilityId.WEAPONS_CONTENT,
+        VulnerabilityId.IED_CONTENT,
+        VulnerabilityId.DRUGS,
+        VulnerabilityId.METHAMPHETAMINE,
+        VulnerabilityId.EXTREMISM,
+        VulnerabilityId.ILLEGAL_ACTIVITY,
+        VulnerabilityId.NON_VIOLENT_CRIME,
+        VulnerabilityId.IP_THEFT,
+        VulnerabilityId.UNAUTHORIZED_ADVICE,
     ],
 )
 
 MITRE_ATLAS = FrameworkDef(
-    id="mitre-atlas",
+    id=FrameworkId.MITRE_ATLAS,
     name="MITRE ATLAS",
     description="MITRE Adversarial Threat Landscape for AI Systems",
     vulnerabilities=[
         # Prompt/Input attacks
-        "ascii-smuggling",
-        "prompt-extraction",
-        "prompt-override",
-        "indirect-injection",
+        VulnerabilityId.ASCII_SMUGGLING,
+        VulnerabilityId.PROMPT_EXTRACTION,
+        VulnerabilityId.PROMPT_OVERRIDE,
+        VulnerabilityId.INDIRECT_INJECTION,
         # Privacy
-        "privacy-violation",
-        "pii-api-db",
-        "pii-direct",
-        "pii-session",
-        "pii-social",
+        VulnerabilityId.PRIVACY_VIOLATION,
+        VulnerabilityId.PII_API_DB,
+        VulnerabilityId.PII_DIRECT,
+        VulnerabilityId.PII_SESSION,
+        VulnerabilityId.PII_SOCIAL,
         # System compromise
-        "excessive-agency",
-        "ip-violations",
+        VulnerabilityId.EXCESSIVE_AGENCY,
+        VulnerabilityId.IP_VIOLATIONS,
         # Content safety
-        "child-exploitation",
-        "wmd-content",
-        "graphic-content",
-        "cybercrime",
-        "harassment",
-        "hate-speech",
-        "illegal-activity",
-        "methamphetamine",
-        "drugs",
-        "ip-theft",
-        "weapons-content",
-        "personal-attacks",
-        "profanity",
-        "extremism",
-        "non-violent-crime",
-        "misinformation-disinformation",
-        "self-harm",
-        "explicit-content",
-        "unauthorized-advice",
-        "dangerous-activity",
-        "ied-content",
+        VulnerabilityId.CHILD_EXPLOITATION,
+        VulnerabilityId.WMD_CONTENT,
+        VulnerabilityId.GRAPHIC_CONTENT,
+        VulnerabilityId.CYBERCRIME,
+        VulnerabilityId.HARASSMENT,
+        VulnerabilityId.HATE_SPEECH,
+        VulnerabilityId.ILLEGAL_ACTIVITY,
+        VulnerabilityId.METHAMPHETAMINE,
+        VulnerabilityId.DRUGS,
+        VulnerabilityId.IP_THEFT,
+        VulnerabilityId.WEAPONS_CONTENT,
+        VulnerabilityId.PERSONAL_ATTACKS,
+        VulnerabilityId.PROFANITY,
+        VulnerabilityId.EXTREMISM,
+        VulnerabilityId.NON_VIOLENT_CRIME,
+        VulnerabilityId.MISINFORMATION_DISINFORMATION,
+        VulnerabilityId.SELF_HARM,
+        VulnerabilityId.EXPLICIT_CONTENT,
+        VulnerabilityId.UNAUTHORIZED_ADVICE,
+        VulnerabilityId.DANGEROUS_ACTIVITY,
+        VulnerabilityId.IED_CONTENT,
         # Technical
-        "debug-access",
-        "shell-injection",
-        "sql-injection",
-        "rbac",
-        "malicious-code",
-        "sexual-crime",
-        "violent-crime",
-        "ssrf",
+        VulnerabilityId.DEBUG_ACCESS,
+        VulnerabilityId.SHELL_INJECTION,
+        VulnerabilityId.SQL_INJECTION,
+        VulnerabilityId.RBAC,
+        VulnerabilityId.MALICIOUS_CODE,
+        VulnerabilityId.SEXUAL_CRIME,
+        VulnerabilityId.VIOLENT_CRIME,
+        VulnerabilityId.SSRF,
         # Information quality
-        "hallucination",
+        VulnerabilityId.HALLUCINATION,
         # Business logic
-        "hijacking",
-        "imitation",
-        "competitors",
+        VulnerabilityId.HIJACKING,
+        VulnerabilityId.IMITATION,
+        VulnerabilityId.COMPETITORS,
     ],
 )
 
 NIST_AI_RMF = FrameworkDef(
-    id="nist-ai",
+    id=FrameworkId.NIST_AI,
     name="NIST AI RMF",
     description="NIST AI Risk Management Framework",
     vulnerabilities=[
         # Excessive agency
-        "excessive-agency",
+        VulnerabilityId.EXCESSIVE_AGENCY,
         # Information integrity
-        "misinformation-disinformation",
+        VulnerabilityId.MISINFORMATION_DISINFORMATION,
         # Privacy
-        "privacy-violation",
-        "pii-api-db",
-        "pii-direct",
-        "pii-session",
-        "pii-social",
+        VulnerabilityId.PRIVACY_VIOLATION,
+        VulnerabilityId.PII_API_DB,
+        VulnerabilityId.PII_DIRECT,
+        VulnerabilityId.PII_SESSION,
+        VulnerabilityId.PII_SOCIAL,
         # Safety
-        "wmd-content",
-        "weapons-content",
-        "dangerous-activity",
-        "cybercrime",
+        VulnerabilityId.WMD_CONTENT,
+        VulnerabilityId.WEAPONS_CONTENT,
+        VulnerabilityId.DANGEROUS_ACTIVITY,
+        VulnerabilityId.CYBERCRIME,
         # Technical
-        "shell-injection",
-        "sql-injection",
-        "bfla",
-        "bola",
-        "rbac",
+        VulnerabilityId.SHELL_INJECTION,
+        VulnerabilityId.SQL_INJECTION,
+        VulnerabilityId.BFLA,
+        VulnerabilityId.BOLA,
+        VulnerabilityId.RBAC,
         # Content
-        "harassment",
-        "hate-speech",
-        "personal-attacks",
+        VulnerabilityId.HARASSMENT,
+        VulnerabilityId.HATE_SPEECH,
+        VulnerabilityId.PERSONAL_ATTACKS,
     ],
 )
 
 ISO_42001 = FrameworkDef(
-    id="iso-42001",
+    id=FrameworkId.ISO_42001,
     name="ISO/IEC 42001",
     description="ISO/IEC 42001 AI Management System",
     vulnerabilities=[
         # Governance
-        "excessive-agency",
-        "overreliance",
+        VulnerabilityId.EXCESSIVE_AGENCY,
+        VulnerabilityId.OVERRELIANCE,
         # Bias
-        "bias-disability",
-        "bias-gender",
-        "bias-age",
-        "bias-race",
-        "bias-political",
-        "bias-religion",
+        VulnerabilityId.BIAS_DISABILITY,
+        VulnerabilityId.BIAS_GENDER,
+        VulnerabilityId.BIAS_AGE,
+        VulnerabilityId.BIAS_RACE,
+        VulnerabilityId.BIAS_POLITICAL,
+        VulnerabilityId.BIAS_RELIGION,
         # Content safety
-        "hate-speech",
+        VulnerabilityId.HATE_SPEECH,
         # Privacy
-        "privacy-violation",
-        "pii-api-db",
-        "pii-direct",
-        "pii-session",
-        "pii-social",
+        VulnerabilityId.PRIVACY_VIOLATION,
+        VulnerabilityId.PII_API_DB,
+        VulnerabilityId.PII_DIRECT,
+        VulnerabilityId.PII_SESSION,
+        VulnerabilityId.PII_SOCIAL,
         # Security
-        "ascii-smuggling",
-        "prompt-extraction",
-        "shell-injection",
-        "sql-injection",
-        "debug-access",
-        "ssrf",
+        VulnerabilityId.ASCII_SMUGGLING,
+        VulnerabilityId.PROMPT_EXTRACTION,
+        VulnerabilityId.SHELL_INJECTION,
+        VulnerabilityId.SQL_INJECTION,
+        VulnerabilityId.DEBUG_ACCESS,
+        VulnerabilityId.SSRF,
         # Safety
-        "wmd-content",
-        "child-exploitation",
-        "cybercrime",
-        "misinformation-disinformation",
-        "violent-crime",
-        "malicious-code",
+        VulnerabilityId.WMD_CONTENT,
+        VulnerabilityId.CHILD_EXPLOITATION,
+        VulnerabilityId.CYBERCRIME,
+        VulnerabilityId.MISINFORMATION_DISINFORMATION,
+        VulnerabilityId.VIOLENT_CRIME,
+        VulnerabilityId.MALICIOUS_CODE,
         # Information quality
-        "hallucination",
-        "unverifiable-claims",
+        VulnerabilityId.HALLUCINATION,
+        VulnerabilityId.UNVERIFIABLE_CLAIMS,
         # Business
-        "hijacking",
-        "imitation",
+        VulnerabilityId.HIJACKING,
+        VulnerabilityId.IMITATION,
     ],
 )
 
 EU_AI_ACT = FrameworkDef(
-    id="eu-ai-act",
+    id=FrameworkId.EU_AI_ACT,
     name="EU AI Act",
     description="European Union Artificial Intelligence Act",
     vulnerabilities=[
         # High-risk requirements
-        "excessive-agency",
-        "misinformation-disinformation",
-        "overreliance",
+        VulnerabilityId.EXCESSIVE_AGENCY,
+        VulnerabilityId.MISINFORMATION_DISINFORMATION,
+        VulnerabilityId.OVERRELIANCE,
         # Privacy (GDPR alignment)
-        "pii-direct",
-        "pii-session",
-        "privacy-violation",
-        "pii-api-db",
+        VulnerabilityId.PII_DIRECT,
+        VulnerabilityId.PII_SESSION,
+        VulnerabilityId.PRIVACY_VIOLATION,
+        VulnerabilityId.PII_API_DB,
         # Technical safety
-        "shell-injection",
-        "sql-injection",
-        "ssrf",
+        VulnerabilityId.SHELL_INJECTION,
+        VulnerabilityId.SQL_INJECTION,
+        VulnerabilityId.SSRF,
         # Non-discrimination
-        "hate-speech",
+        VulnerabilityId.HATE_SPEECH,
         # Information quality
-        "hallucination",
+        VulnerabilityId.HALLUCINATION,
         # Business
-        "hijacking",
-        "imitation",
+        VulnerabilityId.HIJACKING,
+        VulnerabilityId.IMITATION,
     ],
 )
 
 GDPR = FrameworkDef(
-    id="gdpr",
+    id=FrameworkId.GDPR,
     name="GDPR",
     description="General Data Protection Regulation",
     vulnerabilities=[
         # Data protection
-        "privacy-violation",
-        "pii-api-db",
-        "pii-direct",
-        "pii-session",
-        "pii-social",
-        "cross-session-leakage",
+        VulnerabilityId.PRIVACY_VIOLATION,
+        VulnerabilityId.PII_API_DB,
+        VulnerabilityId.PII_DIRECT,
+        VulnerabilityId.PII_SESSION,
+        VulnerabilityId.PII_SOCIAL,
+        VulnerabilityId.CROSS_SESSION_LEAKAGE,
         # Information integrity
-        "misinformation-disinformation",
+        VulnerabilityId.MISINFORMATION_DISINFORMATION,
         # Non-discrimination
-        "bias-disability",
-        "bias-gender",
-        "bias-age",
-        "bias-race",
-        "hate-speech",
+        VulnerabilityId.BIAS_DISABILITY,
+        VulnerabilityId.BIAS_GENDER,
+        VulnerabilityId.BIAS_AGE,
+        VulnerabilityId.BIAS_RACE,
+        VulnerabilityId.HATE_SPEECH,
         # Access control
-        "rbac",
-        "bola",
-        "bfla",
+        VulnerabilityId.RBAC,
+        VulnerabilityId.BOLA,
+        VulnerabilityId.BFLA,
         # Security
-        "prompt-extraction",
-        "shell-injection",
-        "sql-injection",
-        "debug-access",
-        "ssrf",
+        VulnerabilityId.PROMPT_EXTRACTION,
+        VulnerabilityId.SHELL_INJECTION,
+        VulnerabilityId.SQL_INJECTION,
+        VulnerabilityId.DEBUG_ACCESS,
+        VulnerabilityId.SSRF,
         # Other
-        "overreliance",
-        "cybercrime",
-        "hallucination",
+        VulnerabilityId.OVERRELIANCE,
+        VulnerabilityId.CYBERCRIME,
+        VulnerabilityId.HALLUCINATION,
     ],
 )
 
 OWASP_API_TOP_10 = FrameworkDef(
-    id="owasp-api",
+    id=FrameworkId.OWASP_API,
     name="OWASP API Top 10",
     description="OWASP API Security Top 10",
     vulnerabilities=[
         # API1: Broken Object Level Authorization
-        "bola",
+        VulnerabilityId.BOLA,
         # API2: Broken Authentication
-        "rbac",
+        VulnerabilityId.RBAC,
         # API3: Broken Object Property Level Authorization
-        "bfla",
+        VulnerabilityId.BFLA,
         # API4: Unrestricted Resource Consumption
-        "unbounded-consumption",
+        VulnerabilityId.UNBOUNDED_CONSUMPTION,
         # API5: Broken Function Level Authorization
-        "excessive-agency",
+        VulnerabilityId.EXCESSIVE_AGENCY,
         # API6: Unrestricted Access to Sensitive Business Flows
-        "overreliance",
+        VulnerabilityId.OVERRELIANCE,
         # API7: Server Side Request Forgery
-        "ssrf",
+        VulnerabilityId.SSRF,
         # API8: Security Misconfiguration
-        "debug-access",
+        VulnerabilityId.DEBUG_ACCESS,
         # API9: Improper Inventory Management
-        "privacy-violation",
-        "pii-api-db",
-        "pii-session",
+        VulnerabilityId.PRIVACY_VIOLATION,
+        VulnerabilityId.PII_API_DB,
+        VulnerabilityId.PII_SESSION,
         # API10: Unsafe Consumption of APIs
-        "misinformation-disinformation",
-        "shell-injection",
-        "sql-injection",
-        "unauthorized-advice",
+        VulnerabilityId.MISINFORMATION_DISINFORMATION,
+        VulnerabilityId.SHELL_INJECTION,
+        VulnerabilityId.SQL_INJECTION,
+        VulnerabilityId.UNAUTHORIZED_ADVICE,
     ],
 )
 
 BASIC_SECURITY = FrameworkDef(
-    id="basic-security",
+    id=FrameworkId.BASIC_SECURITY,
     name="Basic Security",
     description="Basic security testing for AI agents",
     vulnerabilities=[
         # Prompt security
-        "prompt-extraction",
-        "prompt-override",
+        VulnerabilityId.PROMPT_EXTRACTION,
+        VulnerabilityId.PROMPT_OVERRIDE,
         # PII
-        "pii-direct",
+        VulnerabilityId.PII_DIRECT,
         # Technical
-        "sql-injection",
-        "shell-injection",
+        VulnerabilityId.SQL_INJECTION,
+        VulnerabilityId.SHELL_INJECTION,
         # Agency
-        "excessive-agency",
+        VulnerabilityId.EXCESSIVE_AGENCY,
     ],
 )
 
