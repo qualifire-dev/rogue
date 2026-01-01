@@ -47,14 +47,16 @@ class PromptInjection(BaseSingleTurnAttack):
 
                     self._prompt_pool.append(q_gen)
         except Exception as e:
-            logger.warning(f"Failed to get Qualifire prompt: {e}")
+            logger.exception(f"Failed to get Qualifire prompt: {e}")
 
         # 2. Standard Generators (always available)
-        self._prompt_pool.append(self._enhance_1)
-        self._prompt_pool.append(self._enhance_2)
-        self._prompt_pool.append(self._enhance_3)
-        self._prompt_pool.append(self._enhance_4)
-        self._prompt_pool.append(self._enhance_5)
+        self._prompt_pool = [
+            self._enhance_1,
+            self._enhance_2,
+            self._enhance_3,
+            self._enhance_4,
+            self._enhance_5,
+        ]
 
     def enhance(self, attack: str) -> str:
         """

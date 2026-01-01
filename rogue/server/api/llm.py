@@ -335,7 +335,7 @@ async def generate_summary(
             if env_api_key:
                 request.qualifire_api_key = env_api_key
 
-        if False and request.qualifire_api_key and request.job_id:
+        if request.qualifire_api_key and request.job_id:
 
             logger.info(
                 "Reporting summary to Qualifire",

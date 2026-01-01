@@ -8,12 +8,21 @@ LLMs to generate creative attacks combined with programmatic transformations.
 import asyncio
 from abc import ABC, abstractmethod
 from types import TracebackType
-from typing import Any, AsyncGenerator, Dict, Optional, Self, Tuple, Type
+from typing import Any, AsyncGenerator, Dict, Optional, Self, Type
 
 from loguru import logger
 from rogue_sdk.types import AuthType, Protocol, Transport
 
+from ...server.red_teaming.models import RedTeamConfig
 from ...server.red_teaming.orchestrator import RedTeamOrchestrator
+from .models import (
+    ChatUpdate,
+    DoneUpdate,
+    ErrorUpdate,
+    RedTeamUpdate,
+    ResultsUpdate,
+    StatusUpdate,
+)
 
 
 class BaseRedTeamAttackerAgent(ABC):
@@ -34,7 +43,7 @@ class BaseRedTeamAttackerAgent(ABC):
         transport: Optional[Transport],
         auth_type: AuthType,
         auth_credentials: Optional[str],
-        red_team_config,  # RedTeamConfig from rogue_sdk.types
+        red_team_config: RedTeamConfig,
         business_context: str,
         attacker_llm: str,
         attacker_llm_auth: Optional[str],
@@ -67,21 +76,9 @@ class BaseRedTeamAttackerAgent(ABC):
         self._judge_llm_aws_region = judge_llm_aws_region
         self._qualifire_api_key = qualifire_api_key
 
-        # Convert SDK RedTeamConfig to internal RedTeamConfig
-        from ...server.red_teaming.models import RedTeamConfig as InternalConfig
-
-        internal_config = InternalConfig(
-            scan_type=red_team_config.scan_type,
-            vulnerabilities=red_team_config.vulnerabilities,
-            attacks=red_team_config.attacks,
-            attacks_per_vulnerability=red_team_config.attacks_per_vulnerability,
-            frameworks=red_team_config.frameworks,
-            random_seed=red_team_config.random_seed,
-        )
-
         # Create the underlying orchestrator
         self._orchestrator = RedTeamOrchestrator(
-            config=internal_config,
+            config=red_team_config,
             business_context=business_context,
             qualifire_api_key=qualifire_api_key,
         )
@@ -104,19 +101,19 @@ class BaseRedTeamAttackerAgent(ABC):
         """Exit the async context."""
         logger.debug("Exiting RedTeamAttackerAgent context")
 
-    async def run(self) -> AsyncGenerator[Tuple[str, Any], None]:
+    async def run(self) -> AsyncGenerator[RedTeamUpdate, None]:
         """
         Run the red team attacks and yield progress updates.
 
         Yields:
-            Tuple[str, Any]: (update_type, data) where update_type is:
-                - "status": Status message string
-                - "chat": Chat message dict
-                - "vulnerability_result": Vulnerability result dict
-                - "results": Final RedTeamResults object
+            RedTeamUpdate: One of:
+                - StatusUpdate: Progress status messages
+                - ChatUpdate: Attack/response chat messages
+                - VulnerabilityResultUpdate: Result of testing a vulnerability
+                - ResultsUpdate: Final RedTeamResults object
         """
         # Use asyncio.Queue for real-time updates
-        update_queue: "asyncio.Queue[Tuple[str, Any]]" = asyncio.Queue()
+        update_queue: asyncio.Queue[RedTeamUpdate] = asyncio.Queue()
 
         # Create message sender that pushes updates to queue
         message_sender = self._create_streaming_message_sender(update_queue)
@@ -126,7 +123,9 @@ class BaseRedTeamAttackerAgent(ABC):
         total_vulns = len(self._vulnerabilities)
 
         # Yield initial status
-        yield "status", f"Starting red team scan: {total_vulns} vulnerabilities to test"
+        yield StatusUpdate(
+            message=f"Starting red team scan: {total_vulns} vulnerabilities to test",
+        )
 
         # Track if orchestrator finished
         orchestrator_done = False
@@ -140,14 +139,16 @@ class BaseRedTeamAttackerAgent(ABC):
                     message_sender=message_sender,
                     response_evaluator=response_evaluator,
                     progress_callback=lambda v, c, t: update_queue.put_nowait(
-                        ("status", f"Testing {c}/{t}: {v}"),
+                        StatusUpdate(message=f"Testing {c}/{t}: {v}"),
                     ),
                 )
                 orchestrator_done = True
-                await update_queue.put(("done", results))
+                await update_queue.put(DoneUpdate(results=results))
             except Exception as e:
                 orchestrator_done = True
-                await update_queue.put(("error", e))
+                await update_queue.put(
+                    ErrorUpdate(error=str(e), exception_type=type(e).__name__),
+                )
 
         # Start orchestrator in background
         orchestrator_task = asyncio.create_task(run_orchestrator())
@@ -157,18 +158,18 @@ class BaseRedTeamAttackerAgent(ABC):
             while not orchestrator_done or not update_queue.empty():
                 try:
                     # Wait for updates with timeout
-                    update_type, data = await asyncio.wait_for(
+                    update = await asyncio.wait_for(
                         update_queue.get(),
                         timeout=0.1,
                     )
 
-                    if update_type == "done":
-                        results = data
+                    if isinstance(update, DoneUpdate):
+                        results = update.results
                         break
-                    elif update_type == "error":
-                        raise data
+                    elif isinstance(update, ErrorUpdate):
+                        raise RuntimeError(f"{update.exception_type}: {update.error}")
                     else:
-                        yield update_type, data
+                        yield update
 
                 except asyncio.TimeoutError:
                     # No updates, continue loop
@@ -181,7 +182,7 @@ class BaseRedTeamAttackerAgent(ABC):
 
             # Yield final results
             if results:
-                yield "results", results
+                yield ResultsUpdate(results=results)
 
         except Exception:
             orchestrator_task.cancel()
@@ -190,7 +191,7 @@ class BaseRedTeamAttackerAgent(ABC):
 
     def _create_streaming_message_sender(
         self,
-        update_queue: "asyncio.Queue[Tuple[str, Any]]",
+        update_queue: asyncio.Queue[RedTeamUpdate],
     ):
         """Create message sender that streams chat updates via queue."""
 
@@ -198,13 +199,7 @@ class BaseRedTeamAttackerAgent(ABC):
             """Send a message and queue chat updates."""
             # Queue outgoing message (attack) - use "Rogue" role for TUI display
             await update_queue.put(
-                (
-                    "chat",
-                    {
-                        "role": "Rogue",
-                        "content": message,
-                    },
-                ),
+                ChatUpdate(role="Rogue", content=message),
             )
 
             # Send the actual message
@@ -212,13 +207,7 @@ class BaseRedTeamAttackerAgent(ABC):
 
             # Queue response - use "Agent Under Test" role for TUI display
             await update_queue.put(
-                (
-                    "chat",
-                    {
-                        "role": "Agent Under Test",
-                        "content": response,
-                    },
-                ),
+                ChatUpdate(role="Agent Under Test", content=response),
             )
 
             return response

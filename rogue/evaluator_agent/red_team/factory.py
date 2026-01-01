@@ -3,8 +3,9 @@
 from typing import Optional
 
 from loguru import logger
-from rogue_sdk.types import AuthType, Protocol, Transport
+from rogue_sdk.types import AuthType, Protocol, RedTeamConfig, Transport
 
+from ...server.red_teaming.models import RedTeamConfig as InternalRedTeamConfig
 from .a2a_red_team_attacker_agent import A2ARedTeamAttackerAgent
 from .base_red_team_attacker_agent import BaseRedTeamAttackerAgent
 from .mcp_red_team_attacker_agent import MCPRedTeamAttackerAgent
@@ -16,7 +17,7 @@ def create_red_team_attacker_agent(
     evaluated_agent_url: str,
     evaluated_agent_auth_type: AuthType,
     evaluated_agent_auth_credentials: Optional[str],
-    red_team_config,  # RedTeamConfig from rogue_sdk.types
+    red_team_config: RedTeamConfig,
     business_context: str,
     attacker_llm: str,
     attacker_llm_auth: Optional[str],
@@ -68,13 +69,23 @@ def create_red_team_attacker_agent(
         },
     )
 
+    # Convert SDK RedTeamConfig to internal RedTeamConfig
+    internal_config = InternalRedTeamConfig(
+        scan_type=red_team_config.scan_type,
+        vulnerabilities=red_team_config.vulnerabilities,
+        attacks=red_team_config.attacks,
+        attacks_per_vulnerability=red_team_config.attacks_per_vulnerability,
+        frameworks=red_team_config.frameworks,
+        random_seed=red_team_config.random_seed,
+    )
+
     common_kwargs = {
         "evaluated_agent_address": evaluated_agent_url,
         "protocol": protocol,
         "transport": transport,
         "auth_type": evaluated_agent_auth_type,
         "auth_credentials": evaluated_agent_auth_credentials,
-        "red_team_config": red_team_config,
+        "red_team_config": internal_config,
         "business_context": business_context,
         "attacker_llm": attacker_llm,
         "attacker_llm_auth": attacker_llm_auth,

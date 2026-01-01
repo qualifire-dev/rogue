@@ -100,42 +100,22 @@ class A2ARedTeamAttackerAgent(BaseRedTeamAttackerAgent):
             # If response is a Task, extract from artifacts
             if isinstance(response, Task):
                 logger.debug("Response is a Task, extracting from artifacts")
-                if hasattr(response, "artifacts") and response.artifacts:
+                if response.artifacts:
                     for artifact in response.artifacts:
-                        if hasattr(artifact, "parts") and artifact.parts:
+                        if artifact.parts:
                             for part in artifact.parts:
-                                if hasattr(part, "root") and part.root:
-                                    root = part.root
-                                    if hasattr(root, "kind") and root.kind == "text":
-                                        text_content = getattr(root, "text", None)
-                                        if text_content:
-                                            response_text += str(text_content)
-                # Also try output field
-                if (
-                    not response_text
-                    and hasattr(response, "output")
-                    and response.output
-                ):
-                    response_text = str(response.output)
+                                if part.root and part.root.kind == "text":
+                                    if part.root.text:
+                                        response_text += str(part.root.text)
 
             # If response is a Message, extract from parts
             elif isinstance(response, Message):
                 logger.debug("Response is a Message, extracting from parts")
-                if hasattr(response, "parts") and response.parts:
+                if response.parts:
                     for part in response.parts:
-                        if hasattr(part, "root") and part.root:
-                            root = part.root
-                            # Type guard: check if this is a text part
-                            if hasattr(root, "kind") and root.kind == "text":
-                                # For text parts, get the text attribute
-                                text_content = getattr(root, "text", None)
-                                if text_content:
-                                    response_text += str(text_content)
-                            elif hasattr(root, "text"):
-                                # Fallback: try direct text access
-                                text_content =root.text
-                                if text_content:
-                                    response_text += str(text_content)
+                        if part.root and part.root.kind == "text":
+                            if part.root.text:
+                                response_text += str(part.root.text)
 
             if not response_text:
                 logger.warning(
