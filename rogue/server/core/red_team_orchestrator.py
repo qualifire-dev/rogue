@@ -16,6 +16,12 @@ from rogue_sdk.types import (
 
 from ...common.logging import get_logger
 from ...evaluator_agent.red_team.factory import create_red_team_attacker_agent
+from ...evaluator_agent.red_team.models import (
+    ChatUpdate,
+    ResultsUpdate,
+    StatusUpdate,
+    VulnerabilityResultUpdate,
+)
 
 logger = get_logger(__name__)
 
@@ -127,21 +133,21 @@ class RedTeamOrchestrator:
             # Run the attacker agent
             async with self.attacker_agent:
                 # Stream updates from the attacker agent
-                async for update_type, data in self.attacker_agent.run():
-                    if update_type == "status":
-                        self.logger.debug(f"Status update: {data}")
-                        yield "status", data
-                    elif update_type == "chat":
+                async for update in self.attacker_agent.run():
+                    if isinstance(update, StatusUpdate):
+                        self.logger.debug(f"Status update: {update.message}")
+                        yield "status", update.message
+                    elif isinstance(update, ChatUpdate):
                         self.logger.debug("Chat update received")
-                        yield "chat", data
-                    elif update_type == "vulnerability_result":
+                        yield "chat", {"role": update.role, "content": update.content}
+                    elif isinstance(update, VulnerabilityResultUpdate):
                         self.logger.info(
-                            f"Vulnerability result: {data.get('vulnerability_id')}",
+                            f"Vulnerability result: {update.vulnerability_id}",
                         )
-                        yield "status", f"✓ Completed testing: {data.get('vulnerability_id')}"  # noqa: E501
-                    elif update_type == "results":
+                        yield "status", f"✓ Completed testing: {update.vulnerability_id}"  # noqa: E501
+                    elif isinstance(update, ResultsUpdate):
                         self.logger.info("✅ Red team scan completed")
-                        yield "results", data
+                        yield "results", update.results
                         return
 
                 # If we get here without results, something went wrong

@@ -30,6 +30,9 @@ class MCPRedTeamAttackerAgent(BaseRedTeamAttackerAgent):
 
     async def _create_client(self) -> "Client[SSETransport | StreamableHttpTransport]":
         """Create a new MCP client."""
+        if self._transport is None:
+            raise ValueError("Transport is required for MCP")
+
         return await create_mcp_client(
             url=self._evaluated_agent_address,
             transport=self._transport,
