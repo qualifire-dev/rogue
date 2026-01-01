@@ -136,13 +136,15 @@ func (sdk *RogueSDK) CreateEvaluation(ctx context.Context, request EvaluationReq
 	// Route to appropriate endpoint based on evaluation mode
 	if request.AgentConfig.EvaluationMode == "red_team" {
 		// Transform to RedTeamRequest format
+		// Note: We manually map fields because the red team API expects different JSON keys
+		// (e.g., "evaluated_agent_protocol" vs AgentConfig's "protocol")
 		redTeamReq := map[string]interface{}{
 			"red_team_config":                    request.AgentConfig.RedTeamConfig,
 			"evaluated_agent_url":                request.AgentConfig.EvaluatedAgentURL,
 			"evaluated_agent_protocol":           request.AgentConfig.EvaluatedAgentProtocol,
 			"evaluated_agent_transport":          request.AgentConfig.EvaluatedAgentTransport,
 			"evaluated_agent_auth_type":          request.AgentConfig.EvaluatedAgentAuthType,
-			"evaluated_agent_auth_credentials":   nil,
+			"evaluated_agent_auth_credentials":   request.AgentConfig.EvaluatedAgentCredentials,
 			"judge_llm":                          request.AgentConfig.JudgeLLMModel,
 			"judge_llm_api_key":                  request.AgentConfig.JudgeLLMAPIKey,
 			"judge_llm_aws_access_key_id":        request.AgentConfig.JudgeLLMAWSAccessKeyID,

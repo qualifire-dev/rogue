@@ -10,12 +10,6 @@ func (m *Model) initializeRedTeamReportViewport() {
 		return
 	}
 
-	// Convert data to ReportData struct
-	reportData := m.convertToReportData(m.redTeamReportData)
-	if reportData == nil {
-		return
-	}
-
 	// Calculate viewport dimensions
 	viewportHeight := m.height - 2 // -2 for footer
 
@@ -23,7 +17,7 @@ func (m *Model) initializeRedTeamReportViewport() {
 	m.redTeamReportViewport.SetSize(m.width, viewportHeight)
 
 	// Build report content
-	content := redteam_report.BuildReportContent(m.width, reportData)
+	content := redteam_report.BuildReportContent(m.width, m.redTeamReportData)
 
 	// Set content and go to top
 	m.redTeamReportViewport.SetContent(content)

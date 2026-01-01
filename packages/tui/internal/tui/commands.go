@@ -10,6 +10,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/rogue/tui/internal/screens/redteam_report"
 )
 
 // autoRefreshCmd creates a command that sends AutoRefreshMsg after a delay
@@ -221,8 +222,8 @@ func (m *Model) fetchRedTeamReport(jobID string) tea.Cmd {
 			}
 		}
 
-		// Parse the JSON response
-		var reportData interface{}
+		// Parse the JSON response directly into ReportData struct
+		var reportData redteam_report.ReportData
 		if err := json.NewDecoder(resp.Body).Decode(&reportData); err != nil {
 			return RedTeamReportFetchedMsg{
 				ReportData: nil,
@@ -231,7 +232,7 @@ func (m *Model) fetchRedTeamReport(jobID string) tea.Cmd {
 		}
 
 		return RedTeamReportFetchedMsg{
-			ReportData: reportData,
+			ReportData: &reportData,
 			Err:        nil,
 		}
 	})

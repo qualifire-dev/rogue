@@ -7,6 +7,7 @@ import (
 	"github.com/rogue/tui/internal/components"
 	"github.com/rogue/tui/internal/screens/config"
 	"github.com/rogue/tui/internal/screens/redteam"
+	"github.com/rogue/tui/internal/screens/redteam_report"
 	"github.com/rogue/tui/internal/screens/scenarios"
 )
 
@@ -30,7 +31,7 @@ type SummaryGeneratedMsg struct {
 
 // RedTeamReportFetchedMsg contains the result of red team report fetch
 type RedTeamReportFetchedMsg struct {
-	ReportData interface{}
+	ReportData *redteam_report.ReportData
 	Err        error
 }
 
@@ -105,7 +106,7 @@ type Model struct {
 	redTeamConfigState *redteam.RedTeamConfigState
 
 	// Red Team Report state
-	redTeamReportData interface{} // Will hold JSON report data from Python
+	redTeamReportData *redteam_report.ReportData
 }
 
 // Evaluation represents an evaluation
