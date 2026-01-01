@@ -194,6 +194,10 @@ class BaseEvaluatorAgent(ABC):
         self._deep_test_mode = deep_test_mode
         self._chat_update_callback = chat_update_callback
 
+        # Optional attributes for red team agents (set by subclasses)
+        self._vulnerability_scan_results: Optional[list] = None
+        self._attack_coverage: Optional[dict] = None
+
     def get_underlying_agent(self) -> "LlmAgent":
         # adk imports take a while, importing them here to reduce rogue startup time.
         from google.adk.agents import LlmAgent
@@ -537,9 +541,9 @@ class BaseEvaluatorAgent(ABC):
         results = self._evaluation_results
 
         # Add scan log and attack stats for red team agents
-        if hasattr(self, "_vulnerability_scan_results"):
+        if self._vulnerability_scan_results is not None:
             results.vulnerability_scan_log = self._vulnerability_scan_results
-        if hasattr(self, "_attack_coverage"):
+        if self._attack_coverage is not None:
             results.attack_usage_stats = self._attack_coverage
 
         return results
