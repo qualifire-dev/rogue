@@ -49,12 +49,12 @@ func (m Model) handlePasteMsg(msg tea.PasteMsg) (Model, tea.Cmd) {
 
 		// Only paste into text fields (Agent URL and Judge Model)
 		switch m.evalState.currentField {
-		case 0: // Agent URL
+		case EvalFieldAgentURL:
 			// Insert at cursor position
 			runes := []rune(m.evalState.AgentURL)
 			m.evalState.AgentURL = string(runes[:m.evalState.cursorPos]) + cleanText + string(runes[m.evalState.cursorPos:])
 			m.evalState.cursorPos += len([]rune(cleanText))
-		case 3: // Judge Model
+		case EvalFieldJudgeModel:
 			// Insert at cursor position
 			runes := []rune(m.evalState.JudgeModel)
 			m.evalState.JudgeModel = string(runes[:m.evalState.cursorPos]) + cleanText + string(runes[m.evalState.cursorPos:])

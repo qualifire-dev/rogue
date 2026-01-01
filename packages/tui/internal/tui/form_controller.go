@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"fmt"
-
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/rogue/tui/internal/components"
 )
@@ -26,9 +24,9 @@ func HandleEvalFormInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 			m.evalState.currentField--
 			// Set cursor to end of field content when switching fields
 			switch m.evalState.currentField {
-			case 0:
+			case EvalFieldAgentURL:
 				m.evalState.cursorPos = len([]rune(m.evalState.AgentURL))
-			case 3:
+			case EvalFieldJudgeModel:
 				m.evalState.cursorPos = len([]rune(m.evalState.JudgeModel))
 			default:
 				m.evalState.cursorPos = 0
@@ -45,9 +43,9 @@ func HandleEvalFormInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 			m.evalState.currentField++
 			// Set cursor to end of field content when switching fields
 			switch m.evalState.currentField {
-			case 0:
+			case EvalFieldAgentURL:
 				m.evalState.cursorPos = len([]rune(m.evalState.AgentURL))
-			case 3:
+			case EvalFieldJudgeModel:
 				m.evalState.cursorPos = len([]rune(m.evalState.JudgeModel))
 			default:
 				m.evalState.cursorPos = 0
@@ -59,17 +57,17 @@ func HandleEvalFormInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 		// Clear the red team config saved banner when user starts interacting
 		m.evalState.RedTeamConfigSaved = false
 		switch m.evalState.currentField {
-		case 0, 3: // Text fields: AgentURL, JudgeModel
+		case EvalFieldAgentURL, EvalFieldJudgeModel: // Text fields
 			if m.evalState.cursorPos > 0 {
 				m.evalState.cursorPos--
 			}
-		case 1: // Protocol dropdown
+		case EvalFieldProtocol:
 			m.evalState.cycleProtocol(true) // cycle backwards
-		case 2: // Transport dropdown
+		case EvalFieldTransport:
 			m.evalState.cycleTransport(true) // cycle backwards
-		case 5: // EvaluationMode dropdown
+		case EvalFieldEvaluationMode:
 			m.evalState.cycleEvaluationMode(true) // cycle backwards
-		case 6: // ScanType dropdown (only in Red Team mode)
+		case EvalFieldScanType: // ScanType dropdown (only in Red Team mode)
 			if m.evalState.EvaluationMode == EvaluationModeRedTeam {
 				m.evalState.cycleScanType(true) // cycle backwards
 			}
@@ -80,23 +78,23 @@ func HandleEvalFormInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 		// Clear the red team config saved banner when user starts interacting
 		m.evalState.RedTeamConfigSaved = false
 		switch m.evalState.currentField {
-		case 0: // AgentURL text field
+		case EvalFieldAgentURL:
 			fieldLen := len(m.evalState.AgentURL)
 			if m.evalState.cursorPos < fieldLen {
 				m.evalState.cursorPos++
 			}
-		case 1: // Protocol dropdown
+		case EvalFieldProtocol:
 			m.evalState.cycleProtocol(false) // cycle forwards
-		case 2: // Transport dropdown
+		case EvalFieldTransport:
 			m.evalState.cycleTransport(false) // cycle forwards
-		case 3: // JudgeModel text field
+		case EvalFieldJudgeModel:
 			fieldLen := len(m.evalState.JudgeModel)
 			if m.evalState.cursorPos < fieldLen {
 				m.evalState.cursorPos++
 			}
-		case 5: // EvaluationMode dropdown
+		case EvalFieldEvaluationMode:
 			m.evalState.cycleEvaluationMode(false) // cycle forwards
-		case 6: // ScanType dropdown (only in Red Team mode)
+		case EvalFieldScanType: // ScanType dropdown (only in Red Team mode)
 			if m.evalState.EvaluationMode == EvaluationModeRedTeam {
 				m.evalState.cycleScanType(false) // cycle forwards
 			}
@@ -104,14 +102,14 @@ func HandleEvalFormInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m, nil
 
 	case "space":
-		if m.evalState.currentField == 4 { // DeepTest field is now index 2
+		if m.evalState.currentField == EvalFieldDeepTest {
 			m.evalState.DeepTest = !m.evalState.DeepTest
 			return m, nil
 		}
 
 	case "tab":
 		// Open LLM config dialog when on Judge Model field
-		if m.evalState.currentField == 3 { // JudgeModel field
+		if m.evalState.currentField == EvalFieldJudgeModel {
 			llmDialog := components.NewLLMConfigDialog(m.config.APIKeys, m.config.SelectedProvider, m.config.SelectedModel)
 			m.llmDialog = &llmDialog
 			return m, nil
@@ -121,25 +119,17 @@ func HandleEvalFormInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 		// Handle backspace for text fields
 		if m.evalState.currentField >= 0 {
 			switch m.evalState.currentField {
-			case 0: // AgentURL
+			case EvalFieldAgentURL:
 				runes := []rune(m.evalState.AgentURL)
 				if m.evalState.cursorPos > 0 && m.evalState.cursorPos <= len(runes) && len(runes) > 0 {
 					m.evalState.AgentURL = string(runes[:m.evalState.cursorPos-1]) + string(runes[m.evalState.cursorPos:])
 					m.evalState.cursorPos--
 				}
-			case 3: // JudgeModel
+			case EvalFieldJudgeModel:
 				runes := []rune(m.evalState.JudgeModel)
 				if m.evalState.cursorPos > 0 && m.evalState.cursorPos <= len(runes) && len(runes) > 0 {
 					m.evalState.JudgeModel = string(runes[:m.evalState.cursorPos-1]) + string(runes[m.evalState.cursorPos:])
 					m.evalState.cursorPos--
-				}
-			case 6: // ParallelRuns (special handling for numbers)
-				if m.evalState.ParallelRuns >= 10 {
-					m.evalState.ParallelRuns /= 10
-					m.evalState.cursorPos--
-				} else if m.evalState.ParallelRuns > 0 {
-					m.evalState.ParallelRuns = 1 // Don't allow 0
-					m.evalState.cursorPos = 0
 				}
 			}
 			return m, nil
@@ -150,22 +140,14 @@ func HandleEvalFormInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 		s := msg.String()
 		if len(s) == 1 {
 			switch m.evalState.currentField {
-			case 0: // AgentURL
+			case EvalFieldAgentURL:
 				runes := []rune(m.evalState.AgentURL)
 				m.evalState.AgentURL = string(runes[:m.evalState.cursorPos]) + s + string(runes[m.evalState.cursorPos:])
 				m.evalState.cursorPos++
-			case 3: // JudgeModel
+			case EvalFieldJudgeModel:
 				runes := []rune(m.evalState.JudgeModel)
 				m.evalState.JudgeModel = string(runes[:m.evalState.cursorPos]) + s + string(runes[m.evalState.cursorPos:])
 				m.evalState.cursorPos++
-			case 6: // ParallelRuns (numeric only)
-				if s[0] >= '0' && s[0] <= '9' {
-					numStr := fmt.Sprintf("%d", m.evalState.ParallelRuns)
-					runes := []rune(numStr)
-					newNumStr := string(runes[:m.evalState.cursorPos]) + s + string(runes[m.evalState.cursorPos:])
-					m.evalState.ParallelRuns = clampToInt(newNumStr)
-					m.evalState.cursorPos++
-				}
 			}
 			return m, nil
 		}

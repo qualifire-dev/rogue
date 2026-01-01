@@ -108,6 +108,33 @@ PROTOCOL_TO_TRANSPORTS: dict[Protocol, list[Transport]] = {
 # Core Models
 
 
+class Severity(str, Enum):
+    """Severity levels for vulnerabilities."""
+
+    CRITICAL = "critical"
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+
+
+class VulnerabilityCategory(str, Enum):
+    """Categories of vulnerabilities."""
+
+    CONTENT_SAFETY = "content_safety"
+    PII_PROTECTION = "pii_protection"
+    TECHNICAL = "technical"
+    BIAS_FAIRNESS = "bias_fairness"
+    PROMPT_SECURITY = "prompt_security"
+    ACCESS_CONTROL = "access_control"
+    BUSINESS_LOGIC = "business_logic"
+    INTELLECTUAL_PROPERTY = "intellectual_property"
+    INFORMATION_QUALITY = "information_quality"
+    COMPLIANCE = "compliance"
+    SPECIALIZED_THREATS = "specialized_threats"
+    AGENT_SPECIFIC = "agent_specific"
+    RESOURCE_ATTACKS = "resource_attacks"
+
+
 class ScanType(str, Enum):
     """Types of red team scans."""
 
@@ -152,15 +179,15 @@ class VulnerabilityResult(BaseModel):
 
     vulnerability_id: str = Field(description="ID of the vulnerability tested")
     vulnerability_name: str = Field(description="Display name of the vulnerability")
-    category: str = Field(description="Vulnerability category")
+    category: VulnerabilityCategory = Field(description="Vulnerability category")
     passed: bool = Field(description="Whether the test passed (no vulnerability found)")
     attack_results: List[Dict[str, Any]] = Field(
         default_factory=list,
         description="Results from each attack attempt",
     )
-    severity: Optional[str] = Field(
+    severity: Optional[Severity] = Field(
         default=None,
-        description="Severity if vulnerability found: critical, high, medium, low",
+        description="Severity if vulnerability found",
     )
     evidence: Optional[List[str]] = Field(
         default=None,
@@ -394,14 +421,14 @@ class EvaluationResult(BaseModel):
     passed: bool
 
 
-class RedTeamingResult(BaseModel):
+class RedTeamAttackResult(BaseModel):
     """Result of a red teaming attack."""
 
     owasp_category: str = Field(description="OWASP category ID (e.g., 'LLM_01')")
     vulnerability_type: str = Field(description="Type of vulnerability found")
     attack_method: str = Field(description="Attack method used")
-    severity: str = Field(
-        description="Severity: 'critical', 'high', 'medium', or 'low'",
+    severity: Severity = Field(
+        description="Severity level of the vulnerability",
     )
     conversation_id: str = Field(description="ID of the conversation")
     reproduction_steps: List[ChatMessage] = Field(
@@ -414,7 +441,9 @@ class RedTeamingResult(BaseModel):
     )
     metric_score: Optional[float] = Field(
         default=None,
-        description="Metric score (0.0 = critical vulnerability, 1.0 = safe)",
+        ge=0.0,
+        le=1.0,
+        description="Metric score (0.0 = vulnerability found, 1.0 = safe). Higher is better.",  # noqa: E501
     )
     metric_reason: Optional[str] = Field(
         default=None,
@@ -431,11 +460,15 @@ class RedTeamingResult(BaseModel):
     )
     attack_success_rate: Optional[float] = Field(
         default=None,
-        description="Success rate of this attack strategy (0.0 to 1.0)",
+        ge=0.0,
+        le=1.0,
+        description="Success rate of this attack strategy. Higher means attack succeeded more often.",  # noqa: E501
     )
     risk_score: Optional[float] = Field(
         default=None,
-        description="CVSS-based risk score (0.0 to 10.0)",
+        ge=0.0,
+        le=10.0,
+        description="CVSS-based risk score. Higher means more risky (0.0 = no risk, 10.0 = critical).",  # noqa: E501
     )
     risk_components: Optional[Dict[str, float]] = Field(
         default=None,
@@ -487,7 +520,7 @@ class EvaluationResults(BaseModel):
     """Collection of evaluation results."""
 
     results: List[EvaluationResult] = Field(default_factory=list)
-    red_teaming_results: Optional[List[RedTeamingResult]] = Field(
+    red_teaming_results: Optional[List[RedTeamAttackResult]] = Field(
         default=None,
         description="Red teaming attack results (only in red team mode)",
     )

@@ -35,7 +35,7 @@ class QualifireEvaluationClient:
     def __init__(
         self,
         api_key: Optional[str] = None,
-        base_url: str = "https://api.qualifire.ai",
+        base_url: str = "https://app.qualifire.ai",
     ):
         """
         Initialize the Qualifire evaluation client.

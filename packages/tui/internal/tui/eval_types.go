@@ -32,6 +32,24 @@ const (
 	EvaluationModeRedTeam EvaluationMode = "red_team"
 )
 
+// EvalField constants for form field indices
+// Policy mode: AgentURL(0), Protocol(1), Transport(2), JudgeModel(3), DeepTest(4), EvaluationMode(5), StartButton(6)
+// Red Team mode adds: ScanType(6), ConfigureButton(7), StartButton(8)
+const (
+	EvalFieldAgentURL       = 0
+	EvalFieldProtocol       = 1
+	EvalFieldTransport      = 2
+	EvalFieldJudgeModel     = 3
+	EvalFieldDeepTest       = 4
+	EvalFieldEvaluationMode = 5
+	// Policy mode
+	EvalFieldStartButtonPolicy = 6
+	// Red Team mode additional fields
+	EvalFieldScanType           = 6
+	EvalFieldConfigureButton    = 7
+	EvalFieldStartButtonRedTeam = 8
+)
+
 // ScanType represents the type of red team scan
 type ScanType string
 

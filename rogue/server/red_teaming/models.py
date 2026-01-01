@@ -12,6 +12,15 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field, model_validator
 
 
+class Severity(str, Enum):
+    """Severity levels for vulnerabilities."""
+
+    CRITICAL = "critical"
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+
+
 class ScanType(str, Enum):
     """Types of red team scans."""
 
@@ -199,9 +208,9 @@ class VulnerabilityResult(BaseModel):
     attacks_successful: int = Field(
         description="Number of attacks that found vulnerabilities",
     )
-    severity: Optional[str] = Field(
+    severity: Optional[Severity] = Field(
         default=None,
-        description="Severity if vulnerability found: critical, high, medium, low",
+        description="Severity if vulnerability found",
     )
     cvss_score: Optional[float] = Field(
         default=None,
@@ -333,7 +342,7 @@ class KeyFinding(BaseModel):
     vulnerability_id: str = Field(description="Vulnerability ID")
     vulnerability_name: str = Field(description="Vulnerability name")
     cvss_score: float = Field(description="CVSS risk score (0-10)")
-    severity: str = Field(description="Severity level")
+    severity: Severity = Field(description="Severity level")
     summary: str = Field(description="LLM-generated summary of what happened")
     attack_ids: List[str] = Field(
         default_factory=list,
@@ -350,7 +359,7 @@ class VulnerabilityTableRow(BaseModel):
 
     vulnerability_id: str = Field(description="Vulnerability ID")
     vulnerability_name: str = Field(description="Vulnerability name")
-    severity: Optional[str] = Field(default=None, description="Severity if failed")
+    severity: Optional[Severity] = Field(default=None, description="Severity if failed")
     attacks_used: List[str] = Field(
         default_factory=list,
         description="List of attack IDs used",

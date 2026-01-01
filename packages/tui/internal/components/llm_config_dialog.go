@@ -675,17 +675,14 @@ func (d LLMConfigDialog) handleEnter() (LLMConfigDialog, tea.Cmd) {
 		// Validate inputs based on provider
 		provider := d.Providers[d.SelectedProvider]
 		if provider.Name == "bedrock" {
-			// Validate all Bedrock fields
-			if d.AWSAccessKeyInput == "" {
-				d.ErrorMessage = "AWS Access Key cannot be empty"
+			// For Bedrock, credentials are optional if using AWS SSO login
+			// Only require region if access key is provided (explicit credentials mode)
+			if d.AWSAccessKeyInput != "" && d.AWSSecretKeyInput == "" {
+				d.ErrorMessage = "AWS Secret Key is required when Access Key is provided"
 				return d, nil
 			}
-			if d.AWSSecretKeyInput == "" {
-				d.ErrorMessage = "AWS Secret Key cannot be empty"
-				return d, nil
-			}
-			if d.AWSRegionInput == "" {
-				d.ErrorMessage = "AWS Region cannot be empty"
+			if d.AWSSecretKeyInput != "" && d.AWSAccessKeyInput == "" {
+				d.ErrorMessage = "AWS Access Key is required when Secret Key is provided"
 				return d, nil
 			}
 		} else {

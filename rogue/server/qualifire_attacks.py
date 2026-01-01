@@ -52,11 +52,11 @@ class DeckardClient:
         Args:
             api_key: Qualifire API key for premium features
             base_url: Base URL for Deckard API (defaults to DECKARD_BASE_URL env var
-                      or https://api.qualifire.ai)
+                      or https://app.qualifire.ai)
         """
         self.api_key = api_key or os.getenv("QUALIFIRE_API_KEY")
         self.base_url = (
-            base_url or os.getenv("DECKARD_BASE_URL") or "https://api.qualifire.ai"
+            base_url or os.getenv("DECKARD_BASE_URL") or "https://app.qualifire.ai"
         )
         self._is_configured = self.api_key is not None and len(self.api_key) > 0
 

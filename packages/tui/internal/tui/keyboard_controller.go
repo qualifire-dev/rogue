@@ -153,15 +153,16 @@ func (m Model) handleGlobalSlash(msg tea.KeyMsg) (Model, tea.Cmd) {
 
 	// Check if we're editing text fields that might need "/" character
 	// Don't intercept "/" if we're editing text in NewEvaluationScreen
-	if m.currentScreen == NewEvaluationScreen && m.evalState != nil && m.evalState.currentField <= 1 {
+	if m.currentScreen == NewEvaluationScreen && m.evalState != nil &&
+		(m.evalState.currentField == EvalFieldAgentURL || m.evalState.currentField == EvalFieldJudgeModel) {
 		// Handle "/" character directly in text fields
 		s := "/"
 		switch m.evalState.currentField {
-		case 0: // AgentURL
+		case EvalFieldAgentURL:
 			runes := []rune(m.evalState.AgentURL)
 			m.evalState.AgentURL = string(runes[:m.evalState.cursorPos]) + s + string(runes[m.evalState.cursorPos:])
 			m.evalState.cursorPos++
-		case 3: // JudgeModel
+		case EvalFieldJudgeModel:
 			runes := []rune(m.evalState.JudgeModel)
 			m.evalState.JudgeModel = string(runes[:m.evalState.cursorPos]) + s + string(runes[m.evalState.cursorPos:])
 			m.evalState.cursorPos++
@@ -339,12 +340,12 @@ func (m Model) handleGlobalEnter(msg tea.KeyMsg) (Model, tea.Cmd) {
 			m.handleNewEvalEnter()
 			// Return command to start evaluation after showing spinner
 			return m, tea.Batch(m.evalSpinner.Start(), startEvaluationCmd())
-		} else if m.evalState.currentField == 3 { // Judge LLM field
+		} else if m.evalState.currentField == EvalFieldJudgeModel {
 			// Open LLM config dialog when Enter is pressed on Judge LLM field
 			llmDialog := components.NewLLMConfigDialog(m.config.APIKeys, m.config.SelectedProvider, m.config.SelectedModel)
 			m.llmDialog = &llmDialog
 			return m, nil
-		} else if m.evalState.currentField == 7 && m.evalState.EvaluationMode == EvaluationModeRedTeam {
+		} else if m.evalState.currentField == EvalFieldConfigureButton && m.evalState.EvaluationMode == EvaluationModeRedTeam {
 			// Configure button - navigate to Red Team Config Screen
 			m.currentScreen = RedTeamConfigScreen
 			// Initialize red team config state if needed
