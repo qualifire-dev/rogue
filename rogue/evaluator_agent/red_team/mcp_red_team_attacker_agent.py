@@ -3,8 +3,8 @@
 from typing import TYPE_CHECKING, Dict, Optional
 
 from loguru import logger
-from rogue_sdk.types import Transport
 
+from ..mcp_utils import create_mcp_client
 from .base_red_team_attacker_agent import BaseRedTeamAttackerAgent
 
 if TYPE_CHECKING:
@@ -30,32 +30,10 @@ class MCPRedTeamAttackerAgent(BaseRedTeamAttackerAgent):
 
     async def _create_client(self) -> "Client[SSETransport | StreamableHttpTransport]":
         """Create a new MCP client."""
-        from fastmcp import Client
-        from fastmcp.client import SSETransport, StreamableHttpTransport
-
-        client: Client[SSETransport | StreamableHttpTransport] | None = None
-        if self._transport == Transport.SSE:
-            client = Client[SSETransport](
-                transport=SSETransport(
-                    url=self._evaluated_agent_address,
-                ),
-            )
-        elif self._transport == Transport.STREAMABLE_HTTP:
-            client = Client[StreamableHttpTransport](
-                transport=StreamableHttpTransport(
-                    url=self._evaluated_agent_address,
-                ),
-            )
-        else:
-            raise ValueError(f"Unsupported transport for MCP: {self._transport}")
-
-        if not client:
-            raise ValueError(
-                f"Failed to create client for transport: {self._transport}",
-            )
-
-        await client.__aenter__()
-        return client
+        return await create_mcp_client(
+            url=self._evaluated_agent_address,
+            transport=self._transport,
+        )
 
     async def _get_or_create_client(
         self,

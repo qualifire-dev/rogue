@@ -5,6 +5,7 @@ from loguru import logger
 from rogue_sdk.types import Protocol, Scenarios, Transport
 
 from ..base_evaluator_agent import BaseEvaluatorAgent
+from ..mcp_utils import create_mcp_client
 
 if TYPE_CHECKING:
     from fastmcp import Client
@@ -60,34 +61,11 @@ class MCPEvaluatorAgent(BaseEvaluatorAgent):
             await client.__aexit__(exc_type, exc_value, traceback)
 
     async def _create_client(self) -> "Client[SSETransport | StreamableHttpTransport]":
-        from fastmcp import Client
-        from fastmcp.client import SSETransport, StreamableHttpTransport
-
-        client: Client[SSETransport | StreamableHttpTransport] | None = None
-        if self._transport == Transport.SSE:
-            client = Client[SSETransport](
-                transport=SSETransport(
-                    url=self._evaluated_agent_address,
-                    headers=self._headers,
-                ),
-            )
-        elif self._transport == Transport.STREAMABLE_HTTP:
-            client = Client[StreamableHttpTransport](
-                transport=StreamableHttpTransport(
-                    url=self._evaluated_agent_address,
-                    headers=self._headers,
-                ),
-            )
-        else:
-            raise ValueError(f"Unsupported transport for MCP: {self._transport}")
-
-        if not client:
-            raise ValueError(
-                f"Failed to create client for transport: {self._transport}",
-            )
-
-        await client.__aenter__()
-        return client
+        return await create_mcp_client(
+            url=self._evaluated_agent_address,
+            transport=self._transport,
+            headers=self._headers,
+        )
 
     async def _get_or_create_client(
         self,

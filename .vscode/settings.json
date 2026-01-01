@@ -2,5 +2,5 @@
   "python.testing.pytestArgs": ["."],
   "python.testing.unittestEnabled": false,
   "python.testing.pytestEnabled": true,
-  "cSpell.words": ["dotenv", "LITELLM"]
+  "cSpell.words": ["dotenv", "fastmcp", "LITELLM", "Streamable"]
 }
