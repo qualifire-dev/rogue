@@ -86,7 +86,6 @@ class A2ARedTeamAttackerAgent(BaseRedTeamAttackerAgent):
                 extra={
                     "has_response": response is not None,
                     "response_type": type(response).__name__ if response else None,
-                    "has_parts": hasattr(response, "parts") if response else False,
                 },
             )
 
@@ -124,8 +123,6 @@ class A2ARedTeamAttackerAgent(BaseRedTeamAttackerAgent):
                         "response_type": type(response).__name__,
                         "is_task": isinstance(response, Task),
                         "is_message": isinstance(response, Message),
-                        "has_parts": hasattr(response, "parts"),
-                        "has_artifacts": hasattr(response, "artifacts"),
                     },
                 )
                 return "No text content in response"
