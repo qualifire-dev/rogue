@@ -1,5 +1,26 @@
 package evaluations
 
+// FormField represents the field indices for the evaluation form
+// These constants mirror the EvalFormField constants in the tui package
+// to avoid import cycles while maintaining consistency
+type FormField int
+
+const (
+	FormFieldAgentURL FormField = iota
+	FormFieldProtocol
+	FormFieldTransport
+	FormFieldJudgeModel
+	FormFieldDeepTest
+	FormFieldEvaluationMode
+	// Policy mode start button / Red Team mode scan type (both at index 6)
+	FormFieldStartButtonPolicy
+	FormFieldConfigureButton    // 7 - Red Team mode only
+	FormFieldStartButtonRedTeam // 8 - Red Team mode only
+)
+
+// FormFieldScanType is an alias - in Red Team mode, index 6 is the scan type field
+const FormFieldScanType = FormFieldStartButtonPolicy
+
 // FormState contains all data needed to render the evaluation form
 type FormState struct {
 	// Dimensions

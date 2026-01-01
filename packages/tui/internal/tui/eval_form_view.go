@@ -39,7 +39,7 @@ func (m Model) RenderNewEvaluation() string {
 		EvaluationMode: string(m.evalState.EvaluationMode),
 		ScanType:       scanType,
 
-		CurrentField: m.evalState.currentField,
+		CurrentField: int(m.evalState.currentField),
 		CursorPos:    m.evalState.cursorPos,
 
 		EvalSpinnerActive:     m.evalSpinner.IsActive(),

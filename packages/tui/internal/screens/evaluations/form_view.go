@@ -286,7 +286,7 @@ func RenderForm(state *FormState) string {
 		formFields = append(formFields, renderDropdownField(6, "Scan Type:", scanTypeDisplay))
 
 		// Configure button for custom scan configuration - styled like other fields
-		configActive := state.CurrentField == 7
+		configActive := state.CurrentField == int(FormFieldConfigureButton)
 		labelStyle := lipgloss.NewStyle().
 			Foreground(t.TextMuted()).
 			Background(t.Background()).

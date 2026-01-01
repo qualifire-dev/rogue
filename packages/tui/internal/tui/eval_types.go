@@ -32,23 +32,27 @@ const (
 	EvaluationModeRedTeam EvaluationMode = "red_team"
 )
 
+// EvalFormField represents the field indices for the evaluation form
+type EvalFormField int
+
 // EvalField constants for form field indices
 // Policy mode: AgentURL(0), Protocol(1), Transport(2), JudgeModel(3), DeepTest(4), EvaluationMode(5), StartButton(6)
 // Red Team mode adds: ScanType(6), ConfigureButton(7), StartButton(8)
 const (
-	EvalFieldAgentURL       = 0
-	EvalFieldProtocol       = 1
-	EvalFieldTransport      = 2
-	EvalFieldJudgeModel     = 3
-	EvalFieldDeepTest       = 4
-	EvalFieldEvaluationMode = 5
-	// Policy mode
-	EvalFieldStartButtonPolicy = 6
-	// Red Team mode additional fields
-	EvalFieldScanType           = 6
-	EvalFieldConfigureButton    = 7
-	EvalFieldStartButtonRedTeam = 8
+	EvalFieldAgentURL EvalFormField = iota
+	EvalFieldProtocol
+	EvalFieldTransport
+	EvalFieldJudgeModel
+	EvalFieldDeepTest
+	EvalFieldEvaluationMode
+	// Policy mode start button / Red Team mode scan type (both at index 6)
+	EvalFieldStartButtonPolicy
+	EvalFieldConfigureButton    // 7 - Red Team mode only
+	EvalFieldStartButtonRedTeam // 8 - Red Team mode only
 )
+
+// EvalFieldScanType is an alias - in Red Team mode, index 6 is the scan type field
+const EvalFieldScanType = EvalFieldStartButtonPolicy
 
 // ScanType represents the type of red team scan
 type ScanType string
@@ -108,8 +112,8 @@ type EvaluationViewState struct {
 	// Editing state for New Evaluation
 	// Policy mode: 0: AgentURL, 1: Protocol, 2: Transport, 3: JudgeModel, 4: DeepTest, 5: EvaluationMode, 6: StartButton
 	// Red Team mode: 0: AgentURL, 1: Protocol, 2: Transport, 3: JudgeModel, 4: DeepTest, 5: EvaluationMode, 6: ScanType, 7: ConfigureButton, 8: StartButton
-	currentField int
-	cursorPos    int // rune index in current text field
+	currentField EvalFormField // Field index for form navigation
+	cursorPos    int           // rune index in current text field
 }
 
 // ScenariosWithContext holds scenarios and business context loaded from file
@@ -391,22 +395,22 @@ func (st *EvaluationViewState) cycleScanType(reverse bool) {
 // getMaxFieldIndex returns the maximum field index based on the current evaluation mode
 // Policy mode: 6 (StartButton)
 // Red Team mode: 8 (StartButton after ScanType and Configure)
-func (st *EvaluationViewState) getMaxFieldIndex() int {
+func (st *EvaluationViewState) getMaxFieldIndex() EvalFormField {
 	if st.EvaluationMode == EvaluationModeRedTeam {
-		return 8 // ScanType at 6, Configure at 7, StartButton at 8
+		return EvalFieldStartButtonRedTeam // ScanType at 6, Configure at 7, StartButton at 8
 	}
-	return 6 // StartButton at 6
+	return EvalFieldStartButtonPolicy // StartButton at 6
 }
 
 // getStartButtonIndex returns the index of the start button based on evaluation mode
-func (st *EvaluationViewState) getStartButtonIndex() int {
+func (st *EvaluationViewState) getStartButtonIndex() EvalFormField {
 	if st.EvaluationMode == EvaluationModeRedTeam {
-		return 8
+		return EvalFieldStartButtonRedTeam
 	}
-	return 6
+	return EvalFieldStartButtonPolicy
 }
 
 // getConfigureButtonIndex returns the index of the configure button (only for red team mode)
-func (st *EvaluationViewState) getConfigureButtonIndex() int {
-	return 7 // Only valid in red team mode
+func (st *EvaluationViewState) getConfigureButtonIndex() EvalFormField {
+	return EvalFieldConfigureButton // Only valid in red team mode
 }
