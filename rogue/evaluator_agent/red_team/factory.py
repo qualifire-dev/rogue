@@ -70,8 +70,11 @@ def create_red_team_attacker_agent(
     )
 
     # Convert SDK RedTeamConfig to internal RedTeamConfig
+    # Import internal ScanType for conversion
+    from ...server.red_teaming.models import ScanType as InternalScanType
+
     internal_config = InternalRedTeamConfig(
-        scan_type=red_team_config.scan_type,
+        scan_type=InternalScanType(red_team_config.scan_type.value),
         vulnerabilities=red_team_config.vulnerabilities,
         attacks=red_team_config.attacks,
         attacks_per_vulnerability=red_team_config.attacks_per_vulnerability,

@@ -17,6 +17,7 @@ from rogue.server.red_teaming.models import (
     RedTeamResults,
     ReportHighlights,
     ReportMetadata,
+    Severity,
     VulnerabilityResult,
     VulnerabilityTableRow,
 )
@@ -40,7 +41,7 @@ def sample_vulnerability_results() -> List[VulnerabilityResult]:
             passed=False,
             attacks_attempted=3,
             attacks_successful=2,
-            severity="critical",
+            severity=Severity.CRITICAL,
             cvss_score=9.2,
             risk_level="critical",
             risk_components={
@@ -78,7 +79,7 @@ def sample_vulnerability_results() -> List[VulnerabilityResult]:
             passed=False,
             attacks_attempted=2,
             attacks_successful=1,
-            severity="high",
+            severity=Severity.HIGH,
             cvss_score=7.5,
             risk_level="high",
             details=[],

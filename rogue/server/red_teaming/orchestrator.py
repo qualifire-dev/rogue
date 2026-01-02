@@ -33,6 +33,7 @@ from .models import (
     RedTeamConfig,
     RedTeamResults,
     ScanType,
+    Severity,
     VulnerabilityResult,
 )
 from .risk_scoring import calculate_risk_score
@@ -963,7 +964,7 @@ class RedTeamOrchestrator:
             passed=attacks_successful == 0,
             attacks_attempted=attacks_attempted,
             attacks_successful=attacks_successful,
-            severity=max_severity if attacks_successful > 0 else None,
+            severity=Severity(max_severity) if attacks_successful > 0 else None,
             cvss_score=cvss_score,
             risk_level=risk_level,
             risk_components=risk_components,

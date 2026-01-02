@@ -61,11 +61,13 @@ class MCPEvaluatorAgent(BaseEvaluatorAgent):
             await client.__aexit__(exc_type, exc_value, traceback)
 
     async def _create_client(self) -> "Client[SSETransport | StreamableHttpTransport]":
-        return await create_mcp_client(
+        client = create_mcp_client(
             url=self._evaluated_agent_address,
             transport=self._transport,
             headers=self._headers,
         )
+        await client.__aenter__()
+        return client
 
     async def _get_or_create_client(
         self,

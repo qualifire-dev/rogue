@@ -33,10 +33,12 @@ class MCPRedTeamAttackerAgent(BaseRedTeamAttackerAgent):
         if self._transport is None:
             raise ValueError("Transport is required for MCP")
 
-        return await create_mcp_client(
+        client = create_mcp_client(
             url=self._evaluated_agent_address,
             transport=self._transport,
         )
+        await client.__aenter__()
+        return client
 
     async def _get_or_create_client(
         self,

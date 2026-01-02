@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional, cast
 
 from loguru import logger
 
-from ..models import KeyFinding, VulnerabilityResult
+from ..models import KeyFinding, Severity, VulnerabilityResult
 
 
 def generate_key_findings(
@@ -94,7 +94,7 @@ def generate_key_findings(
             vulnerability_id=vuln.vulnerability_id,
             vulnerability_name=vuln.vulnerability_name,
             cvss_score=vuln.cvss_score or 0.0,
-            severity=vuln.severity or "medium",
+            severity=vuln.severity or Severity.MEDIUM,
             summary=summary,
             attack_ids=successful_attacks,
             success_rate=success_rate,
