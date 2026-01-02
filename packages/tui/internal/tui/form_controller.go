@@ -18,6 +18,8 @@ func HandleEvalFormInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m, tea.Batch(m.healthSpinner.Start(), m.healthCheckCmd())
 
 	case "up":
+		// Clear the red team config saved banner when navigating
+		m.evalState.RedTeamConfigSaved = false
 		if m.evalState.currentField > 0 {
 			m.evalState.currentField--
 			// Set cursor to end of field content when switching fields
@@ -33,7 +35,11 @@ func HandleEvalFormInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m, nil
 
 	case "down":
-		if m.evalState.currentField < EvalFieldStartButton {
+		// Clear the red team config saved banner when navigating
+		m.evalState.RedTeamConfigSaved = false
+		// Use dynamic max field index based on evaluation mode
+		maxFieldIndex := m.evalState.getMaxFieldIndex()
+		if m.evalState.currentField < maxFieldIndex {
 			m.evalState.currentField++
 			// Set cursor to end of field content when switching fields
 			switch m.evalState.currentField {
@@ -48,33 +54,49 @@ func HandleEvalFormInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m, nil
 
 	case "left":
+		// Clear the red team config saved banner when user starts interacting
+		m.evalState.RedTeamConfigSaved = false
 		switch m.evalState.currentField {
 		case EvalFieldAgentURL, EvalFieldJudgeModel: // Text fields
 			if m.evalState.cursorPos > 0 {
 				m.evalState.cursorPos--
 			}
-		case EvalFieldProtocol: // Protocol dropdown
+		case EvalFieldProtocol:
 			m.evalState.cycleProtocol(true) // cycle backwards
-		case EvalFieldTransport: // Transport dropdown
+		case EvalFieldTransport:
 			m.evalState.cycleTransport(true) // cycle backwards
+		case EvalFieldEvaluationMode:
+			m.evalState.cycleEvaluationMode(true) // cycle backwards
+		case EvalFieldScanType: // ScanType dropdown (only in Red Team mode)
+			if m.evalState.EvaluationMode == EvaluationModeRedTeam {
+				m.evalState.cycleScanType(true) // cycle backwards
+			}
 		}
 		return m, nil
 
 	case "right":
+		// Clear the red team config saved banner when user starts interacting
+		m.evalState.RedTeamConfigSaved = false
 		switch m.evalState.currentField {
-		case EvalFieldAgentURL: // AgentURL text field
+		case EvalFieldAgentURL:
 			fieldLen := len(m.evalState.AgentURL)
 			if m.evalState.cursorPos < fieldLen {
 				m.evalState.cursorPos++
 			}
-		case EvalFieldProtocol: // Protocol dropdown
+		case EvalFieldProtocol:
 			m.evalState.cycleProtocol(false) // cycle forwards
-		case EvalFieldTransport: // Transport dropdown
+		case EvalFieldTransport:
 			m.evalState.cycleTransport(false) // cycle forwards
-		case EvalFieldJudgeModel: // JudgeModel text field
+		case EvalFieldJudgeModel:
 			fieldLen := len(m.evalState.JudgeModel)
 			if m.evalState.cursorPos < fieldLen {
 				m.evalState.cursorPos++
+			}
+		case EvalFieldEvaluationMode:
+			m.evalState.cycleEvaluationMode(false) // cycle forwards
+		case EvalFieldScanType: // ScanType dropdown (only in Red Team mode)
+			if m.evalState.EvaluationMode == EvaluationModeRedTeam {
+				m.evalState.cycleScanType(false) // cycle forwards
 			}
 		}
 		return m, nil

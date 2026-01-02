@@ -21,6 +21,9 @@ func (m Model) RenderEvaluationDetail() string {
 			Render("No evaluation active")
 	}
 
+	// Note: Red team report is now shown via RedTeamReportScreen, not inline here
+	// This allows users to view the chat first and navigate to report with 'r'
+
 	// Calculate available height for content area
 	availableHeight := m.height - 5 // header(3) + helpText(2)
 	statusAndSpacersHeight := 5
@@ -117,6 +120,8 @@ func (m Model) RenderEvaluationDetail() string {
 		Status:    m.evalState.Status,
 		Progress:  m.evalState.Progress,
 		Completed: m.evalState.Completed,
+
+		EvaluationMode: string(m.evalState.EvaluationMode),
 
 		FocusedViewport: m.focusedViewport,
 

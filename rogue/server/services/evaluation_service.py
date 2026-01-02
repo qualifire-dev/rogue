@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional
 
 from rogue_sdk.types import (
     EvaluationJob,
+    EvaluationMode,
     EvaluationStatus,
     Scenarios,
     WebSocketEventType,
@@ -81,7 +82,9 @@ class EvaluationService:
                 "Starting evaluation job",
                 extra={
                     "job_status": "running",
-                    "scenario_count": len(job.request.scenarios),
+                    "scenario_count": (
+                        len(job.request.scenarios) if job.request.scenarios else 0
+                    ),
                     "agent_url": str(job.request.agent_config.evaluated_agent_url),
                     "judge_llm": job.request.agent_config.judge_llm,
                 },
@@ -91,10 +94,25 @@ class EvaluationService:
             job.started_at = datetime.now(timezone.utc)
             self._notify_job_update(job)
 
-            scenarios = Scenarios(scenarios=job.request.scenarios)
-
-            # Create evaluation orchestrator (server-native)
             agent_config = job.request.agent_config
+
+            # Route to appropriate orchestrator based on evaluation mode
+            if agent_config.evaluation_mode == EvaluationMode.RED_TEAM:
+                # Red team evaluation - should use /api/v1/red-team endpoint instead
+                logger.error(
+                    "Red team evaluation requests should be routed to "
+                    "/api/v1/red-team endpoint, not the standard evaluation endpoint",
+                )
+                raise ValueError(
+                    "Red team evaluation not supported on this endpoint. "
+                    "Please use /api/v1/red-team endpoint",
+                )
+
+            # Create policy evaluation orchestrator
+            scenarios = Scenarios(
+                scenarios=job.request.scenarios if job.request.scenarios else [],
+            )
+
             orchestrator = EvaluationOrchestrator(
                 protocol=agent_config.protocol,
                 transport=agent_config.transport,
@@ -151,10 +169,45 @@ class EvaluationService:
             logger.info("Server-native evaluation completed")
 
             # Update job with results
-            if final_results and final_results.results:
+            # For red teaming, success means tests ran (even if no vulns found)
+            has_results = final_results and (
+                final_results.results
+                or final_results.red_teaming_results
+                or final_results.vulnerability_scan_log
+                or final_results.owasp_summary
+            )
+            if has_results:
+                # Type narrowing for mypy - has_results already checked final_results
+                if final_results is None:
+                    raise ValueError("Final results are None")
+                # Store both the list (backward compat) and full results object
                 job.results = final_results.results
+                job.evaluation_results = final_results
                 job.status = EvaluationStatus.COMPLETED
                 job.progress = 1.0
+                logger.info(
+                    "Stored evaluation results",
+                    extra={
+                        "regular_results": (
+                            len(final_results.results) if final_results.results else 0
+                        ),
+                        "red_team_results": (
+                            len(final_results.red_teaming_results)
+                            if final_results.red_teaming_results
+                            else 0
+                        ),
+                        "vulnerability_scan_log": (
+                            len(final_results.vulnerability_scan_log)
+                            if final_results.vulnerability_scan_log
+                            else 0
+                        ),
+                        "owasp_summary": (
+                            len(final_results.owasp_summary)
+                            if final_results.owasp_summary
+                            else 0
+                        ),
+                    },
+                )
             else:
                 # No results - mark as failed
                 job.status = EvaluationStatus.FAILED

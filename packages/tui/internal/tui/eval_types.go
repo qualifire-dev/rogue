@@ -25,31 +25,75 @@ const (
 	TransportHTTP Transport = "http"
 )
 
+type EvaluationMode string
+
+const (
+	EvaluationModePolicy  EvaluationMode = "policy"
+	EvaluationModeRedTeam EvaluationMode = "red_team"
+)
+
 // EvalFormField represents the field indices for the evaluation form
 type EvalFormField int
 
+// EvalField constants for form field indices
+// Policy mode: AgentURL(0), Protocol(1), Transport(2), JudgeModel(3), DeepTest(4), EvaluationMode(5), StartButton(6)
+// Red Team mode adds: ScanType(6), ConfigureButton(7), StartButton(8)
 const (
 	EvalFieldAgentURL EvalFormField = iota
 	EvalFieldProtocol
 	EvalFieldTransport
 	EvalFieldJudgeModel
 	EvalFieldDeepTest
-	EvalFieldStartButton
-
-	// EvalFieldCount is the total number of fields (for bounds checking)
-	EvalFieldCount
+	EvalFieldEvaluationMode
+	// Policy mode start button / Red Team mode scan type (both at index 6)
+	EvalFieldStartButtonPolicy
+	EvalFieldConfigureButton    // 7 - Red Team mode only
+	EvalFieldStartButtonRedTeam // 8 - Red Team mode only
 )
+
+// EvalFieldScanType is an alias - in Red Team mode, index 6 is the scan type field
+const EvalFieldScanType = EvalFieldStartButtonPolicy
+
+// ScanType represents the type of red team scan
+type ScanType string
+
+const (
+	ScanTypeBasic  ScanType = "basic"
+	ScanTypeFull   ScanType = "full"
+	ScanTypeCustom ScanType = "custom"
+)
+
+// RedTeamConfig holds the new vulnerability-centric red team configuration
+type RedTeamConfig struct {
+	ScanType                ScanType
+	Vulnerabilities         []string // Vulnerability IDs to test
+	Attacks                 []string // Attack IDs to use
+	AttacksPerVulnerability int
+	Frameworks              []string // Framework IDs for report mapping
+	RandomSeed              *int     // For reproducible tests
+}
 
 // EvaluationViewState is defined in tui package to avoid import cycles
 type EvaluationViewState struct {
-	ServerURL      string // Used from config, not editable in form
-	AgentURL       string
-	AgentProtocol  Protocol
-	AgentTransport Transport
-	JudgeModel     string
-	ParallelRuns   int
-	DeepTest       bool
-	Scenarios      []EvalScenario
+	ServerURL       string // Used from config, not editable in form
+	AgentURL        string
+	AgentProtocol   Protocol
+	AgentTransport  Transport
+	JudgeModel      string
+	ParallelRuns    int
+	DeepTest        bool
+	Scenarios       []EvalScenario
+	BusinessContext string // Business context for red team attacks
+
+	// Evaluation mode
+	EvaluationMode EvaluationMode
+
+	// Red team configuration (new vulnerability-centric approach)
+	RedTeamConfig *RedTeamConfig
+
+	// Red team config save notification
+	RedTeamConfigSaved    bool
+	RedTeamConfigSavedMsg string
 
 	// Runtime
 	Running  bool
@@ -66,19 +110,34 @@ type EvaluationViewState struct {
 	StructuredSummary StructuredSummary
 
 	// Editing state for New Evaluation
+	// Policy mode: 0: AgentURL, 1: Protocol, 2: Transport, 3: JudgeModel, 4: DeepTest, 5: EvaluationMode, 6: StartButton
+	// Red Team mode: 0: AgentURL, 1: Protocol, 2: Transport, 3: JudgeModel, 4: DeepTest, 5: EvaluationMode, 6: ScanType, 7: ConfigureButton, 8: StartButton
 	currentField EvalFormField // Field index for form navigation
 	cursorPos    int           // rune index in current text field
 }
 
+// ScenariosWithContext holds scenarios and business context loaded from file
+type ScenariosWithContext struct {
+	Scenarios       []EvalScenario
+	BusinessContext string
+}
+
 // loadScenariosFromWorkdir reads .rogue/scenarios.json upward from CWD
 func loadScenariosFromWorkdir() []EvalScenario {
+	result := loadScenariosWithContextFromWorkdir()
+	return result.Scenarios
+}
+
+// loadScenariosWithContextFromWorkdir reads .rogue/scenarios.json and returns both scenarios and business context
+func loadScenariosWithContextFromWorkdir() ScenariosWithContext {
 	wd, _ := os.Getwd()
 	dir := wd
 	for {
 		p := filepath.Join(dir, ".rogue", "scenarios.json")
 		if b, err := os.ReadFile(p); err == nil {
 			var v struct {
-				Scenarios []struct {
+				BusinessContext *string `json:"business_context"`
+				Scenarios       []struct {
 					Scenario        string `json:"scenario"`
 					ScenarioType    string `json:"scenario_type"`
 					ExpectedOutcome string `json:"expected_outcome"`
@@ -95,7 +154,14 @@ func loadScenariosFromWorkdir() []EvalScenario {
 						})
 					}
 				}
-				return out
+				businessContext := ""
+				if v.BusinessContext != nil {
+					businessContext = *v.BusinessContext
+				}
+				return ScenariosWithContext{
+					Scenarios:       out,
+					BusinessContext: businessContext,
+				}
 			}
 		}
 		parent := filepath.Dir(dir)
@@ -104,12 +170,37 @@ func loadScenariosFromWorkdir() []EvalScenario {
 		}
 		dir = parent
 	}
-	return nil
+	return ScenariosWithContext{}
 }
 
 // startEval kicks off evaluation and consumes events into state
 func (m *Model) startEval(ctx context.Context, st *EvaluationViewState) {
-	ch, cancel, err := m.StartEvaluation(ctx, st.ServerURL, st.AgentURL, st.AgentProtocol, st.AgentTransport, st.Scenarios, st.JudgeModel, st.ParallelRuns, st.DeepTest)
+	// Prepare red team config if in red team mode
+	var redTeamConfigMap map[string]interface{}
+	if st.EvaluationMode == EvaluationModeRedTeam && st.RedTeamConfig != nil {
+		redTeamConfigMap = map[string]interface{}{
+			"scan_type":                 string(st.RedTeamConfig.ScanType),
+			"vulnerabilities":           st.RedTeamConfig.Vulnerabilities,
+			"attacks":                   st.RedTeamConfig.Attacks,
+			"attacks_per_vulnerability": st.RedTeamConfig.AttacksPerVulnerability,
+			"frameworks":                st.RedTeamConfig.Frameworks,
+		}
+	}
+
+	ch, cancel, err := m.StartEvaluation(
+		ctx,
+		st.ServerURL,
+		st.AgentURL,
+		st.AgentProtocol,
+		st.AgentTransport,
+		st.Scenarios,
+		st.JudgeModel,
+		st.ParallelRuns,
+		st.DeepTest,
+		string(st.EvaluationMode),
+		redTeamConfigMap,
+		st.BusinessContext,
+	)
 	if err != nil {
 		st.Running = false
 		st.Status = "error"
@@ -235,4 +326,91 @@ func (st *EvaluationViewState) cycleTransport(reverse bool) {
 	}
 
 	st.AgentTransport = transports[currentIdx]
+}
+
+// cycleEvaluationMode cycles between Policy and Red Team modes
+func (st *EvaluationViewState) cycleEvaluationMode(reverse bool) {
+	if reverse {
+		if st.EvaluationMode == EvaluationModeRedTeam {
+			st.EvaluationMode = EvaluationModePolicy
+		} else {
+			st.EvaluationMode = EvaluationModeRedTeam
+			// Initialize RedTeamConfig if not set
+			if st.RedTeamConfig == nil {
+				st.RedTeamConfig = &RedTeamConfig{
+					ScanType:                ScanTypeBasic,
+					AttacksPerVulnerability: 3,
+				}
+			}
+		}
+	} else {
+		if st.EvaluationMode == EvaluationModePolicy {
+			st.EvaluationMode = EvaluationModeRedTeam
+			// Initialize RedTeamConfig if not set
+			if st.RedTeamConfig == nil {
+				st.RedTeamConfig = &RedTeamConfig{
+					ScanType:                ScanTypeBasic,
+					AttacksPerVulnerability: 3,
+				}
+			}
+		} else {
+			st.EvaluationMode = EvaluationModePolicy
+		}
+	}
+}
+
+// cycleScanType cycles between Basic, Full, and Custom scan types
+func (st *EvaluationViewState) cycleScanType(reverse bool) {
+	if st.RedTeamConfig == nil {
+		st.RedTeamConfig = &RedTeamConfig{
+			ScanType:                ScanTypeBasic,
+			AttacksPerVulnerability: 3,
+		}
+	}
+
+	scanTypes := []ScanType{ScanTypeBasic, ScanTypeFull, ScanTypeCustom}
+	currentIdx := 0
+	for i, s := range scanTypes {
+		if s == st.RedTeamConfig.ScanType {
+			currentIdx = i
+			break
+		}
+	}
+
+	if reverse {
+		currentIdx--
+		if currentIdx < 0 {
+			currentIdx = len(scanTypes) - 1
+		}
+	} else {
+		currentIdx++
+		if currentIdx >= len(scanTypes) {
+			currentIdx = 0
+		}
+	}
+
+	st.RedTeamConfig.ScanType = scanTypes[currentIdx]
+}
+
+// getMaxFieldIndex returns the maximum field index based on the current evaluation mode
+// Policy mode: 6 (StartButton)
+// Red Team mode: 8 (StartButton after ScanType and Configure)
+func (st *EvaluationViewState) getMaxFieldIndex() EvalFormField {
+	if st.EvaluationMode == EvaluationModeRedTeam {
+		return EvalFieldStartButtonRedTeam // ScanType at 6, Configure at 7, StartButton at 8
+	}
+	return EvalFieldStartButtonPolicy // StartButton at 6
+}
+
+// getStartButtonIndex returns the index of the start button based on evaluation mode
+func (st *EvaluationViewState) getStartButtonIndex() EvalFormField {
+	if st.EvaluationMode == EvaluationModeRedTeam {
+		return EvalFieldStartButtonRedTeam
+	}
+	return EvalFieldStartButtonPolicy
+}
+
+// getConfigureButtonIndex returns the index of the configure button (only for red team mode)
+func (st *EvaluationViewState) getConfigureButtonIndex() EvalFormField {
+	return EvalFieldConfigureButton // Only valid in red team mode
 }

@@ -29,7 +29,7 @@ def get_llm_from_model(
         return LiteLlm(
             model=model,
             api_key=llm_auth,
-            temperature=0.0,
+            # temperature=0.0,
         )
 
     return llm_cls(model=model)

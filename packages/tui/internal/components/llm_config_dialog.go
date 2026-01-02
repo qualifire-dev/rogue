@@ -197,7 +197,7 @@ func NewLLMConfigDialog(configuredKeys map[string]string, selectedProvider, sele
 			Name:        "openai",
 			DisplayName: "OpenAI",
 			APIKeyName:  "OPENAI_API_KEY",
-			Models:      []string{"gpt-5", "gpt-5-mini", "gpt-5-nano", "gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini"},
+			Models:      []string{"gpt-5.1", "gpt-5", "gpt-5-mini", "gpt-5-nano", "gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini"},
 			Configured:  configuredKeys["openai"] != "",
 		},
 		{
@@ -234,6 +234,13 @@ func NewLLMConfigDialog(configuredKeys map[string]string, selectedProvider, sele
 				"bedrock/us.anthropic.claude-haiku-4-5-20251001-v1:0",
 			},
 			Configured: configuredKeys["bedrock"] != "",
+		},
+		{
+			Name:        "lm_studio",
+			DisplayName: "LM Studio",
+			APIKeyName:  "LM_STUDIO_API_KEY",
+			Models:      []string{"lm_studio/DavidAU/OpenAi-GPT-oss-20b-abliterated-uncensored-NEO-Imatrix-gguf", "lm_studio/openai/gpt-oss-20b"},
+			Configured:  configuredKeys["lm_studio"] != "",
 		},
 	}
 
@@ -667,9 +674,23 @@ func (d LLMConfigDialog) handleEnter() (LLMConfigDialog, tea.Cmd) {
 
 		// Validate inputs based on provider
 		provider := d.Providers[d.SelectedProvider]
-		if provider.Name != "bedrock" || provider.Name != "lm_studio" && d.APIKeyInput == "" {
-			d.ErrorMessage = "API key cannot be empty"
-			return d, nil
+		if provider.Name == "bedrock" {
+			// For Bedrock, credentials are optional if using AWS SSO login
+			// Only require region if access key is provided (explicit credentials mode)
+			if d.AWSAccessKeyInput != "" && d.AWSSecretKeyInput == "" {
+				d.ErrorMessage = "AWS Secret Key is required when Access Key is provided"
+				return d, nil
+			}
+			if d.AWSSecretKeyInput != "" && d.AWSAccessKeyInput == "" {
+				d.ErrorMessage = "AWS Access Key is required when Secret Key is provided"
+				return d, nil
+			}
+		} else {
+			// Validate API key for other providers
+			if d.APIKeyInput == "" {
+				d.ErrorMessage = "API key cannot be empty"
+				return d, nil
+			}
 		}
 
 		d.Loading = true

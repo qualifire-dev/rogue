@@ -33,26 +33,30 @@ async def create_evaluation(
     job_id = str(uuid.uuid4())
 
     # Set logging context
+    if request.scenarios is not None:
+        scenario_count = len(request.scenarios)  # type: ignore[arg-type]
+    else:
+        scenario_count = 0
     set_request_context(
         request_id=job_id,
         job_id=job_id,
         agent_url=str(request.agent_config.evaluated_agent_url),
-        scenario_count=len(request.scenarios),
+        scenario_count=scenario_count,
     )
 
-    logger.info(
-        "Creating evaluation job",
-        extra={
-            "endpoint": "/evaluations",
-            "method": "POST",
-            "agent_url": str(request.agent_config.evaluated_agent_url),
-            "scenario_count": len(request.scenarios),
-            "judge_llm": request.agent_config.judge_llm,
-            "deep_test_mode": request.agent_config.deep_test_mode,
-            "max_retries": request.max_retries,
-            "timeout_seconds": request.timeout_seconds,
-        },
-    )
+    # Build extra logging info
+    extra_info = {
+        "endpoint": "/evaluations",
+        "method": "POST",
+        "agent_url": str(request.agent_config.evaluated_agent_url),
+        "scenario_count": scenario_count,
+        "judge_llm": request.agent_config.judge_llm,
+        "deep_test_mode": request.agent_config.deep_test_mode,
+        "max_retries": request.max_retries,
+        "timeout_seconds": request.timeout_seconds,
+    }
+
+    logger.info("Creating policy evaluation job", extra=extra_info)
 
     job = EvaluationJob(
         job_id=job_id,

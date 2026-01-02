@@ -1,7 +1,6 @@
 {
-  "python.testing.pytestArgs": [
-    "."
-  ],
+  "python.testing.pytestArgs": ["."],
   "python.testing.unittestEnabled": false,
-  "python.testing.pytestEnabled": true
+  "python.testing.pytestEnabled": true,
+  "cSpell.words": ["dotenv", "fastmcp", "LITELLM", "Streamable"]
 }

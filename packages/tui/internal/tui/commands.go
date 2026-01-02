@@ -2,11 +2,15 @@ package tui
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/rogue/tui/internal/screens/redteam_report"
 )
 
 // autoRefreshCmd creates a command that sends AutoRefreshMsg after a delay
@@ -104,38 +108,53 @@ func (m *Model) summaryGenerationCmd() tea.Cmd {
 
 		m.evalState.StructuredSummary = structuredSummary.Summary
 
-		overallSummary := structuredSummary.Summary.OverallSummary
-		keyFindings := structuredSummary.Summary.KeyFindings
-		parsedKeyFindings := ""
-		for _, finding := range keyFindings {
-			parsedKeyFindings += "- " + finding + "\n"
-		}
-		recommendations := structuredSummary.Summary.Recommendations
-		parsedRecommendations := ""
-		for _, recommendation := range recommendations {
-			parsedRecommendations += "- " + recommendation + "\n"
-		}
+		// Check if this is a red team report (OWASP report markdown)
+		// Red team reports have the full markdown in overall_summary and empty other fields
+		isRedTeamReport := len(structuredSummary.Summary.KeyFindings) == 0 &&
+			len(structuredSummary.Summary.Recommendations) == 0 &&
+			len(structuredSummary.Summary.DetailedBreakdown) == 0 &&
+			len(structuredSummary.Summary.OverallSummary) > 0 &&
+			strings.Contains(structuredSummary.Summary.OverallSummary, "## Attack Analysis")
 
-		detailedBreakdown := structuredSummary.Summary.DetailedBreakdown
-		parsedDetailedBreakdown := ""
-		if len(detailedBreakdown) > 0 {
-			// Create Markdown table header
-			parsedDetailedBreakdown = "| Scenario | Status | Outcome |\n"
-			parsedDetailedBreakdown += "|----------|--------|---------|\n"
-
-			// Add table rows with escaped content
-			for _, breakdown := range detailedBreakdown {
-				escapedScenario := escapeMarkdownTableCell(breakdown.Scenario)
-				escapedStatus := escapeMarkdownTableCell(breakdown.Status)
-				escapedOutcome := escapeMarkdownTableCell(breakdown.Outcome)
-				parsedDetailedBreakdown += "| " + escapedScenario + " | " + escapedStatus + " | " + escapedOutcome + " |\n"
+		var summary string
+		if isRedTeamReport {
+			// For red team evaluations, use the OWASP report markdown directly
+			summary = structuredSummary.Summary.OverallSummary
+		} else {
+			// For policy evaluations, format the structured summary
+			overallSummary := structuredSummary.Summary.OverallSummary
+			keyFindings := structuredSummary.Summary.KeyFindings
+			parsedKeyFindings := ""
+			for _, finding := range keyFindings {
+				parsedKeyFindings += "- " + finding + "\n"
 			}
-		}
+			recommendations := structuredSummary.Summary.Recommendations
+			parsedRecommendations := ""
+			for _, recommendation := range recommendations {
+				parsedRecommendations += "- " + recommendation + "\n"
+			}
 
-		summary := "## Overall Summary\n\n" + overallSummary +
-			"\n\n" + "## Key Findings\n\n" + parsedKeyFindings +
-			"\n\n" + "## Recommendations\n\n" + parsedRecommendations +
-			"\n\n" + "## Detailed Breakdown\n\n" + parsedDetailedBreakdown
+			detailedBreakdown := structuredSummary.Summary.DetailedBreakdown
+			parsedDetailedBreakdown := ""
+			if len(detailedBreakdown) > 0 {
+				// Create Markdown table header
+				parsedDetailedBreakdown = "| Scenario | Status | Outcome |\n"
+				parsedDetailedBreakdown += "|----------|--------|---------|\n"
+
+				// Add table rows with escaped content
+				for _, breakdown := range detailedBreakdown {
+					escapedScenario := escapeMarkdownTableCell(breakdown.Scenario)
+					escapedStatus := escapeMarkdownTableCell(breakdown.Status)
+					escapedOutcome := escapeMarkdownTableCell(breakdown.Outcome)
+					parsedDetailedBreakdown += "| " + escapedScenario + " | " + escapedStatus + " | " + escapedOutcome + " |\n"
+				}
+			}
+
+			summary = "## Overall Summary\n\n" + overallSummary +
+				"\n\n" + "## Key Findings\n\n" + parsedKeyFindings +
+				"\n\n" + "## Recommendations\n\n" + parsedRecommendations +
+				"\n\n" + "## Detailed Breakdown\n\n" + parsedDetailedBreakdown
+		}
 
 		return SummaryGeneratedMsg{
 			Summary: summary,
@@ -170,4 +189,51 @@ func escapeMarkdownTableCell(s string) string {
 	// Trim extra whitespace
 	s = strings.TrimSpace(s)
 	return s
+}
+
+// fetchRedTeamReport fetches the comprehensive red team report for a job
+func (m *Model) fetchRedTeamReport(jobID string) tea.Cmd {
+	return tea.Cmd(func() tea.Msg {
+		if jobID == "" {
+			return RedTeamReportFetchedMsg{
+				ReportData: nil,
+				Err:        fmt.Errorf("no job ID available"),
+			}
+		}
+
+		// Fetch report from API
+		url := fmt.Sprintf("%s/api/v1/red-team/%s/report", m.config.ServerURL, jobID)
+
+		client := &http.Client{Timeout: 30 * time.Second}
+		resp, err := client.Get(url)
+		if err != nil {
+			return RedTeamReportFetchedMsg{
+				ReportData: nil,
+				Err:        fmt.Errorf("failed to fetch report: %w", err),
+			}
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			return RedTeamReportFetchedMsg{
+				ReportData: nil,
+				Err:        fmt.Errorf("API error %d: %s", resp.StatusCode, string(body)),
+			}
+		}
+
+		// Parse the JSON response directly into ReportData struct
+		var reportData redteam_report.ReportData
+		if err := json.NewDecoder(resp.Body).Decode(&reportData); err != nil {
+			return RedTeamReportFetchedMsg{
+				ReportData: nil,
+				Err:        fmt.Errorf("failed to parse report: %w", err),
+			}
+		}
+
+		return RedTeamReportFetchedMsg{
+			ReportData: &reportData,
+			Err:        nil,
+		}
+	})
 }

@@ -36,18 +36,19 @@ const (
 
 // Dialog represents a modal dialog component
 type Dialog struct {
-	Type        DialogType
-	Title       string
-	Message     string
-	Buttons     []DialogButton
-	Input       string
-	InputCursor int
-	Width       int
-	Height      int
-	Focused     bool
-	SelectedBtn int
-	CustomView  func() string
-	OnClose     func(action string, input string)
+	Type         DialogType
+	Title        string
+	Message      string
+	Buttons      []DialogButton
+	Input        string
+	InputCursor  int
+	Width        int
+	Height       int
+	Focused      bool
+	SelectedBtn  int
+	FocusOnInput bool // For InputDialog: true = focus on input field, false = focus on buttons
+	CustomView   func() string
+	OnClose      func(action string, input string)
 }
 
 // DialogClosedMsg is sent when a dialog is closed
@@ -105,10 +106,11 @@ func NewInputDialog(title, message, placeholder string) Dialog {
 			{Label: "Cancel", Action: "cancel", Style: SecondaryButton},
 			{Label: "OK", Action: "ok", Style: PrimaryButton},
 		},
-		Width:       60,
-		Height:      12,
-		Focused:     true,
-		SelectedBtn: 1,
+		Width:        60,
+		Height:       12,
+		Focused:      true,
+		SelectedBtn:  1,
+		FocusOnInput: true, // Start with focus on input field
 	}
 }
 
@@ -159,6 +161,12 @@ func (d Dialog) Update(msg tea.Msg) (Dialog, tea.Cmd) {
 			}
 
 		case "enter":
+			// If focus is on input, move to buttons
+			if d.Type == InputDialog && d.FocusOnInput {
+				d.FocusOnInput = false
+				return d, nil
+			}
+			// Otherwise, trigger the selected button action
 			selectedAction := "ok"
 			if d.SelectedBtn < len(d.Buttons) {
 				selectedAction = d.Buttons[d.SelectedBtn].Action
@@ -167,60 +175,78 @@ func (d Dialog) Update(msg tea.Msg) (Dialog, tea.Cmd) {
 				return DialogClosedMsg{Action: selectedAction, Input: d.Input}
 			}
 
+		case "tab", "down":
+			// Move focus from input to buttons
+			if d.Type == InputDialog && d.FocusOnInput {
+				d.FocusOnInput = false
+				return d, nil
+			}
+			return d, nil
+
+		case "up", "shift+tab":
+			// Move focus from buttons to input
+			if d.Type == InputDialog && !d.FocusOnInput {
+				d.FocusOnInput = true
+				return d, nil
+			}
+			return d, nil
+
 		case "right":
-			// In input dialogs, use left/right to move the text cursor
-			if d.Type == InputDialog {
+			// In input dialogs with focus on input, move cursor
+			if d.Type == InputDialog && d.FocusOnInput {
 				if d.InputCursor < len(d.Input) {
 					d.InputCursor++
 				}
 				return d, nil
 			}
+			// Navigate between buttons
 			if len(d.Buttons) > 1 {
 				d.SelectedBtn = (d.SelectedBtn + 1) % len(d.Buttons)
 			}
 			return d, nil
 
 		case "left":
-			// In input dialogs, use left/right to move the text cursor
-			if d.Type == InputDialog {
+			// In input dialogs with focus on input, move cursor
+			if d.Type == InputDialog && d.FocusOnInput {
 				if d.InputCursor > 0 {
 					d.InputCursor--
 				}
 				return d, nil
 			}
+			// Navigate between buttons
 			if len(d.Buttons) > 1 {
 				d.SelectedBtn = (d.SelectedBtn - 1 + len(d.Buttons)) % len(d.Buttons)
 			}
 			return d, nil
 
 		case "backspace":
-			if d.Type == InputDialog && d.InputCursor > 0 && len(d.Input) > 0 {
+			if d.Type == InputDialog && d.FocusOnInput && d.InputCursor > 0 && len(d.Input) > 0 {
 				d.Input = d.Input[:d.InputCursor-1] + d.Input[d.InputCursor:]
 				d.InputCursor--
 			}
 			return d, nil
 
 		case "delete":
-			if d.Type == InputDialog && d.InputCursor < len(d.Input) {
+			if d.Type == InputDialog && d.FocusOnInput && d.InputCursor < len(d.Input) {
 				d.Input = d.Input[:d.InputCursor] + d.Input[d.InputCursor+1:]
 			}
 			return d, nil
 
 		case "ctrl+a":
-			if d.Type == InputDialog {
+			if d.Type == InputDialog && d.FocusOnInput {
 				d.InputCursor = 0
 			}
 			return d, nil
 
 		case "ctrl+e":
-			if d.Type == InputDialog {
+			if d.Type == InputDialog && d.FocusOnInput {
 				d.InputCursor = len(d.Input)
 			}
 			return d, nil
 
 		default:
-			// Handle regular character input for InputDialog
-			if d.Type == InputDialog {
+			// Handle regular character input for InputDialog when focus is on input
+			if d.Type == InputDialog && d.FocusOnInput {
 				keyStr := msg.String()
 
 				// Special handling for space key since it might have special representation
@@ -291,11 +317,15 @@ func (d Dialog) View() string {
 			content = append(content, "")
 		}
 
-		// Add input field
+		// Add input field - highlight border when focused
+		inputBorderColor := t.Border()
+		if d.FocusOnInput {
+			inputBorderColor = t.Primary()
+		}
 		inputStyle := lipgloss.NewStyle().
 			Width(d.Width-6).
 			Border(lipgloss.RoundedBorder()).
-			BorderForeground(t.Border()).
+			BorderForeground(inputBorderColor).
 			BorderBackground(t.Background()).
 			Background(t.Background()).
 			Padding(0, 1)
@@ -308,13 +338,14 @@ func (d Dialog) View() string {
 			Foreground(t.Text()).
 			Background(t.Background())
 
-		if d.InputCursor >= len(d.Input) {
+		// Only show cursor when input is focused
+		if d.FocusOnInput && d.InputCursor >= len(d.Input) {
 			// Cursor at end of input
 			cursorStyle := lipgloss.NewStyle().
 				Background(t.Primary()).
 				Foreground(t.Background())
 			inputText = textStyle.Render(d.Input) + cursorStyle.Render(" ")
-		} else if d.InputCursor >= 0 && d.InputCursor < len(d.Input) {
+		} else if d.FocusOnInput && d.InputCursor >= 0 && d.InputCursor < len(d.Input) {
 			// Cursor in middle of input - highlight the character at cursor position
 			before := d.Input[:d.InputCursor]
 			atCursor := string(d.Input[d.InputCursor])
