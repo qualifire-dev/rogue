@@ -110,11 +110,9 @@ class A2ARedTeamAttackerAgent(BaseRedTeamAttackerAgent):
             # If response is a Message, extract from parts
             elif isinstance(response, Message):
                 logger.debug("Response is a Message, extracting from parts")
-                if response.parts:
-                    for part in response.parts:
-                        if part.root and part.root.kind == "text":
-                            if part.root.text:
-                                response_text += str(part.root.text)
+                for part in response.parts or []:
+                    if part.root and part.root.kind == "text" and part.root.text:
+                        response_text += str(part.root.text)
 
             if not response_text:
                 logger.warning(
