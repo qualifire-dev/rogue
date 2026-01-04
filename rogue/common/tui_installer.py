@@ -2,7 +2,9 @@
 
 import os
 import platform
+import re
 import shutil
+import subprocess  # nosec: B404
 import tempfile
 from functools import lru_cache
 from pathlib import Path
@@ -12,6 +14,8 @@ import platformdirs
 import requests
 from loguru import logger
 from rich.console import Console
+
+from .version import get_version
 
 
 class RogueTuiInstaller:
@@ -165,20 +169,59 @@ class RogueTuiInstaller:
         else:
             return False
 
-    def install_rogue_tui(
-        self,
-        upgrade: bool = False,
-    ) -> bool:
-        """Install rogue-tui from GitHub releases if not already installed."""
-        console = Console()
-        # Check if rogue-tui is already available
-        if self._is_rogue_tui_installed() and not upgrade:
-            console.print("[green]✅ rogue-tui is already installed.[/green]")
+    @lru_cache(1)
+    def _get_installed_tui_version(self) -> Optional[str]:
+        """Get the version of the installed rogue-tui binary."""
+        try:
+            result = subprocess.run(  # nosec: B603 B607
+                ["rogue-tui", "--version"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+                check=True,
+            )
+            # Parse output like "rogue-tui v0.2.2"
+            match = re.search(r"v?(\d+\.\d+\.\d+)", result.stdout)
+            if match:
+                return match.group(1)
+            return None
+        except Exception:
+            logger.debug("Failed to get rogue-tui version")
+            return None
+
+    @lru_cache(1)
+    def _should_reinstall_tui(self) -> bool:
+        """Check if rogue-tui should be reinstalled due to version mismatch."""
+        installed_version = self._get_installed_tui_version()
+        if not installed_version:
             return True
 
-        console.print(
-            "[yellow]📦 Installing rogue-tui from GitHub releases...[/yellow]",
-        )
+        current_version = get_version("rogue-ai")
+        return installed_version != current_version
+
+    def install_rogue_tui(self) -> bool:
+        """Install rogue-tui from GitHub releases if not installed or needs update."""
+        console = Console()
+
+        # Check if rogue-tui is already available
+        if self._is_rogue_tui_installed():
+            # Check if version matches
+            if not self._should_reinstall_tui():
+                console.print(
+                    "[green]✅ rogue-tui is already installed and up to date.[/green]",
+                )
+                return True
+            else:
+                installed_version = self._get_installed_tui_version()
+                current_version = get_version("rogue-ai")
+                console.print(
+                    f"[yellow]📦 Updating rogue-tui from "
+                    f"v{installed_version} to v{current_version}...[/yellow]",
+                )
+        else:
+            console.print(
+                "[yellow]📦 Installing rogue-tui from GitHub releases...[/yellow]",
+            )
 
         try:
             tmp_path = self._download_rogue_tui_to_temp()
