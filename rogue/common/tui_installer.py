@@ -2,7 +2,9 @@
 
 import os
 import platform
+import re
 import shutil
+import subprocess  # nosec: B404
 import tempfile
 from functools import lru_cache
 from pathlib import Path
@@ -12,6 +14,8 @@ import platformdirs
 import requests
 from loguru import logger
 from rich.console import Console
+
+from .version import get_version
 
 
 class RogueTuiInstaller:
@@ -42,15 +46,18 @@ class RogueTuiInstaller:
         """Get the operating system name."""
         return platform.system().lower()
 
-    def _get_latest_github_release(self) -> Optional[dict]:
-        """Get the latest release information from GitHub."""
+    def _get_release_from_github(
+        self,
+        version: str,
+    ) -> Optional[dict]:
+        """Get the release information from GitHub."""
         console = Console()
 
         try:
-            url = f"https://api.github.com/repos/{self._repo}/releases/latest"
+            url = f"https://api.github.com/repos/{self._repo}/releases/{version}"
 
             with console.status(
-                "[bold blue]Fetching latest release information...",
+                f"[bold blue]Fetching {version} release information...",
                 spinner="dots",
             ):
                 response = requests.get(
@@ -61,7 +68,7 @@ class RogueTuiInstaller:
                 response.raise_for_status()
                 return response.json()
         except Exception:
-            logger.exception("Error fetching latest release")
+            logger.exception(f"Error fetching {version} release")
             return None
 
     def _find_asset_for_platform(
@@ -83,13 +90,19 @@ class RogueTuiInstaller:
 
         return None
 
-    def _download_rogue_tui_to_temp(self) -> str:
+    def _download_rogue_tui_to_temp(
+        self,
+        latest_version_override: bool = False,
+    ) -> str:
         console = Console()
 
-        # Get latest release
-        release_data = self._get_latest_github_release()
+        version = "latest" if latest_version_override else f"v{get_version()}"
+
+        # Get github release
+        console.print(f"[bold blue]Fetching {version} release information...")
+        release_data = self._get_release_from_github(version)
         if not release_data:
-            raise Exception("Failed to fetch latest release information.")
+            raise Exception(f"Failed to fetch rogue-tui {version} release information.")
 
         # Find appropriate asset
         download_url = self._find_asset_for_platform(release_data)
@@ -165,27 +178,78 @@ class RogueTuiInstaller:
         else:
             return False
 
-    def install_rogue_tui(
-        self,
-        upgrade: bool = False,
-    ) -> bool:
-        """Install rogue-tui from GitHub releases if not already installed."""
-        console = Console()
-        # Check if rogue-tui is already available
-        if self._is_rogue_tui_installed() and not upgrade:
-            console.print("[green]✅ rogue-tui is already installed.[/green]")
+    @lru_cache(1)
+    def _get_installed_tui_version(self) -> Optional[str]:
+        """Get the version of the installed rogue-tui binary."""
+        try:
+            result = subprocess.run(  # nosec: B603 B607
+                ["rogue-tui", "--version"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+                check=True,
+            )
+            # Parse output like "rogue-tui v0.2.2"
+            match = re.search(r"v?(\d+\.\d+\.\d+)", result.stdout)
+            if match:
+                return match.group(1)
+            return None
+        except Exception:
+            logger.debug("Failed to get rogue-tui version")
+            return None
+
+    @lru_cache(1)
+    def _should_reinstall_tui(self) -> bool:
+        """Check if rogue-tui should be reinstalled due to version mismatch."""
+        installed_version = self._get_installed_tui_version()
+        if not installed_version:
             return True
 
-        console.print(
-            "[yellow]📦 Installing rogue-tui from GitHub releases...[/yellow]",
-        )
+        current_version = get_version("rogue-ai")
+        return installed_version != current_version
+
+    def install_rogue_tui(self) -> bool:
+        """Install rogue-tui from GitHub releases if not installed or needs update."""
+        console = Console()
+
+        # Check if rogue-tui is already available
+        if self._is_rogue_tui_installed():
+            # Check if version matches
+            if not self._should_reinstall_tui():
+                console.print(
+                    "[green]✅ rogue-tui is already installed and up to date.[/green]",
+                )
+                return True
+            else:
+                installed_version = self._get_installed_tui_version()
+                current_version = get_version("rogue-ai")
+                console.print(
+                    f"[yellow]📦 Updating rogue-tui from "
+                    f"v{installed_version} to v{current_version}...[/yellow]",
+                )
+        else:
+            console.print(
+                "[yellow]📦 Installing rogue-tui from GitHub releases...[/yellow]",
+            )
 
         try:
             tmp_path = self._download_rogue_tui_to_temp()
         except Exception:
-            console.print("[red]❌ Failed to download rogue-tui.[/red]")
-            logger.exception("Failed to download rogue-tui.")
-            return False
+            logger.exception(f"Failed to download rogue-tui for {get_version()}.")
+            console.print(
+                f"[red]❌ Failed to download rogue-tui for {get_version()}.[/red]",
+            )
+            console.print("[yellow]Trying latest version[/yellow]")
+            try:
+                tmp_path = self._download_rogue_tui_to_temp(
+                    latest_version_override=True,
+                )
+            except Exception:
+                logger.exception("Failed to download rogue-tui for latest version.")
+                console.print(
+                    "[red]❌ Failed to download rogue-tui for latest version.[/red]",
+                )
+                return False
 
         try:
             # Move to final location

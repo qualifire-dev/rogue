@@ -5,7 +5,7 @@ Shared version retrieval logic.
 from pathlib import Path
 
 
-def get_version(package_name: str) -> str:
+def get_version(package_name: str = "rogue-ai") -> str:
     """
     Retrieves the package version.
 
