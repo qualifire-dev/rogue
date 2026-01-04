@@ -26,7 +26,6 @@ from .common.update_checker import check_for_updates
 from .run_cli import run_cli, set_cli_args
 from .run_server import run_server, set_server_args
 from .run_tui import run_rogue_tui
-from .run_ui import run_ui, set_ui_args
 
 load_dotenv()
 
@@ -89,14 +88,6 @@ def parse_args() -> Namespace:
         parents=[common_parser()],
     )
     set_server_args(server_parser)
-
-    # UI mode
-    ui_parser = subparsers.add_parser(
-        "ui",
-        help="Run in interactive UI mode",
-        parents=[common_parser()],
-    )
-    set_ui_args(ui_parser)
 
     # CLI mode
     cli_parser = subparsers.add_parser(
@@ -262,9 +253,7 @@ def main() -> None:
     args.workdir.mkdir(exist_ok=True, parents=True)
 
     try:
-        if args.mode == "ui":
-            run_ui(args)
-        elif args.mode == "server":
+        if args.mode == "server":
             run_server(args, background=False)
         elif args.mode == "cli":
             exit_code = asyncio.run(run_cli(args))

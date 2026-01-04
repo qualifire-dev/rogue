@@ -61,7 +61,6 @@ Rogue operates on a **client-server architecture** with multiple interfaces:
 |-----------|-------------|
 | **Server** | Core evaluation & red team logic |
 | **TUI** | Modern terminal interface (Go + Bubble Tea) |
-| **Web UI** | Gradio-based web interface |
 | **CLI** | Non-interactive mode for CI/CD pipelines |
 
 https://github.com/user-attachments/assets/b5c04772-6916-4aab-825b-6a7476d77787
@@ -91,9 +90,6 @@ See examples in [`examples/`](./examples/) for reference implementations.
 # TUI (recommended)
 uvx rogue-ai
 
-# Web UI
-uvx rogue-ai ui
-
 # CLI / CI/CD
 uvx rogue-ai cli
 ```
@@ -118,7 +114,6 @@ Configure in the UI:
 | Default | `uvx rogue-ai` | Server + TUI |
 | Server | `uvx rogue-ai server` | Backend only |
 | TUI | `uvx rogue-ai tui` | Terminal client |
-| Web UI | `uvx rogue-ai ui` | Gradio interface |
 | CLI | `uvx rogue-ai cli` | Non-interactive (CI/CD) |
 
 ### Server Options
