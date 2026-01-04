@@ -46,15 +46,21 @@ class RogueTuiInstaller:
         """Get the operating system name."""
         return platform.system().lower()
 
-    def _get_latest_github_release(self) -> Optional[dict]:
-        """Get the latest release information from GitHub."""
+    def _get_release_from_github(self) -> Optional[dict]:
+        """Get the release information from GitHub."""
         console = Console()
 
+        version = get_version()
+        if version == "0.0.0-dev":
+            version = "latest"
+        else:
+            version = f"v{version}"
+
         try:
-            url = f"https://api.github.com/repos/{self._repo}/releases/latest"
+            url = f"https://api.github.com/repos/{self._repo}/releases/{version}"
 
             with console.status(
-                "[bold blue]Fetching latest release information...",
+                f"[bold blue]Fetching {version} release information...",
                 spinner="dots",
             ):
                 response = requests.get(
@@ -65,7 +71,7 @@ class RogueTuiInstaller:
                 response.raise_for_status()
                 return response.json()
         except Exception:
-            logger.exception("Error fetching latest release")
+            logger.exception(f"Error fetching {version} release")
             return None
 
     def _find_asset_for_platform(
@@ -90,10 +96,10 @@ class RogueTuiInstaller:
     def _download_rogue_tui_to_temp(self) -> str:
         console = Console()
 
-        # Get latest release
-        release_data = self._get_latest_github_release()
+        # Get github release
+        release_data = self._get_release_from_github()
         if not release_data:
-            raise Exception("Failed to fetch latest release information.")
+            raise Exception("Failed to fetch rogue-tui release information.")
 
         # Find appropriate asset
         download_url = self._find_asset_for_platform(release_data)
