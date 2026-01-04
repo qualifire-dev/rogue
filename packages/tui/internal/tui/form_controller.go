@@ -85,6 +85,8 @@ func HandleEvalFormInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 				m.evalState.AgentTransport,
 				m.evalState.AgentURL,
 				m.evalState.PythonEntrypointFile,
+				m.evalState.EvaluationMode,
+				m.getScanType(),
 			)
 		case EvalFieldTransport:
 			m.evalState.cycleTransport(true) // cycle backwards
@@ -94,12 +96,34 @@ func HandleEvalFormInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 				m.evalState.AgentTransport,
 				m.evalState.AgentURL,
 				m.evalState.PythonEntrypointFile,
+				m.evalState.EvaluationMode,
+				m.getScanType(),
 			)
 		case EvalFieldEvaluationMode:
 			m.evalState.cycleEvaluationMode(true) // cycle backwards
+			// Save config after evaluation mode change
+			go saveUserConfig(
+				m.evalState.AgentProtocol,
+				m.evalState.AgentTransport,
+				m.evalState.AgentURL,
+				m.evalState.PythonEntrypointFile,
+				m.evalState.EvaluationMode,
+				m.getScanType(),
+			)
 		case EvalFieldScanType: // ScanType dropdown (only in Red Team mode)
 			if m.evalState.EvaluationMode == EvaluationModeRedTeam {
 				m.evalState.cycleScanType(true) // cycle backwards
+				// Apply preset for the new scan type
+				m.applyPresetForScanType()
+				// Save config after scan type change
+				go saveUserConfig(
+					m.evalState.AgentProtocol,
+					m.evalState.AgentTransport,
+					m.evalState.AgentURL,
+					m.evalState.PythonEntrypointFile,
+					m.evalState.EvaluationMode,
+					m.getScanType(),
+				)
 			}
 		}
 		return m, nil
@@ -126,6 +150,8 @@ func HandleEvalFormInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 				m.evalState.AgentTransport,
 				m.evalState.AgentURL,
 				m.evalState.PythonEntrypointFile,
+				m.evalState.EvaluationMode,
+				m.getScanType(),
 			)
 		case EvalFieldTransport:
 			m.evalState.cycleTransport(false) // cycle forwards
@@ -135,6 +161,8 @@ func HandleEvalFormInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 				m.evalState.AgentTransport,
 				m.evalState.AgentURL,
 				m.evalState.PythonEntrypointFile,
+				m.evalState.EvaluationMode,
+				m.getScanType(),
 			)
 		case EvalFieldJudgeModel:
 			fieldLen := len(m.evalState.JudgeModel)
@@ -143,9 +171,29 @@ func HandleEvalFormInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 			}
 		case EvalFieldEvaluationMode:
 			m.evalState.cycleEvaluationMode(false) // cycle forwards
+			// Save config after evaluation mode change
+			go saveUserConfig(
+				m.evalState.AgentProtocol,
+				m.evalState.AgentTransport,
+				m.evalState.AgentURL,
+				m.evalState.PythonEntrypointFile,
+				m.evalState.EvaluationMode,
+				m.getScanType(),
+			)
 		case EvalFieldScanType: // ScanType dropdown (only in Red Team mode)
 			if m.evalState.EvaluationMode == EvaluationModeRedTeam {
 				m.evalState.cycleScanType(false) // cycle forwards
+				// Apply preset for the new scan type
+				m.applyPresetForScanType()
+				// Save config after scan type change
+				go saveUserConfig(
+					m.evalState.AgentProtocol,
+					m.evalState.AgentTransport,
+					m.evalState.AgentURL,
+					m.evalState.PythonEntrypointFile,
+					m.evalState.EvaluationMode,
+					m.getScanType(),
+				)
 			}
 		}
 		return m, nil
@@ -184,6 +232,8 @@ func HandleEvalFormInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 							m.evalState.AgentTransport,
 							m.evalState.AgentURL,
 							m.evalState.PythonEntrypointFile,
+							m.evalState.EvaluationMode,
+							m.getScanType(),
 						)
 					}
 				} else {
@@ -201,6 +251,8 @@ func HandleEvalFormInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 							m.evalState.AgentTransport,
 							m.evalState.AgentURL,
 							m.evalState.PythonEntrypointFile,
+							m.evalState.EvaluationMode,
+							m.getScanType(),
 						)
 					}
 				}
@@ -246,6 +298,8 @@ func HandleEvalFormInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 					m.evalState.AgentTransport,
 					m.evalState.AgentURL,
 					m.evalState.PythonEntrypointFile,
+					m.evalState.EvaluationMode,
+					m.getScanType(),
 				)
 			case EvalFieldJudgeModel:
 				runes := []rune(m.evalState.JudgeModel)

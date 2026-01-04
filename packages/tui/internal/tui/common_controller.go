@@ -65,6 +65,8 @@ func (m Model) handlePasteMsg(msg tea.PasteMsg) (Model, tea.Cmd) {
 				m.evalState.AgentTransport,
 				m.evalState.AgentURL,
 				m.evalState.PythonEntrypointFile,
+				m.evalState.EvaluationMode,
+				m.getScanType(),
 			)
 		case EvalFieldJudgeModel:
 			// Insert at cursor position
@@ -264,6 +266,79 @@ func (m Model) handleCommandSelectedMsg(msg components.CommandSelectedMsg) (Mode
 		}
 		pythonEntrypointFile := userConfig.PythonEntrypointFile
 
+		// Load evaluation mode from config
+		evaluationMode := EvaluationModePolicy
+		if userConfig.EvaluationMode != "" {
+			evaluationMode = EvaluationMode(userConfig.EvaluationMode)
+		}
+
+		// Load scan type from config
+		scanType := ScanTypeBasic
+		if userConfig.ScanType != "" {
+			scanType = ScanType(userConfig.ScanType)
+		}
+
+		// Load red team config from .rogue/redteam.yaml to get saved vulnerabilities/attacks
+		redTeamConfigState := redteam.NewRedTeamConfigState()
+		if m.config.QualifireAPIKey != "" {
+			redTeamConfigState.QualifireAPIKey = m.config.QualifireAPIKey
+		}
+
+		// Build vulnerabilities list from saved state
+		vulnerabilities := make([]string, 0)
+		for id, selected := range redTeamConfigState.SelectedVulnerabilities {
+			if selected {
+				vulnerabilities = append(vulnerabilities, id)
+			}
+		}
+
+		// Build attacks list from saved state
+		attacks := make([]string, 0)
+		for id, selected := range redTeamConfigState.SelectedAttacks {
+			if selected {
+				attacks = append(attacks, id)
+			}
+		}
+
+		// Build frameworks list from saved state
+		frameworks := make([]string, 0)
+		for id, selected := range redTeamConfigState.SelectedFrameworks {
+			if selected {
+				frameworks = append(frameworks, id)
+			}
+		}
+
+		// Use saved scan type from redteam.yaml if it exists, otherwise use user_config.json
+		if redTeamConfigState.ScanType != "" {
+			scanType = ScanType(redTeamConfigState.ScanType)
+		}
+
+		// If no vulnerabilities/attacks are selected, apply preset based on scan type
+		if len(vulnerabilities) == 0 && len(attacks) == 0 {
+			switch scanType {
+			case ScanTypeBasic:
+				vulnerabilities = redteam.GetBasicScanVulnerabilities()
+				attacks = redteam.GetBasicScanAttacks()
+				// Also update the redTeamConfigState so it's consistent
+				for _, id := range vulnerabilities {
+					redTeamConfigState.SelectedVulnerabilities[id] = true
+				}
+				for _, id := range attacks {
+					redTeamConfigState.SelectedAttacks[id] = true
+				}
+			case ScanTypeFull:
+				vulnerabilities = redteam.GetFreeVulnerabilities()
+				attacks = redteam.GetFreeAttacks()
+				// Also update the redTeamConfigState so it's consistent
+				for _, id := range vulnerabilities {
+					redTeamConfigState.SelectedVulnerabilities[id] = true
+				}
+				for _, id := range attacks {
+					redTeamConfigState.SelectedAttacks[id] = true
+				}
+			}
+		}
+
 		m.evalState = &EvaluationViewState{
 			ServerURL:            m.config.ServerURL,
 			AgentURL:             agentURL,
@@ -275,16 +350,19 @@ func (m Model) handleCommandSelectedMsg(msg components.CommandSelectedMsg) (Mode
 			DeepTest:             false,
 			Scenarios:            scenariosWithContext.Scenarios,
 			BusinessContext:      scenariosWithContext.BusinessContext,
-			EvaluationMode:       EvaluationModePolicy,
+			EvaluationMode:       evaluationMode,
 			RedTeamConfig: &RedTeamConfig{
-				ScanType:                ScanTypeBasic,
-				Vulnerabilities:         []string{},
-				Attacks:                 []string{},
-				AttacksPerVulnerability: 3,
-				Frameworks:              []string{},
+				ScanType:                scanType,
+				Vulnerabilities:         vulnerabilities,
+				Attacks:                 attacks,
+				AttacksPerVulnerability: redTeamConfigState.AttacksPerVulnerability,
+				Frameworks:              frameworks,
 			},
 			cursorPos: 0, // Protocol is now first field (dropdown), cursorPos not used initially
 		}
+
+		// Cache the redTeamConfigState for later use
+		m.redTeamConfigState = redTeamConfigState
 	case "configure_models":
 		// Open LLM configuration dialog
 		llmDialog := components.NewLLMConfigDialog(m.config.APIKeys, m.config.SelectedProvider, m.config.SelectedModel)

@@ -182,6 +182,8 @@ func (m Model) handleGlobalSlash(msg tea.KeyMsg) (Model, tea.Cmd) {
 				m.evalState.AgentTransport,
 				m.evalState.AgentURL,
 				m.evalState.PythonEntrypointFile,
+				m.evalState.EvaluationMode,
+				m.getScanType(),
 			)
 		case EvalFieldJudgeModel:
 			runes := []rune(m.evalState.JudgeModel)

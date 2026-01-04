@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+
+	"github.com/rogue/tui/internal/screens/redteam"
 )
 
 type Protocol string
@@ -132,6 +134,8 @@ type UserConfigFromFile struct {
 	Protocol             string `json:"protocol"`
 	Transport            string `json:"transport"`
 	PythonEntrypointFile string `json:"python_entrypoint_file"`
+	EvaluationMode       string `json:"evaluation_mode"`
+	ScanType             string `json:"scan_type"`
 }
 
 // loadUserConfigFromWorkdir reads .rogue/user_config.json upward from CWD
@@ -174,8 +178,8 @@ func findUserConfigPath() string {
 	return filepath.Join(wd, ".rogue", "user_config.json")
 }
 
-// saveUserConfig saves the protocol and python_entrypoint_file to user_config.json
-func saveUserConfig(protocol Protocol, transport Transport, agentURL, pythonEntrypointFile string) error {
+// saveUserConfig saves the protocol, evaluation mode, scan type and other settings to user_config.json
+func saveUserConfig(protocol Protocol, transport Transport, agentURL, pythonEntrypointFile string, evaluationMode EvaluationMode, scanType ScanType) error {
 	configPath := findUserConfigPath()
 
 	// Read existing config to preserve other fields
@@ -196,6 +200,10 @@ func saveUserConfig(protocol Protocol, transport Transport, agentURL, pythonEntr
 		// Clear python entrypoint for non-Python protocols
 		delete(existingData, "python_entrypoint_file")
 	}
+
+	// Save evaluation mode and scan type
+	existingData["evaluation_mode"] = string(evaluationMode)
+	existingData["scan_type"] = string(scanType)
 
 	// Marshal and save
 	data, err := json.MarshalIndent(existingData, "", "  ")
@@ -511,4 +519,63 @@ func (st *EvaluationViewState) getStartButtonIndex() EvalFormField {
 // getConfigureButtonIndex returns the index of the configure button (only for red team mode)
 func (st *EvaluationViewState) getConfigureButtonIndex() EvalFormField {
 	return EvalFieldConfigureButton // Only valid in red team mode
+}
+
+// getScanType returns the current scan type, defaulting to ScanTypeBasic if not set
+func (m *Model) getScanType() ScanType {
+	if m.evalState != nil && m.evalState.RedTeamConfig != nil {
+		return m.evalState.RedTeamConfig.ScanType
+	}
+	return ScanTypeBasic
+}
+
+// applyPresetForScanType applies the preset vulnerabilities/attacks for the current scan type
+// This is called when the user changes the scan type on the eval form
+func (m *Model) applyPresetForScanType() {
+	if m.evalState == nil || m.evalState.RedTeamConfig == nil {
+		return
+	}
+
+	scanType := m.evalState.RedTeamConfig.ScanType
+
+	// For custom scan type, don't apply any preset - keep existing selections
+	if scanType == ScanTypeCustom {
+		return
+	}
+
+	// Apply preset based on scan type
+	// Import the preset data from the redteam package via redTeamConfigState
+	if m.redTeamConfigState == nil {
+		return
+	}
+
+	// Clear current selections
+	m.redTeamConfigState.SelectedVulnerabilities = make(map[string]bool)
+	m.redTeamConfigState.SelectedAttacks = make(map[string]bool)
+
+	var vulnerabilities []string
+	var attacks []string
+
+	switch scanType {
+	case ScanTypeBasic:
+		m.redTeamConfigState.ScanType = redteam.ScanTypeBasic
+		vulnerabilities = redteam.GetBasicScanVulnerabilities()
+		attacks = redteam.GetBasicScanAttacks()
+	case ScanTypeFull:
+		m.redTeamConfigState.ScanType = redteam.ScanTypeFull
+		vulnerabilities = redteam.GetFreeVulnerabilities()
+		attacks = redteam.GetFreeAttacks()
+	}
+
+	// Update redTeamConfigState
+	for _, id := range vulnerabilities {
+		m.redTeamConfigState.SelectedVulnerabilities[id] = true
+	}
+	for _, id := range attacks {
+		m.redTeamConfigState.SelectedAttacks[id] = true
+	}
+
+	// Update evalState.RedTeamConfig
+	m.evalState.RedTeamConfig.Vulnerabilities = vulnerabilities
+	m.evalState.RedTeamConfig.Attacks = attacks
 }
