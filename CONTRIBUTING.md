@@ -146,9 +146,6 @@ uv run python -m rogue
 # Run server only
 uv run python -m rogue server
 
-# Run web UI
-uv run python -m rogue ui
-
 # Run CLI
 uv run python -m rogue cli
 
@@ -282,7 +279,6 @@ uv lock --check
 
 - `rogue/`: Main Python package
   - `server/`: Backend server and API
-  - `ui/`: Gradio web interface
   - `common/`: Shared utilities
   - `evaluator_agent/`: Evaluator agent implementation
   - `prompt_injection_evaluator/`: Prompt injection testing
