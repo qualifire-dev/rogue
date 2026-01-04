@@ -46,15 +46,12 @@ class RogueTuiInstaller:
         """Get the operating system name."""
         return platform.system().lower()
 
-    def _get_release_from_github(self) -> Optional[dict]:
+    def _get_release_from_github(
+        self,
+        version: str,
+    ) -> Optional[dict]:
         """Get the release information from GitHub."""
         console = Console()
-
-        version = get_version()
-        if version == "0.0.0-dev":
-            version = "latest"
-        else:
-            version = f"v{version}"
 
         try:
             url = f"https://api.github.com/repos/{self._repo}/releases/{version}"
@@ -93,13 +90,19 @@ class RogueTuiInstaller:
 
         return None
 
-    def _download_rogue_tui_to_temp(self) -> str:
+    def _download_rogue_tui_to_temp(
+        self,
+        latest_version_override: bool = False,
+    ) -> str:
         console = Console()
 
+        version = "latest" if latest_version_override else f"v{get_version()}"
+
         # Get github release
-        release_data = self._get_release_from_github()
+        console.print(f"[bold blue]Fetching {version} release information...")
+        release_data = self._get_release_from_github(version)
         if not release_data:
-            raise Exception("Failed to fetch rogue-tui release information.")
+            raise Exception(f"Failed to fetch rogue-tui {version} release information.")
 
         # Find appropriate asset
         download_url = self._find_asset_for_platform(release_data)
@@ -232,9 +235,21 @@ class RogueTuiInstaller:
         try:
             tmp_path = self._download_rogue_tui_to_temp()
         except Exception:
-            console.print("[red]❌ Failed to download rogue-tui.[/red]")
-            logger.exception("Failed to download rogue-tui.")
-            return False
+            logger.exception(f"Failed to download rogue-tui for {get_version()}.")
+            console.print(
+                f"[red]❌ Failed to download rogue-tui for {get_version()}.[/red]",
+            )
+            console.print("[yellow]Trying latest version[/yellow]")
+            try:
+                tmp_path = self._download_rogue_tui_to_temp(
+                    latest_version_override=True,
+                )
+            except Exception:
+                logger.exception("Failed to download rogue-tui for latest version.")
+                console.print(
+                    "[red]❌ Failed to download rogue-tui for latest version.[/red]",
+                )
+                return False
 
         try:
             # Move to final location
