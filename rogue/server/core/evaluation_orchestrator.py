@@ -43,6 +43,7 @@ class EvaluationOrchestrator:
         judge_llm_aws_access_key_id: str | None = None,
         judge_llm_aws_secret_access_key: str | None = None,
         judge_llm_aws_region: str | None = None,
+        python_entrypoint_file: str | None = None,
     ):
         self.protocol = protocol
         self.transport = transport
@@ -57,6 +58,7 @@ class EvaluationOrchestrator:
         self.scenarios = scenarios
         self.business_context = business_context
         self.deep_test_mode = deep_test_mode
+        self.python_entrypoint_file = python_entrypoint_file
         self.results = EvaluationResults()
         self.logger = get_logger(__name__)
 
@@ -77,6 +79,8 @@ class EvaluationOrchestrator:
                 "agent_url": self.evaluated_agent_url,
                 "judge_llm": self.judge_llm,
                 "deep_test_mode": self.deep_test_mode,
+                "protocol": self.protocol.value if self.protocol else None,
+                "python_entrypoint_file": self.python_entrypoint_file,
             },
         )
 
@@ -120,6 +124,7 @@ class EvaluationOrchestrator:
                 business_context=self.business_context,
                 deep_test_mode=self.deep_test_mode,
                 evaluation_mode=EvaluationMode.POLICY,
+                python_entrypoint_file=self.python_entrypoint_file,
             ):
                 update_count += 1
                 self.logger.debug(

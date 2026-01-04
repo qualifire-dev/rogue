@@ -177,7 +177,10 @@ class BaseEvaluatorAgent(ABC):
         self._evaluated_agent_address = evaluated_agent_address
         self._protocol = protocol
         self._transport = transport or self._protocol.get_default_transport()
-        if not self._transport.is_valid_for_protocol(protocol):
+        # Python protocol doesn't use transport, so skip validation
+        if self._transport is not None and not self._transport.is_valid_for_protocol(
+            protocol,
+        ):
             raise ValueError(f"Unsupported transport for {protocol}: {self._transport}")
 
         self._headers = headers or {}

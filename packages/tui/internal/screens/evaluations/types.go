@@ -6,8 +6,8 @@ package evaluations
 type FormField int
 
 const (
-	FormFieldAgentURL FormField = iota
-	FormFieldProtocol
+	FormFieldProtocol FormField = iota
+	FormFieldAgentURL           // Also used for PythonEntrypointFile when protocol is Python
 	FormFieldTransport
 	FormFieldJudgeModel
 	FormFieldDeepTest
@@ -28,19 +28,21 @@ type FormState struct {
 	Height int
 
 	// Form fields
-	AgentURL       string
-	Protocol       string
-	Transport      string
-	JudgeModel     string
-	DeepTest       bool
-	ServerURL      string
-	ScenariosCount int
-	EvaluationMode string
-	ScanType       string // "basic", "full", or "custom" (only shown in Red Team mode)
+	AgentURL             string
+	Protocol             string
+	Transport            string
+	PythonEntrypointFile string // Path to Python file with call_agent function (for Python protocol)
+	JudgeModel           string
+	DeepTest             bool
+	ServerURL            string
+	ScenariosCount       int
+	EvaluationMode       string
+	ScanType             string // "basic", "full", or "custom" (only shown in Red Team mode)
 
 	// Editing state
-	// Policy mode: 0: AgentURL, 1: Protocol, 2: Transport, 3: JudgeModel, 4: DeepTest, 5: EvaluationMode, 6: StartButton
-	// Red Team mode: 0: AgentURL, 1: Protocol, 2: Transport, 3: JudgeModel, 4: DeepTest, 5: EvaluationMode, 6: ScanType, 7: Configure, 8: StartButton
+	// Policy mode: 0: Protocol, 1: AgentURL/PythonFile, 2: Transport, 3: JudgeModel, 4: DeepTest, 5: EvaluationMode, 6: StartButton
+	// Red Team mode: 0: Protocol, 1: AgentURL/PythonFile, 2: Transport, 3: JudgeModel, 4: DeepTest, 5: EvaluationMode, 6: ScanType, 7: Configure, 8: StartButton
+	// Note: Transport field is skipped for Python protocol
 	CurrentField int
 	CursorPos    int
 

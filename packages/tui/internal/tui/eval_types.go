@@ -10,8 +10,9 @@ import (
 type Protocol string
 
 const (
-	ProtocolA2A Protocol = "a2a"
-	ProtocolMCP Protocol = "mcp"
+	ProtocolA2A    Protocol = "a2a"
+	ProtocolMCP    Protocol = "mcp"
+	ProtocolPython Protocol = "python"
 )
 
 type Transport string
@@ -36,11 +37,12 @@ const (
 type EvalFormField int
 
 // EvalField constants for form field indices
-// Policy mode: AgentURL(0), Protocol(1), Transport(2), JudgeModel(3), DeepTest(4), EvaluationMode(5), StartButton(6)
+// Policy mode: Protocol(0), AgentURL/PythonFile(1), Transport(2), JudgeModel(3), DeepTest(4), EvaluationMode(5), StartButton(6)
 // Red Team mode adds: ScanType(6), ConfigureButton(7), StartButton(8)
+// Note: Transport field is skipped for Python protocol
 const (
-	EvalFieldAgentURL EvalFormField = iota
-	EvalFieldProtocol
+	EvalFieldProtocol EvalFormField = iota
+	EvalFieldAgentURL               // Also used for PythonEntrypointFile when protocol is Python
 	EvalFieldTransport
 	EvalFieldJudgeModel
 	EvalFieldDeepTest
@@ -75,15 +77,16 @@ type RedTeamConfig struct {
 
 // EvaluationViewState is defined in tui package to avoid import cycles
 type EvaluationViewState struct {
-	ServerURL       string // Used from config, not editable in form
-	AgentURL        string
-	AgentProtocol   Protocol
-	AgentTransport  Transport
-	JudgeModel      string
-	ParallelRuns    int
-	DeepTest        bool
-	Scenarios       []EvalScenario
-	BusinessContext string // Business context for red team attacks
+	ServerURL            string // Used from config, not editable in form
+	AgentURL             string
+	AgentProtocol        Protocol
+	AgentTransport       Transport
+	PythonEntrypointFile string // Path to Python file with call_agent function (for Python protocol)
+	JudgeModel           string
+	ParallelRuns         int
+	DeepTest             bool
+	Scenarios            []EvalScenario
+	BusinessContext      string // Business context for red team attacks
 
 	// Evaluation mode
 	EvaluationMode EvaluationMode
@@ -110,8 +113,9 @@ type EvaluationViewState struct {
 	StructuredSummary StructuredSummary
 
 	// Editing state for New Evaluation
-	// Policy mode: 0: AgentURL, 1: Protocol, 2: Transport, 3: JudgeModel, 4: DeepTest, 5: EvaluationMode, 6: StartButton
-	// Red Team mode: 0: AgentURL, 1: Protocol, 2: Transport, 3: JudgeModel, 4: DeepTest, 5: EvaluationMode, 6: ScanType, 7: ConfigureButton, 8: StartButton
+	// Policy mode: 0: Protocol, 1: AgentURL/PythonFile, 2: Transport, 3: JudgeModel, 4: DeepTest, 5: EvaluationMode, 6: StartButton
+	// Red Team mode: 0: Protocol, 1: AgentURL/PythonFile, 2: Transport, 3: JudgeModel, 4: DeepTest, 5: EvaluationMode, 6: ScanType, 7: ConfigureButton, 8: StartButton
+	// Note: Transport field is skipped for Python protocol
 	currentField EvalFormField // Field index for form navigation
 	cursorPos    int           // rune index in current text field
 }
@@ -120,6 +124,86 @@ type EvaluationViewState struct {
 type ScenariosWithContext struct {
 	Scenarios       []EvalScenario
 	BusinessContext string
+}
+
+// UserConfigFromFile holds agent configuration loaded from .rogue/user_config.json
+type UserConfigFromFile struct {
+	EvaluatedAgentURL    string `json:"evaluated_agent_url"`
+	Protocol             string `json:"protocol"`
+	Transport            string `json:"transport"`
+	PythonEntrypointFile string `json:"python_entrypoint_file"`
+}
+
+// loadUserConfigFromWorkdir reads .rogue/user_config.json upward from CWD
+func loadUserConfigFromWorkdir() UserConfigFromFile {
+	wd, _ := os.Getwd()
+	dir := wd
+	for {
+		p := filepath.Join(dir, ".rogue", "user_config.json")
+		if b, err := os.ReadFile(p); err == nil {
+			var cfg UserConfigFromFile
+			if json.Unmarshal(b, &cfg) == nil {
+				return cfg
+			}
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return UserConfigFromFile{}
+}
+
+// findUserConfigPath finds the .rogue/user_config.json path, creating it if needed
+func findUserConfigPath() string {
+	wd, _ := os.Getwd()
+	dir := wd
+	for {
+		rogueDir := filepath.Join(dir, ".rogue")
+		if info, err := os.Stat(rogueDir); err == nil && info.IsDir() {
+			return filepath.Join(rogueDir, "user_config.json")
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	// Default to CWD/.rogue/user_config.json
+	return filepath.Join(wd, ".rogue", "user_config.json")
+}
+
+// saveUserConfig saves the protocol and python_entrypoint_file to user_config.json
+func saveUserConfig(protocol Protocol, transport Transport, agentURL, pythonEntrypointFile string) error {
+	configPath := findUserConfigPath()
+
+	// Read existing config to preserve other fields
+	existingData := make(map[string]interface{})
+	if b, err := os.ReadFile(configPath); err == nil {
+		json.Unmarshal(b, &existingData)
+	}
+
+	// Update the fields we care about
+	existingData["protocol"] = string(protocol)
+	if protocol == ProtocolPython {
+		existingData["python_entrypoint_file"] = pythonEntrypointFile
+		// Clear transport for Python protocol
+		delete(existingData, "transport")
+	} else {
+		existingData["transport"] = string(transport)
+		existingData["evaluated_agent_url"] = agentURL
+		// Clear python entrypoint for non-Python protocols
+		delete(existingData, "python_entrypoint_file")
+	}
+
+	// Marshal and save
+	data, err := json.MarshalIndent(existingData, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(configPath, data, 0644)
 }
 
 // loadScenariosFromWorkdir reads .rogue/scenarios.json upward from CWD
@@ -200,6 +284,7 @@ func (m *Model) startEval(ctx context.Context, st *EvaluationViewState) {
 		string(st.EvaluationMode),
 		redTeamConfigMap,
 		st.BusinessContext,
+		st.PythonEntrypointFile,
 	)
 	if err != nil {
 		st.Running = false
@@ -252,7 +337,7 @@ func (m *Model) triggerSummaryGeneration() {
 
 // getAllProtocols returns all available protocol options
 func getAllProtocols() []Protocol {
-	return []Protocol{ProtocolA2A, ProtocolMCP}
+	return []Protocol{ProtocolA2A, ProtocolMCP, ProtocolPython}
 }
 
 // getTransportsForProtocol returns valid transport options for a given protocol
@@ -262,6 +347,8 @@ func getTransportsForProtocol(protocol Protocol) []Transport {
 		return []Transport{TransportStreamableHTTP, TransportSSE}
 	case ProtocolA2A:
 		return []Transport{TransportHTTP}
+	case ProtocolPython:
+		return []Transport{} // Python protocol doesn't use network transport
 	default:
 		return []Transport{}
 	}
@@ -295,6 +382,17 @@ func (st *EvaluationViewState) cycleProtocol(reverse bool) {
 	validTransports := getTransportsForProtocol(st.AgentProtocol)
 	if len(validTransports) > 0 {
 		st.AgentTransport = validTransports[0]
+	} else {
+		// Python protocol has no transports
+		st.AgentTransport = ""
+	}
+
+	// Reset cursor position when protocol changes
+	// This ensures cursor is valid for the new protocol's text field
+	if st.AgentProtocol == ProtocolPython {
+		st.cursorPos = len([]rune(st.PythonEntrypointFile))
+	} else {
+		st.cursorPos = len([]rune(st.AgentURL))
 	}
 }
 

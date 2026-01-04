@@ -159,9 +159,30 @@ func (m Model) handleGlobalSlash(msg tea.KeyMsg) (Model, tea.Cmd) {
 		s := "/"
 		switch m.evalState.currentField {
 		case EvalFieldAgentURL:
-			runes := []rune(m.evalState.AgentURL)
-			m.evalState.AgentURL = string(runes[:m.evalState.cursorPos]) + s + string(runes[m.evalState.cursorPos:])
+			// Use Python file or Agent URL based on protocol
+			if m.evalState.AgentProtocol == ProtocolPython {
+				runes := []rune(m.evalState.PythonEntrypointFile)
+				// Clamp cursor position to valid range
+				if m.evalState.cursorPos > len(runes) {
+					m.evalState.cursorPos = len(runes)
+				}
+				m.evalState.PythonEntrypointFile = string(runes[:m.evalState.cursorPos]) + s + string(runes[m.evalState.cursorPos:])
+			} else {
+				runes := []rune(m.evalState.AgentURL)
+				// Clamp cursor position to valid range
+				if m.evalState.cursorPos > len(runes) {
+					m.evalState.cursorPos = len(runes)
+				}
+				m.evalState.AgentURL = string(runes[:m.evalState.cursorPos]) + s + string(runes[m.evalState.cursorPos:])
+			}
 			m.evalState.cursorPos++
+			// Save config after text change
+			go saveUserConfig(
+				m.evalState.AgentProtocol,
+				m.evalState.AgentTransport,
+				m.evalState.AgentURL,
+				m.evalState.PythonEntrypointFile,
+			)
 		case EvalFieldJudgeModel:
 			runes := []rune(m.evalState.JudgeModel)
 			m.evalState.JudgeModel = string(runes[:m.evalState.cursorPos]) + s + string(runes[m.evalState.cursorPos:])

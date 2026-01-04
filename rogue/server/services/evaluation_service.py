@@ -116,7 +116,11 @@ class EvaluationService:
             orchestrator = EvaluationOrchestrator(
                 protocol=agent_config.protocol,
                 transport=agent_config.transport,
-                evaluated_agent_url=str(agent_config.evaluated_agent_url),
+                evaluated_agent_url=(
+                    str(agent_config.evaluated_agent_url)
+                    if agent_config.evaluated_agent_url
+                    else ""
+                ),
                 evaluated_agent_auth_type=agent_config.evaluated_agent_auth_type,
                 evaluated_agent_auth_credentials=(
                     agent_config.evaluated_agent_credentials
@@ -129,6 +133,7 @@ class EvaluationService:
                 scenarios=scenarios,
                 business_context=agent_config.business_context,
                 deep_test_mode=agent_config.deep_test_mode,
+                python_entrypoint_file=agent_config.python_entrypoint_file,
             )
 
             logger.info(
@@ -137,6 +142,10 @@ class EvaluationService:
                     "agent_url": str(job.request.agent_config.evaluated_agent_url),
                     "judge_llm": job.request.agent_config.judge_llm,
                     "scenario_count": len(scenarios.scenarios),
+                    "protocol": (
+                        agent_config.protocol.value if agent_config.protocol else None
+                    ),
+                    "python_entrypoint_file": agent_config.python_entrypoint_file,
                 },
             )
 

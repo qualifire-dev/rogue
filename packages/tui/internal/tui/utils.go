@@ -32,11 +32,12 @@ const (
 )
 
 type AgentConfig struct {
-	EvaluatedAgentURL          string                 `json:"evaluated_agent_url"`
+	EvaluatedAgentURL          string                 `json:"evaluated_agent_url,omitempty"`
 	EvaluatedAgentProtocol     Protocol               `json:"protocol"`
-	EvaluatedAgentTransport    Transport              `json:"transport"`
+	EvaluatedAgentTransport    Transport              `json:"transport,omitempty"`
 	EvaluatedAgentAuthType     AuthType               `json:"evaluated_agent_auth_type"`
 	EvaluatedAgentCredentials  string                 `json:"evaluated_agent_credentials,omitempty"`
+	PythonEntrypointFile       string                 `json:"python_entrypoint_file,omitempty"`
 	JudgeLLMModel              string                 `json:"judge_llm"`
 	JudgeLLMAPIKey             string                 `json:"judge_llm_api_key,omitempty"`
 	JudgeLLMAWSAccessKeyID     string                 `json:"judge_llm_aws_access_key_id,omitempty"`
@@ -582,6 +583,7 @@ func (m *Model) StartEvaluation(
 	evaluationMode string,
 	redTeamConfig map[string]interface{},
 	businessContext string,
+	pythonEntrypointFile ...string, // Optional Python file path for Python protocol
 ) (<-chan EvaluationEvent, func() error, error) {
 	sdk := NewRogueSDK(serverURL)
 
@@ -589,8 +591,11 @@ func (m *Model) StartEvaluation(
 	if _, err := url.Parse(serverURL); err != nil {
 		return nil, nil, fmt.Errorf("invalid server url: %w", err)
 	}
-	if _, err := url.Parse(agentURL); err != nil {
-		return nil, nil, fmt.Errorf("invalid agent url: %w", err)
+	// Only validate agent URL for non-Python protocols
+	if agentProtocol != ProtocolPython {
+		if _, err := url.Parse(agentURL); err != nil {
+			return nil, nil, fmt.Errorf("invalid agent url: %w", err)
+		}
 	}
 
 	// Extract API key and AWS credentials from config based on judge model provider
@@ -628,25 +633,36 @@ func (m *Model) StartEvaluation(
 	}
 
 	// Build evaluation request
+	agentConfig := AgentConfig{
+		EvaluatedAgentProtocol:     agentProtocol,
+		EvaluatedAgentAuthType:     AuthTypeNoAuth,
+		JudgeLLMModel:              judgeModel,
+		JudgeLLMAPIKey:             apiKey,
+		JudgeLLMAWSAccessKeyID:     awsAccessKeyID,
+		JudgeLLMAWSSecretAccessKey: awsSecretAccessKey,
+		JudgeLLMAWSRegion:          awsRegion,
+		InterviewMode:              true,
+		DeepTestMode:               deepTest,
+		ParallelRuns:               parallelRuns,
+		EvaluationMode:             evaluationMode,
+		RedTeamConfig:              redTeamConfig,
+		QualifireAPIKey:            qualifireAPIKey,
+		BusinessContext:            businessContext,
+	}
+
+	// Set URL or Python file based on protocol
+	if agentProtocol == ProtocolPython {
+		if len(pythonEntrypointFile) > 0 && pythonEntrypointFile[0] != "" {
+			agentConfig.PythonEntrypointFile = pythonEntrypointFile[0]
+		}
+		// Don't set transport for Python protocol
+	} else {
+		agentConfig.EvaluatedAgentURL = agentURL
+		agentConfig.EvaluatedAgentTransport = agentTransport
+	}
+
 	request := EvaluationRequest{
-		AgentConfig: AgentConfig{
-			EvaluatedAgentURL:          agentURL,
-			EvaluatedAgentProtocol:     agentProtocol,
-			EvaluatedAgentTransport:    agentTransport,
-			EvaluatedAgentAuthType:     AuthTypeNoAuth,
-			JudgeLLMModel:              judgeModel,
-			JudgeLLMAPIKey:             apiKey,
-			JudgeLLMAWSAccessKeyID:     awsAccessKeyID,
-			JudgeLLMAWSSecretAccessKey: awsSecretAccessKey,
-			JudgeLLMAWSRegion:          awsRegion,
-			InterviewMode:              true,
-			DeepTestMode:               deepTest,
-			ParallelRuns:               parallelRuns,
-			EvaluationMode:             evaluationMode,
-			RedTeamConfig:              redTeamConfig,
-			QualifireAPIKey:            qualifireAPIKey,
-			BusinessContext:            businessContext,
-		},
+		AgentConfig:    agentConfig,
 		MaxRetries:     3,
 		TimeoutSeconds: 600,
 	}
