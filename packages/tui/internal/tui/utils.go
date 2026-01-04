@@ -141,11 +141,8 @@ func (sdk *RogueSDK) CreateEvaluation(ctx context.Context, request EvaluationReq
 		// (e.g., "evaluated_agent_protocol" vs AgentConfig's "protocol")
 		redTeamReq := map[string]interface{}{
 			"red_team_config":                    request.AgentConfig.RedTeamConfig,
-			"evaluated_agent_url":                request.AgentConfig.EvaluatedAgentURL,
 			"evaluated_agent_protocol":           request.AgentConfig.EvaluatedAgentProtocol,
-			"evaluated_agent_transport":          request.AgentConfig.EvaluatedAgentTransport,
 			"evaluated_agent_auth_type":          request.AgentConfig.EvaluatedAgentAuthType,
-			"evaluated_agent_auth_credentials":   request.AgentConfig.EvaluatedAgentCredentials,
 			"judge_llm":                          request.AgentConfig.JudgeLLMModel,
 			"judge_llm_api_key":                  request.AgentConfig.JudgeLLMAPIKey,
 			"judge_llm_aws_access_key_id":        request.AgentConfig.JudgeLLMAWSAccessKeyID,
@@ -161,6 +158,17 @@ func (sdk *RogueSDK) CreateEvaluation(ctx context.Context, request EvaluationReq
 			"max_retries":                        request.MaxRetries,
 			"timeout_seconds":                    request.TimeoutSeconds,
 		}
+
+		// For Python protocol, include python_entrypoint_file and omit URL/transport
+		// For other protocols, include URL and transport
+		if request.AgentConfig.EvaluatedAgentProtocol == ProtocolPython {
+			redTeamReq["python_entrypoint_file"] = request.AgentConfig.PythonEntrypointFile
+		} else {
+			redTeamReq["evaluated_agent_url"] = request.AgentConfig.EvaluatedAgentURL
+			redTeamReq["evaluated_agent_transport"] = request.AgentConfig.EvaluatedAgentTransport
+			redTeamReq["evaluated_agent_auth_credentials"] = request.AgentConfig.EvaluatedAgentCredentials
+		}
+
 		body, err = json.Marshal(redTeamReq)
 		endpoint = "/api/v1/red-team"
 	} else {

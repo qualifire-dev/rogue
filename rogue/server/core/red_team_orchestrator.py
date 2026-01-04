@@ -56,6 +56,7 @@ class RedTeamOrchestrator:
         attacker_llm_aws_secret_access_key: Optional[str] = None,
         attacker_llm_aws_region: Optional[str] = None,
         business_context: str = "",
+        python_entrypoint_file: Optional[str] = None,
     ):
         self.protocol = protocol
         self.transport = transport
@@ -75,6 +76,7 @@ class RedTeamOrchestrator:
         self.attacker_llm_aws_secret_access_key = attacker_llm_aws_secret_access_key
         self.attacker_llm_aws_region = attacker_llm_aws_region
         self.business_context = business_context
+        self.python_entrypoint_file = python_entrypoint_file
         self.logger = get_logger(__name__)
 
         # Create attacker agent
@@ -97,6 +99,7 @@ class RedTeamOrchestrator:
             judge_llm_aws_secret_access_key=judge_llm_aws_secret_access_key,
             judge_llm_aws_region=judge_llm_aws_region,
             qualifire_api_key=qualifire_api_key,
+            python_entrypoint_file=python_entrypoint_file,
         )
 
     async def run_scan(self) -> AsyncGenerator[Tuple[str, Any], None]:
@@ -138,7 +141,10 @@ class RedTeamOrchestrator:
                         self.logger.debug(f"Status update: {update.message}")
                         yield "status", update.message
                     elif isinstance(update, ChatUpdate):
-                        self.logger.debug("Chat update received")
+                        self.logger.info(
+                            f"📨 Chat update from attacker agent: "
+                            f"role={update.role}, content={update.content[:50]}...",
+                        )
                         yield "chat", {"role": update.role, "content": update.content}
                     elif isinstance(update, VulnerabilityResultUpdate):
                         self.logger.info(

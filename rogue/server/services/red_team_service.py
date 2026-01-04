@@ -104,11 +104,34 @@ class RedTeamService:
             job.started_at = datetime.now(timezone.utc)
             self._notify_job_update(job)
 
+            # Wait for WebSocket client to connect before sending updates
+            # This ensures chat messages aren't lost
+            max_wait = 5.0  # seconds
+            wait_interval = 0.1
+            waited = 0.0
+            while waited < max_wait:
+                if self.websocket_manager.has_connections(job_id):
+                    logger.info(
+                        f"WebSocket client connected for job {job_id}, starting scan",
+                    )
+                    break
+                await asyncio.sleep(wait_interval)
+                waited += wait_interval
+            else:
+                logger.warning(
+                    f"No WebSocket client connected after {max_wait}s, "
+                    f"proceeding anyway for job {job_id}",
+                )
+
             # Create and run orchestrator
             orchestrator = RedTeamOrchestrator(
                 protocol=job.request.evaluated_agent_protocol,
                 transport=job.request.evaluated_agent_transport,
-                evaluated_agent_url=str(job.request.evaluated_agent_url),
+                evaluated_agent_url=(
+                    str(job.request.evaluated_agent_url)
+                    if job.request.evaluated_agent_url
+                    else ""
+                ),  # noqa: E501
                 evaluated_agent_auth_type=job.request.evaluated_agent_auth_type,
                 evaluated_agent_auth_credentials=job.request.evaluated_agent_auth_credentials,  # noqa: E501
                 red_team_config=job.request.red_team_config,
@@ -124,6 +147,7 @@ class RedTeamService:
                 attacker_llm_aws_secret_access_key=job.request.attacker_llm_aws_secret_access_key,  # noqa: E501
                 attacker_llm_aws_region=job.request.attacker_llm_aws_region,
                 business_context=job.request.business_context,
+                python_entrypoint_file=job.request.python_entrypoint_file,
             )
 
             # Stream updates from orchestrator
@@ -135,6 +159,10 @@ class RedTeamService:
                     job.progress = min(0.9, job.progress + 0.1)
                     self._notify_job_update(job)
                 elif update_type == "chat":
+                    logger.info(
+                        f"📨 Red team chat update received for job {job_id}",
+                        extra={"data": data},
+                    )
                     self._send_websocket(
                         job_id,
                         WebSocketEventType.CHAT_UPDATE,

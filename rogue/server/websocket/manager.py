@@ -108,6 +108,13 @@ class _WebSocketManager:
             extra={"job_id": job_id, "ws_id": ws_id},
         )
 
+    def has_connections(self, job_id: str) -> bool:
+        """Check if there are any active WebSocket connections for a job."""
+        return (
+            job_id in self.active_connections
+            and len(self.active_connections[job_id]) > 0
+        )
+
     async def send_message(self, websocket: WebSocket, message: WebSocketMessage):
         try:
             await websocket.send_text(message.model_dump_json())

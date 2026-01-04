@@ -2,6 +2,7 @@
 
 import asyncio
 import importlib.util
+import sys
 from pathlib import Path
 from types import ModuleType
 from typing import Any, Callable, Optional
@@ -79,6 +80,8 @@ class PythonRedTeamAttackerAgent(BaseRedTeamAttackerAgent):
         self._call_agent_fn: Optional[Callable[[list[dict[str, Any]]], str]] = None
         # Track conversation history per session_id for message building
         self._session_histories: dict[str, list[dict[str, Any]]] = {}
+        # Track if we added to sys.path so we can clean up
+        self._added_sys_path: Optional[str] = None
 
     def _load_python_module(self) -> None:
         """Load the user's Python module and validate the call_agent function."""
@@ -96,6 +99,14 @@ class PythonRedTeamAttackerAgent(BaseRedTeamAttackerAgent):
             "📦 Loading Python entrypoint module "
             f"for red team: {self._python_file_path}",
         )
+
+        # Add the directory of the Python entrypoint file to sys.path
+        # This allows the user's module to import other local modules
+        module_dir = str(self._python_file_path.parent.absolute())
+        if module_dir not in sys.path:
+            sys.path.insert(0, module_dir)
+            self._added_sys_path = module_dir
+            logger.debug(f"Added {module_dir} to sys.path")
 
         # Load the module dynamically
         module_name = self._python_file_path.stem
@@ -140,6 +151,10 @@ class PythonRedTeamAttackerAgent(BaseRedTeamAttackerAgent):
         """Clean up when exiting the async context."""
         # Clear session histories
         self._session_histories.clear()
+        # Remove added path from sys.path if it was added
+        if self._added_sys_path and self._added_sys_path in sys.path:
+            sys.path.remove(self._added_sys_path)
+            logger.debug(f"Removed {self._added_sys_path} from sys.path")
         await super().__aexit__(exc_type, exc_value, traceback)
 
     async def _send_message_to_evaluated_agent(
