@@ -6,6 +6,7 @@ function directly, without requiring network protocols like A2A or MCP.
 """
 
 import asyncio
+import sys
 import importlib.util
 from pathlib import Path
 from types import ModuleType, TracebackType
@@ -69,8 +70,6 @@ class PythonEvaluatorAgent(BaseEvaluatorAgent):
         )
         self._module: Optional[ModuleType] = None
         self._call_agent_fn: Optional[Callable[[list[dict[str, Any]]], str]] = None
-        # Track conversation history per context_id for message building
-        self._session_histories: dict[str, list[dict[str, Any]]] = {}
         # Track if we added to sys.path so we can clean up
         self._added_sys_path: Optional[str] = None
 
@@ -157,11 +156,8 @@ class PythonEvaluatorAgent(BaseEvaluatorAgent):
     ) -> None:
         """Clean up when exiting the async context."""
         await super().__aexit__(exc_type, exc_value, traceback)
-        # Clear session histories
-        self._session_histories.clear()
         # Clean up sys.path if we added to it
         if self._added_sys_path:
-            import sys
 
             try:
                 sys.path.remove(self._added_sys_path)
@@ -204,29 +200,19 @@ class PythonEvaluatorAgent(BaseEvaluatorAgent):
             # Add the user message to chat history
             self._add_message_to_chat_history(context_id, "user", message)
 
-            # Build messages list from session history
-            if context_id not in self._session_histories:
-                self._session_histories[context_id] = []
-
-            # Add user message to session history (for passing to call_agent)
-            self._session_histories[context_id].append(
-                {
-                    "role": "user",
-                    "content": message,
-                },
+            # Build messages list from chat history (single source of truth)
+            chat_history = self._context_id_to_chat_history.get(context_id)
+            messages = (
+                [
+                    {"role": msg.role, "content": msg.content}
+                    for msg in chat_history.messages
+                ]
+                if chat_history
+                else [{"role": "user", "content": message}]
             )
 
             # Call the user's function
-            messages = self._session_histories[context_id]
             response = await self._invoke_call_agent(messages)
-
-            # Add assistant response to session history
-            self._session_histories[context_id].append(
-                {
-                    "role": "assistant",
-                    "content": response,
-                },
-            )
 
             # Add the assistant response to chat history
             self._add_message_to_chat_history(context_id, "assistant", response)
