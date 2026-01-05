@@ -5,8 +5,6 @@ This file demonstrates how to create a Python entrypoint for testing
 agents without A2A or MCP protocols. Rogue will dynamically import
 this file and call the `call_agent` function.
 
-To use:
-    rogue --protocol=python --python-entrypoint-file=my_agent.py
 
 Or via TUI:
     1. Select "Python" as the protocol
@@ -16,10 +14,13 @@ The call_agent function receives the full conversation history and
 should return the agent's response as a string.
 """
 
-from typing import Any
+from typing import Any, Optional
 
 
-def call_agent(messages: list[dict[str, Any]]) -> str:
+def call_agent(
+    messages: list[dict[str, Any]],
+    context_id: Optional[str] = None,
+) -> str:
     """
     Process conversation messages and return a response.
 
@@ -36,6 +37,10 @@ def call_agent(messages: list[dict[str, Any]]) -> str:
                     {"role": "assistant", "content": "I'm doing well, thanks!"},
                     {"role": "user", "content": "What can you help me with?"}
                 ]
+        context_id: Optional unique conversation ID provided by Rogue.
+            Use this for session tracking in stateful agents.
+            Each conversation gets a unique context_id that persists
+            across all messages in that conversation.
 
     Returns:
         The agent's response as a string.
@@ -44,6 +49,7 @@ def call_agent(messages: list[dict[str, Any]]) -> str:
         - This function can be sync or async (Rogue handles both)
         - Raise exceptions to indicate errors (Rogue will catch and log them)
         - The messages list grows with each turn of conversation
+        - context_id is optional for backward compatibility
     """
     # Extract the latest user message
     latest_message = messages[-1]["content"] if messages else ""
@@ -87,12 +93,19 @@ def call_agent(messages: list[dict[str, Any]]) -> str:
 
 # Optional: Async version
 # Rogue automatically detects and awaits async functions
-async def call_agent_async(messages: list[dict[str, Any]]) -> str:
+async def call_agent_async(
+    messages: list[dict[str, Any]],
+    context_id: Optional[str] = None,
+) -> str:
     """
     Async version of call_agent.
 
     If you rename this to `call_agent`, Rogue will use it instead.
     Useful for agents that make async API calls.
+
+    Args:
+        messages: List of message dicts with 'role' and 'content' keys.
+        context_id: Optional unique conversation ID for session tracking.
     """
     import asyncio
 
@@ -100,18 +113,5 @@ async def call_agent_async(messages: list[dict[str, Any]]) -> str:
     await asyncio.sleep(0.1)
 
     latest_message = messages[-1]["content"] if messages else ""
-    return f"Async Echo: {latest_message}"
-
-
-# For local testing
-if __name__ == "__main__":
-    # Test the agent locally
-    test_messages = [
-        {"role": "user", "content": "Hello!"},
-        {"role": "assistant", "content": "Hi there!"},
-        {"role": "user", "content": "What's 2 + 2?"},
-    ]
-
-    print("Testing call_agent:")
-    print(f"  Input: {test_messages[-1]['content']}")
-    print(f"  Output: {call_agent(test_messages)}")
+    # context_id can be used for session management
+    return f"Async Echo (session: {context_id}): {latest_message}"

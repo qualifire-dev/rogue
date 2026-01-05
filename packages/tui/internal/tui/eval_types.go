@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/rogue/tui/internal/screens/config"
 	"github.com/rogue/tui/internal/screens/redteam"
 )
 
@@ -263,6 +265,139 @@ func loadScenariosWithContextFromWorkdir() ScenariosWithContext {
 		dir = parent
 	}
 	return ScenariosWithContext{}
+}
+
+// LoadEvaluationStateFromConfig loads all config files and returns a populated EvaluationViewState.
+// This consolidates config loading from user_config.json, scenarios.json, and redteam.yaml.
+// Returns the EvaluationViewState and the RedTeamConfigState for caching.
+func LoadEvaluationStateFromConfig(appConfig *config.Config) (*EvaluationViewState, *redteam.RedTeamConfigState) {
+	// Determine judge model from app config
+	judgeModel := "openai/gpt-4.1" // fallback default
+	if appConfig.SelectedModel != "" && appConfig.SelectedProvider != "" {
+		// Check if model already has provider prefix (e.g., "bedrock/anthropic.claude-...")
+		// If it does, use it as-is; otherwise, add the provider prefix
+		if strings.Contains(appConfig.SelectedModel, "/") {
+			judgeModel = appConfig.SelectedModel
+		} else {
+			judgeModel = appConfig.SelectedProvider + "/" + appConfig.SelectedModel
+		}
+	}
+
+	// Load agent config from .rogue/user_config.json
+	userConfig := loadUserConfigFromWorkdir()
+	scenariosWithContext := loadScenariosWithContextFromWorkdir()
+
+	// Use config values or defaults
+	agentURL := userConfig.EvaluatedAgentURL
+	if agentURL == "" {
+		agentURL = "http://localhost:10001"
+	}
+	agentProtocol := ProtocolA2A
+	if userConfig.Protocol != "" {
+		agentProtocol = Protocol(userConfig.Protocol)
+	}
+	agentTransport := TransportHTTP
+	if userConfig.Transport != "" {
+		agentTransport = Transport(userConfig.Transport)
+	}
+	pythonEntrypointFile := userConfig.PythonEntrypointFile
+
+	// Load evaluation mode from config
+	evaluationMode := EvaluationModePolicy
+	if userConfig.EvaluationMode != "" {
+		evaluationMode = EvaluationMode(userConfig.EvaluationMode)
+	}
+
+	// Load scan type from config
+	scanType := ScanTypeBasic
+	if userConfig.ScanType != "" {
+		scanType = ScanType(userConfig.ScanType)
+	}
+
+	// Load red team config from .rogue/redteam.yaml to get saved vulnerabilities/attacks
+	redTeamConfigState := redteam.NewRedTeamConfigState()
+	if appConfig.QualifireAPIKey != "" {
+		redTeamConfigState.QualifireAPIKey = appConfig.QualifireAPIKey
+	}
+
+	// Build vulnerabilities list from saved state
+	vulnerabilities := make([]string, 0)
+	for id, selected := range redTeamConfigState.SelectedVulnerabilities {
+		if selected {
+			vulnerabilities = append(vulnerabilities, id)
+		}
+	}
+
+	// Build attacks list from saved state
+	attacks := make([]string, 0)
+	for id, selected := range redTeamConfigState.SelectedAttacks {
+		if selected {
+			attacks = append(attacks, id)
+		}
+	}
+
+	// Build frameworks list from saved state
+	frameworks := make([]string, 0)
+	for id, selected := range redTeamConfigState.SelectedFrameworks {
+		if selected {
+			frameworks = append(frameworks, id)
+		}
+	}
+
+	// Use saved scan type from redteam.yaml if it exists, otherwise use user_config.json
+	if redTeamConfigState.ScanType != "" {
+		scanType = ScanType(redTeamConfigState.ScanType)
+	}
+
+	// If no vulnerabilities/attacks are selected, apply preset based on scan type
+	if len(vulnerabilities) == 0 && len(attacks) == 0 {
+		switch scanType {
+		case ScanTypeBasic:
+			vulnerabilities = redteam.GetBasicScanVulnerabilities()
+			attacks = redteam.GetBasicScanAttacks()
+			// Also update the redTeamConfigState so it's consistent
+			for _, id := range vulnerabilities {
+				redTeamConfigState.SelectedVulnerabilities[id] = true
+			}
+			for _, id := range attacks {
+				redTeamConfigState.SelectedAttacks[id] = true
+			}
+		case ScanTypeFull:
+			vulnerabilities = redteam.GetFreeVulnerabilities()
+			attacks = redteam.GetFreeAttacks()
+			// Also update the redTeamConfigState so it's consistent
+			for _, id := range vulnerabilities {
+				redTeamConfigState.SelectedVulnerabilities[id] = true
+			}
+			for _, id := range attacks {
+				redTeamConfigState.SelectedAttacks[id] = true
+			}
+		}
+	}
+
+	evalState := &EvaluationViewState{
+		ServerURL:            appConfig.ServerURL,
+		AgentURL:             agentURL,
+		AgentProtocol:        agentProtocol,
+		AgentTransport:       agentTransport,
+		PythonEntrypointFile: pythonEntrypointFile,
+		JudgeModel:           judgeModel,
+		ParallelRuns:         1,
+		DeepTest:             false,
+		Scenarios:            scenariosWithContext.Scenarios,
+		BusinessContext:      scenariosWithContext.BusinessContext,
+		EvaluationMode:       evaluationMode,
+		RedTeamConfig: &RedTeamConfig{
+			ScanType:                scanType,
+			Vulnerabilities:         vulnerabilities,
+			Attacks:                 attacks,
+			AttacksPerVulnerability: redTeamConfigState.AttacksPerVulnerability,
+			Frameworks:              frameworks,
+		},
+		cursorPos: 0, // Protocol is now first field (dropdown), cursorPos not used initially
+	}
+
+	return evalState, redTeamConfigState
 }
 
 // startEval kicks off evaluation and consumes events into state

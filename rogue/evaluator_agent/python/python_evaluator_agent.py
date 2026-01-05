@@ -6,8 +6,8 @@ function directly, without requiring network protocols like A2A or MCP.
 """
 
 import asyncio
-import sys
 import importlib.util
+import sys
 from pathlib import Path
 from types import ModuleType, TracebackType
 from typing import Any, Callable, Optional, Self, Type
@@ -69,7 +69,9 @@ class PythonEvaluatorAgent(BaseEvaluatorAgent):
             f"resolved: {self._python_file_path.absolute()}",
         )
         self._module: Optional[ModuleType] = None
-        self._call_agent_fn: Optional[Callable[[list[dict[str, Any]]], str]] = None
+        # Callable type is flexible to support both old (messages only) and new
+        # (messages + context_id) signatures
+        self._call_agent_fn: Optional[Callable[..., str]] = None
         # Track if we added to sys.path so we can clean up
         self._added_sys_path: Optional[str] = None
 
@@ -211,8 +213,8 @@ class PythonEvaluatorAgent(BaseEvaluatorAgent):
                 else [{"role": "user", "content": message}]
             )
 
-            # Call the user's function
-            response = await self._invoke_call_agent(messages)
+            # Call the user's function with context_id for session tracking
+            response = await self._invoke_call_agent(messages, context_id)
 
             # Add the assistant response to chat history
             self._add_message_to_chat_history(context_id, "assistant", response)
@@ -246,17 +248,38 @@ class PythonEvaluatorAgent(BaseEvaluatorAgent):
     async def _invoke_call_agent(
         self,
         messages: list[dict[str, Any]],
+        context_id: str,
     ) -> str:
         """
         Invoke the call_agent function, handling both sync and async versions.
 
         :param messages: List of message dicts with 'role' and 'content' keys.
+        :param context_id: Unique conversation ID for session tracking.
         :return: The agent's response as a string.
         """
         if self._call_agent_fn is None:
             raise RuntimeError("call_agent function not loaded")
 
-        result = self._call_agent_fn(messages)
+        # Try to call with context_id first (new signature),
+        # fall back to messages-only for backward compatibility
+        import inspect
+
+        sig = inspect.signature(self._call_agent_fn)
+        params = list(sig.parameters.keys())
+
+        # Check if function accepts context_id parameter
+        if len(params) >= 2 or any(
+            p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()
+        ):
+            # Function accepts context_id (or **kwargs)
+            try:
+                result = self._call_agent_fn(messages, context_id=context_id)
+            except TypeError:
+                # Fallback if the second param has a different name
+                result = self._call_agent_fn(messages)
+        else:
+            # Function only accepts messages (backward compatible)
+            result = self._call_agent_fn(messages)
 
         # Handle async functions
         if asyncio.iscoroutine(result):

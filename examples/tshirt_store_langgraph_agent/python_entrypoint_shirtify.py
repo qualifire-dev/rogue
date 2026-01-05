@@ -9,19 +9,18 @@ Usage:
         --python-entrypoint-file=examples/tshirt_store_langgraph_agent/python_entrypoint_shirtify.py
 """
 
-from typing import Any
-from uuid import uuid4
+from typing import Any, Optional
 
 from shirtify_langgraph_agent import ShirtifyAgent
 
 # Initialize the agent once at module load
 agent = ShirtifyAgent()
 
-# Track session IDs per conversation context
-_session_cache: dict[int, str] = {}
 
-
-def call_agent(messages: list[dict[str, Any]]) -> str:
+def call_agent(
+    messages: list[dict[str, Any]],
+    context_id: Optional[str] = None,
+) -> str:
     """
     Process conversation messages and return a response from the Shirtify agent.
 
@@ -33,6 +32,8 @@ def call_agent(messages: list[dict[str, Any]]) -> str:
                     {"role": "assistant", "content": "Here are some options..."},
                     {"role": "user", "content": "I'll take the first one"}
                 ]
+        context_id: Optional unique conversation ID provided by Rogue.
+            Use this as the session ID for stateful agents.
 
     Returns:
         The agent's response as a string.
@@ -41,12 +42,8 @@ def call_agent(messages: list[dict[str, Any]]) -> str:
         return "Hello! I'm the Shirtify assistant. \
         How can I help you find the perfect t-shirt today?"
 
-    # Use hash of conversation history length as session key for consistency
-    session_key = len(messages)
-    if session_key not in _session_cache:
-        _session_cache[session_key] = uuid4().hex
-
-    session_id = _session_cache[session_key]
+    # Use context_id from Rogue as session ID (or generate one for local testing)
+    session_id = context_id or "local-test-session"
 
     # Get the latest user message
     latest_message = messages[-1]["content"]
