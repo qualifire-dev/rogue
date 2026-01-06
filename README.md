@@ -4,6 +4,8 @@
 
 <div align="center">
 
+<a href="https://trendshift.io/repositories/15191" target="_blank"><img src="https://trendshift.io/api/badge/repositories/15191" alt="qualifire-dev%2Frogue | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
+
 ![Tests](https://github.com/qualifire-dev/rogue/actions/workflows/test.yml/badge.svg?branch=main)
 
 <img src="./freddy-rogue.png" width="200"/>
@@ -57,11 +59,11 @@ Simulate **adversarial attacks** to find security vulnerabilities.
 
 Rogue operates on a **client-server architecture** with multiple interfaces:
 
-| Component | Description |
-|-----------|-------------|
-| **Server** | Core evaluation & red team logic |
-| **TUI** | Modern terminal interface (Go + Bubble Tea) |
-| **CLI** | Non-interactive mode for CI/CD pipelines |
+| Component  | Description                                 |
+| ---------- | ------------------------------------------- |
+| **Server** | Core evaluation & red team logic            |
+| **TUI**    | Modern terminal interface (Go + Bubble Tea) |
+| **CLI**    | Non-interactive mode for CI/CD pipelines    |
 
 https://github.com/user-attachments/assets/b5c04772-6916-4aab-825b-6a7476d77787
 
@@ -138,6 +140,7 @@ uvx rogue-ai --example=tshirt_store
 ```
 
 Configure in the UI:
+
 - **Agent URL**: `http://localhost:10001`
 - **Mode**: Choose `Automatic Evaluation` or `Red Teaming`
 
@@ -145,12 +148,12 @@ Configure in the UI:
 
 ## Running Modes
 
-| Mode | Command | Description |
-|------|---------|-------------|
-| Default | `uvx rogue-ai` | Server + TUI |
-| Server | `uvx rogue-ai server` | Backend only |
-| TUI | `uvx rogue-ai tui` | Terminal client |
-| CLI | `uvx rogue-ai cli` | Non-interactive (CI/CD) |
+| Mode    | Command               | Description             |
+| ------- | --------------------- | ----------------------- |
+| Default | `uvx rogue-ai`        | Server + TUI            |
+| Server  | `uvx rogue-ai server` | Backend only            |
+| TUI     | `uvx rogue-ai tui`    | Terminal client         |
+| CLI     | `uvx rogue-ai cli`    | Non-interactive (CI/CD) |
 
 ### Server Options
 
@@ -167,15 +170,15 @@ uvx rogue-ai cli \
   --business-context-file ./.rogue/business_context.md
 ```
 
-| Option | Description |
-|--------|-------------|
-| `--config-file` | Path to config JSON |
-| `--evaluated-agent-url` | Agent endpoint (required) |
-| `--judge-llm` | LLM for evaluation (required) |
-| `--business-context` | Context string or `--business-context-file` |
-| `--input-scenarios-file` | Scenarios JSON |
-| `--output-report-file` | Report output path |
-| `--deep-test-mode` | Extended testing |
+| Option                   | Description                                 |
+| ------------------------ | ------------------------------------------- |
+| `--config-file`          | Path to config JSON                         |
+| `--evaluated-agent-url`  | Agent endpoint (required)                   |
+| `--judge-llm`            | LLM for evaluation (required)               |
+| `--business-context`     | Context string or `--business-context-file` |
+| `--input-scenarios-file` | Scenarios JSON                              |
+| `--output-report-file`   | Report output path                          |
+| `--deep-test-mode`       | Extended testing                            |
 
 ---
 
@@ -183,11 +186,11 @@ uvx rogue-ai cli \
 
 ### Scan Types
 
-| Type | Vulnerabilities | Attacks | Time |
-|------|-----------------|---------|------|
-| **Basic** | 5 curated | 6 | ~2-3 min |
-| **Full** | 75+ | 40+ | ~30-45 min |
-| **Custom** | User-selected | User-selected | Varies |
+| Type       | Vulnerabilities | Attacks       | Time       |
+| ---------- | --------------- | ------------- | ---------- |
+| **Basic**  | 5 curated       | 6             | ~2-3 min   |
+| **Full**   | 75+             | 40+           | ~30-45 min |
+| **Custom** | User-selected   | User-selected | Varies     |
 
 ### Compliance Frameworks
 
@@ -201,17 +204,18 @@ uvx rogue-ai cli \
 
 ### Attack Categories
 
-| Category | Examples |
-|----------|----------|
-| Encoding | Base64, ROT13, Leetspeak |
-| Social Engineering | Roleplay, trust building |
-| Injection | Prompt injection, SQL injection |
-| Semantic | Goal redirection, context poisoning |
-| Technical | Gray-box probing, permission escalation |
+| Category           | Examples                                |
+| ------------------ | --------------------------------------- |
+| Encoding           | Base64, ROT13, Leetspeak                |
+| Social Engineering | Roleplay, trust building                |
+| Injection          | Prompt injection, SQL injection         |
+| Semantic           | Goal redirection, context poisoning     |
+| Technical          | Gray-box probing, permission escalation |
 
 ### Risk Scoring (CVSS-based)
 
 Each vulnerability receives a **0-10 risk score** based on:
+
 - **Impact** — Severity if exploited
 - **Exploitability** — Success rate likelihood
 - **Human Factor** — Manual exploitation potential
@@ -251,15 +255,15 @@ GOOGLE_API_KEY="..."
 
 ## Key Features
 
-| Feature | Description |
-|---------|-------------|
-| 🔄 Dynamic Scenarios | Auto-generate tests from business context |
-| 👀 Live Monitoring | Watch agent conversations in real-time |
-| 📊 Comprehensive Reports | Markdown, CSV, JSON exports |
+| Feature                  | Description                                  |
+| ------------------------ | -------------------------------------------- |
+| 🔄 Dynamic Scenarios     | Auto-generate tests from business context    |
+| 👀 Live Monitoring       | Watch agent conversations in real-time       |
+| 📊 Comprehensive Reports | Markdown, CSV, JSON exports                  |
 | 🔍 Multi-Faceted Testing | Policy compliance + security vulnerabilities |
-| 🤖 Model Support | OpenAI, Anthropic, Google (via LiteLLM) |
-| 🛡️ CVSS Scoring | Industry-standard risk assessment |
-| 🔁 Reproducible | Deterministic scans with random seeds |
+| 🤖 Model Support         | OpenAI, Anthropic, Google (via LiteLLM)      |
+| 🛡️ CVSS Scoring          | Industry-standard risk assessment            |
+| 🔁 Reproducible          | Deterministic scans with random seeds        |
 
 ---
 
