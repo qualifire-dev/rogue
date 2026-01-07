@@ -38,7 +38,7 @@ func (m Model) handlePasteMsg(msg tea.PasteMsg) (Model, tea.Cmd) {
 		return m, nil
 	}
 
-	// Handle paste for new evaluation screen (Agent URL, Judge Model fields)
+	// Handle paste for new evaluation screen (Agent URL/Python File, Judge Model fields)
 	if m.currentScreen == NewEvaluationScreen && m.evalState != nil {
 		// Clean the clipboard text (remove newlines and trim whitespace)
 		cleanText := strings.TrimSpace(strings.ReplaceAll(string(msg), "\n", ""))
@@ -47,13 +47,27 @@ func (m Model) handlePasteMsg(msg tea.PasteMsg) (Model, tea.Cmd) {
 			return m, nil
 		}
 
-		// Only paste into text fields (Agent URL and Judge Model)
+		// Only paste into text fields (Agent URL/Python File and Judge Model)
 		switch m.evalState.currentField {
 		case EvalFieldAgentURL:
-			// Insert at cursor position
-			runes := []rune(m.evalState.AgentURL)
-			m.evalState.AgentURL = string(runes[:m.evalState.cursorPos]) + cleanText + string(runes[m.evalState.cursorPos:])
+			// Insert at cursor position (for Agent URL or Python File depending on protocol)
+			if m.evalState.AgentProtocol == ProtocolPython {
+				runes := []rune(m.evalState.PythonEntrypointFile)
+				m.evalState.PythonEntrypointFile = string(runes[:m.evalState.cursorPos]) + cleanText + string(runes[m.evalState.cursorPos:])
+			} else {
+				runes := []rune(m.evalState.AgentURL)
+				m.evalState.AgentURL = string(runes[:m.evalState.cursorPos]) + cleanText + string(runes[m.evalState.cursorPos:])
+			}
 			m.evalState.cursorPos += len([]rune(cleanText))
+			// Save config after paste
+			go saveUserConfig(
+				m.evalState.AgentProtocol,
+				m.evalState.AgentTransport,
+				m.evalState.AgentURL,
+				m.evalState.PythonEntrypointFile,
+				m.evalState.EvaluationMode,
+				m.getScanType(),
+			)
 		case EvalFieldJudgeModel:
 			// Insert at cursor position
 			runes := []rune(m.evalState.JudgeModel)
@@ -221,40 +235,8 @@ func (m Model) handleCommandSelectedMsg(msg components.CommandSelectedMsg) (Mode
 	switch msg.Command.Action {
 	case "new_evaluation":
 		m.currentScreen = NewEvaluationScreen
-		// initialize eval state with values from config
-		judgeModel := "openai/gpt-4.1" // fallback default
-		if m.config.SelectedModel != "" && m.config.SelectedProvider != "" {
-			// Use the configured model in provider/model format
-			// Check if model already has provider prefix (e.g., "bedrock/anthropic.claude-...")
-			// If it does, use it as-is; otherwise, add the provider prefix
-			if strings.Contains(m.config.SelectedModel, "/") {
-				judgeModel = m.config.SelectedModel
-			} else {
-				judgeModel = m.config.SelectedProvider + "/" + m.config.SelectedModel
-			}
-		}
-		// TODO read agent url and protocol .rogue/user_config.json
-		scenariosWithContext := loadScenariosWithContextFromWorkdir()
-		m.evalState = &EvaluationViewState{
-			ServerURL:       m.config.ServerURL,
-			AgentURL:        "http://localhost:10001",
-			AgentProtocol:   ProtocolA2A,
-			AgentTransport:  TransportHTTP,
-			JudgeModel:      judgeModel,
-			ParallelRuns:    1,
-			DeepTest:        false,
-			Scenarios:       scenariosWithContext.Scenarios,
-			BusinessContext: scenariosWithContext.BusinessContext,
-			EvaluationMode:  EvaluationModePolicy,
-			RedTeamConfig: &RedTeamConfig{
-				ScanType:                ScanTypeBasic,
-				Vulnerabilities:         []string{},
-				Attacks:                 []string{},
-				AttacksPerVulnerability: 3,
-				Frameworks:              []string{},
-			},
-			cursorPos: len([]rune("http://localhost:10001")), // Set cursor to end of Agent URL
-		}
+		// Load evaluation state from all config files (user_config.json, scenarios.json, redteam.yaml)
+		m.evalState, m.redTeamConfigState = LoadEvaluationStateFromConfig(&m.config)
 	case "configure_models":
 		// Open LLM configuration dialog
 		llmDialog := components.NewLLMConfigDialog(m.config.APIKeys, m.config.SelectedProvider, m.config.SelectedModel)

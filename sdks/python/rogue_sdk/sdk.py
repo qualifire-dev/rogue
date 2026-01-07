@@ -239,9 +239,9 @@ class RogueSDK:
 
     async def run_evaluation(
         self,
-        agent_url: str,
-        scenarios: Scenarios,
-        business_context: str,
+        agent_url: Optional[str] = None,
+        scenarios: Optional[Scenarios] = None,
+        business_context: str = "",
         judge_model: str = "openai/gpt-4o-mini",
         judge_llm_api_key: Optional[str] = None,
         protocol: Protocol = Protocol.A2A,
@@ -254,13 +254,36 @@ class RogueSDK:
         owasp_categories: Optional[List[str]] = None,
         attacks_per_category: int = 5,
         min_tests_per_attack: int = 3,
+        python_entrypoint_file: Optional[str] = None,
     ) -> EvaluationJob:
-        """Quick evaluation helper."""
+        """Quick evaluation helper.
 
+        Args:
+            agent_url: URL of agent to evaluate (required for A2A/MCP protocols)
+            scenarios: Test scenarios
+            business_context: Business context for the agent
+            judge_model: LLM model for evaluation
+            judge_llm_api_key: API key for judge LLM
+            protocol: Communication protocol (A2A, MCP, or PYTHON)
+            transport: Transport mechanism (not used for PYTHON protocol)
+            auth_type: Authentication type for agent
+            auth_credentials: Authentication credentials
+            deep_test: Enable deep testing mode
+            timeout: Timeout in seconds
+            evaluation_mode: Policy or red team mode
+            owasp_categories: OWASP categories for red team mode
+            attacks_per_category: Attacks per category for red team
+            min_tests_per_attack: Min tests per attack for red team
+            python_entrypoint_file: Path to Python file with call_agent function
+                (required for PYTHON protocol)
+
+        Returns:
+            EvaluationJob with results
+        """
         agent_config = AgentConfig(
             protocol=protocol,
             transport=transport or protocol.get_default_transport(),
-            evaluated_agent_url=HttpUrl(agent_url),
+            evaluated_agent_url=HttpUrl(agent_url) if agent_url else None,
             evaluated_agent_auth_type=auth_type,
             evaluated_agent_credentials=auth_credentials,
             judge_llm=judge_model,
@@ -270,11 +293,12 @@ class RogueSDK:
             parallel_runs=1,
             business_context=business_context,
             evaluation_mode=evaluation_mode or EvaluationMode.POLICY,
+            python_entrypoint_file=python_entrypoint_file,
         )
 
         request = EvaluationRequest(
             agent_config=agent_config,
-            scenarios=scenarios.scenarios,
+            scenarios=scenarios.scenarios if scenarios else [],
             max_retries=3,
             timeout_seconds=int(timeout),
         )

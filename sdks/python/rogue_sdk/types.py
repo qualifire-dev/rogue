@@ -77,12 +77,16 @@ class Protocol(str, Enum):
 
     A2A = "a2a"
     MCP = "mcp"
+    PYTHON = "python"
 
     def get_default_transport(self) -> "Transport":
         if self == Protocol.A2A:
             return Transport.HTTP
         elif self == Protocol.MCP:
             return Transport.STREAMABLE_HTTP
+        elif self == Protocol.PYTHON:
+            # Python protocol doesn't use network transport
+            return None  # type: ignore
         raise ValueError(f"No default transport for protocol {self}")
 
 
@@ -103,6 +107,7 @@ class Transport(str, Enum):
 PROTOCOL_TO_TRANSPORTS: dict[Protocol, list[Transport]] = {
     Protocol.A2A: [Transport.HTTP],
     Protocol.MCP: [Transport.STREAMABLE_HTTP, Transport.SSE],
+    Protocol.PYTHON: [],  # Python protocol doesn't use network transport
 }
 
 # Core Models
@@ -281,7 +286,7 @@ class AgentConfig(BaseModel):
 
     protocol: Protocol = Protocol.A2A
     transport: Transport = None  # type: ignore # fixed in model_post_init
-    evaluated_agent_url: HttpUrl
+    evaluated_agent_url: Optional[HttpUrl] = None  # Optional for PYTHON protocol
     evaluated_agent_auth_type: AuthType = Field(
         default=AuthType.NO_AUTH,
     )
@@ -306,6 +311,11 @@ class AgentConfig(BaseModel):
         default=None,
         description="Red team configuration (required for red_team mode)",
     )
+    # Python entrypoint for direct Python agent testing
+    python_entrypoint_file: Optional[str] = Field(
+        default=None,
+        description="Path to Python file with call_agent(messages) function (for PYTHON protocol)",  # noqa: E501
+    )
 
     @model_validator(mode="after")
     def check_auth_credentials(self) -> "AgentConfig":
@@ -316,6 +326,21 @@ class AgentConfig(BaseModel):
             raise ValueError(
                 "Authentication Credentials cannot be empty for the selected auth type.",  # noqa: E501
             )
+        return self
+
+    @model_validator(mode="after")
+    def check_protocol_requirements(self) -> "AgentConfig":
+        """Validate protocol-specific requirements."""
+        if self.protocol == Protocol.PYTHON:
+            if not self.python_entrypoint_file:
+                raise ValueError(
+                    "python_entrypoint_file is required when protocol is PYTHON",
+                )
+        else:
+            if not self.evaluated_agent_url:
+                raise ValueError(
+                    "evaluated_agent_url is required when protocol is not PYTHON",
+                )
         return self
 
     def model_post_init(self, __context: Any) -> None:
@@ -784,11 +809,15 @@ class RedTeamRequest(BaseModel):
     """Request to create a red team scan job."""
 
     red_team_config: "RedTeamConfig"
-    evaluated_agent_url: HttpUrl
+    evaluated_agent_url: Optional[HttpUrl] = None  # Optional for PYTHON protocol
     evaluated_agent_protocol: Protocol
     evaluated_agent_transport: Optional[Transport] = None
     evaluated_agent_auth_type: AuthType = AuthType.NO_AUTH
     evaluated_agent_auth_credentials: Optional[str] = None
+    python_entrypoint_file: Optional[str] = Field(
+        default=None,
+        description="Path to Python file with call_agent(messages) function (for PYTHON protocol)",  # noqa: E501
+    )
     judge_llm: str
     judge_llm_api_key: Optional[str] = None
     judge_llm_aws_access_key_id: Optional[str] = None
@@ -803,6 +832,21 @@ class RedTeamRequest(BaseModel):
     qualifire_api_key: Optional[str] = None
     max_retries: int = 3
     timeout_seconds: int = 600
+
+    @model_validator(mode="after")
+    def check_protocol_requirements(self) -> "RedTeamRequest":
+        """Validate protocol-specific requirements."""
+        if self.evaluated_agent_protocol == Protocol.PYTHON:
+            if not self.python_entrypoint_file:
+                raise ValueError(
+                    "python_entrypoint_file is required when protocol is PYTHON",
+                )
+        else:
+            if not self.evaluated_agent_url:
+                raise ValueError(
+                    "evaluated_agent_url is required when protocol is not PYTHON",
+                )
+        return self
 
 
 class RedTeamJob(BaseModel):

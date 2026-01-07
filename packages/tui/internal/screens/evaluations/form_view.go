@@ -272,13 +272,31 @@ func RenderForm(state *FormState) string {
 		Italic(true)
 
 	// Build the content sections
-	formFields := []string{
-		renderTextField(0, "Agent URL:", agent),
-		renderDropdownField(1, "Protocol:", protocol),
-		renderDropdownField(2, "Transport:", transport),
-		renderTextField(3, "Judge LLM:", judge),
-		renderToggleField(4, "Deep Test:", deep),
-		renderDropdownField(5, "Mode:", evalMode),
+	// Protocol is shown first, then Agent URL/Python File, then Transport (if applicable)
+	isPythonProtocol := protocol == "python"
+	var formFields []string
+
+	if isPythonProtocol {
+		// Python protocol: show Protocol, Python File, then other fields (no Transport)
+		pythonFile := state.PythonEntrypointFile
+		formFields = []string{
+			renderDropdownField(0, "Protocol:", protocol),
+			renderTextField(1, "Python File:", pythonFile),
+			// No Transport field for Python protocol
+			renderTextField(3, "Judge LLM:", judge),
+			renderToggleField(4, "Deep Test:", deep),
+			renderDropdownField(5, "Mode:", evalMode),
+		}
+	} else {
+		// A2A/MCP protocols: show Protocol, Agent URL, Transport, then other fields
+		formFields = []string{
+			renderDropdownField(0, "Protocol:", protocol),
+			renderTextField(1, "Agent URL:", agent),
+			renderDropdownField(2, "Transport:", transport),
+			renderTextField(3, "Judge LLM:", judge),
+			renderToggleField(4, "Deep Test:", deep),
+			renderDropdownField(5, "Mode:", evalMode),
+		}
 	}
 
 	// Add ScanType dropdown and Configure button only in Red Team mode

@@ -69,12 +69,48 @@ https://github.com/user-attachments/assets/b5c04772-6916-4aab-825b-6a7476d77787
 
 ### Supported Protocols
 
-| Protocol | Transport            | Description                                                                        |
-| -------- | -------------------- | ---------------------------------------------------------------------------------- |
-| **A2A**  | HTTP                 | [Google's Agent-to-Agent](https://a2a-protocol.org/latest/) protocol               |
-| **MCP**  | SSE, STREAMABLE_HTTP | [Model Context Protocol](https://modelcontextprotocol.io/) via `send_message` tool |
+| Protocol | Transport | Description |
+|----------|-----------|-------------|
+| **A2A** | HTTP | [Google's Agent-to-Agent](https://a2a-protocol.org/latest/) protocol |
+| **MCP** | SSE, STREAMABLE_HTTP | [Model Context Protocol](https://modelcontextprotocol.io/) via `send_message` tool |
+| **Python** | — | Direct Python function calls (no network protocol) |
 
 See examples in [`examples/`](./examples/) for reference implementations.
+
+#### Python Entrypoint
+
+For agents implemented as Python functions without A2A or MCP:
+
+1. Create a Python file with a `call_agent` function:
+
+```python
+def call_agent(messages: list[dict]) -> str:
+    """
+    Process conversation and return response.
+    
+    Args:
+        messages: List of {"role": "user"|"assistant", "content": "..."}
+    
+    Returns:
+        Agent's response as a string
+    """
+    # Your agent logic here
+    latest = messages[-1]["content"]
+    return f"Response to: {latest}"
+```
+
+2. Run Rogue with Python protocol:
+
+```bash
+uvx rogue-ai cli \
+  --protocol python \
+  --python-entrypoint-file ./my_agent.py \
+  --judge-llm openai/gpt-4o-mini
+```
+
+Or via TUI: select "Python" as the protocol and enter the file path.
+
+See [`examples/python_entrypoint_stub.py`](./examples/python_entrypoint_stub.py) for a complete example.
 
 ---
 

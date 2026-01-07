@@ -12,10 +12,11 @@ class CLIInput(BaseModel):
 
     workdir: Path = Path(".") / ".rogue"
     protocol: Protocol
-    transport: Transport
-    evaluated_agent_url: HttpUrl
+    transport: Transport | None = None  # None for PYTHON protocol
+    evaluated_agent_url: HttpUrl | None = None  # Optional for PYTHON protocol
     evaluated_agent_auth_type: AuthType = AuthType.NO_AUTH
     evaluated_agent_credentials: SecretStr | None = None
+    python_entrypoint_file: Path | None = None  # For PYTHON protocol
     judge_llm: str
     judge_llm_api_key: SecretStr | None = None
     qualifire_api_key: SecretStr | None = None
@@ -63,6 +64,33 @@ class CLIInput(BaseModel):
             )
         return self
 
+    @model_validator(mode="after")
+    def check_protocol_requirements(self) -> "CLIInput":
+        """Validate protocol-specific requirements."""
+        if self.protocol == Protocol.PYTHON:
+            if not self.python_entrypoint_file:
+                raise ValueError(
+                    "python_entrypoint_file is required when protocol is PYTHON",
+                )
+            if not self.python_entrypoint_file.exists():
+                raise ValueError(
+                    f"Python entrypoint file does not exist: {self.python_entrypoint_file}",  # noqa: E501
+                )
+            if not self.python_entrypoint_file.is_file():
+                raise ValueError(
+                    f"Python entrypoint path is not a file: {self.python_entrypoint_file}",  # noqa: E501
+                )
+        else:
+            if not self.evaluated_agent_url:
+                raise ValueError(
+                    "evaluated_agent_url is required when protocol is not PYTHON",
+                )
+            if self.transport is None:
+                raise ValueError(
+                    "transport is required when protocol is not PYTHON",
+                )
+        return self
+
 
 class PartialCLIInput(BaseModel):
     """
@@ -76,6 +104,7 @@ class PartialCLIInput(BaseModel):
     evaluated_agent_url: HttpUrl | None = Field(default=None)
     evaluated_agent_auth_type: AuthType = Field(default=AuthType.NO_AUTH)
     evaluated_agent_credentials: SecretStr | None = Field(default=None)
+    python_entrypoint_file: Path | None = Field(default=None)  # For PYTHON protocol
     judge_llm: str | None = None
     judge_llm_api_key: SecretStr | None = None
     business_context: str | None = None

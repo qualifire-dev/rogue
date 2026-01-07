@@ -169,6 +169,7 @@ class BaseRedTeamAttackerAgent(ABC):
                     elif isinstance(update, ErrorUpdate):
                         raise RuntimeError(f"{update.exception_type}: {update.error}")
                     else:
+                        logger.debug(f"📤 Yielding update: {type(update).__name__}")
                         yield update
 
                 except asyncio.TimeoutError:
@@ -198,17 +199,23 @@ class BaseRedTeamAttackerAgent(ABC):
         async def send_message(message: str, session_id: Optional[str] = None) -> str:
             """Send a message and queue chat updates."""
             # Queue outgoing message (attack) - use "Rogue" role for TUI display
+            logger.info(f"📤 Queueing outgoing attack message: {message[:50]}...")
             await update_queue.put(
                 ChatUpdate(role="Rogue", content=message),
             )
+            # Yield control to allow queue consumer to process
+            await asyncio.sleep(0)
 
             # Send the actual message
             response = await self._send_message_to_evaluated_agent(message, session_id)
 
             # Queue response - use "Agent Under Test" role for TUI display
+            logger.info(f"📥 Queueing agent response: {response[:50]}...")
             await update_queue.put(
                 ChatUpdate(role="Agent Under Test", content=response),
             )
+            # Yield control to allow queue consumer to process
+            await asyncio.sleep(0)
 
             return response
 
