@@ -53,9 +53,14 @@ class RogueTuiInstaller:
         """Get the release information from GitHub."""
         console = Console()
 
-        try:
-            url = f"https://api.github.com/repos/{self._repo}/releases/{version}"
+        url = f"https://api.github.com/repos/{self._repo}/releases"
 
+        if version == "latest":
+            url += "/latest"
+        else:
+            url += f"/tags/{version}"
+
+        try:
             with console.status(
                 f"[bold blue]Fetching {version} release information...",
                 spinner="dots",
@@ -205,6 +210,7 @@ class RogueTuiInstaller:
         if not installed_version:
             return True
 
+        logger.debug(f"rogue-tui installed version: {installed_version}")
         current_version = get_version("rogue-ai")
         return installed_version != current_version
 

@@ -35,11 +35,15 @@ def check_for_updates(current_version: str) -> None:
         # Don't check for updates if we've checked recently
         cache_info = _get_update_cache()
         if _should_skip_update_check(cache_info):
+            logger.debug("Skipping update check")
             return
 
         # Get latest version from PyPI
         latest_version = _get_latest_version_from_pypi()
+        logger.debug(f"rogue-ai current version: {current_version}")
+        logger.debug(f"rogue-ai latest version: {latest_version}")
         if not latest_version:
+            logger.debug("No latest version found")
             return
 
         # Save the check info
@@ -47,6 +51,9 @@ def check_for_updates(current_version: str) -> None:
 
         # Compare versions and show update prompt if needed
         if _is_newer_version(latest_version, current_version):
+            logger.debug(
+                f"New version available {latest_version} > {current_version}",
+            )
             _show_update_prompt(latest_version, current_version)
 
     except Exception:
