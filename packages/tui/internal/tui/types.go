@@ -6,6 +6,8 @@ import (
 	"github.com/charmbracelet/glamour"
 	"github.com/rogue/tui/internal/components"
 	"github.com/rogue/tui/internal/screens/config"
+	"github.com/rogue/tui/internal/screens/redteam"
+	"github.com/rogue/tui/internal/screens/redteam_report"
 	"github.com/rogue/tui/internal/screens/scenarios"
 )
 
@@ -27,6 +29,12 @@ type SummaryGeneratedMsg struct {
 	Err     error
 }
 
+// RedTeamReportFetchedMsg contains the result of red team report fetch
+type RedTeamReportFetchedMsg struct {
+	ReportData *redteam_report.ReportData
+	Err        error
+}
+
 // Screen represents different screens in the TUI
 type Screen int
 
@@ -40,6 +48,8 @@ const (
 	ConfigurationScreen
 	ScenariosScreen
 	HelpScreen
+	RedTeamConfigScreen
+	RedTeamReportScreen
 )
 
 // App represents the main TUI application
@@ -71,22 +81,32 @@ type Model struct {
 	evalSpinner    components.Spinner
 
 	// Viewports for scrollable content
-	eventsHistory   *components.MessageHistoryView
-	summaryHistory  *components.MessageHistoryView
-	reportHistory   *components.MessageHistoryView
-	helpViewport    components.Viewport
-	focusedViewport int // 0 = events, 1 = summary
+	eventsHistory         *components.MessageHistoryView
+	summaryHistory        *components.MessageHistoryView
+	reportHistory         *components.MessageHistoryView
+	helpViewport          components.Viewport
+	redTeamReportViewport components.Viewport
+	focusedViewport       int // 0 = events, 1 = summary
 
 	// Markdown renderer with caching
 	markdownRenderer    *glamour.TermRenderer
 	rendererCachedWidth int
 	rendererCachedTheme string
 
+	// Report caching
+	cachedReportSummary string // Tracks the summary that was last rendered
+
 	// /eval state
 	evalState *EvaluationViewState
 
 	// Configuration state
 	configState *ConfigState
+
+	// Red Team Config state
+	redTeamConfigState *redteam.RedTeamConfigState
+
+	// Red Team Report state
+	redTeamReportData *redteam_report.ReportData
 }
 
 // Evaluation represents an evaluation

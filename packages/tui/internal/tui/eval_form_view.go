@@ -20,24 +20,34 @@ func (m Model) RenderNewEvaluation() string {
 	}
 
 	// Convert Model state to FormState
+	scanType := "basic"
+	if m.evalState.RedTeamConfig != nil {
+		scanType = string(m.evalState.RedTeamConfig.ScanType)
+	}
+
 	formState := &evaluations.FormState{
 		Width:  m.width,
 		Height: m.height,
 
-		AgentURL:       m.evalState.AgentURL,
-		Protocol:       string(m.evalState.AgentProtocol),
-		Transport:      string(m.evalState.AgentTransport),
-		JudgeModel:     m.evalState.JudgeModel,
-		DeepTest:       m.evalState.DeepTest,
-		ServerURL:      m.evalState.ServerURL,
-		ScenariosCount: len(m.evalState.Scenarios),
+		AgentURL:             m.evalState.AgentURL,
+		Protocol:             string(m.evalState.AgentProtocol),
+		Transport:            string(m.evalState.AgentTransport),
+		PythonEntrypointFile: m.evalState.PythonEntrypointFile,
+		JudgeModel:           m.evalState.JudgeModel,
+		DeepTest:             m.evalState.DeepTest,
+		ServerURL:            m.evalState.ServerURL,
+		ScenariosCount:       len(m.evalState.Scenarios),
+		EvaluationMode:       string(m.evalState.EvaluationMode),
+		ScanType:             scanType,
 
 		CurrentField: int(m.evalState.currentField),
 		CursorPos:    m.evalState.cursorPos,
 
-		EvalSpinnerActive:   m.evalSpinner.IsActive(),
-		HealthSpinnerActive: m.healthSpinner.IsActive(),
-		HealthSpinnerView:   m.healthSpinner.View(),
+		EvalSpinnerActive:     m.evalSpinner.IsActive(),
+		HealthSpinnerActive:   m.healthSpinner.IsActive(),
+		HealthSpinnerView:     m.healthSpinner.View(),
+		RedTeamConfigSaved:    m.evalState.RedTeamConfigSaved,
+		RedTeamConfigSavedMsg: m.evalState.RedTeamConfigSavedMsg,
 	}
 
 	return evaluations.RenderForm(formState)

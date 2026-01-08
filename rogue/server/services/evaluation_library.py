@@ -6,7 +6,11 @@ import asyncio
 from typing import Any, AsyncGenerator, Callable, Optional
 
 from loguru import logger
-from rogue_sdk.types import AgentConfig, EvaluationResults, Scenarios
+from rogue_sdk.types import (
+    AgentConfig,
+    EvaluationResults,
+    Scenarios,
+)
 
 from .scenario_evaluation_service import ScenarioEvaluationService
 

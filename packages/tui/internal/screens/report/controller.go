@@ -66,6 +66,9 @@ func HandleInput(reportHistory *components.MessageHistoryView, hasEvalState bool
 	case "up", "down", "pgup", "pgdown":
 		// Scroll the report
 		if reportHistory != nil {
+			// Focus the report history to enable scrolling
+			reportHistory.Focus()
+
 			switch msg.String() {
 			case "up":
 				reportHistory.ScrollUp(1)

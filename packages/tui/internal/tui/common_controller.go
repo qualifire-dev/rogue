@@ -8,6 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/rogue/tui/internal/components"
 	"github.com/rogue/tui/internal/screens/config"
+	"github.com/rogue/tui/internal/screens/redteam"
 	"github.com/rogue/tui/internal/screens/scenarios"
 )
 
@@ -37,7 +38,7 @@ func (m Model) handlePasteMsg(msg tea.PasteMsg) (Model, tea.Cmd) {
 		return m, nil
 	}
 
-	// Handle paste for new evaluation screen (Agent URL, Judge Model fields)
+	// Handle paste for new evaluation screen (Agent URL/Python File, Judge Model fields)
 	if m.currentScreen == NewEvaluationScreen && m.evalState != nil {
 		// Clean the clipboard text (remove newlines and trim whitespace)
 		cleanText := strings.TrimSpace(strings.ReplaceAll(string(msg), "\n", ""))
@@ -46,13 +47,27 @@ func (m Model) handlePasteMsg(msg tea.PasteMsg) (Model, tea.Cmd) {
 			return m, nil
 		}
 
-		// Only paste into text fields (Agent URL and Judge Model)
+		// Only paste into text fields (Agent URL/Python File and Judge Model)
 		switch m.evalState.currentField {
 		case EvalFieldAgentURL:
-			// Insert at cursor position
-			runes := []rune(m.evalState.AgentURL)
-			m.evalState.AgentURL = string(runes[:m.evalState.cursorPos]) + cleanText + string(runes[m.evalState.cursorPos:])
+			// Insert at cursor position (for Agent URL or Python File depending on protocol)
+			if m.evalState.AgentProtocol == ProtocolPython {
+				runes := []rune(m.evalState.PythonEntrypointFile)
+				m.evalState.PythonEntrypointFile = string(runes[:m.evalState.cursorPos]) + cleanText + string(runes[m.evalState.cursorPos:])
+			} else {
+				runes := []rune(m.evalState.AgentURL)
+				m.evalState.AgentURL = string(runes[:m.evalState.cursorPos]) + cleanText + string(runes[m.evalState.cursorPos:])
+			}
 			m.evalState.cursorPos += len([]rune(cleanText))
+			// Save config after paste
+			go saveUserConfig(
+				m.evalState.AgentProtocol,
+				m.evalState.AgentTransport,
+				m.evalState.AgentURL,
+				m.evalState.PythonEntrypointFile,
+				m.evalState.EvaluationMode,
+				m.getScanType(),
+			)
 		case EvalFieldJudgeModel:
 			// Insert at cursor position
 			runes := []rune(m.evalState.JudgeModel)
@@ -119,6 +134,12 @@ func (m Model) handleWindowSizeMsg(msg tea.WindowSizeMsg) (Model, tea.Cmd) {
 		m.reportHistory.SetSize(viewportWidth, viewportHeight)
 	}
 	m.helpViewport.SetSize(viewportWidth, viewportHeight)
+
+	// Reinitialize red team report viewport if we have data (content needs to be rebuilt for new width)
+	if m.redTeamReportData != nil {
+		m.initializeRedTeamReportViewport()
+	}
+
 	return m, nil
 }
 
@@ -191,35 +212,31 @@ func (m Model) handleSummaryGeneratedMsg(msg SummaryGeneratedMsg) (Model, tea.Cm
 	return m, nil
 }
 
+// handleRedTeamReportFetchedMsg handles red team report fetch completion
+func (m Model) handleRedTeamReportFetchedMsg(msg RedTeamReportFetchedMsg) (Model, tea.Cmd) {
+	if msg.Err != nil {
+		// Show error in evalState
+		if m.evalState != nil {
+			m.evalState.Summary = fmt.Sprintf("# Report Fetch Failed\n\nError: %v\n\nPress 'r' to retry", msg.Err)
+		}
+	} else {
+		// Store report data and initialize viewport content
+		m.redTeamReportData = msg.ReportData
+		// Initialize the red team report viewport with content
+		m.initializeRedTeamReportViewport()
+		// Navigate to the red team report screen
+		m.currentScreen = RedTeamReportScreen
+	}
+	return m, nil
+}
+
 // handleCommandSelectedMsg handles command selection from the command palette
 func (m Model) handleCommandSelectedMsg(msg components.CommandSelectedMsg) (Model, tea.Cmd) {
 	switch msg.Command.Action {
 	case "new_evaluation":
 		m.currentScreen = NewEvaluationScreen
-		// initialize eval state with values from config
-		judgeModel := "openai/gpt-4.1" // fallback default
-		if m.config.SelectedModel != "" && m.config.SelectedProvider != "" {
-			// Use the configured model in provider/model format
-			// Check if model already has provider prefix (e.g., "bedrock/anthropic.claude-...")
-			// If it does, use it as-is; otherwise, add the provider prefix
-			if strings.Contains(m.config.SelectedModel, "/") {
-				judgeModel = m.config.SelectedModel
-			} else {
-				judgeModel = m.config.SelectedProvider + "/" + m.config.SelectedModel
-			}
-		}
-		// TODO read agent url and protocol .rogue/user_config.json
-		m.evalState = &EvaluationViewState{
-			ServerURL:      m.config.ServerURL,
-			AgentURL:       "http://localhost:10001",
-			AgentProtocol:  ProtocolA2A,
-			AgentTransport: TransportHTTP,
-			JudgeModel:     judgeModel,
-			ParallelRuns:   1,
-			DeepTest:       false,
-			Scenarios:      loadScenariosFromWorkdir(),
-			cursorPos:      len([]rune("http://localhost:10001")), // Set cursor to end of Agent URL
-		}
+		// Load evaluation state from all config files (user_config.json, scenarios.json, redteam.yaml)
+		m.evalState, m.redTeamConfigState = LoadEvaluationStateFromConfig(&m.config)
 	case "configure_models":
 		// Open LLM configuration dialog
 		llmDialog := components.NewLLMConfigDialog(m.config.APIKeys, m.config.SelectedProvider, m.config.SelectedModel)
@@ -454,6 +471,27 @@ func (m Model) handleDialogClosedMsg(msg components.DialogClosedMsg) (Model, tea
 					return m, nil
 				}
 			}
+		case "save_redteam_api_key":
+			// Handle Qualifire API key save from red team config screen
+			if m.redTeamConfigState != nil {
+				m.redTeamConfigState.QualifireAPIKey = msg.Input
+				// Save the updated configuration
+				if err := redteam.SaveRedTeamConfig(m.redTeamConfigState); err != nil {
+					fmt.Printf("DEBUG: Error saving red team config: %v\n", err)
+				}
+			}
+			// Also update main config so StartEvaluation can use it
+			m.config.QualifireAPIKey = msg.Input
+			m.config.QualifireEnabled = msg.Input != ""
+			// Save the config so it persists
+			if err := config.Save(&m.config); err != nil {
+				fmt.Printf("DEBUG: Error saving main config: %v\n", err)
+			} else {
+				fmt.Printf("DEBUG: Saved QualifireAPIKey (length: %d) to config\n", len(msg.Input))
+			}
+			m.dialog = nil
+			return m, nil
+
 		case "configure_qualifire":
 			// Handle "Configure Qualifire" from report persistence dialog
 			if m.dialog != nil && m.dialog.Title == "Preserve Evaluation Report" {
@@ -605,5 +643,24 @@ func (m Model) handleScenarioEditorMsg(msg scenarios.ScenarioEditorMsg) (Model, 
 		m.commandInput.SetFocus(true)
 		m.commandInput.SetValue("")
 	}
+	return m, nil
+}
+
+// handleOpenAPIKeyDialogMsg handles opening the API key dialog from the red team config screen
+func (m Model) handleOpenAPIKeyDialogMsg(msg redteam.OpenAPIKeyDialogMsg) (Model, tea.Cmd) {
+	dialog := components.NewInputDialog(
+		"Configure Qualifire API Key",
+		"Enter your Qualifire API key to enable premium features.\nGet your key at: https://qualifire.ai/api-keys",
+		msg.CurrentKey,
+	)
+	// Customize the buttons
+	dialog.Buttons = []components.DialogButton{
+		{Label: "Cancel", Action: "cancel", Style: components.SecondaryButton},
+		{Label: "Save", Action: "save_redteam_api_key", Style: components.PrimaryButton},
+	}
+	// Position cursor at end of existing key if there is one
+	dialog.InputCursor = len(msg.CurrentKey)
+	dialog.SelectedBtn = 1 // Default to Save button
+	m.dialog = &dialog
 	return m, nil
 }

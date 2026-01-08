@@ -55,6 +55,13 @@ class ScenarioType(str, Enum):
     PROMPT_INJECTION = "prompt_injection"
 
 
+class EvaluationMode(str, Enum):
+    """Evaluation mode for agent testing."""
+
+    POLICY = "policy"  # Existing: business rule testing
+    RED_TEAM = "red_team"  # New: security testing
+
+
 class EvaluationStatus(str, Enum):
     """Status of evaluation jobs."""
 
@@ -70,12 +77,16 @@ class Protocol(str, Enum):
 
     A2A = "a2a"
     MCP = "mcp"
+    PYTHON = "python"
 
     def get_default_transport(self) -> "Transport":
         if self == Protocol.A2A:
             return Transport.HTTP
         elif self == Protocol.MCP:
             return Transport.STREAMABLE_HTTP
+        elif self == Protocol.PYTHON:
+            # Python protocol doesn't use network transport
+            return None  # type: ignore
         raise ValueError(f"No default transport for protocol {self}")
 
 
@@ -96,9 +107,178 @@ class Transport(str, Enum):
 PROTOCOL_TO_TRANSPORTS: dict[Protocol, list[Transport]] = {
     Protocol.A2A: [Transport.HTTP],
     Protocol.MCP: [Transport.STREAMABLE_HTTP, Transport.SSE],
+    Protocol.PYTHON: [],  # Python protocol doesn't use network transport
 }
 
 # Core Models
+
+
+class Severity(str, Enum):
+    """Severity levels for vulnerabilities."""
+
+    CRITICAL = "critical"
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+
+
+class VulnerabilityCategory(str, Enum):
+    """Categories of vulnerabilities."""
+
+    CONTENT_SAFETY = "content_safety"
+    PII_PROTECTION = "pii_protection"
+    TECHNICAL = "technical"
+    BIAS_FAIRNESS = "bias_fairness"
+    PROMPT_SECURITY = "prompt_security"
+    ACCESS_CONTROL = "access_control"
+    BUSINESS_LOGIC = "business_logic"
+    INTELLECTUAL_PROPERTY = "intellectual_property"
+    INFORMATION_QUALITY = "information_quality"
+    COMPLIANCE = "compliance"
+    SPECIALIZED_THREATS = "specialized_threats"
+    AGENT_SPECIFIC = "agent_specific"
+    RESOURCE_ATTACKS = "resource_attacks"
+
+
+class ScanType(str, Enum):
+    """Types of red team scans."""
+
+    BASIC = "basic"  # Free tier - limited vulnerabilities/attacks
+    FULL = "full"  # Premium - all vulnerabilities and attacks
+    CUSTOM = "custom"  # User-selected vulnerabilities and attacks
+
+
+class RedTeamConfig(BaseModel):
+    """Configuration for red team evaluation."""
+
+    scan_type: ScanType = Field(
+        default=ScanType.BASIC,
+        description="Type of scan: basic, full, or custom",
+    )
+    vulnerabilities: List[str] = Field(
+        default_factory=list,
+        description="List of vulnerability IDs to test",
+    )
+    attacks: List[str] = Field(
+        default_factory=list,
+        description="List of attack IDs to use",
+    )
+    attacks_per_vulnerability: int = Field(
+        default=3,
+        description="Number of attack attempts per vulnerability",
+    )
+    frameworks: List[str] = Field(
+        default_factory=list,
+        description=(
+            "Framework IDs for report mapping " "(e.g., 'owasp-llm', 'mitre-atlas')"
+        ),
+    )
+    random_seed: Optional[int] = Field(
+        default=None,
+        description="Random seed for reproducible tests",
+    )
+
+
+class VulnerabilityResult(BaseModel):
+    """Result of testing a single vulnerability."""
+
+    vulnerability_id: str = Field(description="ID of the vulnerability tested")
+    vulnerability_name: str = Field(description="Display name of the vulnerability")
+    category: VulnerabilityCategory = Field(description="Vulnerability category")
+    passed: bool = Field(description="Whether the test passed (no vulnerability found)")
+    attack_results: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Results from each attack attempt",
+    )
+    severity: Optional[Severity] = Field(
+        default=None,
+        description="Severity if vulnerability found",
+    )
+    evidence: Optional[List[str]] = Field(
+        default=None,
+        description="Evidence/logs supporting the finding",
+    )
+    recommendations: Optional[List[str]] = Field(
+        default=None,
+        description="Remediation recommendations",
+    )
+
+
+class FrameworkCompliance(BaseModel):
+    """Compliance status for a framework."""
+
+    framework_id: str = Field(description="Framework ID (e.g., 'owasp-llm')")
+    framework_name: str = Field(description="Display name of the framework")
+    compliance_score: float = Field(
+        description="Compliance score 0-100",
+        ge=0,
+        le=100,
+    )
+    categories_tested: int = Field(description="Number of categories tested")
+    categories_passed: int = Field(description="Number of categories that passed")
+    vulnerability_breakdown: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Per-vulnerability compliance status",
+    )
+    recommendations: List[str] = Field(
+        default_factory=list,
+        description="Framework-specific recommendations",
+    )
+
+
+class AttackStats(BaseModel):
+    """Statistics for a single attack type."""
+
+    attack_id: str = Field(description="ID of the attack")
+    attack_name: str = Field(description="Display name of the attack")
+    times_used: int = Field(default=0, description="Total times the attack was used")
+    successful_count: int = Field(
+        default=0,
+        description="Times the attack found a vulnerability",
+    )
+    success_rate: float = Field(
+        default=0.0,
+        description="Success rate (successful_count / times_used)",
+    )
+    average_score: Optional[float] = Field(
+        default=None,
+        description="Average metric score across uses",
+    )
+
+
+class RedTeamResults(BaseModel):
+    """Results from red team evaluation."""
+
+    vulnerability_results: List[VulnerabilityResult] = Field(
+        default_factory=list,
+        description="Results for each tested vulnerability",
+    )
+    framework_compliance: Dict[str, FrameworkCompliance] = Field(
+        default_factory=dict,
+        description="Compliance status for each selected framework",
+    )
+    attack_statistics: Dict[str, AttackStats] = Field(
+        default_factory=dict,
+        description="Usage statistics for each attack type",
+    )
+    csv_export_path: Optional[str] = Field(
+        default=None,
+        description="Path to CSV export of all conversations",
+    )
+    total_vulnerabilities_tested: int = Field(
+        default=0,
+        description="Total vulnerabilities tested",
+    )
+    total_vulnerabilities_found: int = Field(
+        default=0,
+        description="Total vulnerabilities found",
+    )
+    overall_risk_score: Optional[float] = Field(
+        default=None,
+        description="Overall risk score 0-10",
+        ge=0.0,
+        le=10.0,
+    )
 
 
 class AgentConfig(BaseModel):
@@ -106,7 +286,7 @@ class AgentConfig(BaseModel):
 
     protocol: Protocol = Protocol.A2A
     transport: Transport = None  # type: ignore # fixed in model_post_init
-    evaluated_agent_url: HttpUrl
+    evaluated_agent_url: Optional[HttpUrl] = None  # Optional for PYTHON protocol
     evaluated_agent_auth_type: AuthType = Field(
         default=AuthType.NO_AUTH,
     )
@@ -122,6 +302,20 @@ class AgentConfig(BaseModel):
     judge_llm_aws_region: Optional[str] = None
     business_context: str = ""
     qualifire_api_key: Optional[str] = None
+    evaluation_mode: EvaluationMode = Field(
+        default=EvaluationMode.POLICY,
+        description="Evaluation mode: policy testing or red teaming",
+    )
+    # New vulnerability-centric red team configuration
+    red_team_config: Optional[RedTeamConfig] = Field(
+        default=None,
+        description="Red team configuration (required for red_team mode)",
+    )
+    # Python entrypoint for direct Python agent testing
+    python_entrypoint_file: Optional[str] = Field(
+        default=None,
+        description="Path to Python file with call_agent(messages) function (for PYTHON protocol)",  # noqa: E501
+    )
 
     @model_validator(mode="after")
     def check_auth_credentials(self) -> "AgentConfig":
@@ -132,6 +326,21 @@ class AgentConfig(BaseModel):
             raise ValueError(
                 "Authentication Credentials cannot be empty for the selected auth type.",  # noqa: E501
             )
+        return self
+
+    @model_validator(mode="after")
+    def check_protocol_requirements(self) -> "AgentConfig":
+        """Validate protocol-specific requirements."""
+        if self.protocol == Protocol.PYTHON:
+            if not self.python_entrypoint_file:
+                raise ValueError(
+                    "python_entrypoint_file is required when protocol is PYTHON",
+                )
+        else:
+            if not self.evaluated_agent_url:
+                raise ValueError(
+                    "evaluated_agent_url is required when protocol is not PYTHON",
+                )
         return self
 
     def model_post_init(self, __context: Any) -> None:
@@ -237,10 +446,121 @@ class EvaluationResult(BaseModel):
     passed: bool
 
 
+class RedTeamAttackResult(BaseModel):
+    """Result of a red teaming attack."""
+
+    owasp_category: str = Field(description="OWASP category ID (e.g., 'LLM_01')")
+    vulnerability_type: str = Field(description="Type of vulnerability found")
+    attack_method: str = Field(description="Attack method used")
+    severity: Severity = Field(
+        description="Severity level of the vulnerability",
+    )
+    conversation_id: str = Field(description="ID of the conversation")
+    reproduction_steps: List[ChatMessage] = Field(
+        default_factory=list,
+        description="Messages that reproduced the vulnerability",
+    )
+    remediation: Optional[str] = Field(
+        default=None,
+        description="Recommended remediation steps",
+    )
+    metric_score: Optional[float] = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Metric score (0.0 = vulnerability found, 1.0 = safe). Higher is better.",  # noqa: E501
+    )
+    metric_reason: Optional[str] = Field(
+        default=None,
+        description="Reason/explanation from the metric evaluation",
+    )
+    # Strategy metadata fields for risk scoring
+    strategy_id: Optional[str] = Field(
+        default=None,
+        description="Strategy ID used for this attack",
+    )
+    strategy_complexity: Optional[str] = Field(
+        default=None,
+        description="Attack complexity: 'low', 'medium', or 'high'",
+    )
+    attack_success_rate: Optional[float] = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Success rate of this attack strategy. Higher means attack succeeded more often.",  # noqa: E501
+    )
+    risk_score: Optional[float] = Field(
+        default=None,
+        ge=0.0,
+        le=10.0,
+        description="CVSS-based risk score. Higher means more risky (0.0 = no risk, 10.0 = critical).",  # noqa: E501
+    )
+    risk_components: Optional[Dict[str, float]] = Field(
+        default=None,
+        description=(
+            "Risk score components "
+            "(impact, exploitability, human_factor, complexity_penalty)"
+        ),
+    )
+
+
+class VulnerabilityScanResult(BaseModel):
+    """Individual vulnerability scan result."""
+
+    context_id: str = Field(description="Conversation context ID")
+    vulnerability_type: str = Field(description="Type of vulnerability scanned")
+    passed: bool = Field(description="Whether the scan passed (no vulnerability found)")
+    reason: str = Field(description="Reason for pass/fail")
+    metric_score: Optional[float] = Field(
+        default=None,
+        description="Metric score (0.0 = critical vulnerability, 1.0 = safe)",
+    )
+    timestamp: str = Field(description="ISO timestamp of the scan")
+    owasp_category: Optional[str] = Field(
+        default=None,
+        description="OWASP category ID (e.g., 'LLM_01') if applicable",
+    )
+
+
+class AttackUsageStats(BaseModel):
+    """Statistics for attack usage and effectiveness."""
+
+    attack_name: str = Field(description="Name of the attack")
+    times_used: int = Field(default=0, description="Number of times attack was used")
+    success_count: int = Field(
+        default=0,
+        description="Number of times attack led to vulnerability detection",
+    )
+    contexts_used: List[str] = Field(
+        default_factory=list,
+        description="List of context IDs where attack was used",
+    )
+    success_rate: float = Field(
+        default=0.0,
+        description="Success rate (success_count / times_used)",
+    )
+
+
 class EvaluationResults(BaseModel):
     """Collection of evaluation results."""
 
     results: List[EvaluationResult] = Field(default_factory=list)
+    red_teaming_results: Optional[List[RedTeamAttackResult]] = Field(
+        default=None,
+        description="Red teaming attack results (only in red team mode)",
+    )
+    owasp_summary: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="OWASP category pass/fail summary",
+    )
+    vulnerability_scan_log: Optional[List[VulnerabilityScanResult]] = Field(
+        default=None,
+        description="Detailed log of ALL vulnerability scans performed",
+    )
+    attack_usage_stats: Optional[Dict[str, AttackUsageStats]] = Field(
+        default=None,
+        description="Statistics on attack usage and effectiveness",
+    )
 
     def add_result(self, new_result: EvaluationResult):
         for result in self.results:
@@ -254,6 +574,10 @@ class EvaluationResults(BaseModel):
         if other and other.results:
             for result in other.results:
                 self.add_result(result)
+        if other and other.red_teaming_results:
+            if self.red_teaming_results is None:
+                self.red_teaming_results = []
+            self.red_teaming_results.extend(other.red_teaming_results)
 
 
 # New API Format Types
@@ -420,9 +744,30 @@ class EvaluationRequest(BaseModel):
     """Request to create an evaluation job."""
 
     agent_config: AgentConfig
-    scenarios: List[Scenario]
+    scenarios: Optional[List[Scenario]] = None
     max_retries: int = 3
     timeout_seconds: int = 600
+
+    @model_validator(mode="after")
+    def validate_scenarios(self) -> "EvaluationRequest":
+        """Validate that scenarios are provided for policy mode."""
+        evaluation_mode = self.agent_config.evaluation_mode
+
+        # For policy mode, scenarios are required
+        if evaluation_mode == EvaluationMode.POLICY:
+            if not self.scenarios:
+                raise ValueError(
+                    "scenarios are required for policy evaluation mode",
+                )
+
+        # For red team mode, red_team_config is required
+        elif evaluation_mode == EvaluationMode.RED_TEAM:
+            if not self.agent_config.red_team_config:
+                raise ValueError(
+                    "red_team_config is required for red team evaluation mode",
+                )
+
+        return self
 
 
 class EvaluationJob(BaseModel):
@@ -435,6 +780,10 @@ class EvaluationJob(BaseModel):
     completed_at: Optional[datetime] = None
     request: EvaluationRequest
     results: Optional[List[EvaluationResult]] = None
+    evaluation_results: Optional["EvaluationResults"] = Field(
+        default=None,
+        description="Full evaluation results including red team data",
+    )
     error_message: Optional[str] = None
     progress: float = 0.0
     deep_test: bool = False
@@ -453,6 +802,79 @@ class JobListResponse(BaseModel):
     """Response from listing evaluation jobs."""
 
     jobs: List[EvaluationJob]
+    total: int
+
+
+class RedTeamRequest(BaseModel):
+    """Request to create a red team scan job."""
+
+    red_team_config: "RedTeamConfig"
+    evaluated_agent_url: Optional[HttpUrl] = None  # Optional for PYTHON protocol
+    evaluated_agent_protocol: Protocol
+    evaluated_agent_transport: Optional[Transport] = None
+    evaluated_agent_auth_type: AuthType = AuthType.NO_AUTH
+    evaluated_agent_auth_credentials: Optional[str] = None
+    python_entrypoint_file: Optional[str] = Field(
+        default=None,
+        description="Path to Python file with call_agent(messages) function (for PYTHON protocol)",  # noqa: E501
+    )
+    judge_llm: str
+    judge_llm_api_key: Optional[str] = None
+    judge_llm_aws_access_key_id: Optional[str] = None
+    judge_llm_aws_secret_access_key: Optional[str] = None
+    judge_llm_aws_region: Optional[str] = None
+    attacker_llm: str = "gpt-4"
+    attacker_llm_api_key: Optional[str] = None
+    attacker_llm_aws_access_key_id: Optional[str] = None
+    attacker_llm_aws_secret_access_key: Optional[str] = None
+    attacker_llm_aws_region: Optional[str] = None
+    business_context: str = ""
+    qualifire_api_key: Optional[str] = None
+    max_retries: int = 3
+    timeout_seconds: int = 600
+
+    @model_validator(mode="after")
+    def check_protocol_requirements(self) -> "RedTeamRequest":
+        """Validate protocol-specific requirements."""
+        if self.evaluated_agent_protocol == Protocol.PYTHON:
+            if not self.python_entrypoint_file:
+                raise ValueError(
+                    "python_entrypoint_file is required when protocol is PYTHON",
+                )
+        else:
+            if not self.evaluated_agent_url:
+                raise ValueError(
+                    "evaluated_agent_url is required when protocol is not PYTHON",
+                )
+        return self
+
+
+class RedTeamJob(BaseModel):
+    """Red team scan job with status and results."""
+
+    job_id: str
+    status: EvaluationStatus
+    created_at: datetime
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    request: RedTeamRequest
+    results: Optional["RedTeamResults"] = None
+    error_message: Optional[str] = None
+    progress: float = 0.0
+
+
+class RedTeamResponse(BaseModel):
+    """Response from creating a red team scan job."""
+
+    job_id: str
+    status: EvaluationStatus
+    message: str
+
+
+class RedTeamJobListResponse(BaseModel):
+    """Response from listing red team scan jobs."""
+
+    jobs: List[RedTeamJob]
     total: int
 
 
@@ -503,8 +925,10 @@ class StructuredSummary(BaseModel):
 
     overall_summary: str
     key_findings: List[str]
-    recommendations: List[str]
-    detailed_breakdown: List[dict]  # Table rows for scenario breakdown
+    recommendations: List[str] = Field(default_factory=list)
+    detailed_breakdown: List[dict] = Field(
+        default_factory=list,
+    )  # Table rows for scenario breakdown
 
 
 class SummaryGenerationResponse(BaseModel):

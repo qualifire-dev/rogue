@@ -35,7 +35,19 @@ func RenderDetail(state *DetailState) string {
 		Align(lipgloss.Center).
 		Padding(1, 0)
 
-	header := titleStyle.Render("📡 Evaluation Running")
+	// Show mode badge in title
+	titleText := "📡 Evaluation Running"
+	if state.EvaluationMode == "red_team" {
+		// Red team mode - show red badge
+		badgeStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FF0000")).
+			Background(lipgloss.Color("#330000")).
+			Bold(true).
+			Padding(0, 1).
+			MarginLeft(1)
+		titleText = "📡 Evaluation Running " + badgeStyle.Render("🔴 RED TEAM MODE")
+	}
+	header := titleStyle.Render(titleText)
 
 	// Status style
 	statusStyle := lipgloss.NewStyle().
@@ -73,9 +85,17 @@ func RenderDetail(state *DetailState) string {
 
 	var helpMsg string
 	if state.Completed && showSummary {
-		helpMsg = "b Back  s Stop  r Report  Tab Switch Focus  ↑↓ scroll end auto-scroll"
+		if state.EvaluationMode == "red_team" {
+			helpMsg = "b Back  r Red Team Report  Tab Switch Focus  ↑↓ scroll end auto-scroll"
+		} else {
+			helpMsg = "b Back  s Stop  r Report  Tab Switch Focus  ↑↓ scroll end auto-scroll"
+		}
 	} else if state.Completed {
-		helpMsg = "b Back  s Stop  r Report  ↑↓ scroll end auto-scroll"
+		if state.EvaluationMode == "red_team" {
+			helpMsg = "b Back  r Red Team Report  ↑↓ scroll end auto-scroll"
+		} else {
+			helpMsg = "b Back  s Stop  r Report  ↑↓ scroll end auto-scroll"
+		}
 	} else {
 		helpMsg = "b Back  s Stop  ↑↓ scroll end auto-scroll"
 	}

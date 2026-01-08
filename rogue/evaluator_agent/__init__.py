@@ -1,3 +1,11 @@
+"""
+Evaluator Agent Module.
+
+Provides agents for evaluating AI systems using different protocols (A2A, MCP).
+Policy evaluation uses scenario-based testing.
+Red team evaluation is handled by the server's red_teaming module.
+"""
+
 from . import (
     a2a,
     base_evaluator_agent,

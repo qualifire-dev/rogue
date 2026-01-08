@@ -1,10 +1,20 @@
 """
-Evaluation orchestrator - Server-native evaluation logic.
+Evaluation orchestrator - Server-native policy evaluation logic.
+
+Handles policy-based scenario evaluation. Red team evaluation is now
+handled by the separate RedTeamOrchestrator.
 """
 
-from typing import Any, AsyncGenerator, Tuple
+from typing import Any, AsyncGenerator
 
-from rogue_sdk.types import AuthType, EvaluationResults, Protocol, Scenarios, Transport
+from rogue_sdk.types import (
+    AuthType,
+    EvaluationMode,
+    EvaluationResults,
+    Protocol,
+    Scenarios,
+    Transport,
+)
 
 from ...common.logging import get_logger
 from ...evaluator_agent.run_evaluator_agent import arun_evaluator_agent
@@ -12,11 +22,10 @@ from ...evaluator_agent.run_evaluator_agent import arun_evaluator_agent
 
 class EvaluationOrchestrator:
     """
-    Server-native evaluation orchestrator.
+    Server-native policy evaluation orchestrator.
 
-    This class handles the core evaluation logic that was previously
-    in ScenarioEvaluationService, but is now integrated directly
-    into the server architecture.
+    Handles scenario-based testing of business rules and policies.
+    Red team evaluation is handled by the separate RedTeamOrchestrator.
     """
 
     def __init__(
@@ -34,6 +43,7 @@ class EvaluationOrchestrator:
         judge_llm_aws_access_key_id: str | None = None,
         judge_llm_aws_secret_access_key: str | None = None,
         judge_llm_aws_region: str | None = None,
+        python_entrypoint_file: str | None = None,
     ):
         self.protocol = protocol
         self.transport = transport
@@ -48,12 +58,13 @@ class EvaluationOrchestrator:
         self.scenarios = scenarios
         self.business_context = business_context
         self.deep_test_mode = deep_test_mode
+        self.python_entrypoint_file = python_entrypoint_file
         self.results = EvaluationResults()
         self.logger = get_logger(__name__)
 
-    async def run_evaluation(self) -> AsyncGenerator[Tuple[str, Any], None]:
+    async def run_evaluation(self) -> AsyncGenerator[tuple[str, Any], None]:
         """
-        Run the evaluation and yield progress updates.
+        Run the policy evaluation and yield progress updates.
 
         Yields:
             Tuple[str, Any]: (update_type, data) where update_type is one of:
@@ -62,15 +73,23 @@ class EvaluationOrchestrator:
                 - "results": EvaluationResults object
         """
         self.logger.info(
-            "🎯 EvaluationOrchestrator starting evaluation",
+            "🎯 EvaluationOrchestrator starting policy evaluation",
             extra={
                 "scenario_count": len(self.scenarios.scenarios),
                 "agent_url": self.evaluated_agent_url,
                 "judge_llm": self.judge_llm,
                 "deep_test_mode": self.deep_test_mode,
+                "protocol": self.protocol.value if self.protocol else None,
+                "python_entrypoint_file": self.python_entrypoint_file,
             },
         )
 
+        # Run policy evaluation
+        async for update in self._run_policy_evaluation():
+            yield update
+
+    async def _run_policy_evaluation(self) -> AsyncGenerator[tuple[str, Any], None]:
+        """Run policy-based scenario evaluation."""
         if not self.scenarios.scenarios:
             self.logger.warning("⚠️ No scenarios to evaluate")
             yield "status", "No scenarios to evaluate."
@@ -79,15 +98,17 @@ class EvaluationOrchestrator:
 
         # Prepare status message
         scenario_list = [scenario.scenario for scenario in self.scenarios.scenarios]
-        status_msg = "Running scenarios:\n" + "\n".join(scenario_list)
-        self.logger.info(f"📋 Starting evaluation of {len(scenario_list)} scenarios")
+        status_msg = "📋 Running scenarios:\n" + "\n".join(scenario_list)
+        self.logger.info(
+            "📋 Starting policy evaluation",
+            extra={"scenario_count": len(self.scenarios.scenarios)},
+        )
         yield "status", status_msg
 
         try:
             self.logger.info("🤖 Starting evaluator agent")
             update_count = 0
 
-            # Call the evaluator agent directly
             async for update_type, data in arun_evaluator_agent(
                 protocol=self.protocol,
                 transport=self.transport,
@@ -102,69 +123,30 @@ class EvaluationOrchestrator:
                 scenarios=self.scenarios,
                 business_context=self.business_context,
                 deep_test_mode=self.deep_test_mode,
+                evaluation_mode=EvaluationMode.POLICY,
+                python_entrypoint_file=self.python_entrypoint_file,
             ):
                 update_count += 1
-                self.logger.info(
-                    f"📨 EvaluationOrchestrator received update #{update_count}",
+                self.logger.debug(
+                    f"📨 Received update #{update_count}",
                     extra={
                         "update_type": update_type,
                         "data_type": type(data).__name__,
-                        "data_preview": str(data)[:100] if data else "None",
                     },
                 )
 
                 if update_type == "results":
-                    # Process results
                     results = data
                     if results and results.results:
-                        self.logger.info(
-                            f"📊 Processing {len(results.results)} evaluation results",
-                        )
                         for res in results.results:
                             self.results.add_result(res)
-                    else:
-                        self.logger.warning(
-                            "⚠️ Received results update but no results data",
-                        )
-
-                    # Yield the accumulated results
                     yield "results", self.results
                 else:
-                    # Forward chat and status updates
-                    self.logger.debug(
-                        f"🔄 Forwarding {update_type} update: {str(data)[:50]}...",
-                    )
                     yield update_type, data
 
-            self.logger.info(f"🏁 Evaluation completed. Total updates: {update_count}")
+            self.logger.info(f"🏁 Policy evaluation completed. Updates: {update_count}")
 
         except Exception as e:
-            self.logger.exception("❌ Evaluation failed")
-
-            error_msg = f"Evaluation failed: {str(e)}"
-
-            # Check for specific error types
-            if "timeout" in error_msg.lower():
-                error_msg = (
-                    "Evaluation timed out. Please check your agent configuration "
-                    "and try again."
-                )
-            elif "connection" in error_msg.lower():
-                error_msg = (
-                    "Failed to connect to the agent. Please verify the agent URL "
-                    "and authentication."
-                )
-            elif "authentication" in error_msg.lower():
-                error_msg = "Authentication failed. Please check your credentials."
-
-            yield "status", f"❌ {error_msg}"
+            self.logger.exception("❌ Policy evaluation failed")
+            yield "status", f"❌ Evaluation failed: {str(e)}"
             yield "results", self.results
-
-        finally:
-            self.logger.info(
-                "✅ EvaluationOrchestrator completed",
-                extra={
-                    "total_results": len(self.results.results),
-                    "evaluation_successful": len(self.results.results) > 0,
-                },
-            )

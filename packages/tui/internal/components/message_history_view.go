@@ -73,6 +73,9 @@ type MessageHistoryView struct {
 	renderMarkdown   bool
 	markdownRenderer *glamour.TermRenderer
 
+	// Markdown caching - maps message content to rendered markdown
+	markdownCache map[string]string
+
 	// Rendering
 	userColor      compat.AdaptiveColor
 	assistantColor compat.AdaptiveColor
@@ -95,6 +98,7 @@ func NewMessageHistoryView(id int, width, height int, t theme.Theme) *MessageHis
 		assistantPrefix: "🤖 AI:  ",
 		showSpinner:     false,
 		spinner:         &spinner,
+		markdownCache:   make(map[string]string),
 		userColor:       t.Text(), // Will use theme Primary
 		assistantColor:  t.Text(), // Will use theme Accent
 	}
@@ -142,9 +146,10 @@ func (m *MessageHistoryView) AddMessage(role, content string) {
 	})
 }
 
-// ClearMessages removes all messages
+// ClearMessages removes all messages and clears the markdown cache
 func (m *MessageHistoryView) ClearMessages() {
 	m.messages = make([]Message, 0)
+	m.markdownCache = make(map[string]string)
 }
 
 // GetMessages returns all messages
@@ -361,11 +366,18 @@ func (m *MessageHistoryView) renderMessages(t theme.Theme) []string {
 
 		// Check if we should render as markdown
 		if m.renderMarkdown && m.markdownRenderer != nil && msg.Role != "system" {
-			// Render markdown content
-			rendered, err := m.markdownRenderer.Render(msg.Content)
-			if err != nil {
-				// Fall back to plain text if markdown rendering fails
-				rendered = msg.Content
+			// Check cache first
+			rendered, found := m.markdownCache[msg.Content]
+			if !found {
+				// Render markdown content and cache it
+				var err error
+				rendered, err = m.markdownRenderer.Render(msg.Content)
+				if err != nil {
+					// Fall back to plain text if markdown rendering fails
+					rendered = msg.Content
+				}
+				// Store in cache
+				m.markdownCache[msg.Content] = rendered
 			}
 
 			messageLines = append(messageLines, prefix, rendered)

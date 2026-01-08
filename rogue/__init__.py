@@ -30,8 +30,6 @@ from . import (
     prompt_injection_evaluator,
     run_cli,
     run_server,
-    run_ui,
-    ui,
 )
 
 # Import the new library interface
@@ -57,9 +55,7 @@ __all__ = [
     "models",
     "prompt_injection_evaluator",
     "run_cli",
-    "run_ui",
     "run_server",
-    "ui",
     "get_version",
 ]
 

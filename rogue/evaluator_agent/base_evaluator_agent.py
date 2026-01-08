@@ -177,7 +177,10 @@ class BaseEvaluatorAgent(ABC):
         self._evaluated_agent_address = evaluated_agent_address
         self._protocol = protocol
         self._transport = transport or self._protocol.get_default_transport()
-        if not self._transport.is_valid_for_protocol(protocol):
+        # Python protocol doesn't use transport, so skip validation
+        if self._transport is not None and not self._transport.is_valid_for_protocol(
+            protocol,
+        ):
             raise ValueError(f"Unsupported transport for {protocol}: {self._transport}")
 
         self._headers = headers or {}
@@ -193,6 +196,10 @@ class BaseEvaluatorAgent(ABC):
         self._business_context = business_context or ""
         self._deep_test_mode = deep_test_mode
         self._chat_update_callback = chat_update_callback
+
+        # Optional attributes for red team agents (set by subclasses)
+        self._vulnerability_scan_results: Optional[list] = None
+        self._attack_coverage: Optional[dict] = None
 
     def get_underlying_agent(self) -> "LlmAgent":
         # adk imports take a while, importing them here to reduce rogue startup time.
@@ -248,7 +255,7 @@ class BaseEvaluatorAgent(ABC):
             before_model_callback=self._before_model_callback,
             after_model_callback=self._after_model_callback,
             generate_content_config=GenerateContentConfig(
-                temperature=0.0,
+                # temperature=0.0,
             ),
         )
 
@@ -469,11 +476,35 @@ class BaseEvaluatorAgent(ABC):
                 },
             )
             try:
-                # Try to construct with just the scenario text
+                # Normalize scenario_type if it's an OWASP category ID
+                scenario_type = scenario_dict.get("scenario_type", "policy")
+                if scenario_type not in [st.value for st in ScenarioType]:
+                    # Likely an OWASP category ID (e.g., "LLM_01")
+                    # Use POLICY type and preserve OWASP info in expected_outcome
+                    scenario_type = ScenarioType.POLICY.value
+                    expected_outcome = scenario_dict.get("expected_outcome", "")
+                    owasp_cat = scenario_dict.get("scenario_type")
+                    if (
+                        owasp_cat
+                        and isinstance(owasp_cat, str)
+                        and owasp_cat not in expected_outcome  # noqa: E501
+                    ):
+                        # Add OWASP category to expected_outcome if not already there
+                        if expected_outcome:
+                            expected_outcome = (
+                                f"{expected_outcome} (OWASP: {owasp_cat})"
+                            )
+                        else:
+                            expected_outcome = f"OWASP Category: {owasp_cat}"
+                else:
+                    expected_outcome = scenario_dict.get("expected_outcome") or ""
+
+                # Try to construct with normalized scenario
                 scenario_text = scenario_dict.get("scenario", str(scenario_dict))
                 scenario_parsed = Scenario(
                     scenario=scenario_text,
-                    scenario_type=ScenarioType.POLICY,  # Default to policy
+                    scenario_type=ScenarioType(scenario_type),
+                    expected_outcome=expected_outcome,
                 )
             except Exception:
                 logger.exception(
@@ -510,7 +541,15 @@ class BaseEvaluatorAgent(ABC):
         self._evaluation_results.add_result(evaluation_result)
 
     def get_evaluation_results(self) -> EvaluationResults:
-        return self._evaluation_results
+        results = self._evaluation_results
+
+        # Add scan log and attack stats for red team agents
+        if self._vulnerability_scan_results is not None:
+            results.vulnerability_scan_log = self._vulnerability_scan_results
+        if self._attack_coverage is not None:
+            results.attack_usage_stats = self._attack_coverage
+
+        return results
 
     @abstractmethod
     async def _send_message_to_evaluated_agent(
@@ -565,8 +604,16 @@ class BaseEvaluatorAgent(ABC):
 
         callback_role = "Rogue" if role == "user" else "Agent Under Test"
         if self._chat_update_callback:
+            logger.debug(
+                f"📤 Sending chat update: role={callback_role}, "
+                f"content={message[:50]}...",
+            )
             self._chat_update_callback(
                 {"role": callback_role, "content": message},
+            )
+        else:
+            logger.warning(
+                f"⚠️ No chat callback set, message not sent: role={callback_role}",
             )
 
     async def __aenter__(self) -> Self:

@@ -1,12 +1,34 @@
+"""
+Scenario Evaluation Service.
+
+Handles policy-based scenario evaluation. Red team evaluation is
+now handled by the EvaluationOrchestrator using the server's
+red_teaming module.
+"""
+
 from typing import Any, AsyncGenerator
 
 from loguru import logger
-from rogue_sdk.types import AuthType, EvaluationResults, Protocol, Scenarios, Transport
+from rogue_sdk.types import (
+    AuthType,
+    EvaluationMode,
+    EvaluationResults,
+    Protocol,
+    Scenarios,
+    Transport,
+)
 
 from ...evaluator_agent.run_evaluator_agent import arun_evaluator_agent
 
 
 class ScenarioEvaluationService:
+    """
+    Service for policy-based scenario evaluation.
+
+    Note: Red team evaluation should use EvaluationOrchestrator directly,
+    which uses the server's red_teaming module.
+    """
+
     def __init__(
         self,
         protocol: Protocol,
@@ -33,6 +55,15 @@ class ScenarioEvaluationService:
         self._results = EvaluationResults()
 
     async def evaluate_scenarios(self) -> AsyncGenerator[tuple[str, Any], None]:
+        """
+        Evaluate policy scenarios.
+
+        Yields:
+            Tuples of (update_type, data) where update_type is:
+            - "status": Status message string
+            - "chat": Chat message dict
+            - "done": Final EvaluationResults
+        """
         logger.info(
             "🎯 ScenarioEvaluationService.evaluate_scenarios starting",
             extra={
@@ -49,9 +80,13 @@ class ScenarioEvaluationService:
             yield "done", self._results
             return
 
+        # Prepare status message
         scenario_list = [scenario.scenario for scenario in self._scenarios.scenarios]
-        status_msg = "Running scenarios:\n" + "\n".join(scenario_list)
-        logger.info(f"📋 Starting evaluation of {len(scenario_list)} scenarios")
+        status_msg = "📋 Running scenarios:\n" + "\n".join(scenario_list)
+        logger.info(
+            "📋 Starting policy evaluation",
+            extra={"scenario_count": len(self._scenarios.scenarios)},
+        )
         yield "status", status_msg
 
         try:
@@ -69,36 +104,26 @@ class ScenarioEvaluationService:
                 scenarios=self._scenarios,
                 business_context=self._business_context,
                 deep_test_mode=self._deep_test_mode,
+                evaluation_mode=EvaluationMode.POLICY,
             ):
                 update_count += 1
-                logger.info(
-                    f"📨 ScenarioEvaluationService received update #{update_count}",
+                logger.debug(
+                    f"📨 Received update #{update_count}",
                     extra={
                         "update_type": update_type,
                         "data_type": type(data).__name__,
-                        "data_preview": str(data)[:100] if data else "None",
                     },
                 )
 
                 if update_type == "results":
                     results = data
                     if results and results.results:
-                        logger.info(
-                            f"📊 Processing {len(results.results)} evaluation results",
-                        )
                         for res in results.results:
                             self._results.add_result(res)
-                    else:
-                        logger.warning("⚠️ Received results update but no results data")
-                else:  # it's a 'chat' or 'status' update
-                    logger.debug(
-                        f"🔄 Forwarding {update_type} update: {str(data)[:50]}...",
-                    )
+                else:
                     yield update_type, data
 
-            logger.info(
-                f"🏁 arun_evaluator_agent completed. Total updates: {update_count}",
-            )
+            logger.info(f"🏁 Evaluation completed. Total updates: {update_count}")
 
         except Exception as e:
             error_type = type(e).__name__
@@ -120,9 +145,8 @@ class ScenarioEvaluationService:
                 )
             elif "APIError" in error_type and "authentication" in error_msg.lower():
                 user_friendly_error = (
-                    "🔐 LLM Authentication Error: Invalid API key for "
-                    f"{self._judge_llm}. Please check your "
-                    "judge_llm_api_key configuration."
+                    f"🔐 LLM Authentication Error: "
+                    f"Invalid API key for {self._judge_llm}."
                 )
             elif "timeout" in error_msg.lower():
                 user_friendly_error = (
@@ -135,9 +159,7 @@ class ScenarioEvaluationService:
             yield "status", user_friendly_error
 
         logger.info(
-            (
-                "✅ ScenarioEvaluationService completed with "
-                f"{len(self._results.results)} total results"
-            ),
+            f"✅ ScenarioEvaluationService completed with "
+            f"{len(self._results.results)} results",
         )
         yield "done", self._results

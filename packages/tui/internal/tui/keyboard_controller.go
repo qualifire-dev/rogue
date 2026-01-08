@@ -1,11 +1,14 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/rogue/tui/internal/components"
 	"github.com/rogue/tui/internal/screens/help"
+	"github.com/rogue/tui/internal/screens/redteam"
+	"github.com/rogue/tui/internal/screens/redteam_report"
 	"github.com/rogue/tui/internal/screens/report"
 )
 
@@ -90,16 +93,20 @@ func (m Model) handleGlobalCtrlN() (Model, tea.Cmd) {
 		}
 	}
 	// TODO read agent url and protocol .rogue/user_config.json
+	scenariosWithContext := loadScenariosWithContextFromWorkdir()
 	m.evalState = &EvaluationViewState{
-		ServerURL:      m.config.ServerURL,
-		AgentURL:       "http://localhost:10001",
-		AgentProtocol:  ProtocolA2A,
-		AgentTransport: TransportHTTP,
-		JudgeModel:     judgeModel,
-		ParallelRuns:   1,
-		DeepTest:       false,
-		Scenarios:      loadScenariosFromWorkdir(),
-		cursorPos:      len([]rune("http://localhost:10001")), // Set cursor to end of Agent URL
+		ServerURL:       m.config.ServerURL,
+		AgentURL:        "http://localhost:10001",
+		AgentProtocol:   ProtocolA2A,
+		AgentTransport:  TransportHTTP,
+		JudgeModel:      judgeModel,
+		ParallelRuns:    1,
+		DeepTest:        false,
+		Scenarios:       scenariosWithContext.Scenarios,
+		BusinessContext: scenariosWithContext.BusinessContext,
+		EvaluationMode:  EvaluationModePolicy,
+		RedTeamConfig:   nil,                                   // Will be initialized when switching to red team mode
+		cursorPos:       len([]rune("http://localhost:10001")), // Set cursor to end of Agent URL
 	}
 	m.currentScreen = NewEvaluationScreen
 	return m, nil
@@ -146,14 +153,38 @@ func (m Model) handleGlobalSlash(msg tea.KeyMsg) (Model, tea.Cmd) {
 
 	// Check if we're editing text fields that might need "/" character
 	// Don't intercept "/" if we're editing text in NewEvaluationScreen
-	if m.currentScreen == NewEvaluationScreen && m.evalState != nil && m.evalState.currentField <= EvalFieldProtocol {
+	if m.currentScreen == NewEvaluationScreen && m.evalState != nil &&
+		(m.evalState.currentField == EvalFieldAgentURL || m.evalState.currentField == EvalFieldJudgeModel) {
 		// Handle "/" character directly in text fields
 		s := "/"
 		switch m.evalState.currentField {
 		case EvalFieldAgentURL:
-			runes := []rune(m.evalState.AgentURL)
-			m.evalState.AgentURL = string(runes[:m.evalState.cursorPos]) + s + string(runes[m.evalState.cursorPos:])
+			// Use Python file or Agent URL based on protocol
+			if m.evalState.AgentProtocol == ProtocolPython {
+				runes := []rune(m.evalState.PythonEntrypointFile)
+				// Clamp cursor position to valid range
+				if m.evalState.cursorPos > len(runes) {
+					m.evalState.cursorPos = len(runes)
+				}
+				m.evalState.PythonEntrypointFile = string(runes[:m.evalState.cursorPos]) + s + string(runes[m.evalState.cursorPos:])
+			} else {
+				runes := []rune(m.evalState.AgentURL)
+				// Clamp cursor position to valid range
+				if m.evalState.cursorPos > len(runes) {
+					m.evalState.cursorPos = len(runes)
+				}
+				m.evalState.AgentURL = string(runes[:m.evalState.cursorPos]) + s + string(runes[m.evalState.cursorPos:])
+			}
 			m.evalState.cursorPos++
+			// Save config after text change
+			go saveUserConfig(
+				m.evalState.AgentProtocol,
+				m.evalState.AgentTransport,
+				m.evalState.AgentURL,
+				m.evalState.PythonEntrypointFile,
+				m.evalState.EvaluationMode,
+				m.getScanType(),
+			)
 		case EvalFieldJudgeModel:
 			runes := []rune(m.evalState.JudgeModel)
 			m.evalState.JudgeModel = string(runes[:m.evalState.cursorPos]) + s + string(runes[m.evalState.cursorPos:])
@@ -220,6 +251,23 @@ func (m Model) handleGlobalEscape(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m, tea.Batch(cmds...)
 	}
 
+	if m.currentScreen == RedTeamConfigScreen {
+		// Check if any dialogs are open in the red team config screen
+		if m.redTeamConfigState != nil {
+			if m.redTeamConfigState.ShowFrameworkDialog || m.redTeamConfigState.ShowAPIKeyDialog {
+				// Close the dialog
+				m.redTeamConfigState.ShowFrameworkDialog = false
+				m.redTeamConfigState.ShowAPIKeyDialog = false
+				m.redTeamConfigState.APIKeyInput = ""
+				return m, nil
+			}
+		}
+		// Save config and go back to evaluation form
+		m.saveRedTeamConfigState()
+		m.currentScreen = NewEvaluationScreen
+		return m, nil
+	}
+
 	if m.currentScreen == ReportScreen {
 		// go back to the evaluation view screen
 		if m.reportHistory != nil {
@@ -228,6 +276,13 @@ func (m Model) handleGlobalEscape(msg tea.KeyMsg) (Model, tea.Cmd) {
 		m.currentScreen = EvaluationDetailScreen
 		return m, nil
 	}
+
+	if m.currentScreen == RedTeamReportScreen {
+		// ESC goes back to evaluation detail screen, not dashboard
+		m.currentScreen = EvaluationDetailScreen
+		return m, nil
+	}
+
 	if m.currentScreen == EvaluationDetailScreen {
 		// Check if we should show the Qualifire persistence dialog
 		shouldShowDialog := m.evalState != nil &&
@@ -281,7 +336,30 @@ func (m Model) handleGlobalEnter(msg tea.KeyMsg) (Model, tea.Cmd) {
 	}
 	// Handle NewEvaluationScreen enter for start button and LLM config
 	if m.currentScreen == NewEvaluationScreen && m.evalState != nil {
-		if m.evalState.currentField == EvalFieldStartButton {
+		// Use dynamic start button index based on evaluation mode
+		// Policy mode: 6, Red Team mode: 8 (after ScanType at 6, Configure at 7)
+		startButtonIdx := m.evalState.getStartButtonIndex()
+		if m.evalState.currentField == startButtonIdx { // Start button field
+			// Validate: Policy mode requires scenarios
+			if m.evalState.EvaluationMode == EvaluationModePolicy && len(m.evalState.Scenarios) == 0 {
+				errorDialog := components.ShowErrorDialog(
+					"Cannot Start Evaluation",
+					"Policy evaluation mode requires at least one scenario. Please add scenarios or switch to Red Team mode.",
+				)
+				m.dialog = &errorDialog
+				return m, nil
+			}
+			// Validate: Full scan mode is coming soon
+			if m.evalState.EvaluationMode == EvaluationModeRedTeam &&
+				m.evalState.RedTeamConfig != nil &&
+				m.evalState.RedTeamConfig.ScanType == ScanTypeFull {
+				dialog := components.NewInfoDialog(
+					"Full Scan - Coming Soon",
+					"🔥 Full scan mode is coming soon!\n\nThis feature will enable comprehensive security testing with all available attacks and vulnerabilities.\n\nPlease select Basic or Custom scan type for now.",
+				)
+				m.dialog = &dialog
+				return m, nil
+			}
 			m.handleNewEvalEnter()
 			// Return command to start evaluation after showing spinner
 			return m, tea.Batch(m.evalSpinner.Start(), startEvaluationCmd())
@@ -289,6 +367,14 @@ func (m Model) handleGlobalEnter(msg tea.KeyMsg) (Model, tea.Cmd) {
 			// Open LLM config dialog when Enter is pressed on Judge LLM field
 			llmDialog := components.NewLLMConfigDialog(m.config.APIKeys, m.config.SelectedProvider, m.config.SelectedModel)
 			m.llmDialog = &llmDialog
+			return m, nil
+		} else if m.evalState.currentField == EvalFieldConfigureButton && m.evalState.EvaluationMode == EvaluationModeRedTeam {
+			// Configure button - navigate to Red Team Config Screen
+			m.currentScreen = RedTeamConfigScreen
+			// Initialize red team config state if needed
+			if m.redTeamConfigState == nil {
+				m.redTeamConfigState = initRedTeamConfigState(m.evalState.RedTeamConfig, m.config.QualifireAPIKey)
+			}
 			return m, nil
 		}
 		return m, nil // Don't process enter on other fields
@@ -336,6 +422,7 @@ func (m Model) routeKeyToScreen(msg tea.KeyMsg) (Model, tea.Cmd) {
 		case report.ActionRegenerateSummary:
 			if m.evalState != nil {
 				m.evalState.SummaryGenerated = false
+				m.cachedReportSummary = "" // Clear cache to force rebuild
 				m.summarySpinner.SetActive(true)
 				return m, tea.Batch(result.Cmd, m.summarySpinner.Start(), m.summaryGenerationCmd())
 			}
@@ -357,7 +444,179 @@ func (m Model) routeKeyToScreen(msg tea.KeyMsg) (Model, tea.Cmd) {
 			}
 			return m, tea.Batch(cmds...)
 		}
+
+	case RedTeamConfigScreen:
+		if m.redTeamConfigState != nil {
+			m.redTeamConfigState, cmd = redteam.HandleKeyPress(m.redTeamConfigState, msg)
+			if cmd != nil {
+				cmds = append(cmds, cmd)
+			}
+		}
+		return m, tea.Batch(cmds...)
+
+	case RedTeamReportScreen:
+		// Import redteam_report package at the top
+		result := redteam_report.HandleInput(&m.redTeamReportViewport, msg)
+		m.redTeamReportViewport = *result.Viewport
+
+		// Handle actions
+		switch result.Action {
+		case redteam_report.ActionBackToEvalDetail:
+			m.currentScreen = EvaluationDetailScreen
+			return m, result.Cmd
+		case redteam_report.ActionExportCSV:
+			// TODO: Implement CSV export if needed
+			return m, result.Cmd
+		}
+
+		return m, result.Cmd
 	}
 
 	return m, nil
+}
+
+// initRedTeamConfigState initializes the red team config state from the evaluation config
+func initRedTeamConfigState(config *RedTeamConfig, qualifireAPIKey string) *redteam.RedTeamConfigState {
+	state := redteam.NewRedTeamConfigState()
+
+	// Set the API key from main config
+	if qualifireAPIKey != "" {
+		state.QualifireAPIKey = qualifireAPIKey
+	}
+
+	if config == nil {
+		return state
+	}
+
+	// Set scan type
+	switch config.ScanType {
+	case ScanTypeBasic:
+		state.ScanType = redteam.ScanTypeBasic
+	case ScanTypeFull:
+		state.ScanType = redteam.ScanTypeFull
+	case ScanTypeCustom:
+		state.ScanType = redteam.ScanTypeCustom
+	}
+
+	// Check if we need to apply preset selections
+	hasVulnerabilities := len(config.Vulnerabilities) > 0
+	hasAttacks := len(config.Attacks) > 0
+
+	if !hasVulnerabilities && !hasAttacks {
+		// No selections yet, apply preset based on scan type
+		switch config.ScanType {
+		case ScanTypeBasic:
+			// Apply basic preset
+			for _, id := range redteam.GetBasicScanVulnerabilities() {
+				state.SelectedVulnerabilities[id] = true
+			}
+			for _, id := range redteam.GetBasicScanAttacks() {
+				state.SelectedAttacks[id] = true
+			}
+		case ScanTypeFull:
+			// Apply full preset
+			for _, id := range redteam.GetFreeVulnerabilities() {
+				state.SelectedVulnerabilities[id] = true
+			}
+			for _, id := range redteam.GetFreeAttacks() {
+				state.SelectedAttacks[id] = true
+			}
+			// If API key present, also select premium
+			if state.QualifireAPIKey != "" {
+				for id, vuln := range redteam.VulnerabilityCatalog {
+					if vuln.Premium {
+						state.SelectedVulnerabilities[id] = true
+					}
+				}
+				for id, attack := range redteam.AttackCatalog {
+					if attack.Premium {
+						state.SelectedAttacks[id] = true
+					}
+				}
+			}
+		}
+	} else {
+		// Copy existing selections, filtering out premium items if no API key
+		for _, v := range config.Vulnerabilities {
+			vuln := redteam.GetVulnerability(v)
+			if vuln != nil && (!vuln.Premium || state.QualifireAPIKey != "") {
+				state.SelectedVulnerabilities[v] = true
+			}
+		}
+
+		for _, a := range config.Attacks {
+			attack := redteam.GetAttack(a)
+			if attack != nil && (!attack.Premium || state.QualifireAPIKey != "") {
+				state.SelectedAttacks[a] = true
+			}
+		}
+	}
+
+	// Copy selected frameworks
+	for _, f := range config.Frameworks {
+		state.SelectedFrameworks[f] = true
+	}
+
+	// Copy attacks per vulnerability
+	state.AttacksPerVulnerability = config.AttacksPerVulnerability
+
+	return state
+}
+
+// saveRedTeamConfigState saves the red team config state back to the evaluation state
+func (m *Model) saveRedTeamConfigState() {
+	if m.redTeamConfigState == nil || m.evalState == nil {
+		return
+	}
+
+	// Create or update RedTeamConfig
+	if m.evalState.RedTeamConfig == nil {
+		m.evalState.RedTeamConfig = &RedTeamConfig{}
+	}
+
+	// Set scan type
+	switch m.redTeamConfigState.ScanType {
+	case redteam.ScanTypeBasic:
+		m.evalState.RedTeamConfig.ScanType = ScanTypeBasic
+	case redteam.ScanTypeFull:
+		m.evalState.RedTeamConfig.ScanType = ScanTypeFull
+	case redteam.ScanTypeCustom:
+		m.evalState.RedTeamConfig.ScanType = ScanTypeCustom
+	}
+
+	// Copy selected vulnerabilities
+	vulnerabilities := make([]string, 0)
+	for id, selected := range m.redTeamConfigState.SelectedVulnerabilities {
+		if selected {
+			vulnerabilities = append(vulnerabilities, id)
+		}
+	}
+	m.evalState.RedTeamConfig.Vulnerabilities = vulnerabilities
+
+	// Copy selected attacks
+	attacks := make([]string, 0)
+	for id, selected := range m.redTeamConfigState.SelectedAttacks {
+		if selected {
+			attacks = append(attacks, id)
+		}
+	}
+	m.evalState.RedTeamConfig.Attacks = attacks
+
+	// Copy selected frameworks
+	frameworks := make([]string, 0)
+	for id, selected := range m.redTeamConfigState.SelectedFrameworks {
+		if selected {
+			frameworks = append(frameworks, id)
+		}
+	}
+	m.evalState.RedTeamConfig.Frameworks = frameworks
+
+	// Copy attacks per vulnerability
+	m.evalState.RedTeamConfig.AttacksPerVulnerability = m.redTeamConfigState.AttacksPerVulnerability
+
+	// Set the notification flag to show subtle green text
+	m.evalState.RedTeamConfigSaved = true
+	vulnCount := len(vulnerabilities)
+	attackCount := len(attacks)
+	m.evalState.RedTeamConfigSavedMsg = fmt.Sprintf("✓ Saved: %d vulnerabilities, %d attacks → .rogue/redteam.yaml", vulnCount, attackCount)
 }

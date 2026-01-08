@@ -280,8 +280,47 @@ class LLMService:
                 content = content[:-3]
             content = content.strip()
 
-            # Parse JSON and create StructuredSummary
-            summary_data = json.loads(content)
+            # Try to parse JSON, with fallback for invalid escape sequences
+            try:
+                summary_data = json.loads(content)
+            except json.JSONDecodeError as json_error:
+                # If error is about invalid escape sequences, try to fix them
+                if "Invalid \\escape" in str(json_error):
+                    import re
+
+                    # Fix invalid escape sequences by escaping the backslash
+                    # Valid JSON escapes: \", \\, \/, \b, \f, \n, \r, \t, \uXXXX
+                    # We'll fix invalid ones by doubling the backslash
+                    def fix_invalid_escape(match):
+                        char = match.group(1)
+                        # Valid JSON escape sequences
+                        valid_escapes = {"b", "f", "n", "r", "t", '"', "\\", "/", "u"}
+                        # Check if it's a valid escape or part of unicode escape
+                        if char in valid_escapes:
+                            return match.group(0)
+                        # If it's a digit, might be part of unicode escape
+                        if char.isdigit():
+                            return match.group(0)
+                        # Invalid escape - escape the backslash
+                        return "\\\\" + char
+
+                    # Fix invalid escapes (but preserve valid ones)
+                    # Match backslash followed by a character that's not a valid escape
+                    content = re.sub(
+                        r'\\([^"\\/bfnrtu0-9])',
+                        fix_invalid_escape,
+                        content,
+                    )
+                    # Try parsing again
+                    try:
+                        summary_data = json.loads(content)
+                    except json.JSONDecodeError:
+                        # If still fails, raise the original error
+                        raise json_error
+                else:
+                    # Re-raise if it's a different JSON error
+                    raise
+
             return StructuredSummary(**summary_data)
 
         except json.JSONDecodeError as e:

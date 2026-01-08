@@ -216,10 +216,8 @@ def run_update_command() -> None:
                 )
 
             if result.returncode == 0:
-                # Install TUI
-                RogueTuiInstaller().install_rogue_tui(
-                    upgrade=True,
-                )
+                # Install/Upgrade TUI
+                RogueTuiInstaller().install_rogue_tui()
 
         if result.returncode == 0:
             console.print("[bold green]✅ Update completed successfully![/bold green]")

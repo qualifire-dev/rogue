@@ -14,7 +14,8 @@ type EvalState struct {
 }
 
 // Render renders the evaluation report screen with summary using MessageHistoryView for scrollable content
-func Render(width, height int, evalState *EvalState, reportHistory *components.MessageHistoryView, markdownRenderer *glamour.TermRenderer) string {
+// The needsRebuild flag should be set to true when the summary changes, false otherwise
+func Render(width, height int, evalState *EvalState, reportHistory *components.MessageHistoryView, markdownRenderer *glamour.TermRenderer, needsRebuild bool) string {
 	t := theme.CurrentTheme()
 
 	if evalState == nil {
@@ -47,38 +48,41 @@ func Render(width, height int, evalState *EvalState, reportHistory *components.M
 	// Calculate available height: header(3) + helpText(2) = 5
 	reportHeight := height - 5
 
-	// Clear existing messages and rebuild report content
-	reportHistory.ClearMessages()
+	// Only rebuild the report content if needed (when summary changes or first time)
+	if needsRebuild {
+		// Clear existing messages and rebuild report content
+		reportHistory.ClearMessages()
 
-	// Add title as system message
-	reportHistory.AddMessage("system", "📊 Evaluation Report")
+		// Add title as system message
+		reportHistory.AddMessage("system", "📊 Evaluation Report")
 
-	// Add report content
-	if evalState.Summary == "" {
-		if evalState.Completed {
-			// Evaluation completed but no summary yet
-			reportHistory.AddMessage("system", "Generating summary, please wait...")
+		// Add report content
+		if evalState.Summary == "" {
+			if evalState.Completed {
+				// Evaluation completed but no summary yet
+				reportHistory.AddMessage("system", "Generating summary, please wait...")
+			} else {
+				// Evaluation not completed
+				reportHistory.AddMessage("system", "Evaluation not completed yet. Complete an evaluation to see the report.")
+			}
 		} else {
-			// Evaluation not completed
-			reportHistory.AddMessage("system", "Evaluation not completed yet. Complete an evaluation to see the report.")
+			// Show the actual summary as an assistant message
+			reportHistory.AddMessage("assistant", evalState.Summary)
 		}
-	} else {
-		// Show the actual summary as an assistant message
-		reportHistory.AddMessage("assistant", evalState.Summary)
+
+		// Customize prefixes for report view (no prefixes for cleaner look)
+		reportHistory.SetPrefixes("", "")
+
+		// Set colors for report
+		reportHistory.SetColors(t.Success(), t.Text())
+
+		// Enable markdown rendering for report content
+		renderer := markdownRenderer
+		reportHistory.SetMarkdownRenderer(renderer)
 	}
 
-	// Update size for report history
+	// Update size for report history (always do this in case window size changed)
 	reportHistory.SetSize(width, reportHeight)
-
-	// Customize prefixes for report view (no prefixes for cleaner look)
-	reportHistory.SetPrefixes("", "")
-
-	// Set colors for report
-	reportHistory.SetColors(t.Success(), t.Text())
-
-	// Enable markdown rendering for report content
-	renderer := markdownRenderer
-	reportHistory.SetMarkdownRenderer(renderer)
 
 	// Render report using MessageHistoryView
 	reportContent := reportHistory.View(t)

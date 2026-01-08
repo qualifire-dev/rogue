@@ -42,7 +42,6 @@ This file provides instructions for AI agents working in this repository.
 ## Running the application
 
 - **CLI**: `uv run python -m rogue`
-- **UI**: `uv run gradio rogue/ui/app.py`
 - **With Example Agent**: `uv run rogue-ai --example=tshirt_store` (starts rogue with the t-shirt store example agent running on port 10001)
 
 ## Running the examples

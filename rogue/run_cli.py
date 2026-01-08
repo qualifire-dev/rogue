@@ -15,6 +15,7 @@ from rogue_sdk.types import (
     PROTOCOL_TO_TRANSPORTS,
     AgentConfig,
     AuthType,
+    EvaluationMode,
     EvaluationResults,
     Protocol,
     Scenarios,
@@ -104,12 +105,48 @@ def set_cli_args(parser: ArgumentParser) -> None:
         action="store_true",
         help="Enable deep test mode",
     )
-
+    parser.add_argument(
+        "--evaluation-mode",
+        choices=[e.value for e in EvaluationMode],
+        type=EvaluationMode,
+        default=EvaluationMode.POLICY,
+        help="Evaluation mode: 'policy' for policy testing, "
+        "'red_team' for OWASP red teaming",
+    )
+    parser.add_argument(
+        "--owasp-categories",
+        nargs="+",
+        help="OWASP categories to test in red team mode "
+        "(e.g., LLM_01 LLM_02 LLM_03 ... LLM_10). "
+        "Defaults to all 10 categories if not specified. "
+        "Required when --evaluation-mode=red_team",
+    )
+    parser.add_argument(
+        "--attacks-per-category",
+        type=int,
+        default=5,
+        help="Number of attack scenarios to generate per OWASP category "
+        "(default: 5)",
+    )
+    parser.add_argument(
+        "--min-tests-per-attack",
+        type=int,
+        default=5,
+        help="Minimum test cases per attack type (default: 5)",
+    )
     parser.add_argument(
         "--qualifire-api-key",
         required=False,
         help="API key to use when reporting summary to Qualifire. "
         "Can be left unset if env is used.",
+    )
+
+    parser.add_argument(
+        "--python-entrypoint-file",
+        type=Path,
+        required=False,
+        help="Path to Python file with call_agent(messages) function. "
+        "Required when --protocol=python",
     )
 
     business_context_group = parser.add_mutually_exclusive_group(required=False)
@@ -127,7 +164,7 @@ def set_cli_args(parser: ArgumentParser) -> None:
 async def run_scenarios(
     rogue_server_url: str,
     protocol: Protocol,
-    transport: Transport,
+    transport: Transport | None,
     evaluated_agent_url: str,
     evaluated_agent_auth_type: AuthType,
     evaluated_agent_auth_credentials_secret: SecretStr | None,
@@ -137,6 +174,10 @@ async def run_scenarios(
     evaluation_results_output_path: Path,
     business_context: str,
     deep_test_mode: bool,
+    evaluation_mode: EvaluationMode = EvaluationMode.POLICY,
+    owasp_categories: list[str] | None = None,
+    attacks_per_category: int = 5,
+    python_entrypoint_file: Path | None = None,
 ) -> Tuple[EvaluationResults | None, str | None]:
     evaluated_agent_auth_credentials = (
         evaluated_agent_auth_credentials_secret.get_secret_value()
@@ -163,13 +204,17 @@ async def run_scenarios(
         evaluation_results_output_path=evaluation_results_output_path,
         business_context=business_context,
         deep_test_mode=deep_test_mode,
+        evaluation_mode=evaluation_mode,
+        owasp_categories=owasp_categories,
+        attacks_per_category=attacks_per_category,
+        python_entrypoint_file=python_entrypoint_file,
     )
 
 
 async def _run_scenarios_with_sdk(
     rogue_server_url: str,
     protocol: Protocol,
-    transport: Transport,
+    transport: Transport | None,
     evaluated_agent_url: str,
     evaluated_agent_auth_type: AuthType,
     evaluated_agent_auth_credentials: str | None,
@@ -179,6 +224,10 @@ async def _run_scenarios_with_sdk(
     evaluation_results_output_path: Path,
     business_context: str,
     deep_test_mode: bool,
+    evaluation_mode: EvaluationMode = EvaluationMode.POLICY,
+    owasp_categories: list[str] | None = None,
+    attacks_per_category: int = 5,
+    python_entrypoint_file: Path | None = None,
 ) -> Tuple[EvaluationResults | None, str | None]:
     """Run scenarios using the new SDK."""
 
@@ -197,7 +246,7 @@ async def _run_scenarios_with_sdk(
         job = await sdk.run_evaluation(
             protocol=protocol,
             transport=transport,
-            agent_url=evaluated_agent_url,
+            agent_url=evaluated_agent_url if protocol != Protocol.PYTHON else None,
             scenarios=scenarios,
             business_context=business_context,
             auth_type=evaluated_agent_auth_type,
@@ -205,6 +254,12 @@ async def _run_scenarios_with_sdk(
             judge_model=judge_llm,
             judge_llm_api_key=judge_llm_api_key,
             deep_test=deep_test_mode,
+            evaluation_mode=evaluation_mode,
+            owasp_categories=owasp_categories,
+            attacks_per_category=attacks_per_category,
+            python_entrypoint_file=(
+                str(python_entrypoint_file) if python_entrypoint_file else None
+            ),
         )
 
         logger.info(f"Started evaluation job {job.job_id} using SDK")
@@ -413,14 +468,63 @@ async def ping_mcp_server(
         await client.ping()
 
 
+async def ping_python_entrypoint(
+    python_file: Path,
+) -> None:
+    """Validate that the Python entrypoint file exists and has call_agent function."""
+    if not python_file.exists():
+        raise FileNotFoundError(f"Python entrypoint file not found: {python_file}")
+
+    if not python_file.is_file():
+        raise ValueError(f"Python entrypoint path is not a file: {python_file}")
+
+    # Quick validation - just check the file can be parsed
+    import ast
+
+    try:
+        with open(python_file) as f:
+            tree = ast.parse(f.read())
+
+        # Check for call_agent function
+        has_call_agent = False
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef) and node.name == "call_agent":
+                has_call_agent = True
+                break
+
+        if not has_call_agent:
+            raise ValueError(
+                f"Python entrypoint file must contain a 'call_agent' function: {python_file}",  # noqa: E501
+            )
+
+        logger.info(f"✅ Python entrypoint validated: {python_file}")
+
+    except SyntaxError as e:
+        raise ValueError(f"Python entrypoint file has syntax errors: {e}")
+
+
 async def ping_agent(
     protocol: Protocol,
-    transport: Transport,
-    agent_url: str,
+    transport: Transport | None,
+    agent_url: str | None,
     agent_auth_type: AuthType,
     agent_auth_credentials: SecretStr | None,
+    python_entrypoint_file: Path | None = None,
 ) -> None:
     # TODO: move this to the server side
+    # Handle Python protocol separately
+    if protocol == Protocol.PYTHON:
+        if not python_entrypoint_file:
+            raise ValueError("python_entrypoint_file is required for PYTHON protocol")
+        await ping_python_entrypoint(python_entrypoint_file)
+        return
+
+    if not agent_url:
+        raise ValueError(f"agent_url is required for {protocol.value} protocol")
+
+    if not transport:
+        raise ValueError(f"transport is required for {protocol.value} protocol")
+
     protocol_to_ping_function = {
         Protocol.MCP: ping_mcp_server,
         Protocol.A2A: get_a2a_agent_card,
@@ -439,13 +543,21 @@ async def run_cli(args: Namespace) -> int:
     cli_input = get_cli_input(args)
     logger.debug("Running CLI", extra=cli_input.model_dump())
 
+    # Get agent URL for non-Python protocols
+    agent_url = (
+        cli_input.evaluated_agent_url.encoded_string()
+        if cli_input.evaluated_agent_url
+        else None
+    )
+
     # fast fail if the agent is not reachable
     await ping_agent(
         protocol=cli_input.protocol,
         transport=cli_input.transport,
-        agent_url=cli_input.evaluated_agent_url.encoded_string(),
+        agent_url=agent_url,
         agent_auth_type=cli_input.evaluated_agent_auth_type,
         agent_auth_credentials=cli_input.evaluated_agent_credentials,
+        python_entrypoint_file=cli_input.python_entrypoint_file,
     )
 
     scenarios = cli_input.get_scenarios_from_file()
@@ -456,11 +568,19 @@ async def run_cli(args: Namespace) -> int:
             "scenarios_length": len(scenarios.scenarios),
         },
     )
+
+    # For Python protocol, use the file path as the "URL" identifier
+    evaluated_agent_identifier = (
+        str(cli_input.python_entrypoint_file)
+        if cli_input.protocol == Protocol.PYTHON
+        else agent_url
+    )
+
     results, job_id = await run_scenarios(
         rogue_server_url=args.rogue_server_url,
         protocol=cli_input.protocol,
         transport=cli_input.transport,
-        evaluated_agent_url=cli_input.evaluated_agent_url.encoded_string(),
+        evaluated_agent_url=evaluated_agent_identifier or "",
         evaluated_agent_auth_type=cli_input.evaluated_agent_auth_type,
         evaluated_agent_auth_credentials_secret=cli_input.evaluated_agent_credentials,
         judge_llm=cli_input.judge_llm,
@@ -469,6 +589,10 @@ async def run_cli(args: Namespace) -> int:
         evaluation_results_output_path=args.workdir / "evaluation_results.json",
         business_context=cli_input.business_context,
         deep_test_mode=cli_input.deep_test_mode,
+        evaluation_mode=cli_input.evaluation_mode,
+        owasp_categories=cli_input.owasp_categories,
+        attacks_per_category=cli_input.attacks_per_category,
+        python_entrypoint_file=cli_input.python_entrypoint_file,
     )
     if not results:
         raise ValueError(
