@@ -84,7 +84,8 @@ def configure_logger(
 
         # Because we also want to log errors to stdout,
         # changing the level before configuring the stdout logger.
-        level = "ERROR"
+        # Unless the user has explicitly enabled debug logging.
+        level = "ERROR" if not debug else level
 
     logger.add(
         sink=sys.stdout,
