@@ -10,7 +10,7 @@ on:
 jobs:
   import-time:
     name: Import Time Gate
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     env:
       PACKAGE_NAME: rogue
       THRESHOLD_SECONDS: "2.0"
