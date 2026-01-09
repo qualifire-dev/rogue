@@ -82,22 +82,22 @@ jobs:
           name: rogue-ai-sdk-package
           path: ./dist/rogue-ai-sdk
 
-      # - name: Prepare Pypi release - sdk package
-      #   id: prepare_pypi_sdk
-      #   uses: ./.github/actions/prepare-pypi
-      #   with:
-      #     dist_dir: "./dist/rogue-ai-sdk"
-      #     package_name: "rogue-ai-sdk"
-      #     workdir: "sdks/python"
+      - name: Prepare Pypi release - sdk package
+        id: prepare_pypi_sdk
+        uses: ./.github/actions/prepare-pypi
+        with:
+          dist_dir: "./dist/rogue-ai-sdk"
+          package_name: "rogue-ai-sdk"
+          workdir: "sdks/python"
 
-      # - name: Publish to PyPI - sdk package
-      #   if: steps.prepare_pypi_sdk.outputs.version_exists == 'false'
-      #   uses: pypa/gh-action-pypi-publish@release/v1
-      #   env:
-      #     name: "pypi"
-      #     url: "https://pypi.org/p/rogue-ai-sdk"
-      #   with:
-      #     packages-dir: "./dist/rogue-ai-sdk"
+      - name: Publish to PyPI - sdk package
+        if: steps.prepare_pypi_sdk.outputs.version_exists == 'false'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        env:
+          name: "pypi"
+          url: "https://pypi.org/p/rogue-ai-sdk"
+        with:
+          packages-dir: "./dist/rogue-ai-sdk"
 
   publish_rogue_ai:
     runs-on: ubuntu-latest
@@ -116,21 +116,21 @@ jobs:
           name: rogue-ai-package
           path: ./dist/rogue-ai
 
-      # - name: Prepare Pypi release - main package
-      #   id: prepare_pypi_main
-      #   uses: ./.github/actions/prepare-pypi
-      #   with:
-      #     dist_dir: "./dist/rogue-ai"
-      #     package_name: "rogue-ai"
+      - name: Prepare Pypi release - main package
+        id: prepare_pypi_main
+        uses: ./.github/actions/prepare-pypi
+        with:
+          dist_dir: "./dist/rogue-ai"
+          package_name: "rogue-ai"
 
-      # - name: Publish to PyPI - main package
-      #   if: steps.prepare_pypi_main.outputs.version_exists == 'false'
-      #   uses: pypa/gh-action-pypi-publish@release/v1
-      #   env:
-      #     name: "pypi"
-      #     url: "https://pypi.org/p/rogue-ai"
-      #   with:
-      #     packages-dir: "./dist/rogue-ai"
+      - name: Publish to PyPI - main package
+        if: steps.prepare_pypi_main.outputs.version_exists == 'false'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        env:
+          name: "pypi"
+          url: "https://pypi.org/p/rogue-ai"
+        with:
+          packages-dir: "./dist/rogue-ai"
 
   create_github_release:
     runs-on: ubuntu-latest
