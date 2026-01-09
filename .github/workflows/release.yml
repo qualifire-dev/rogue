@@ -161,7 +161,19 @@ jobs:
           name: rogue-tui-package
           path: ./dist/rogue-tui-package
 
+      - name: Check if release exists
+        id: check_release
+        run: |
+          if gh release view ${{ github.ref_name }} >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Create GitHub Release
+        if: steps.check_release.outputs.exists == 'false'
         uses: softprops/action-gh-release@v2
         with:
           files: |
@@ -173,5 +185,17 @@ jobs:
           draft: false
           prerelease: false
           generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Attach files to existing GitHub Release
+        if: steps.check_release.outputs.exists == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ./dist/rogue-ai-package/*
+            ./dist/rogue-ai-sdk-package/*
+            ./dist/rogue-tui-package/*
+          tag_name: ${{ github.ref_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
