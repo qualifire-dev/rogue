@@ -47,6 +47,16 @@ async def lifespan(app: FastAPI):
 
 
 def create_app() -> FastAPI:
+    """
+    Create and configure the FastAPI application for the Rogue Agent Evaluator.
+    
+    The returned app is configured with CORS middleware (allowing all origins and credentials,
+    and standard methods/headers) and registers the health, evaluation, red-team, LLM,
+    interview, and websocket routers under the /api/v1 prefix, plus the agent core router at the root.
+    
+    Returns:
+        FastAPI: A configured FastAPI application instance.
+    """
     app = FastAPI(
         title="Rogue Agent Evaluator API",
         description="API server for the Rogue Agent Evaluator system",

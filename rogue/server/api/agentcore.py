@@ -8,6 +8,12 @@ router = APIRouter(tags=["agentcore"])
 
 @router.get("/ping")
 def ping():
+    """
+    Return the service health status used for liveness checks.
+    
+    Returns:
+        dict: JSON object with key "status" whose value is "Healthy".
+    """
     return {"status": "Healthy"}
 
 
@@ -18,6 +24,15 @@ async def invocations(
     evaluation_service: EvaluationService = Depends(get_evaluation_service),
 ):
     #  different entrypoint to /evaluations to meet agentcore convention
+    """
+    Enqueue an evaluation request using the agentcore `/invocations` convention.
+    
+    Parameters:
+        request (EvaluationRequest): The evaluation request payload to be processed.
+    
+    Returns:
+        EvaluationResponse: The enqueued evaluation's status and result data.
+    """
     return await enqueue_evaluation(
         request=request,
         background_tasks=background_tasks,

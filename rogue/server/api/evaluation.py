@@ -21,6 +21,14 @@ logger = get_logger(__name__)
 
 @lru_cache(1)
 def get_evaluation_service():
+    """
+    Provide a single shared EvaluationService instance for request handlers.
+    
+    Subsequent calls return the same service instance to ensure a single, shared EvaluationService is used across the application.
+    
+    Returns:
+        EvaluationService: The shared EvaluationService instance.
+    """
     return EvaluationService()
 
 
@@ -30,6 +38,18 @@ async def enqueue_evaluation(
     evaluation_service: EvaluationService,
     endpoint: str,
 ):
+    """
+    Enqueue a new evaluation job and schedule its execution as a background task.
+    
+    Parameters:
+        request (EvaluationRequest): The evaluation request payload containing agent configuration, scenarios, and execution parameters.
+        background_tasks (BackgroundTasks): FastAPI background task registry used to schedule job execution.
+        evaluation_service (EvaluationService): Service responsible for persisting and running evaluation jobs.
+        endpoint (str): The API endpoint path used for context and logging.
+    
+    Returns:
+        EvaluationResponse: Contains the created `job_id`, `status` set to `EvaluationStatus.PENDING`, and a success message.
+    """
     job_id = str(uuid.uuid4())
 
     # Set logging context
@@ -88,6 +108,12 @@ async def create_evaluation(
     background_tasks: BackgroundTasks,
     evaluation_service: EvaluationService = Depends(get_evaluation_service),
 ):
+    """
+    Enqueue an evaluation job for processing and return the created job response.
+    
+    Returns:
+        EvaluationResponse: Contains the enqueued job's `job_id`, `status`, and a confirmation message.
+    """
     return await enqueue_evaluation(
         request=request,
         background_tasks=background_tasks,
@@ -103,6 +129,17 @@ async def list_evaluations(
     offset: int = 0,
     evaluation_service: EvaluationService = Depends(get_evaluation_service),
 ):
+    """
+    Retrieve a paginated list of evaluation jobs, optionally filtered by status.
+    
+    Parameters:
+        status (Optional[EvaluationStatus]): If provided, only include jobs with this status.
+        limit (int): Maximum number of jobs to return.
+        offset (int): Number of jobs to skip before collecting the result set.
+    
+    Returns:
+        JobListResponse: Contains `jobs` (the returned page of EvaluationJob items) and `total` (the total count of jobs matching the filter).
+    """
     jobs = await evaluation_service.get_jobs(
         status=status,
         limit=limit,
