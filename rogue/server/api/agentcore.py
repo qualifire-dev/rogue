@@ -13,9 +13,9 @@ def ping():
 
 @router.post("/invocations", response_model=EvaluationResponse)
 async def invocations(
-        request: EvaluationRequest,
-        background_tasks: BackgroundTasks,
-        evaluation_service: EvaluationService = Depends(get_evaluation_service),
+    request: EvaluationRequest,
+    background_tasks: BackgroundTasks,
+    evaluation_service: EvaluationService = Depends(get_evaluation_service),
 ):
     #  different entrypoint to /evaluations to meet agentcore convention
     return await enqueue_evaluation(
