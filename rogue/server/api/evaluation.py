@@ -24,11 +24,11 @@ def get_evaluation_service():
     return EvaluationService()
 
 
-@router.post("", response_model=EvaluationResponse)
-async def create_evaluation(
-    request: EvaluationRequest,
-    background_tasks: BackgroundTasks,
-    evaluation_service: EvaluationService = Depends(get_evaluation_service),
+async def enqueue_evaluation(
+        request: EvaluationRequest,
+        background_tasks: BackgroundTasks,
+        evaluation_service: EvaluationService,
+        endpoint: str,
 ):
     job_id = str(uuid.uuid4())
 
@@ -82,12 +82,26 @@ async def create_evaluation(
     )
 
 
+@router.post("", response_model=EvaluationResponse)
+async def create_evaluation(
+        request: EvaluationRequest,
+        background_tasks: BackgroundTasks,
+        evaluation_service: EvaluationService = Depends(get_evaluation_service),
+):
+    return await enqueue_evaluation(
+        request=request,
+        background_tasks=background_tasks,
+        evaluation_service=evaluation_service,
+        endpoint="/evaluations",
+    )
+
+
 @router.get("", response_model=JobListResponse)
 async def list_evaluations(
-    status: Optional[EvaluationStatus] = None,
-    limit: int = 50,
-    offset: int = 0,
-    evaluation_service: EvaluationService = Depends(get_evaluation_service),
+        status: Optional[EvaluationStatus] = None,
+        limit: int = 50,
+        offset: int = 0,
+        evaluation_service: EvaluationService = Depends(get_evaluation_service),
 ):
     jobs = await evaluation_service.get_jobs(
         status=status,
@@ -101,8 +115,8 @@ async def list_evaluations(
 
 @router.get("/{job_id}", response_model=EvaluationJob)
 async def get_evaluation(
-    job_id: str,
-    evaluation_service: EvaluationService = Depends(get_evaluation_service),
+        job_id: str,
+        evaluation_service: EvaluationService = Depends(get_evaluation_service),
 ):
     job = await evaluation_service.get_job(job_id)
     logger.info(f"Job: {job}")
@@ -113,8 +127,8 @@ async def get_evaluation(
 
 @router.delete("/{job_id}")
 async def cancel_evaluation(
-    job_id: str,
-    evaluation_service: EvaluationService = Depends(get_evaluation_service),
+        job_id: str,
+        evaluation_service: EvaluationService = Depends(get_evaluation_service),
 ):
     success = await evaluation_service.cancel_job(job_id)
     if not success:

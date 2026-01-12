@@ -28,6 +28,7 @@ from .api.interview import router as interview_router
 from .api.llm import router as llm_router
 from .api.red_team import router as red_team_router
 from .websocket.manager import websocket_router
+from .api.agentcore import router as ac_router
 
 logger = get_logger(__name__)
 
@@ -67,6 +68,7 @@ def create_app() -> FastAPI:
     app.include_router(llm_router, prefix="/api/v1")
     app.include_router(interview_router, prefix="/api/v1")
     app.include_router(websocket_router, prefix="/api/v1")
+    app.include_router(ac_router, prefix="")
 
     return app
 
