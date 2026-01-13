@@ -46,7 +46,7 @@ async def enqueue_evaluation(
 
     # Build extra logging info
     extra_info = {
-        "endpoint": "/evaluations",
+        "endpoint": endpoint,
         "method": "POST",
         "agent_url": str(request.agent_config.evaluated_agent_url),
         "scenario_count": scenario_count,
