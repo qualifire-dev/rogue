@@ -32,6 +32,7 @@ Test your agent against **business policies** and expected behaviors.
 - Verify compliance with business rules
 - Watch live conversations as Rogue probes your agent
 - Get detailed pass/fail reports with reasoning
+- **Scenario Editor**: Create custom test scenarios (e.g., user requests discount → agent should refuse)
 
 **Best for:** Regression testing, behavior validation, policy compliance
 
@@ -65,7 +66,9 @@ Rogue operates on a **client-server architecture** with multiple interfaces:
 | **TUI**    | Modern terminal interface (Go + Bubble Tea) |
 | **CLI**    | Non-interactive mode for CI/CD pipelines    |
 
-https://github.com/user-attachments/assets/b5c04772-6916-4aab-825b-6a7476d77787
+![Rogue Scenario Editor Demo](./rogue-scenario-editor-demo.mov)
+
+*Example: Scenario Editor showing a user requesting a discount. The agent correctly refuses to provide discounts, demonstrating policy compliance testing.*
 
 ### Supported Protocols
 
@@ -132,6 +135,42 @@ uvx rogue-ai
 uvx rogue-ai cli
 ```
 
+### Apple Silicon (M1/M2/M3) Setup
+
+On Apple Silicon Macs, you may need to install Python 3.10+ using `uv`, as the system Python may be older:
+
+```bash
+# Install uv (provides uvx)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Add to PATH (add to ~/.zshrc for persistence)
+export PATH="$HOME/.local/bin:$PATH"
+
+# Install Python 3.11+ using uv (required for Rogue)
+uv python install 3.11
+
+# Verify Python version
+uv python list
+
+# Clone the repository
+git clone https://github.com/qualifire-dev/rogue.git
+cd rogue
+
+# Update configuration for A2A protocol (if using example agent)
+# Edit .rogue/user_config.json and set:
+#   "protocol": "a2a"
+#   "evaluated_agent_url": "http://localhost:10001"
+
+# Start the server with example agent
+uvx rogue-ai server --example=tshirt_store --host 127.0.0.1 --port 8000
+
+# In a new terminal, launch the TUI
+export PATH="$HOME/.local/bin:$PATH"
+uvx rogue-ai tui
+```
+
+**Note:** The TUI requires an interactive terminal. On macOS, you may need to run it in a new Terminal window. If you encounter "device not configured" errors, ensure you're running the TUI in an interactive terminal session.
+
 ### Try It With the Example Agent
 
 ```bash
@@ -142,6 +181,7 @@ uvx rogue-ai --example=tshirt_store
 Configure in the UI:
 
 - **Agent URL**: `http://localhost:10001`
+- **Protocol**: `A2A` (for the example agent)
 - **Mode**: Choose `Automatic Evaluation` or `Red Teaming`
 
 ---
