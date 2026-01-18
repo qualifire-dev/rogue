@@ -8,6 +8,7 @@ versions and allow users to update immediately.
 import json
 import shutil
 import subprocess  # nosec: B404
+import sys
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
 
@@ -170,7 +171,9 @@ def _show_update_prompt(latest_version: str, current_version: str) -> None:
         )
 
         if should_update:
-            run_update_command()
+            success = run_update_command()
+            if success:
+                exit_gracefully()
         else:
             console.print(
                 "[dim]Update skipped. Run 'uv tool upgrade rogue-ai' or "
@@ -183,7 +186,7 @@ def _show_update_prompt(latest_version: str, current_version: str) -> None:
     console.print()
 
 
-def run_update_command() -> None:
+def run_update_command() -> bool:
     """Execute the appropriate update command based on installation method."""
     console = Console()
 
@@ -200,7 +203,7 @@ def run_update_command() -> None:
                 "[dim]or[/dim]"
                 "[dim]- pip install rogue-ai -U[/dim]",
             )
-            return
+            return False
 
         with console.status("[yellow]Updating rogue-ai...[/yellow]", spinner="dots"):
             # First, try to upgrade using uv tool
@@ -232,6 +235,7 @@ def run_update_command() -> None:
                 "[dim]Restart any running rogue-ai processes to use the "
                 "new version.[/dim]",
             )
+            return True
         else:
             console.print("[bold red]❌ Update failed![/bold red]")
             if result.stderr:
@@ -255,3 +259,12 @@ def run_update_command() -> None:
             "[dim]Please try running 'uv tool upgrade rogue-ai' or "
             "'uvx --refresh rogue-ai' manually.[/dim]",
         )
+    return False
+
+
+def exit_gracefully() -> None:
+    """Exit the application gracefully."""
+    console = Console()
+    console.print("[bold green]✅ Rogue-ai updated successfully![/bold green]")
+    console.print("Please rerun `uvx rogue-ai` to use the new version.")
+    sys.exit(0)
