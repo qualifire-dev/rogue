@@ -145,6 +145,9 @@ def run_server(
         )
         if background_wait_for_ready:
             if not wait_until_server_ready(process, host, port):
+                # Terminate the orphan process before raising
+                process.terminate()
+                process.join(timeout=5)
                 raise Exception("Server failed to start")
             logger.info("Rogue server ready", extra={"host": host, "port": port})
         return process

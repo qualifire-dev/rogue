@@ -95,6 +95,13 @@ def parse_args() -> Namespace:
         help="Run in non-interactive CLI mode",
         parents=[common_parser()],
     )
+    cli_parser.add_argument(
+        "--with-server",
+        action="store_true",
+        default=False,
+        help="Start the rogue server alongside the CLI",
+    )
+    set_server_args(cli_parser)
     set_cli_args(cli_parser)
 
     # TUI mode
@@ -263,7 +270,39 @@ def main() -> None:
         if args.mode == "server":
             run_server(args, background=False)
         elif args.mode == "cli":
-            exit_code = asyncio.run(run_cli(args))
+            server_process = None
+            if args.with_server:
+                try:
+                    server_process = run_server(
+                        args,
+                        background=True,
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to start rogue server: {e}")
+                    sys.exit(1)
+                if not server_process:
+                    logger.error("Failed to start rogue server. Exiting.")
+                    sys.exit(1)
+                client_host = (
+                    "127.0.0.1"
+                    if args.host in {"0.0.0.0", "::"}  # nosec B104
+                    else args.host
+                )
+                args.rogue_server_url = f"http://{client_host}:{args.port}"
+
+            exit_code = 1
+            try:
+                exit_code = asyncio.run(run_cli(args))
+            except KeyboardInterrupt:
+                logger.info("Keyboard interrupt received. Exiting.")
+                exit_code = 0
+            except Exception as e:
+                logger.error(f"CLI execution failed: {e}")
+                exit_code = 1
+            finally:
+                if server_process:
+                    server_process.terminate()
+                    server_process.join()
             sys.exit(exit_code)
         elif args.mode == "tui":
             if not RogueTuiInstaller().install_rogue_tui():
