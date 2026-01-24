@@ -21,6 +21,7 @@ except ImportError:
     from rogue import __version__  # noqa: F401
 
 from .common.logging.config import configure_logger
+from .common.network import get_host_for_url
 from .common.tui_installer import RogueTuiInstaller
 from .common.update_checker import check_for_updates
 from .run_cli import run_cli, set_cli_args
@@ -283,12 +284,23 @@ def main() -> None:
                 if not server_process:
                     logger.error("Failed to start rogue server. Exiting.")
                     sys.exit(1)
-                client_host = (
-                    "127.0.0.1"
-                    if args.host in {"0.0.0.0", "::"}  # nosec B104
-                    else args.host
-                )
+                client_host = get_host_for_url(args.host)
                 args.rogue_server_url = f"http://{client_host}:{args.port}"
+
+            # Auto-configure CLI args for examples if not specified
+            if args.example:
+                if not args.evaluated_agent_url:
+                    args.evaluated_agent_url = (
+                        f"http://{args.example_host}:{args.example_port}"
+                    )
+
+                if args.example == "tshirt_store_langgraph_mcp":
+                    from rogue_sdk.types import Protocol, Transport
+
+                    if args.protocol == Protocol.A2A:
+                        args.protocol = Protocol.MCP
+                    if args.transport is None:
+                        args.transport = Transport.STREAMABLE_HTTP
 
             exit_code = 1
             try:
