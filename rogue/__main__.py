@@ -21,6 +21,7 @@ except ImportError:
     from rogue import __version__  # noqa: F401
 
 from .common.logging.config import configure_logger
+from .common.network import get_host_for_url
 from .common.tui_installer import RogueTuiInstaller
 from .common.update_checker import check_for_updates
 from .run_cli import run_cli, set_cli_args
@@ -95,6 +96,13 @@ def parse_args() -> Namespace:
         help="Run in non-interactive CLI mode",
         parents=[common_parser()],
     )
+    cli_parser.add_argument(
+        "--with-server",
+        action="store_true",
+        default=False,
+        help="Start the rogue server alongside the CLI",
+    )
+    set_server_args(cli_parser)
     set_cli_args(cli_parser)
 
     # TUI mode
@@ -263,7 +271,50 @@ def main() -> None:
         if args.mode == "server":
             run_server(args, background=False)
         elif args.mode == "cli":
-            exit_code = asyncio.run(run_cli(args))
+            server_process = None
+            if args.with_server:
+                try:
+                    server_process = run_server(
+                        args,
+                        background=True,
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to start rogue server: {e}")
+                    sys.exit(1)
+                if not server_process:
+                    logger.error("Failed to start rogue server. Exiting.")
+                    sys.exit(1)
+                client_host = get_host_for_url(args.host)
+                args.rogue_server_url = f"http://{client_host}:{args.port}"
+
+            # Auto-configure CLI args for examples if not specified
+            if args.example:
+                if not args.evaluated_agent_url:
+                    args.evaluated_agent_url = (
+                        f"http://{args.example_host}:{args.example_port}"
+                    )
+
+                if args.example == "tshirt_store_langgraph_mcp":
+                    from rogue_sdk.types import Protocol, Transport
+
+                    if args.protocol == Protocol.A2A:
+                        args.protocol = Protocol.MCP
+                    if args.transport is None:
+                        args.transport = Transport.STREAMABLE_HTTP
+
+            exit_code = 1
+            try:
+                exit_code = asyncio.run(run_cli(args))
+            except KeyboardInterrupt:
+                logger.info("Keyboard interrupt received. Exiting.")
+                exit_code = 0
+            except Exception as e:
+                logger.error(f"CLI execution failed: {e}")
+                exit_code = 1
+            finally:
+                if server_process:
+                    server_process.terminate()
+                    server_process.join()
             sys.exit(exit_code)
         elif args.mode == "tui":
             if not RogueTuiInstaller().install_rogue_tui():
