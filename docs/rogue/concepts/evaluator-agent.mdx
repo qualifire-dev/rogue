@@ -1,0 +1,25 @@
+---
+title: Evaluator Agent
+description: "The core component that interacts with your agent."
+---
+
+The `EvaluatorAgent` is the heart of Rogue. It's an autonomous AI agent designed to test your agent against a set of predefined scenarios. It operates using Google's A2A (Agent-to-Agent) communication protocol.
+
+## Operating Modes
+
+The `EvaluatorAgent` has two modes, which can be toggled in the configuration screen:
+
+- **Fast Mode**: In this mode, the agent sends a single, direct message for each scenario to quickly test the policy. This is useful for rapid, high-level checks.
+
+- **Deep Test Mode**: This is a more thorough mode where the agent engages in multi-turn conversations. It will creatively probe and pressure your agent, using techniques like emotional manipulation or asking for exceptions to see if it can break the defined policies. This mode is designed to uncover more subtle flaws and edge cases.
+
+## Tools
+
+To perform its evaluation, the `EvaluatorAgent` is equipped with a set of tools:
+
+- **Conversation Management**: Tools to start and manage separate conversation contexts for each test.
+- **Agent Communication**: A tool to send messages to the agent being evaluated.
+- **Policy Evaluation**: A crucial tool that uses a separate "Judge LLM" to analyze the conversation and determine if the agent's response complied with the scenario's policy.
+- **Logging**: A tool to record the outcome (pass/fail) and the reasoning for the evaluation.
+
+The agent works in a closed loop, autonomously carrying out the entire testing process for all scenarios without needing user intervention.

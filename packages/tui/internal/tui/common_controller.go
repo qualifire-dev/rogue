@@ -3,6 +3,7 @@ package tui
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea/v2"
@@ -208,6 +209,14 @@ func (m Model) handleSummaryGeneratedMsg(msg SummaryGeneratedMsg) (Model, tea.Cm
 		if m.evalState != nil {
 			m.evalState.Summary = msg.Summary
 		}
+		// Extract scan ID from report URL if present (auto-reported server-side)
+		if msg.ReportURL != "" {
+			// URL format: https://app.qualifire.ai/red-team/{scan_id}
+			parts := strings.Split(msg.ReportURL, "/")
+			if len(parts) > 0 {
+				m.redTeamScanID = parts[len(parts)-1]
+			}
+		}
 	}
 	return m, nil
 }
@@ -226,6 +235,23 @@ func (m Model) handleRedTeamReportFetchedMsg(msg RedTeamReportFetchedMsg) (Model
 		m.initializeRedTeamReportViewport()
 		// Navigate to the red team report screen
 		m.currentScreen = RedTeamReportScreen
+
+		// Auto-report to Qualifire if API key is configured
+		if m.config.QualifireEnabled && m.config.QualifireAPIKey != "" && m.evalState != nil && m.evalState.JobID != "" {
+			go func() {
+				sdk := NewRogueSDK(m.config.ServerURL)
+				scanID, _, err := sdk.ReportRedTeamScan(
+					context.Background(),
+					m.evalState.JobID,
+					m.config.QualifireAPIKey,
+				)
+				if err == nil && scanID != "" {
+					m.redTeamScanID = scanID
+					// Re-initialize viewport to show the link
+					m.initializeRedTeamReportViewport()
+				}
+			}()
+		}
 	}
 	return m, nil
 }
@@ -381,24 +407,43 @@ func (m Model) handleDialogClosedMsg(msg components.DialogClosedMsg) (Model, tea
 					}
 
 					sdk := NewRogueSDK(m.config.ServerURL)
-					err := sdk.ReportSummary(
-						context.Background(),
-						m.evalState.JobID,
-						m.evalState.StructuredSummary,
-						m.evalState.DeepTest,
-						m.evalState.JudgeModel,
-						parsedAPIKey,
-					)
-					if err != nil {
-						// Show error dialog
-						errorDialog := components.ShowErrorDialog(
-							"Report Summary Error",
-							fmt.Sprintf("Failed to report summary: %v", err),
+
+					if m.evalState.EvaluationMode == EvaluationModeRedTeam {
+						// Red team: report scan to Qualifire
+						scanID, _, err := sdk.ReportRedTeamScan(
+							context.Background(),
+							m.evalState.JobID,
+							parsedAPIKey,
 						)
-						m.dialog = &errorDialog
+						if err != nil {
+							errorDialog := components.ShowErrorDialog(
+								"Report Red Team Scan Error",
+								fmt.Sprintf("Failed to report red team scan: %v", err),
+							)
+							m.dialog = &errorDialog
+						} else {
+							m.redTeamScanID = scanID
+						}
+					} else {
+						// Policy eval: report summary
+						err := sdk.ReportSummary(
+							context.Background(),
+							m.evalState.JobID,
+							m.evalState.StructuredSummary,
+							m.evalState.DeepTest,
+							m.evalState.JudgeModel,
+							parsedAPIKey,
+						)
+						if err != nil {
+							errorDialog := components.ShowErrorDialog(
+								"Report Summary Error",
+								fmt.Sprintf("Failed to report summary: %v", err),
+							)
+							m.dialog = &errorDialog
+						}
 					}
 
-					err = config.Save(&m.config)
+					err := config.Save(&m.config)
 					if err != nil {
 						// Show error dialog
 						errorDialog := components.ShowErrorDialog(
@@ -411,7 +456,18 @@ func (m Model) handleDialogClosedMsg(msg components.DialogClosedMsg) (Model, tea
 						// Show appropriate success dialog
 						var message string
 						if msg.Input != "" {
-							message = "Qualifire API key has been successfully saved and integration is now enabled. Your evaluation report will now be automatically persisted."
+							if m.evalState.EvaluationMode == EvaluationModeRedTeam && m.redTeamScanID != "" {
+								qualifireBase := os.Getenv("QUALIFIRE_URL")
+								if qualifireBase == "" {
+									qualifireBase = "https://app.qualifire.ai"
+								}
+								message = fmt.Sprintf(
+									"Report saved. See the full report at %s/red-team/%s",
+									qualifireBase, m.redTeamScanID,
+								)
+							} else {
+								message = "Qualifire API key has been successfully saved and integration is now enabled. Your evaluation report will now be automatically persisted."
+							}
 						} else {
 							message = "Qualifire API key has been cleared and integration is now disabled."
 						}

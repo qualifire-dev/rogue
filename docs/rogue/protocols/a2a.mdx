@@ -1,0 +1,143 @@
+---
+title: A2A Protocol
+description: "Using Google's Agent-to-Agent protocol with Rogue"
+---
+
+## Overview
+
+Rogue supports [Google's A2A (Agent-to-Agent)](https://a2a-protocol.org/latest/) protocol, which provides a standardized way for agents to communicate. The A2A protocol is designed specifically for agent-to-agent interactions and includes features for streaming responses, task management, and agent capabilities discovery.
+
+## What is A2A?
+
+The Agent-to-Agent (A2A) protocol is an open standard developed by Google for enabling communication between AI agents. It provides:
+
+- **Standardized Message Format**: Consistent structure for agent communication
+- **Streaming Support**: Real-time streaming of agent responses
+- **Task Management**: Built-in support for managing complex tasks
+- **Capabilities Discovery**: Agents can discover each other's capabilities
+- **Error Handling**: Standardized error responses
+
+<Card title="A2A Protocol Specification" icon="link" href="https://a2a-protocol.org/latest/">
+  View the official A2A protocol documentation
+</Card>
+
+## Supported Transports
+
+### HTTP Transport
+
+Rogue communicates with A2A agents over HTTP using RESTful API calls.
+
+**How it works:**
+
+1. Rogue sends POST requests to your agent's A2A endpoint
+2. Your agent processes the request according to A2A specifications
+3. Your agent returns A2A-compliant responses
+4. Rogue evaluates the responses against test scenarios
+
+**Configuration:**
+
+```bash
+uvx rogue-ai cli \
+  --evaluated-agent-url http://localhost:10001 \
+  --protocol a2a \
+  --transport http
+```
+
+**Requirements:**
+
+- Your agent must expose an A2A-compliant HTTP endpoint
+- The endpoint should handle standard A2A message formats
+- Support for standard HTTP methods (POST, GET)
+
+## Integration Steps
+
+To integrate your agent with Rogue via A2A:
+
+1. **Build your agent** using any framework of your choice
+2. **Wrap your agent in an A2A agent executor** using the a2a sdk. Example for this executor can be found [here](https://github.com/qualifire-dev/rogue/blob/main/rogue/common/generic_agent_executor.py)
+3. **Create an A2A web-app** that accepts A2A-formatted requests, also using the sdk. Example can be found [here](https://github.com/qualifire-dev/rogue/blob/main/examples/tshirt_store_agent/__main__.py)
+4. **Configure Rogue** to connect to your agent's endpoint
+5. **Test the connection** to ensure proper A2A communication
+
+## Example Implementations
+
+Rogue includes several example agents that demonstrate A2A integration:
+
+### Python Examples
+
+<CardGroup cols={2}>
+  <Card title="Basic A2A Agent" icon="python" href="https://github.com/qualifire-dev/rogue/tree/main/examples/tshirt_store_agent">
+    Simple Python implementation of an A2A agent for a T-shirt store
+  </Card>
+  <Card title="LangGraph A2A Agent" icon="python" href="https://github.com/qualifire-dev/rogue/tree/main/examples/tshirt_store_langgraph_agent">
+    LangGraph-based A2A agent with advanced features
+  </Card>
+</CardGroup>
+
+### TypeScript Examples
+
+<CardGroup cols={2}>
+  <Card title="LangGraph.js A2A Agent" icon="js" href="https://github.com/qualifire-dev/rogue/tree/main/examples/js/langgraph-js-example">
+    TypeScript implementation using LangGraph.js
+  </Card>
+  <Card title="Vercel AI A2A Agent" icon="js" href="https://github.com/qualifire-dev/rogue/tree/main/examples/js/vercel-ai-example">
+    TypeScript implementation using Vercel AI SDK
+  </Card>
+</CardGroup>
+
+## Code Example
+
+Here's a simplified example of an A2A endpoint:
+
+```python
+import uvicorn
+from a2a.server.apps import A2AStarletteApplication
+from a2a.server.request_handlers import DefaultRequestHandler
+from a2a.server.tasks import InMemoryTaskStore
+from a2a.types import AgentCapabilities, AgentCard, AgentSkill
+
+from google.adk.artifacts import InMemoryArtifactService
+from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
+from google.adk.runners import Runner
+from google.adk.sessions import InMemorySessionService
+
+
+agent_card = AgentCard(
+    name="My Agent",
+    description="My Agent Description",
+    url=f"http://{host}:{port}/",
+    version="1.0.0",
+    defaultInputModes=["text"],
+    defaultOutputModes=["text"],
+    capabilities=AgentCapabilities(),
+    skills=[AgentSkill(...), AgentSkill(...)],
+)
+
+agent = get_agent()
+
+runner = Runner(
+    app_name=agent_card.name,
+    agent=agent,
+    artifact_service=InMemoryArtifactService(),
+    session_service=InMemorySessionService(),
+    memory_service=InMemoryMemoryService(),
+)
+agent_executor = MyAgentExecutor(runner, agent_card)
+
+request_handler = DefaultRequestHandler(
+    agent_executor=agent_executor,
+    task_store=InMemoryTaskStore(),
+)
+
+a2a_app = A2AStarletteApplication(
+    agent_card=agent_card,
+    http_handler=request_handler,
+)
+
+uvicorn.run(
+    a2a_app.build(),
+    host=host,
+    port=port,
+)
+```
+

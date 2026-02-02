@@ -1,0 +1,209 @@
+---
+title: Architecture
+description: "Technical overview of Rogue's client-server architecture"
+---
+
+## System Architecture
+
+Rogue is built on a **client-server architecture** that separates concerns and provides flexible deployment options. This design allows for scalable evaluation workflows and multiple concurrent users.
+
+## Core Components
+
+### Rogue Server
+
+The server is the heart of the Rogue system, containing all the core evaluation logic:
+
+#### Policy Evaluation Components
+
+- **Scenario Evaluation Service**: Manages the execution of test scenarios
+- **LLM Service**: Handles all AI model interactions (scenario generation, judging, reporting)
+- **EvaluatorAgent**: The AI agent that conducts conversations with your target agent
+- **Configuration Management**: Stores and manages evaluation settings
+- **Results Processing**: Analyzes and formats evaluation results
+
+#### Red Teaming Components
+
+- **Red Team Orchestrator**: Coordinates vulnerability-centric security testing
+- **Vulnerability Catalog**: 87+ vulnerability definitions across 13 categories
+- **Attack Registry**: 30+ attack techniques (single-turn, multi-turn, agentic)
+- **Framework Mapper**: Maps findings to OWASP, MITRE, NIST, EU AI Act, GDPR
+- **Risk Scoring Engine**: CVSS-based risk calculation with severity classification
+- **Metric Evaluators**: LLM-based judges for vulnerability detection
+- **Report Generator**: Comprehensive compliance and security reports
+
+**Default Settings:**
+
+- Host: `127.0.0.1` (configurable via `--host` or `HOST` env var)
+- Port: `8000` (configurable via `--port` or `PORT` env var)
+
+### Client Interfaces
+
+Multiple client interfaces connect to the server, each optimized for different use cases:
+
+#### 1. TUI (Terminal User Interface)
+
+- **Technology**: Built with Go and Bubble Tea
+- **Use Case**: Interactive terminal-based evaluation
+- **Features**: Real-time evaluation monitoring, live chat display
+- **Command**: `uvx rogue-ai` or `uvx rogue-ai tui`
+
+#### 2. Web UI
+
+- **Technology**: Gradio-based web interface
+- **Use Case**: Browser-based interaction, team collaboration
+- **Features**: Step-by-step guided workflow, visual scenario editing
+- **Command**: `uvx rogue-ai ui`
+- **Default Port**: `7860` (configurable)
+
+#### 3. CLI
+
+- **Technology**: Non-interactive command-line interface
+- **Use Case**: CI/CD pipelines, automated testing, batch processing
+- **Features**: Configuration files, scriptable operations
+- **Command**: `uvx rogue-ai cli`
+
+## Deployment Patterns
+
+### 1. Single-User Development
+
+For individual developers working locally:
+
+```bash
+# All-in-one: Starts server + TUI
+uvx rogue-ai
+
+# Or explicitly start components
+uvx rogue-ai server &    # Background server
+uvx rogue-ai tui         # Interactive TUI
+```
+
+### 2. Team Environment
+
+For teams that want to share a Rogue instance:
+
+```bash
+# Server on shared machine
+uvx rogue-ai server --host 0.0.0.0 --port 8000
+
+# Team members connect with clients
+uvx rogue-ai ui --rogue-server-url http://shared-server:8000
+uvx rogue-ai tui --rogue-server-url http://shared-server:8000
+```
+
+### 3. CI/CD Integration
+
+For automated testing pipelines:
+
+```bash
+# Start server in background
+uvx rogue-ai server --host 127.0.0.1 --port 8000 &
+
+# Run automated evaluation
+uvx rogue-ai cli \
+  --rogue-server-url http://localhost:8000 \
+  --evaluated-agent-url http://your-agent:8080 \
+  --judge-llm openai/gpt-4o-mini \
+  --business-context-file ./business_context.md
+```
+
+## Communication Protocol
+
+- **Client-Server**: RESTful API over HTTP
+- **Agent Protocol**: Google's A2A (Agent-to-Agent) protocol
+- **Real-time Updates**: WebSocket connections for live evaluation monitoring
+
+## Data Flow
+
+### Policy Evaluation Flow
+
+1. **Configuration**: Client sends agent details and evaluation settings to server
+2. **Scenario Generation**: Server uses LLM Service to create test scenarios
+3. **Evaluation Execution**: Server's EvaluatorAgent conducts conversations with target agent
+4. **Live Monitoring**: Real-time updates sent to connected clients via WebSocket
+5. **Results Analysis**: Server processes results and generates reports
+6. **Report Delivery**: Final reports sent back to clients
+
+### Red Team Flow
+
+1. **Configuration**: Client selects scan type, vulnerabilities, and attacks
+2. **Orchestration**: Red Team Orchestrator iterates through vulnerabilities
+3. **Attack Generation**: For each vulnerability, generate attack messages using techniques
+4. **Agent Interaction**: Send attack messages to target agent via A2A/MCP
+5. **Response Evaluation**: LLM judges evaluate responses for vulnerability indicators
+6. **Risk Calculation**: Calculate CVSS-based risk scores per vulnerability
+7. **Framework Mapping**: Map findings to compliance frameworks
+8. **Report Generation**: Generate comprehensive security report with remediation guidance
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Red Team Architecture                         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐       │
+│  │ Vulnerability │───▶│   Attack     │───▶│   Target     │       │
+│  │   Catalog     │    │  Generator   │    │    Agent     │       │
+│  └──────────────┘    └──────────────┘    └──────┬───────┘       │
+│                                                  │               │
+│                                                  ▼               │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐       │
+│  │   Report     │◀───│    Risk      │◀───│    LLM       │       │
+│  │  Generator   │    │   Scoring    │    │   Judges     │       │
+│  └──────────────┘    └──────────────┘    └──────────────┘       │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## Security Considerations
+
+- **API Keys**: Stored server-side, never transmitted to clients
+- **Agent Authentication**: Configurable authentication methods (none, API key, bearer token, basic auth)
+- **Network Security**: All client-server communication over HTTP/HTTPS
+- **Isolation**: Each evaluation runs in isolation
+- **Premium Features**: Advanced attacks require Qualifire API key for Deckard service
+- **Session Management**: Red team attacks use unique session IDs for isolation
+
+## Scalability
+
+- **Concurrent Evaluations**: Server can handle multiple evaluations simultaneously
+- **Multiple Clients**: Any number of clients can connect to a single server
+- **Resource Management**: Server manages LLM API rate limits and request queuing
+- **Stateless Clients**: Clients can disconnect and reconnect without losing evaluation state
+
+## Configuration Management
+
+### Server Configuration
+
+- Environment variables: `HOST`, `PORT`
+- Command-line arguments: `--host`, `--port`, `--debug`
+
+### Client Configuration
+
+- Server URL: `--rogue-server-url`
+- Working directory: `--workdir`
+- Client-specific options for each interface type
+
+### Red Team Configuration
+
+```python
+RedTeamConfig:
+  scan_type: "basic" | "full" | "custom"
+  vulnerabilities: List[str]     # Vulnerability IDs to test
+  attacks: List[str]             # Attack IDs to use
+  attacks_per_vulnerability: int # Attempts per vulnerability
+  frameworks: List[str]          # Compliance frameworks for mapping
+  random_seed: Optional[int]     # For reproducible tests
+```
+
+### Premium Features Configuration
+
+- `QUALIFIRE_API_KEY`: Required for premium attacks and vulnerabilities
+- `DECKARD_BASE_URL`: Deckard service URL for advanced attacks (default: localhost:9100)
+
+## Red Team Output Formats
+
+- **JSON Results**: Structured vulnerability results with risk scores
+- **Markdown Reports**: Human-readable security assessment
+- **CSV Exports**: Conversation logs and summary data for analysis
+- **Framework Reports**: Compliance status per framework
+
+This architecture ensures that Rogue can scale from individual developer use to team-wide deployment while maintaining a consistent evaluation experience across all interfaces.

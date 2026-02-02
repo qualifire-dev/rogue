@@ -1,0 +1,71 @@
+{
+  "name": "Rogue Agent Evaluator",
+  "colors": {
+    "primary": "#494199",
+    "light": "#6B63BF",
+    "dark": "#494199"
+  },
+  "favicon": "/favicon.svg",
+  "logo": {
+    "dark": "/logo/dark.svg",
+    "light": "/logo/light.svg"
+  },
+  "navigation": [
+    {
+      "group": "Getting Started",
+      "pages": [
+        "introduction",
+        "quickstart"
+      ]
+    },
+    {
+      "group": "How It Works",
+      "pages": [
+        "how-it-works",
+        "architecture",
+        "cli"
+      ]
+    },
+    {
+      "group": "Protocols & Transports",
+      "pages": [
+        "protocols",
+        "protocols/python",
+        "protocols/a2a",
+        "protocols/mcp"
+      ]
+    },
+    {
+      "group": "Configuration",
+      "pages": [
+        "supported-models"
+      ]
+    },
+    {
+      "group": "Policy Evaluation",
+      "pages": [
+        "concepts/ai-interviewer",
+        "concepts/evaluator-agent",
+        "concepts/scenario-generation",
+        "concepts/policy-evaluation",
+        "concepts/reporting"
+      ]
+    },
+    {
+      "group": "Red Teaming",
+      "pages": [
+        "concepts/red-teaming",
+        "concepts/vulnerabilities",
+        "concepts/attacks",
+        "concepts/frameworks",
+        "concepts/risk-scoring"
+      ]
+    },
+    {
+      "group": "Examples",
+      "pages": [
+        "examples/tshirt-agent"
+      ]
+    }
+  ]
+}

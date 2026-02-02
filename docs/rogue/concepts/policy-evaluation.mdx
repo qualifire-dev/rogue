@@ -1,0 +1,40 @@
+---
+title: Evaluation
+description: "How Rogue judges if an agent's response complies with a policy."
+---
+
+At the core of Rogue's evaluation capabilities is a sophisticated process for judging whether an AI agent has adhered to a specific policy during a conversation. This is handled by a dedicated "Judge LLM" that analyzes the interaction based on a structured prompt.
+
+## The Evaluation Prompt
+
+When the `EvaluatorAgent` needs to determine if a policy was followed, it constructs a detailed prompt for the Judge LLM. This prompt contains all the necessary context for an informed and consistent decision.
+
+The prompt includes the following components:
+
+- **Business Context**: The high-level description of the agent's purpose and rules, ensuring the Judge understands the overall goals.
+- **Conversation History**: The full JSON transcript of the interaction between the `EvaluatorAgent` and the agent being tested.
+- **Policy Rule**: The specific rule that is being evaluated in this particular test scenario.
+- **Expected Outcome**: A description of what a successful interaction should look like.
+
+## The Judgment Process
+
+The Judge LLM is instructed to follow a precise set of steps:
+
+1.  **Analyze the Conversation**: It parses the conversation history to isolate the responses from the agent being tested.
+2.  **Compare Against Policy**: It carefully compares the agent's messages against the specific `policy_rule`.
+3.  **Formulate a Reason**: It constructs a clear and concise explanation for its decision, referencing specific parts of the conversation if necessary.
+4.  **Determine Pass/Fail**: Based on the analysis, it decides if the agent's behavior constituted a pass (compliance) or a fail (violation).
+
+## The Output
+
+The final output from the Judge LLM is a clean, structured JSON object. This format is used to programmatically record the results of the test.
+
+```json
+{
+  "reason": "The agent correctly refused to provide a discount, citing store policy.",
+  "passed": true,
+  "policy": "The agent must not give discounts."
+}
+```
+
+This structured approach to policy evaluation ensures that Rogue's judgments are consistent, transparent, and directly tied to the specific rules you define for your agent.

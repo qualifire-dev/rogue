@@ -1,11 +1,13 @@
 """Red Team API endpoints - Server-native red team operations."""
 
+import os
 import uuid
 from datetime import datetime, timezone
 from functools import lru_cache
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from pydantic import BaseModel
 from rogue_sdk.types import (
     EvaluationStatus,
     RedTeamJob,
@@ -17,6 +19,7 @@ from rogue_sdk.types import (
 
 from ...common.logging import get_logger, set_request_context
 from ..models.api_format import ServerSummaryGenerationResponse
+from ..services.qualifire_service import QualifireService
 from ..services.red_team_service import RedTeamService
 
 router = APIRouter(prefix="/red-team", tags=["red-team"])
@@ -273,9 +276,59 @@ async def generate_red_team_summary(
 
         logger.info("Successfully generated red team compliance report")
 
+        # Auto-report to Qualifire if API key is available
+        qualifire_api_key = job.request.qualifire_api_key if job.request else None
+        if not qualifire_api_key:
+            qualifire_api_key = os.getenv("QUALIFIRE_API_KEY")
+
+        report_url = None
+        if qualifire_api_key:
+            try:
+                logger.info(
+                    "Auto-reporting red team scan to Qualifire",
+                    extra={"job_id": job_id},
+                )
+
+                full_report = report_gen.generate_full_report(
+                    scan_type=(
+                        job.request.red_team_config.scan_type
+                        if job.request
+                        else "custom"
+                    ),
+                    random_seed=(
+                        job.request.red_team_config.random_seed
+                        if job.request and job.request.red_team_config.random_seed
+                        else None
+                    ),
+                )
+
+                result = QualifireService.report_red_team_scan(
+                    job=job,
+                    report=full_report,
+                    qualifire_api_key=qualifire_api_key,
+                )
+
+                scan_id = result.get("scan_id")
+                if scan_id:
+                    base_url = os.getenv(
+                        "QUALIFIRE_URL",
+                        "https://app.qualifire.ai",
+                    )
+                    report_url = f"{base_url}/red-team/{scan_id}"
+                    logger.info(
+                        "Successfully auto-reported to Qualifire",
+                        extra={"scan_id": scan_id},
+                    )
+            except Exception as e:
+                logger.warning(
+                    "Failed to auto-report to Qualifire (non-fatal)",
+                    extra={"error": str(e)},
+                )
+
         return ServerSummaryGenerationResponse(
             summary=structured_summary,
             message="Successfully generated red team compliance report",
+            report_url=report_url,
         )
 
     except HTTPException:
@@ -285,6 +338,91 @@ async def generate_red_team_summary(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to generate red team summary: {str(e)}",
+        )
+
+
+class ReportToQualifireRequest(BaseModel):
+    qualifire_api_key: str
+    qualifire_url: str = ""
+
+
+class ReportToQualifireResponse(BaseModel):
+    success: bool
+    scan_id: Optional[str] = None
+    report_id: Optional[str] = None
+
+
+@router.post(
+    "/{job_id}/report-to-qualifire",
+    response_model=ReportToQualifireResponse,
+)
+async def report_red_team_to_qualifire(
+    job_id: str,
+    request: ReportToQualifireRequest,
+    red_team_service: RedTeamService = Depends(get_red_team_service),
+):
+    """
+    Report red team scan results to Qualifire platform.
+
+    Args:
+        job_id: The unique identifier of the red team scan job
+        request: Contains qualifire_api_key and optional qualifire_url
+    """
+    try:
+        job = await red_team_service.get_job(job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail="Red team scan job not found")
+
+        if not job.results:
+            raise HTTPException(
+                status_code=400,
+                detail="No results available for this job.",
+            )
+
+        # Generate report
+        from ..red_teaming.report import ComplianceReportGenerator
+
+        report_gen = ComplianceReportGenerator(
+            results=job.results,  # type: ignore[arg-type]
+            frameworks=(
+                list(job.results.framework_compliance.keys())
+                if job.results.framework_compliance
+                else None
+            ),
+        )
+
+        scan_type = job.request.red_team_config.scan_type if job.request else "custom"
+        random_seed = (
+            job.request.red_team_config.random_seed
+            if job.request and job.request.red_team_config.random_seed
+            else None
+        )
+
+        report = report_gen.generate_full_report(
+            scan_type=scan_type,
+            random_seed=random_seed,
+        )
+
+        result = QualifireService.report_red_team_scan(
+            job=job,
+            report=report,
+            qualifire_api_key=request.qualifire_api_key,
+            qualifire_url=request.qualifire_url,
+        )
+
+        return ReportToQualifireResponse(
+            success=True,
+            scan_id=result.get("scan_id"),
+            report_id=result.get("report_id"),
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Failed to report red team scan to Qualifire")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to report to Qualifire: {str(e)}",
         )
 
 

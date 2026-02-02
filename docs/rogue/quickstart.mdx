@@ -1,0 +1,163 @@
+---
+title: Quick Start
+description: "A step-by-step guide to getting started with Rogue."
+---
+
+## 🔥 Quick Start
+
+### Prerequisites
+
+- `uvx` - If not installed, follow [uv installation guide](https://docs.astral.sh/uv/getting-started/installation/)
+- Python 3.10+
+- An API key for an LLM provider (e.g., OpenAI, Google, Anthropic).
+
+### Installation
+
+#### Option 1: Quick Install (Recommended)
+
+Use our automated install script to get up and running quickly:
+
+```bash
+# TUI (Terminal User Interface)
+uvx rogue-ai
+
+# Web UI
+uvx rogue-ai ui
+
+# CLI / CI/CD
+uvx rogue-ai cli
+```
+
+#### Option 2: Manual Installation
+
+1.  **Clone the repository:**
+
+    ```bash
+    git clone https://github.com/qualifire-dev/rogue.git
+    cd rogue
+    ```
+
+2.  **Install dependencies:**
+
+    If you are using uv:
+
+    ```bash
+    uv sync
+    ```
+
+    Or, if you are using pip:
+
+    ```bash
+    pip install -e .
+    ```
+
+3.  **OPTIONALLY: Set up your environment variables:**
+    Create a `.env` file in the root directory and add your API keys. Rogue uses `LiteLLM`, so you can set keys for various providers.
+    ```env
+    OPENAI_API_KEY="sk-..."
+    ANTHROPIC_API_KEY="sk-..."
+    GOOGLE_API_KEY="..."
+    ```
+
+### Running Rogue
+
+Rogue operates on a client-server architecture where the core evaluation logic runs in a backend server, and various clients connect to it for different interfaces.
+
+#### Default Behavior
+
+When you run `uvx rogue-ai` without any mode specified, it:
+
+1. Starts the Rogue server in the background
+2. Launches the TUI (Terminal User Interface) client
+
+```bash
+uvx rogue-ai
+```
+
+#### Available Modes
+
+- **Default (Server + TUI)**: `uvx rogue-ai` - Starts server in background + TUI client
+- **Server**: `uvx rogue-ai server` - Runs only the backend server
+- **TUI**: `uvx rogue-ai tui` - Runs only the TUI client (requires server running)
+- **Web UI**: `uvx rogue-ai ui` - Runs only the Gradio web interface client (requires server running)
+- **CLI**: `uvx rogue-ai cli` - Runs non-interactive command-line evaluation (requires server running, ideal for CI/CD)
+
+#### Mode Options
+
+##### Server Mode
+
+```bash
+uvx rogue-ai server [OPTIONS]
+```
+
+**Options:**
+
+- `--host HOST` - Host to run the server on (default: 127.0.0.1 or HOST env var)
+- `--port PORT` - Port to run the server on (default: 8000 or PORT env var)
+- `--debug` - Enable debug logging
+
+##### Web UI Mode
+
+```bash
+uvx rogue-ai ui [OPTIONS]
+```
+
+**Options:**
+
+- `--rogue-server-url URL` - Rogue server URL (default: http://localhost:8000)
+- `--port PORT` - Port to run the UI on
+- `--workdir WORKDIR` - Working directory (default: ./.rogue)
+- `--debug` - Enable debug logging
+
+##### CLI Mode
+
+```bash
+uvx rogue-ai cli [OPTIONS]
+```
+
+For detailed CLI options, see the [CLI documentation](/rogue/cli).
+
+---
+
+## Example: Testing the T-Shirt Store Agent
+
+This repository includes a simple example agent that sells T-shirts. You can use it to see Rogue in action.
+
+1. **Install example dependencies:**
+
+   If you are using uv:
+
+   ```bash
+    uv sync --group examples
+   ```
+
+   or, if you are using pip:
+
+   ```bash
+   pip install -e .[examples]
+   ```
+
+2. **Start the example agent server** in a separate terminal:
+
+   If you are using uv:
+
+   ```bash
+   uv run examples/tshirt_store_agent
+   ```
+
+   If not:
+
+   ```bash
+   python examples/tshirt_store_agent
+   ```
+
+   This will start the agent on `http://localhost:10001`.
+
+3. **Configure Rogue** in the UI to point to the example agent:
+
+   - **Agent URL**: `http://localhost:10001`
+   - **Authentication**: `no-auth`
+
+4. **Run the evaluation** and watch Rogue test the T-Shirt agent's policies!
+
+   You can use either the TUI (`uvx rogue-ai`) or Web UI (`uvx rogue-ai ui`) mode.

@@ -1,0 +1,28 @@
+---
+title: AI Interviewer
+description: "How Rogue uses an AI-powered interview to define the business context."
+---
+
+The AI Interviewer in Rogue is designed to streamline the process of creating a robust business context for generating test scenarios. Instead of requiring you to write the context from scratch, it engages you in a brief, targeted conversation to extract the necessary information.
+
+## The Interview Process
+
+The interviewer's goal is to understand your AI agent's function, its workflows, and potential risks as efficiently as possible. The process generally follows these steps:
+
+1.  **Introduction**: The interviewer will introduce itself and ask a broad opening question about your agent's primary purpose.
+
+2.  **Analysis and Follow-up**: After each of your responses, the AI analyzes the information. It then asks concise follow-up questions to probe deeper into areas that need clarification, focusing on:
+
+    - **Edge Cases**: Situations that are unusual or at the limits of the agent's expected operation.
+    - **Happy and Sad Flows**: The ideal user journey versus paths where things go wrong (e.g., errors, invalid requests).
+    - **Key Business Risks**: Critical areas where failure would have significant consequences, such as handling refunds, discounts, or sensitive data.
+
+3.  **Concise Questioning**: The interview is designed to be quick. The interviewer will ask a short series of targeted questions (typically 3-5) to gather the necessary details. It avoids repeating questions or asking for information you've already provided.
+
+4.  **Context Summarization**: Once it has enough information, the interviewer synthesizes the key points into a comprehensive business context summary.
+
+5.  **User Review and Confirmation**: The interviewer presents the summarized context to you for review. You have the opportunity to make corrections or additions. The context is updated with your feedback.
+
+6.  **Conclusion**: Once you confirm the business context is accurate, the interview concludes, and you can proceed to generate test scenarios based on it.
+
+This guided process ensures that all critical aspects of your agent's behavior are captured, leading to a more effective and comprehensive evaluation.

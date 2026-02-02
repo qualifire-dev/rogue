@@ -1,0 +1,226 @@
+---
+title: Vulnerability Catalog
+description: "Comprehensive catalog of 87+ vulnerability types tested by Rogue's red teaming engine"
+---
+
+## Overview
+
+Rogue's red teaming engine tests AI agents against a comprehensive catalog of 87+ vulnerability types organized into 13 categories. Each vulnerability includes predefined attack techniques that are most effective for exploitation.
+
+## Vulnerability Categories
+
+### Content Safety
+
+Tests for generation of harmful, inappropriate, or dangerous content.
+
+| ID | Name | Description | Tier |
+|----|------|-------------|------|
+| `hate-speech` | Hate Speech | Discriminatory content targeting protected groups | Premium |
+| `explicit-content` | Explicit Content | Sexual or adult content generation | Premium |
+| `violent-crime` | Violent Crime Content | Violence-promoting content | Premium |
+| `sexual-crime` | Sexual Crime Content | Sexual crime content generation | Premium |
+| `child-exploitation` | Child Exploitation | CSAM and exploitation content | Premium |
+| `harassment` | Harassment | Bullying and harassment content | Premium |
+| `personal-attacks` | Personal Attacks | Targeted insults and attacks | Premium |
+| `profanity` | Profanity | Inappropriate language | Premium |
+| `graphic-content` | Graphic Content | Violent or disturbing imagery | Premium |
+| `self-harm` | Self-Harm | Self-harm and suicide content | Premium |
+| `dangerous-activity` | Dangerous Activity | Instructions for dangerous actions | Premium |
+| `wordplay` | Wordplay | Tricked into profanity via wordplay | Premium |
+
+### PII Protection
+
+Tests for exposure of personally identifiable information.
+
+| ID | Name | Description | Tier |
+|----|------|-------------|------|
+| `pii-direct` | PII via Direct Exposure | Direct revelation of personal data | Free |
+| `pii-api-db` | PII via API/Database | Exposure through API/database access | Free |
+| `pii-session` | PII via Session Data | Leakage through session information | Free |
+| `pii-social` | PII via Social Engineering | Extraction through social engineering | Premium |
+| `cross-session-leakage` | Cross-Session Leakage | Data leaking between user sessions | Free |
+| `privacy-violation` | Privacy Violation | General privacy violation attempts | Free |
+
+### Technical Vulnerabilities
+
+Tests for code injection and technical exploitation.
+
+| ID | Name | Description | Tier |
+|----|------|-------------|------|
+| `sql-injection` | SQL Injection | SQL query injection via agent | Premium |
+| `shell-injection` | Command Injection | Shell command injection | Premium |
+| `ssrf` | SSRF Vulnerability | Server-side request forgery | Premium |
+| `debug-access` | Debug Interface Exposure | Access to debug/admin functions | Premium |
+| `malicious-code` | Malicious Code | Generation of malware/exploits | Premium |
+
+### Bias & Fairness
+
+Tests for discriminatory or biased responses.
+
+| ID | Name | Description | Tier |
+|----|------|-------------|------|
+| `bias-age` | Age Bias | Age-related discrimination | Premium |
+| `bias-gender` | Gender Bias | Gender-related discrimination | Premium |
+| `bias-race` | Race Bias | Race-related discrimination | Premium |
+| `bias-disability` | Disability Bias | Disability-related discrimination | Premium |
+| `bias-religion` | Religious Bias | Religion-related discrimination | Premium |
+| `bias-political` | Political Bias | Political bias in responses | Premium |
+
+### Prompt Security
+
+Tests for prompt manipulation and system compromise.
+
+| ID | Name | Description | Tier |
+|----|------|-------------|------|
+| `prompt-extraction` | System Prompt Disclosure | Extraction of system prompts | Free |
+| `prompt-override` | System Prompt Override | Overriding system instructions | Free |
+| `indirect-injection` | Indirect Prompt Injection | Injection via untrusted data | Free |
+| `ascii-smuggling` | ASCII Smuggling | Unicode tag-based smuggling | Free |
+| `special-token-injection` | Special Token Injection | Token-based injection attacks | Free |
+| `pliny-injections` | Pliny Prompt Injections | Specialized injection patterns | Premium |
+| `context-compliance` | Context Compliance Attack | Fabricated history attacks | Premium |
+
+### Access Control
+
+Tests for authorization and permission bypass.
+
+| ID | Name | Description | Tier |
+|----|------|-------------|------|
+| `rbac` | RBAC Implementation | Role-based access control bypass | Premium |
+| `bola` | Object-Level Authorization | Broken object authorization (OWASP API 1) | Premium |
+| `bfla` | Function-Level Authorization | Broken function authorization (OWASP API 5) | Premium |
+| `excessive-agency` | Excessive Agency | Unauthorized actions beyond scope | Premium |
+
+### Business Logic
+
+Tests for business rule violations and misalignment.
+
+| ID | Name | Description | Tier |
+|----|------|-------------|------|
+| `unauthorized-commitments` | Unauthorized Commitments | Making unauthorized promises | Premium |
+| `unauthorized-advice` | Unauthorized Advice | Providing restricted advice | Premium |
+| `competitors` | Competitors | Promoting competitor products | Premium |
+| `imitation` | Entity Impersonation | Impersonating other entities | Premium |
+| `goal-misalignment` | Goal Misalignment | Optimizing wrong objectives | Premium |
+| `off-topic` | Off-Topic Manipulation | Deviation from intended purpose | Premium |
+| `hijacking` | Resource Hijacking | Unauthorized resource usage | Premium |
+
+### Intellectual Property
+
+Tests for IP violations and theft.
+
+| ID | Name | Description | Tier |
+|----|------|-------------|------|
+| `ip-violations` | IP Violations | Copyright and IP infringement | Premium |
+| `ip-theft` | IP Theft | Trade secret and IP theft | Premium |
+
+### Information Quality
+
+Tests for factual accuracy and reliability.
+
+| ID | Name | Description | Tier |
+|----|------|-------------|------|
+| `hallucination` | Hallucination | Fabrication of false information | Premium |
+| `unverifiable-claims` | Unverifiable Claims | Claims that cannot be verified | Premium |
+| `misinformation-disinformation` | Disinformation | False information campaigns | Premium |
+| `overreliance` | Overreliance | Excessive system assumption trust | Premium |
+
+### Compliance
+
+Tests for regulatory compliance violations.
+
+| ID | Name | Description | Tier |
+|----|------|-------------|------|
+| `coppa` | COPPA Compliance | Children's privacy violations | Premium |
+| `ferpa` | FERPA Compliance | Educational records violations | Premium |
+
+### Specialized Threats
+
+Tests for critical and dangerous content.
+
+| ID | Name | Description | Tier |
+|----|------|-------------|------|
+| `cybercrime` | Cybercrime | Hacking and cybercrime content | Premium |
+| `wmd-content` | WMD Content | Weapons of mass destruction | Premium |
+| `weapons-content` | Weapons Content | Weapons manufacturing | Premium |
+| `ied-content` | IED Content | Explosive device instructions | Premium |
+| `drugs` | Drug-Related Content | Illegal drug information | Premium |
+| `methamphetamine` | Methamphetamine Content | Meth production/use | Premium |
+| `extremism` | Extremist Content | Extremist recruitment | Premium |
+| `illegal-activity` | Illegal Activity | General illegal activities | Premium |
+| `non-violent-crime` | Non-Violent Crime | Non-violent criminal acts | Premium |
+
+### Agent-Specific
+
+Tests for AI agent architecture vulnerabilities.
+
+| ID | Name | Description | Tier |
+|----|------|-------------|------|
+| `memory-poisoning` | Agentic Memory Poisoning | Corrupting agent memory | Premium |
+| `rag-poisoning` | RAG Poisoning | Poisoning retrieval systems | Premium |
+| `rag-exfiltration` | RAG Document Exfiltration | Extracting RAG documents | Premium |
+| `tool-discovery` | Tool Discovery | Enumerating available tools | Premium |
+| `mcp-vulnerabilities` | Model Context Protocol | MCP-specific attacks | Premium |
+
+### Resource Attacks
+
+Tests for resource exhaustion and denial of service.
+
+| ID | Name | Description | Tier |
+|----|------|-------------|------|
+| `unbounded-consumption` | Unbounded Consumption | Resource exhaustion | Premium |
+| `reasoning-dos` | Reasoning DoS | Computational exhaustion | Premium |
+| `divergent-repetition` | Divergent Repetition | Training data leakage | Premium |
+
+## Default Attack Mappings
+
+Each vulnerability has default attacks that are most effective:
+
+```python
+# Example: prompt-extraction vulnerability
+default_attacks = [
+    "prompt-probing",     # Direct probing questions
+    "system-override",    # Override commands
+    "gray-box",          # Fake internal context
+    "base64",            # Encoded requests
+    "rot13"              # Obfuscated requests
+]
+```
+
+## Accessing the Catalog
+
+```python
+from rogue.server.red_teaming.catalog.vulnerabilities import (
+    get_vulnerability,
+    get_all_vulnerabilities,
+    get_vulnerabilities_by_category,
+    get_free_vulnerabilities,
+    get_premium_vulnerabilities,
+    get_basic_scan_vulnerabilities,
+    get_full_scan_vulnerabilities
+)
+
+# Get a specific vulnerability
+vuln = get_vulnerability("prompt-extraction")
+print(f"{vuln.name}: {vuln.description}")
+
+# Get all free vulnerabilities
+free_vulns = get_free_vulnerabilities()
+
+# Get vulnerabilities for basic scan
+basic_vulns = get_basic_scan_vulnerabilities()
+```
+
+## Vulnerability Definition Structure
+
+```python
+@dataclass
+class VulnerabilityDef:
+    id: str                           # Unique identifier
+    name: str                         # Display name
+    category: VulnerabilityCategory   # Category grouping
+    description: str                  # Detailed description
+    default_attacks: List[str]        # Recommended attack IDs
+    premium: bool                     # Requires API key
+```
+

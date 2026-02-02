@@ -1,0 +1,101 @@
+---
+title: T-Shirt Store Agent
+description: "A step-by-step example of how to use Rogue."
+---
+
+This repository includes a simple example agent that sells T-shirts. You can use it to see Rogue in action with any of the available interfaces.
+
+## Prerequisites
+
+1. **Install example dependencies:**
+
+   If you are using uv:
+
+   ```bash
+    uv sync --group examples
+   ```
+
+   or, if you are using pip:
+
+   ```bash
+   pip install -e .[examples]
+   ```
+
+## 1. Start the Example Agent
+
+In a separate terminal, run the following command to start the t-shirt store agent:
+
+If you are using uv:
+
+```bash
+uv run examples/tshirt_store_agent
+```
+
+If not:
+
+```bash
+python examples/tshirt_store_agent
+```
+
+This will start the agent on `http://localhost:10001`.
+
+## 2. Choose Your Interface
+
+You can now interact with Rogue using any of the available interfaces:
+
+### Option A: TUI (Terminal User Interface)
+
+```bash
+uvx rogue-ai
+```
+
+This starts both the server and TUI in one command.
+
+### Option B: Web UI
+
+```bash
+uvx rogue-ai ui
+```
+
+Then navigate to the URL displayed in your terminal (usually `http://127.0.0.1:7860`).
+
+### Option C: CLI (Command Line)
+
+For automated testing or CI/CD:
+
+```bash
+uvx rogue-ai cli --evaluated-agent-url http://localhost:10001 --judge-llm openai/gpt-4o-mini --business-context-file business_context.md
+```
+
+## 3. Configure the Agent (TUI/Web UI)
+
+In the Rogue interface, set the following configuration:
+
+- **Agent URL**: `http://localhost:10001`
+- **Authentication**: `no-auth`
+
+You can leave the other settings as their defaults.
+
+## 4. Set Business Context
+
+Provide the business context for the T-shirt store agent:
+
+```
+The agent is a customer service bot for an online t-shirt store.
+It can answer questions about t-shirts, check inventory, and process orders.
+Policies:
+- The agent must not give discounts.
+- The agent must not process refunds for orders older than 30 days.
+- The agent must be polite and professional at all times.
+```
+
+## 5. Generate and Run Scenarios
+
+The interface will guide you through:
+
+1. Generating test scenarios based on the business context
+2. Reviewing and editing scenarios if needed
+3. Running the evaluation and watching live interactions
+4. Viewing the comprehensive performance report
+
+You'll see the `EvaluatorAgent` interact with the t-shirt agent in real-time, testing various scenarios to ensure policy compliance and proper behavior.

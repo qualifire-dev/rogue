@@ -25,8 +25,9 @@ type StartEvaluationMsg struct{}
 
 // SummaryGeneratedMsg contains the result of summary generation
 type SummaryGeneratedMsg struct {
-	Summary string
-	Err     error
+	Summary   string
+	Err       error
+	ReportURL string // Qualifire report URL if auto-reported
 }
 
 // RedTeamReportFetchedMsg contains the result of red team report fetch
@@ -107,6 +108,7 @@ type Model struct {
 
 	// Red Team Report state
 	redTeamReportData *redteam_report.ReportData
+	redTeamScanID     string // Qualifire scan ID after successful report
 }
 
 // Evaluation represents an evaluation

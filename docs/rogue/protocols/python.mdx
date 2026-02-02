@@ -1,0 +1,373 @@
+---
+title: Python Entrypoint
+description: "Evaluate agents directly via Python function calls without network protocols"
+---
+
+## Overview
+
+The Python entrypoint provides the simplest integration path for evaluating AI agents with Rogue. Instead of setting up A2A or MCP protocols with HTTP servers, you simply provide a Python file with a `call_agent` function that Rogue calls directly.
+
+**Key Benefits:**
+
+- **Zero Network Setup**: No HTTP servers, ports, or protocols to configure
+- **Fastest Integration**: Works with any Python agent in minutes
+- **Full Control**: Direct function calls with complete conversation history
+- **Session Support**: Optional context_id for stateful conversation tracking
+- **Sync & Async**: Supports both synchronous and async functions
+
+## How It Works
+
+1. You create a Python file with a `call_agent(messages, context_id=None)` function
+2. Rogue dynamically imports your file at runtime
+3. For each test message, Rogue calls your function with the full conversation history
+4. Your function returns the agent's response as a string
+5. Rogue evaluates the response and continues the conversation
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                   Python Entrypoint Flow                     │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│   Rogue                    Your Python File                  │
+│     │                            │                           │
+│     │  1. Import module          │                           │
+│     │──────────────────────────▶│                           │
+│     │                            │                           │
+│     │  2. call_agent(messages)   │                           │
+│     │──────────────────────────▶│                           │
+│     │                            │  3. Process with          │
+│     │                            │     your agent            │
+│     │  4. Return response        │                           │
+│     │◀──────────────────────────│                           │
+│     │                            │                           │
+│     │  5. Evaluate response      │                           │
+│     │                            │                           │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## The `call_agent` Function
+
+Your Python file must contain a `call_agent` function with this signature:
+
+```python
+def call_agent(
+    messages: list[dict[str, Any]],
+    context_id: Optional[str] = None,
+) -> str:
+    """
+    Process conversation messages and return a response.
+
+    Args:
+        messages: List of message dicts with 'role' and 'content' keys.
+            The role is either 'user' or 'assistant'.
+            Example:
+                [
+                    {"role": "user", "content": "Hello!"},
+                    {"role": "assistant", "content": "Hi there!"},
+                    {"role": "user", "content": "What can you do?"}
+                ]
+        context_id: Optional unique conversation ID for session tracking.
+            Use this for stateful agents that need to maintain context
+            across multiple conversations.
+
+    Returns:
+        The agent's response as a string.
+    """
+    # Your agent logic here
+    return response
+```
+
+### Function Requirements
+
+| Requirement | Description |
+|------------|-------------|
+| **Name** | Must be named `call_agent` |
+| **First Parameter** | `messages` - List of message dicts |
+| **Return Type** | Must return a string |
+| **Optional** | `context_id` parameter for session tracking |
+| **Sync/Async** | Both supported - Rogue auto-detects |
+
+## Configuration
+
+### In the TUI
+
+1. Select **"Python"** as the protocol
+2. Enter the **path to your Python file**
+3. Configure other settings as needed
+
+### In the CLI
+
+```bash
+uvx rogue-ai cli \
+  --evaluated-agent-url /path/to/your/entrypoint.py \
+  --protocol python \
+  --judge-llm openai/gpt-4o-mini \
+  --business-context "Your agent description"
+```
+
+### Via Config File
+
+```json
+{
+  "evaluated_agent_url": "./my_agent/entrypoint.py",
+  "protocol": "python",
+  "judge_llm": "openai/gpt-4o-mini"
+}
+```
+
+## Complete Example
+
+Here's a complete example of a Python entrypoint file:
+
+```python
+"""
+Example Python entrypoint for Rogue agent evaluation.
+"""
+from typing import Any, Optional
+
+
+def call_agent(
+    messages: list[dict[str, Any]],
+    context_id: Optional[str] = None,
+) -> str:
+    """
+    Process conversation messages and return a response.
+    """
+    # Extract the latest user message
+    latest_message = messages[-1]["content"] if messages else ""
+
+    # ==============================================
+    # Replace with your actual agent logic!
+    # ==============================================
+
+    # Example: Simple echo
+    return f"You said: {latest_message}"
+```
+
+## Integration Examples
+
+### OpenAI API
+
+```python
+from openai import OpenAI
+from typing import Any, Optional
+
+client = OpenAI()
+
+def call_agent(
+    messages: list[dict[str, Any]],
+    context_id: Optional[str] = None,
+) -> str:
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=messages
+    )
+    return response.choices[0].message.content
+```
+
+### LangChain
+
+```python
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import HumanMessage, AIMessage
+from typing import Any, Optional
+
+chat = ChatOpenAI(model="gpt-4o")
+
+def call_agent(
+    messages: list[dict[str, Any]],
+    context_id: Optional[str] = None,
+) -> str:
+    lc_messages = [
+        HumanMessage(content=m["content"]) if m["role"] == "user"
+        else AIMessage(content=m["content"])
+        for m in messages
+    ]
+    response = chat.invoke(lc_messages)
+    return response.content
+```
+
+### LangGraph with Session State
+
+```python
+from langgraph.graph import StateGraph
+from typing import Any, Optional
+
+# Session storage for stateful agents
+sessions: dict[str, Any] = {}
+
+def call_agent(
+    messages: list[dict[str, Any]],
+    context_id: Optional[str] = None,
+) -> str:
+    # Get or create session state
+    if context_id and context_id in sessions:
+        state = sessions[context_id]
+    else:
+        state = create_initial_state()
+    
+    # Run your graph
+    result = graph.invoke(
+        {"messages": messages},
+        config={"configurable": {"thread_id": context_id}}
+    )
+    
+    # Store session state
+    if context_id:
+        sessions[context_id] = result
+    
+    return result["messages"][-1].content
+```
+
+### Async Agent
+
+```python
+import asyncio
+from typing import Any, Optional
+
+async def call_agent(
+    messages: list[dict[str, Any]],
+    context_id: Optional[str] = None,
+) -> str:
+    """
+    Async function - Rogue automatically detects and awaits it.
+    """
+    # Async API call
+    response = await async_api_call(messages)
+    return response
+```
+
+### Local Model with Transformers
+
+```python
+from transformers import pipeline
+from typing import Any, Optional
+
+# Load model once at module level
+pipe = pipeline("text-generation", model="meta-llama/Llama-2-7b-chat-hf")
+
+def call_agent(
+    messages: list[dict[str, Any]],
+    context_id: Optional[str] = None,
+) -> str:
+    # Format messages as prompt
+    prompt = "\n".join(
+        f"{m['role'].upper()}: {m['content']}"
+        for m in messages
+    )
+    prompt += "\nASSISTANT: "
+    
+    result = pipe(prompt, max_new_tokens=512)
+    return result[0]["generated_text"].split("ASSISTANT: ")[-1]
+```
+
+## Session Management
+
+The optional `context_id` parameter enables stateful conversation tracking:
+
+```python
+# Session storage
+conversation_states: dict[str, list] = {}
+
+def call_agent(
+    messages: list[dict[str, Any]],
+    context_id: Optional[str] = None,
+) -> str:
+    # context_id is unique per conversation
+    # All messages in one conversation share the same context_id
+    
+    if context_id:
+        # Store/retrieve conversation-specific state
+        if context_id not in conversation_states:
+            conversation_states[context_id] = []
+        
+        # Your stateful logic here
+        conversation_states[context_id].append(messages[-1])
+    
+    return process_messages(messages)
+```
+
+**Context ID Behavior:**
+
+- Each Rogue conversation gets a unique `context_id`
+- All messages within one conversation share the same `context_id`
+- Different test scenarios use different `context_id` values
+- The parameter is optional for backward compatibility
+
+## File Organization
+
+Your entrypoint file can import sibling modules:
+
+```
+my_agent/
+├── entrypoint.py      # Your call_agent function
+├── agent.py           # Your agent implementation
+├── tools.py           # Agent tools
+└── config.py          # Configuration
+```
+
+```python
+# entrypoint.py
+from .agent import MyAgent
+from .config import settings
+
+agent = MyAgent(settings)
+
+def call_agent(messages, context_id=None):
+    return agent.chat(messages, session_id=context_id)
+```
+
+Rogue automatically adds the entrypoint's directory to `sys.path` for imports.
+
+## Error Handling
+
+Exceptions in your `call_agent` function are caught and logged by Rogue:
+
+```python
+def call_agent(messages, context_id=None):
+    try:
+        return process_with_agent(messages)
+    except RateLimitError:
+        # Rogue will log this and record an empty response
+        raise
+    except Exception as e:
+        # You can also return error messages
+        return f"Error: {str(e)}"
+```
+
+## Comparison with Other Protocols
+
+| Feature | Python Entrypoint | A2A | MCP |
+|---------|------------------|-----|-----|
+| Setup Complexity | ⭐ Minimal | ⭐⭐⭐ High | ⭐⭐ Medium |
+| Network Required | ❌ No | ✅ Yes | ✅ Yes |
+| Server Required | ❌ No | ✅ Yes | ✅ Yes |
+| Production Ready | ⚠️ Dev/Test | ✅ Yes | ✅ Yes |
+| Framework Support | Any Python | A2A SDK | MCP SDK |
+| Streaming | ❌ No | ✅ Yes | ✅ Yes |
+
+**Use Python Entrypoint when:**
+- Rapid prototyping and testing
+- Your agent is a simple Python function
+- You don't need network-based deployment
+- You want the fastest integration path
+
+**Use A2A/MCP when:**
+- Production deployments
+- Your agent runs as a separate service
+- You need streaming responses
+- Multi-language or distributed systems
+
+## Example Files
+
+Rogue includes example entrypoint files:
+
+<CardGroup cols={2}>
+  <Card title="Basic Entrypoint Stub" icon="python" href="https://github.com/qualifire-dev/rogue/blob/main/examples/python_entrypoint_stub.py">
+    Simple template with documentation and examples
+  </Card>
+  <Card title="LangGraph Entrypoint" icon="python" href="https://github.com/qualifire-dev/rogue/blob/main/examples/tshirt_store_langgraph_agent/python_entrypoint_shirtify.py">
+    Real-world LangGraph agent integration
+  </Card>
+</CardGroup>
+

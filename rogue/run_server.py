@@ -1,5 +1,6 @@
 import multiprocessing
 import os
+import socket
 import time
 from argparse import ArgumentParser, Namespace
 from ipaddress import ip_address
@@ -135,6 +136,15 @@ def run_server(
         port = args.port
     except AttributeError:
         port = int(os.getenv("PORT", "8000"))
+
+    # Check if port is already in use before starting
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        if sock.connect_ex((host, port)) == 0:
+            raise Exception(
+                f"Port {port} is already in use. "
+                f"Please stop the other process or use a different port "
+                f"(set PORT environment variable).",
+            )
 
     if background:
         process = run_server_in_background(

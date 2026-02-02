@@ -1,0 +1,166 @@
+---
+title: MCP Protocol
+description: "Using MCO (Model Context Protocol) with Rogue"
+---
+
+## Overview
+
+Rogue supports the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/docs/getting-started/intro), which provides a flexible, tool-based interface for wrapping agents. MCP offers a simpler integration path by using a standard `send_message` tool interface, allowing you to wrap existing agents with minimal changes.
+
+## What is MCP?
+
+The Model Context Protocol (MCP) is an open protocol that provides a standardized way for AI applications to interact with external tools and services. For Rogue integration, MCP uses a simple tool-based interface that abstracts away the complexity of your agent's internal implementation.
+
+**Key Features:**
+
+- **Simple Interface**: Single `send_message` tool handles all communication
+- **Minimal Wrapper**: Wrap existing agents without major refactoring
+- **Flexible Transport**: Multiple transport options (SSE, STREAMABLE_HTTP)
+- **Framework Agnostic**: Works with any agent framework
+- **Easy Testing**: Simple interface makes testing straightforward
+
+<Card title="MCP Documentation" icon="link" href="https://modelcontextprotocol.io/docs/getting-started/intro">
+  View the official Model Context Protocol documentation
+</Card>
+
+## Supported Transports
+
+### SSE (Server-Sent Events)
+
+Server-Sent Events provide unidirectional, real-time event streaming from server to client.
+
+**How it works:**
+
+1. Rogue establishes an SSE connection to your MCP server
+2. Rogue invokes the `send_message` tool with a test message
+3. Your agent processes the message and returns a response
+4. The response streams back to Rogue via SSE
+5. Rogue evaluates the response against test criteria
+
+**Configuration:**
+
+```bash
+uvx rogue-ai cli \
+  --evaluated-agent-url http://localhost:8080 \
+  --protocol mcp \
+  --transport sse
+```
+
+
+### STREAMABLE_HTTP
+
+HTTP-based streaming communication provides a simpler alternative to SSE while maintaining streaming capabilities.
+
+**How it works:**
+
+1. Rogue makes HTTP POST requests to your MCP server
+2. Requests invoke the `send_message` tool with test messages
+3. Your agent streams responses back via chunked HTTP transfer
+4. Rogue processes the streamed response
+5. Connection closes after response completes
+
+**Configuration:**
+
+```bash
+uvx rogue-ai cli \
+  --evaluated-agent-url http://localhost:8080 \
+  --protocol mcp \
+  --transport streamable_http
+```
+
+## The `send_message` Tool
+
+The `send_message` tool is the core interface for MCP-based communication with Rogue.
+
+**Tool Signature:**
+
+```typescript
+{
+  name: "send_message",
+  description: "Send a message to the agent and receive a response",
+  parameters: {
+    message: {
+      type: "string",
+      description: "The message to send to the agent"
+    }
+  },
+  returns: {
+    type: "string",
+    description: "The agent's response"
+  }
+}
+```
+
+**Input:** A message string from Rogue
+
+**Output:** Your agent's response string
+
+**Example Implementation:**
+
+```python
+from mcp.server.fastmcp import Context, FastMCP
+
+
+agent = get_agent()
+
+
+mcp = FastMCP(
+    "My Agent",
+    host="127.0.0.1",
+    port=10001,
+)
+
+@mcp.tool()
+def send_message(message: str, context: Context) -> str:
+    session_id: str | None = None
+    try:
+        request: Request = context.request_context.request  # type: ignore
+
+        # The session id should be in the headers for streamable-http transport
+        session_id = request.headers.get("mcp-session-id")
+
+        # The session id might also be in query param when using sse transport
+        if session_id is None:
+            session_id = request.query_params.get("session_id")
+    except Exception:
+        session_id = None
+        logger.exception("Error while extracting session id")
+
+    if session_id is None:
+        logger.error("Couldn't extract session id")
+
+    # Invoking our agent
+    response = agent.invoke(message, session_id)  # implement a func to communicate with your agent
+    return response.get("content", "")
+
+
+# When using "sse", the url will be http://localhost:10001/sse
+# When using "streamable-http", the url will be http://localhost:10001/mcp
+mcp.run(transport="sse") # transport="streamable-http"
+```
+
+## Integration Steps
+
+To integrate your agent with Rogue via MCP:
+
+1. **Build your agent** using any framework of your choice
+2. **Create an MCP server wrapper** for your agent
+3. **Implement the `send_message` tool** that accepts a message parameter and returns a response
+4. **Choose your transport** (SSE or STREAMABLE_HTTP)
+5. **Start your MCP server** and make it accessible
+6. **Configure Rogue** to connect to your MCP endpoint
+
+## Example Implementations
+
+Rogue includes example MCP integrations demonstrating how to wrap agents:
+
+<Card title="MCP Examples" icon="github" href="https://github.com/qualifire-dev/rogue/tree/main/examples/mcp">
+  View MCP example implementations including LangGraph agent wrapper
+</Card>
+
+The examples demonstrate:
+- Setting up an MCP server
+- Implementing the `send_message` tool
+- Wrapping a LangGraph agent with MCP
+- Configuring transports (SSE and STREAMABLE_HTTP)
+- Connecting Rogue to your MCP server
