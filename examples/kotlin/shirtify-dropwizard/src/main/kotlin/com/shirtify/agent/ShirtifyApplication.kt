@@ -17,6 +17,9 @@ class ShirtifyApplication : Application<ShirtifyConfiguration>() {
         // Register Kotlin module for Jackson
         bootstrap.objectMapper.registerKotlinModule()
 
+        // Register A2A SDK Jackson module for Part<?> polymorphism and AgentCard compatibility
+        bootstrap.objectMapper.registerModule(A2AJacksonModule())
+
         // Enable ${VAR} substitution in config.yml, checking env vars then system properties (.env)
         val substitutor = StringSubstitutor { key ->
             System.getenv(key) ?: System.getProperty(key)

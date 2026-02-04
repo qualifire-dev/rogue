@@ -28,6 +28,9 @@ dependencies {
     // Dropwizard
     implementation("io.dropwizard:dropwizard-core:$dropwizardVersion")
 
+    // A2A Protocol SDK (spec types only — no CDI/server dependencies)
+    implementation("io.github.a2asdk:a2a-java-sdk-spec:1.0.0.Alpha1")
+
     // LangChain4j (core, no Spring Boot starters)
     implementation("dev.langchain4j:langchain4j:$langchain4jVersion")
     implementation("dev.langchain4j:langchain4j-open-ai:$langchain4jVersion")
