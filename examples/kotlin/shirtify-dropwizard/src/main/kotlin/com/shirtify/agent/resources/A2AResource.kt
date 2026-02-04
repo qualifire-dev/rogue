@@ -1,8 +1,10 @@
 package com.shirtify.agent.resources
 
 import com.shirtify.agent.ShirtifyAgentService
+import com.fasterxml.jackson.databind.ObjectMapper
 import jakarta.ws.rs.*
 import jakarta.ws.rs.core.MediaType
+import org.slf4j.LoggerFactory
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
@@ -75,6 +77,8 @@ class A2AResource(
     private val agentService: ShirtifyAgentService,
     private val agentName: String
 ) {
+    private val log = LoggerFactory.getLogger(A2AResource::class.java)
+    private val mapper = ObjectMapper()
     private val tasks = ConcurrentHashMap<String, Task>()
 
     @GET
@@ -103,8 +107,12 @@ class A2AResource(
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     fun handleA2ARequest(request: A2ARequest): A2AResponse {
-        return when (request.method) {
-            "tasks/send" -> handleTaskSend(request)
+        log.info("A2A request: method={}, id={}, params={}", request.method, request.id,
+            mapper.writeValueAsString(request.params))
+
+        val response = when (request.method) {
+            "message/send" -> handleMessageSend(request)
+            "tasks/send" -> handleMessageSend(request)
             "tasks/get" -> handleTaskGet(request)
             "tasks/cancel" -> handleTaskCancel(request)
             else -> A2AResponse(
@@ -112,23 +120,38 @@ class A2AResource(
                 error = A2AError(-32601, "Method not found: ${request.method}")
             )
         }
+
+        log.info("A2A response: {}", mapper.writeValueAsString(response))
+        return response
     }
 
-    private fun handleTaskSend(request: A2ARequest): A2AResponse {
-        val params = request.params ?: return A2AResponse(
-            id = request.id,
-            error = A2AError(-32602, "Missing params")
-        )
+    private fun handleMessageSend(request: A2ARequest): A2AResponse {
+        val params = request.params ?: run {
+            log.warn("message/send: missing params")
+            return A2AResponse(id = request.id, error = A2AError(-32602, "Missing params"))
+        }
 
         val message = params["message"] as? Map<*, *>
-        val parts = (message?.get("parts") as? List<*>)?.filterIsInstance<Map<*, *>>()
-        val userInput = parts?.firstOrNull()?.get("text") as? String
-            ?: return A2AResponse(
-                id = request.id,
-                error = A2AError(-32602, "Missing message text")
-            )
+        log.info("message/send: raw message={}", mapper.writeValueAsString(message))
 
-        val contextId = params["contextId"] as? String ?: UUID.randomUUID().toString()
+        val parts = (message?.get("parts") as? List<*>)?.filterIsInstance<Map<*, *>>()
+        log.info("message/send: parsed parts={}", mapper.writeValueAsString(parts))
+
+        // Support both "text" and "kind":"text" field for the text content
+        val userInput = parts?.firstOrNull()?.get("text") as? String
+        if (userInput == null) {
+            log.warn("message/send: could not extract text from parts. message keys={}, parts={}",
+                message?.keys, mapper.writeValueAsString(parts))
+            return A2AResponse(id = request.id, error = A2AError(-32602, "Missing message text"))
+        }
+
+        log.info("message/send: userInput=\"{}\"", userInput)
+
+        // Extract contextId from message or params
+        val contextId = (message?.get("contextId") as? String)
+            ?: (params["contextId"] as? String)
+            ?: UUID.randomUUID().toString()
+        val messageId = message?.get("messageId") as? String ?: UUID.randomUUID().toString()
         val taskId = UUID.randomUUID().toString()
 
         val task = Task(
@@ -141,17 +164,23 @@ class A2AResource(
 
         return try {
             val response = agentService.chat(userInput)
+            log.info("message/send: agent response=\"{}\"", response)
             task.artifacts.add(Artifact("response", listOf(Part(text = response))))
             tasks[taskId] = task.copy(state = "completed")
 
+            // Return in message/send response format
             A2AResponse(
                 id = request.id,
                 result = mapOf(
-                    "task" to tasks[taskId],
-                    "message" to Message("agent", listOf(Part(text = response)))
+                    "kind" to "message",
+                    "role" to "agent",
+                    "messageId" to UUID.randomUUID().toString(),
+                    "contextId" to contextId,
+                    "parts" to listOf(mapOf("kind" to "text", "text" to response))
                 )
             )
         } catch (e: Exception) {
+            log.error("message/send: agent error", e)
             tasks[taskId] = task.copy(state = "failed")
             A2AResponse(
                 id = request.id,

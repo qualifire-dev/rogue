@@ -33,6 +33,9 @@ dependencies {
     implementation("dev.langchain4j:langchain4j-open-ai:$langchain4jVersion")
 
 
+    // dotenv
+    implementation("io.github.cdimascio:dotenv-java:3.1.0")
+
     // Kotlin
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.17.2")
     implementation("org.jetbrains.kotlin:kotlin-reflect")

@@ -1,10 +1,13 @@
 package com.shirtify.agent
 
 import com.shirtify.agent.resources.A2AResource
+import io.dropwizard.configuration.SubstitutingSourceProvider
 import io.dropwizard.core.Application
 import io.dropwizard.core.setup.Bootstrap
 import io.dropwizard.core.setup.Environment
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
+import org.apache.commons.text.StringSubstitutor
+import org.apache.commons.text.lookup.StringLookupFactory
 
 class ShirtifyApplication : Application<ShirtifyConfiguration>() {
 
@@ -13,6 +16,15 @@ class ShirtifyApplication : Application<ShirtifyConfiguration>() {
     override fun initialize(bootstrap: Bootstrap<ShirtifyConfiguration>) {
         // Register Kotlin module for Jackson
         bootstrap.objectMapper.registerKotlinModule()
+
+        // Enable ${VAR} substitution in config.yml, checking env vars then system properties (.env)
+        val substitutor = StringSubstitutor { key ->
+            System.getenv(key) ?: System.getProperty(key)
+        }
+        bootstrap.configurationSourceProvider = SubstitutingSourceProvider(
+            bootstrap.configurationSourceProvider,
+            substitutor
+        )
     }
 
     override fun run(configuration: ShirtifyConfiguration, environment: Environment) {
@@ -35,5 +47,16 @@ class ShirtifyApplication : Application<ShirtifyConfiguration>() {
 }
 
 fun main(args: Array<String>) {
+    // Load .env file and set as system properties so Dropwizard's
+    // ${OPENAI_API_KEY} substitution in config.yml picks them up
+    val dotenv = io.github.cdimascio.dotenv.Dotenv.configure()
+        .ignoreIfMissing()
+        .load()
+    for (entry in dotenv.entries()) {
+        if (System.getenv(entry.key) == null) {
+            System.setProperty(entry.key, entry.value)
+        }
+    }
+
     ShirtifyApplication().run(*args)
 }
