@@ -44,7 +44,7 @@ class ShirtifyAgentService(
     private val tools = ShirtifyTools()
 
     private val agent: ShirtifyAgent = AiServices.builder(ShirtifyAgent::class.java)
-        .chatLanguageModel(chatModel)
+        .chatModel(chatModel)
         .tools(tools)
         .build()
 

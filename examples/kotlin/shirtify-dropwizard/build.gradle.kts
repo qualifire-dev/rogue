@@ -1,7 +1,7 @@
 plugins {
-    kotlin("jvm") version "1.9.25"
+    kotlin("jvm") version "2.3.0"
     application
-    id("com.github.johnrengelman.shadow") version "8.1.1"
+    id("com.gradleup.shadow") version "9.0.0-beta12"
 }
 
 group = "com.shirtify"
@@ -13,7 +13,7 @@ application {
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
+        languageVersion = JavaLanguageVersion.of(25)
     }
 }
 
@@ -31,7 +31,7 @@ dependencies {
     // LangChain4j (core, no Spring Boot starters)
     implementation("dev.langchain4j:langchain4j:$langchain4jVersion")
     implementation("dev.langchain4j:langchain4j-open-ai:$langchain4jVersion")
-    implementation("dev.langchain4j:langchain4j-kotlin:$langchain4jVersion")
+
 
     // Kotlin
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.17.2")
@@ -54,6 +54,7 @@ tasks.withType<Test> {
 }
 
 tasks.named<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>("shadowJar") {
+    isZip64 = true
     archiveBaseName.set("shirtify-dropwizard")
     archiveClassifier.set("")
     archiveVersion.set("")

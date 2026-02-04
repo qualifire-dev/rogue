@@ -5,8 +5,8 @@ with Dropwizard and the A2A (Agent-to-Agent) protocol.
 
 ## Prerequisites
 
-- JDK 17 or higher
-- Gradle 8.x
+- JDK 25 or higher
+- Gradle 9.x (wrapper included)
 - OpenAI API key
 
 ## Quick Start
@@ -55,7 +55,7 @@ rogue-ai red-team --agent-url http://localhost:10004 --protocol a2a
 
 ## Tech Stack
 
-- Kotlin 1.9
+- Kotlin 2.3
 - Dropwizard 4.0
 - LangChain4j 1.11.0
 - Jersey (JAX-RS)
