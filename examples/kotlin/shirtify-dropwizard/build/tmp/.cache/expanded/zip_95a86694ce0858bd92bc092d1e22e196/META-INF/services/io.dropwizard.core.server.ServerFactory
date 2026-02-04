@@ -1,2 +1,0 @@
-io.dropwizard.core.server.DefaultServerFactory
-io.dropwizard.core.server.SimpleServerFactory

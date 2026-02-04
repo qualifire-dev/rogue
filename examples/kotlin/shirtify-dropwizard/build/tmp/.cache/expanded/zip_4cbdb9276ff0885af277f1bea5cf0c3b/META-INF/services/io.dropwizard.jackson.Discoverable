@@ -1,3 +1,0 @@
-io.dropwizard.health.HealthFactory
-io.dropwizard.health.response.HealthResponderFactory
-io.dropwizard.health.response.HealthResponseProviderFactory
