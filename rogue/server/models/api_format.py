@@ -54,3 +54,4 @@ class ServerSummaryGenerationResponse(BaseModel):
 
     summary: StructuredSummary
     message: str
+    report_url: Optional[str] = None
