@@ -280,7 +280,6 @@ type SelectableItem struct {
 	IsSelectable bool
 }
 
-
 // modelsForProvider returns dynamic models for a provider if available, otherwise the fallback list.
 func modelsForProvider(provider string, dynamic map[string][]string, fallback []string) []string {
 	if dynamic != nil {
@@ -1489,7 +1488,7 @@ func (d LLMConfigDialog) renderProviderSelection(t theme.Theme) []string {
 
 	// Show search bar
 	searchBoxStyle := lipgloss.NewStyle().
-		Width(d.Width - 6).
+		Width(d.Width-6).
 		Border(lipgloss.RoundedBorder()).
 		Background(t.BackgroundPanel()).
 		Padding(0, 1)

@@ -43,8 +43,8 @@ type AgentConfig struct {
 	JudgeLLMAWSAccessKeyID     string                 `json:"judge_llm_aws_access_key_id,omitempty"`
 	JudgeLLMAWSSecretAccessKey string                 `json:"judge_llm_aws_secret_access_key,omitempty"`
 	JudgeLLMAWSRegion          string                 `json:"judge_llm_aws_region,omitempty"`
-	JudgeLLMAPIBase      string                 `json:"judge_llm_api_base,omitempty"`
-	JudgeLLMAPIVersion    string                 `json:"judge_llm_api_version,omitempty"`
+	JudgeLLMAPIBase            string                 `json:"judge_llm_api_base,omitempty"`
+	JudgeLLMAPIVersion         string                 `json:"judge_llm_api_version,omitempty"`
 	InterviewMode              bool                   `json:"interview_mode"`
 	DeepTestMode               bool                   `json:"deep_test_mode"`
 	ParallelRuns               int                    `json:"parallel_runs"`
