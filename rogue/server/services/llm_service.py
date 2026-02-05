@@ -178,10 +178,7 @@ class LLMService:
         api_version: Optional[str] = None,
     ) -> Scenarios:
         # litellm import takes a while, importing here to reduce startup time.
-        import litellm
         from litellm import completion
-
-        litellm._turn_on_debug()
 
         """Generate test scenarios from business context using LLM.
 
@@ -249,10 +246,7 @@ class LLMService:
         api_version: Optional[str] = None,
     ) -> StructuredSummary:
         # litellm import takes a while, importing here to reduce startup time.
-        import litellm
         from litellm import completion
-
-        litellm._turn_on_debug()
 
         system_prompt = SUMMARY_GENERATION_SYSTEM_PROMPT.replace(
             r"{$EVALUATION_RESULTS}",

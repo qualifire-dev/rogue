@@ -104,14 +104,7 @@ class BaseRedTeamingMetric(ABC):
                     api_base=self.api_base,
                     api_version=self.api_version,
                 )
-                logger.debug(
-                    "litellm.completion() call (LiteLlm path)",
-                    extra={
-                        k: v
-                        for k, v in completion_kwargs.items()
-                        if k not in ("api_key", "messages")
-                    },
-                )
+
                 response = completion(**completion_kwargs)
                 return response.choices[0].message.content
             # ADK models typically have query() or generate_content()

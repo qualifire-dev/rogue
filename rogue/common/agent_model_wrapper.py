@@ -61,9 +61,6 @@ def get_llm_from_model(
             },
         )
         if kwargs:
-            import litellm
-
-            litellm._turn_on_debug()
             llm = LiteLlm(model=model, **kwargs)
             logger.debug(
                 "LiteLlm instance created",

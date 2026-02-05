@@ -371,10 +371,7 @@ def evaluate_policy(
     api_version: str | None = None,
 ) -> PolicyEvaluationResult:
     # litellm import takes a while, importing here to reduce startup time.
-    import litellm
     from litellm import completion
-
-    litellm._turn_on_debug()
 
     if "/" not in model and model.startswith("gemini"):
         if os.getenv("GOOGLE_GENAI_USE_VERTEXAI", "false").lower() == "true":
@@ -422,15 +419,7 @@ def evaluate_policy(
             },
         ],
     )
-    logger.info(
-        "litellm.completion() call (evaluate_policy)",
-        extra={
-            k: v
-            for k, v in completion_kwargs.items()
-            if k
-            not in ("api_key", "aws_access_key_id", "aws_secret_access_key", "messages")
-        },
-    )
+
     response = completion(**completion_kwargs)
 
     result = _parse_llm_output(
