@@ -218,7 +218,22 @@ async def arun_evaluator_agent(
                     )
                     await results_queue.put(results)
                 except Exception:
-                    logger.exception("💥 Agent runner task failed")
+                    logger.exception(
+                        "💥 Agent runner task failed",
+                        extra={
+                            "judge_llm": judge_llm,
+                            "judge_llm_has_api_key": bool(judge_llm_api_key),
+                            "judge_llm_api_base": judge_llm_api_base,
+                            "judge_llm_api_version": judge_llm_api_version,
+                            "judge_llm_aws_region": judge_llm_aws_region,
+                            "judge_llm_has_aws_access_key": bool(
+                                judge_llm_aws_access_key_id,
+                            ),
+                            "evaluated_agent_url": evaluated_agent_url,
+                            "protocol": protocol.value,
+                            "transport": transport.value if transport else None,
+                        },
+                    )
                     empty_results = EvaluationResults()
                     await results_queue.put(empty_results)
 

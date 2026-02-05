@@ -7,10 +7,31 @@ if TYPE_CHECKING:
     from google.adk.models import BaseLlm
 
 
+def _normalize_azure_endpoint(api_base: str) -> str:
+    """Strip trailing path segments that litellm appends itself.
+
+    Users may enter ``https://myresource.openai.azure.com/openai/v1/chat/completions``
+    but litellm already appends ``/chat/completions``.  We strip only that
+    suffix so the valid ``/openai/v1`` base path is preserved.
+    """
+    suffixes = ("/chat/completions", "/completions")
+    normalized = api_base.rstrip("/")
+    for suffix in suffixes:
+        if normalized.endswith(suffix):
+            normalized = normalized[: -len(suffix)]
+            logger.info(
+                f"Normalized Azure endpoint from '{api_base}' to '{normalized}'",
+            )
+            return normalized
+    return api_base
+
+
 @lru_cache()
 def get_llm_from_model(
     model: str,
     llm_auth: Optional[str] = None,
+    api_base: Optional[str] = None,
+    api_version: Optional[str] = None,
 ) -> "BaseLlm":
     # adk imports take a while, importing them here to reduce rogue startup time.
     from google.adk.models import LLMRegistry
@@ -25,11 +46,38 @@ def get_llm_from_model(
         )
         llm_cls = LiteLlm
 
-    if llm_auth and llm_cls is LiteLlm:
-        return LiteLlm(
-            model=model,
-            api_key=llm_auth,
-            # temperature=0.0,
+    if llm_cls is LiteLlm:
+        kwargs = {}
+        if llm_auth:
+            kwargs["api_key"] = llm_auth
+        if api_base:
+            # api_base = _normalize_azure_endpoint(api_base)
+            kwargs["api_base"] = api_base
+        if api_version:
+            kwargs["api_version"] = api_version
+        logger.info(
+            f"Creating LiteLlm for model={model}",
+            extra={
+                "api_base": api_base,
+                "api_version": api_version,
+                "has_api_key": bool(llm_auth),
+            },
         )
+        if kwargs:
+            import litellm
+
+            litellm._turn_on_debug()
+            llm = LiteLlm(model=model, **kwargs)
+            logger.debug(
+                "LiteLlm instance created",
+                extra={
+                    "model": model,
+                    "kwargs": {
+                        k: v if k != "api_key" else "***" for k, v in kwargs.items()
+                    },
+                    "additional_args": getattr(llm, "_additional_args", {}),
+                },
+            )
+            return llm
 
     return llm_cls(model=model)

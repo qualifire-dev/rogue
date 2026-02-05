@@ -64,10 +64,7 @@ func (d LLMConfigDialog) getButtonText() string {
 		return "Use Model"
 	} else if selectedItem.Type == "provider" {
 		if d.Providers[selectedItem.ProviderIdx].Configured {
-			if d.ExpandedProviders[selectedItem.ProviderIdx] {
-				return "Collapse"
-			}
-			return "Expand"
+			return "Reconfigure"
 		}
 		return "Configure"
 	}
@@ -382,6 +379,14 @@ func (d LLMConfigDialog) Update(msg tea.Msg) (LLMConfigDialog, tea.Cmd) {
 			return d.handleEnter()
 
 		case "right":
+			// In provider selection, expand the selected provider
+			if d.CurrentStep == ProviderSelectionStep {
+				selectedItem := d.getSelectedItem()
+				if selectedItem.Type == "provider" && d.Providers[selectedItem.ProviderIdx].Configured {
+					d.ExpandedProviders[selectedItem.ProviderIdx] = true
+				}
+				return d, nil
+			}
 			// Navigate buttons if buttons are focused, otherwise move cursor in input field
 			if d.CurrentStep == APIKeyInputStep && d.ButtonsFocused {
 				if len(d.Buttons) > 1 {
@@ -437,6 +442,14 @@ func (d LLMConfigDialog) Update(msg tea.Msg) (LLMConfigDialog, tea.Cmd) {
 			return d, nil
 
 		case "left":
+			// In provider selection, collapse the selected provider
+			if d.CurrentStep == ProviderSelectionStep {
+				selectedItem := d.getSelectedItem()
+				if selectedItem.Type == "provider" && d.ExpandedProviders[selectedItem.ProviderIdx] {
+					d.ExpandedProviders[selectedItem.ProviderIdx] = false
+				}
+				return d, nil
+			}
 			// Navigate buttons if buttons are focused, otherwise move cursor in input field
 			if d.CurrentStep == APIKeyInputStep && d.ButtonsFocused {
 				if len(d.Buttons) > 1 {
@@ -788,12 +801,7 @@ func (d LLMConfigDialog) handleEnter() (LLMConfigDialog, tea.Cmd) {
 				return msg
 			}
 		} else if selectedItem.Type == "provider" {
-			// If provider is configured, toggle expand/collapse
-			if d.Providers[selectedItem.ProviderIdx].Configured {
-				d.ExpandedProviders[selectedItem.ProviderIdx] = !d.ExpandedProviders[selectedItem.ProviderIdx]
-				return d, nil
-			}
-			// User selected an unconfigured provider - go to API key input
+			// Go to API key input (new config or reconfigure)
 			d.SelectedProvider = selectedItem.ProviderIdx
 			d.CurrentStep = APIKeyInputStep
 			d.Buttons = []DialogButton{
@@ -802,23 +810,52 @@ func (d LLMConfigDialog) handleEnter() (LLMConfigDialog, tea.Cmd) {
 			}
 			d.SelectedBtn = 1
 			d.ButtonsFocused = false // Focus on input field when entering this step
+			d.ActiveInputField = 0   // Start with first field
 
-			// Reset all input fields
-			d.APIKeyInput = ""
-			d.APIKeyCursor = 0
-			d.AWSAccessKeyInput = ""
-			d.AWSAccessKeyCursor = 0
-			d.AWSSecretKeyInput = ""
-			d.AWSSecretKeyCursor = 0
-			d.AWSRegionInput = ""
-			d.AWSRegionCursor = 0
-			d.AzureEndpointInput = ""
-			d.AzureEndpointCursor = 0
-			d.AzureAPIVersionInput = "2025-01-01-preview"
-			d.AzureAPIVersionCursor = len("2025-01-01-preview")
-			d.AzureDeploymentInput = ""
-			d.AzureDeploymentCursor = 0
-			d.ActiveInputField = 0 // Start with first field
+			provider := d.Providers[selectedItem.ProviderIdx]
+			if provider.Configured {
+				// Pre-fill with existing saved values
+				if provider.Name == "azure" {
+					d.APIKeyInput = d.ConfiguredKeys["azure"]
+					d.APIKeyCursor = len(d.APIKeyInput)
+					d.AzureEndpointInput = d.ConfiguredKeys["azure_endpoint"]
+					d.AzureEndpointCursor = len(d.AzureEndpointInput)
+					if v := d.ConfiguredKeys["azure_api_version"]; v != "" {
+						d.AzureAPIVersionInput = v
+					} else {
+						d.AzureAPIVersionInput = "2025-01-01-preview"
+					}
+					d.AzureAPIVersionCursor = len(d.AzureAPIVersionInput)
+					d.AzureDeploymentInput = d.ConfiguredKeys["azure_deployment"]
+					d.AzureDeploymentCursor = len(d.AzureDeploymentInput)
+				} else if provider.Name == "bedrock" {
+					d.AWSAccessKeyInput = d.ConfiguredKeys["bedrock_access_key"]
+					d.AWSAccessKeyCursor = len(d.AWSAccessKeyInput)
+					d.AWSSecretKeyInput = d.ConfiguredKeys["bedrock_secret_key"]
+					d.AWSSecretKeyCursor = len(d.AWSSecretKeyInput)
+					d.AWSRegionInput = d.ConfiguredKeys["bedrock_region"]
+					d.AWSRegionCursor = len(d.AWSRegionInput)
+				} else {
+					d.APIKeyInput = d.ConfiguredKeys[provider.Name]
+					d.APIKeyCursor = len(d.APIKeyInput)
+				}
+			} else {
+				// Reset all input fields for new configuration
+				d.APIKeyInput = ""
+				d.APIKeyCursor = 0
+				d.AWSAccessKeyInput = ""
+				d.AWSAccessKeyCursor = 0
+				d.AWSSecretKeyInput = ""
+				d.AWSSecretKeyCursor = 0
+				d.AWSRegionInput = ""
+				d.AWSRegionCursor = 0
+				d.AzureEndpointInput = ""
+				d.AzureEndpointCursor = 0
+				d.AzureAPIVersionInput = "2025-01-01-preview"
+				d.AzureAPIVersionCursor = len("2025-01-01-preview")
+				d.AzureDeploymentInput = ""
+				d.AzureDeploymentCursor = 0
+			}
 
 		}
 
@@ -1367,7 +1404,7 @@ func (d LLMConfigDialog) renderAPIKeyInput(t theme.Theme) []string {
 
 		// Endpoint URL
 		isActive = d.ActiveInputField == 1
-		label, input = d.renderInputField(t, "Endpoint URL", d.AzureEndpointInput, d.AzureEndpointCursor, isFocused, isActive)
+		label, input = d.renderInputField(t, "Endpoint URL (e.g. https://myresource.openai.azure.com)", d.AzureEndpointInput, d.AzureEndpointCursor, isFocused, isActive)
 		content = append(content, label)
 		content = append(content, input)
 		content = append(content, "")

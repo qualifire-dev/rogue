@@ -150,9 +150,10 @@ func (m Model) handleAutoRefreshMsg(msg AutoRefreshMsg) (Model, tea.Cmd) {
 	if m.currentScreen == EvaluationDetailScreen && m.evalState != nil {
 		if m.evalState.Running {
 			return m, autoRefreshCmd()
-		} else if m.evalState.Completed {
-			// Stop eval spinner when evaluation completes
-			m.evalSpinner.SetActive(false)
+		}
+		// Evaluation stopped — always deactivate the spinner
+		m.evalSpinner.SetActive(false)
+		if m.evalState.Completed {
 			if m.evalState.Summary == "" && !m.evalState.SummaryGenerated && !m.summarySpinner.IsActive() {
 				// Trigger summary generation for completed evaluations (only once and if we don't have one yet)
 				m.evalState.SummaryGenerated = true // Mark as attempted to prevent multiple generations
@@ -184,6 +185,13 @@ func (m Model) handleStartEvaluationMsg(msg StartEvaluationMsg) (Model, tea.Cmd)
 	if m.evalState != nil && !m.evalState.Running {
 		ctx := context.Background()
 		m.startEval(ctx, m.evalState)
+
+		// If startEval failed immediately (status set to "error"), stop spinner and stay on form
+		if m.evalState.Status == "error" {
+			m.evalSpinner.SetActive(false)
+			return m, nil
+		}
+
 		// move to detail screen
 		m.currentScreen = EvaluationDetailScreen
 		// Reset viewport focus to events when entering detail screen

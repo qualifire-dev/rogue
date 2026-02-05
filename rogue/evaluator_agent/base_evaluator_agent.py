@@ -226,6 +226,8 @@ class BaseEvaluatorAgent(ABC):
                 "scenario_count": len(self._scenarios.scenarios),
                 "agent_url": self._evaluated_agent_address,
                 "judge_llm": self._judge_llm,
+                "judge_llm_api_base": self._judge_llm_api_base,
+                "judge_llm_api_version": self._judge_llm_api_version,
                 "instructions_length": len(instructions),
             },
         )
@@ -247,7 +249,12 @@ class BaseEvaluatorAgent(ABC):
         return LlmAgent(
             name="qualifire_agent_evaluator",
             description="An agent that evaluates test scenarios on other agents",
-            model=get_llm_from_model(self._judge_llm, self._judge_llm_auth),
+            model=get_llm_from_model(
+                self._judge_llm,
+                self._judge_llm_auth,
+                api_base=self._judge_llm_api_base,
+                api_version=self._judge_llm_api_version,
+            ),
             instruction=instructions,
             tools=[
                 FunctionTool(func=self._get_conversation_context_id),
