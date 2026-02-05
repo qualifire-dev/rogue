@@ -1,3 +1,4 @@
+import os
 from functools import lru_cache
 from typing import TYPE_CHECKING, Optional
 
@@ -23,7 +24,7 @@ def _normalize_azure_endpoint(api_base: str, model: str) -> str:
 
     deployment_name = model.split("/")[-1]
 
-    return f"{api_base}/openai/deployments/{deployment_name}"
+    return os.path.join(api_base, "openai", "deployments", deployment_name)
 
 
 @lru_cache()
