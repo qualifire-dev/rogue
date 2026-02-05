@@ -7,23 +7,20 @@ if TYPE_CHECKING:
     from google.adk.models import BaseLlm
 
 
-def _normalize_azure_endpoint(api_base: str) -> str:
+def _normalize_azure_endpoint(api_base: str, model: str) -> str:
     """Strip trailing path segments that litellm appends itself.
 
     Users may enter ``https://myresource.openai.azure.com/openai/v1/chat/completions``
     but litellm already appends ``/chat/completions``.  We strip only that
     suffix so the valid ``/openai/v1`` base path is preserved.
     """
-    suffixes = ("/chat/completions", "/completions")
-    normalized = api_base.rstrip("/")
-    for suffix in suffixes:
-        if normalized.endswith(suffix):
-            normalized = normalized[: -len(suffix)]
-            logger.info(
-                f"Normalized Azure endpoint from '{api_base}' to '{normalized}'",
-            )
-            return normalized
-    return api_base
+
+    if not model.startswith("azure/"):
+        return api_base
+
+    deployment_name = model.split("/")[-1]
+
+    return f"{api_base}/openai/deployments/{deployment_name}"
 
 
 @lru_cache()
@@ -51,7 +48,7 @@ def get_llm_from_model(
         if llm_auth:
             kwargs["api_key"] = llm_auth
         if api_base:
-            # api_base = _normalize_azure_endpoint(api_base)
+            api_base = _normalize_azure_endpoint(api_base, model)
             kwargs["api_base"] = api_base
         if api_version:
             kwargs["api_version"] = api_version
