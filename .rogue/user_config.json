@@ -1,13 +1,15 @@
 {
-  "protocol": "mcp",
-  "transport": "streamable_http",
-  "evaluated_agent_url": "http://localhost:10001/",
+  "business_context": "",
+  "deep_test_mode": false,
   "evaluated_agent_auth_type": "no_auth",
   "evaluated_agent_credentials": "",
-  "service_llm": "openai/gpt-4.1",
-  "judge_llm": "openai/gpt-4.1",
+  "evaluated_agent_url": "http://localhost:10001/",
+  "evaluation_mode": "policy",
   "interview_mode": true,
-  "deep_test_mode": false,
+  "judge_llm": "openai/gpt-4.1",
   "parallel_runs": 2,
-  "business_context": ""
+  "protocol": "a2a",
+  "scan_type": "basic",
+  "service_llm": "openai/gpt-4.1",
+  "transport": "http"
 }
