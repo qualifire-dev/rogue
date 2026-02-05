@@ -168,6 +168,8 @@ class BaseEvaluatorAgent(ABC):
         judge_llm_aws_access_key_id: Optional[str] = None,
         judge_llm_aws_secret_access_key: Optional[str] = None,
         judge_llm_aws_region: Optional[str] = None,
+        judge_llm_api_base: Optional[str] = None,
+        judge_llm_api_version: Optional[str] = None,
         debug: bool = False,
         deep_test_mode: bool = False,
         chat_update_callback: Optional[Callable[[dict], None]] = None,
@@ -189,6 +191,8 @@ class BaseEvaluatorAgent(ABC):
         self._judge_llm_aws_access_key_id = judge_llm_aws_access_key_id
         self._judge_llm_aws_secret_access_key = judge_llm_aws_secret_access_key
         self._judge_llm_aws_region = judge_llm_aws_region
+        self._judge_llm_api_base = judge_llm_api_base
+        self._judge_llm_api_version = judge_llm_api_version
         self._scenarios = scenarios
         self._evaluation_results: EvaluationResults = EvaluationResults()
         self._context_id_to_chat_history: dict[str, ChatHistory] = {}
@@ -222,6 +226,8 @@ class BaseEvaluatorAgent(ABC):
                 "scenario_count": len(self._scenarios.scenarios),
                 "agent_url": self._evaluated_agent_address,
                 "judge_llm": self._judge_llm,
+                "judge_llm_api_base": self._judge_llm_api_base,
+                "judge_llm_api_version": self._judge_llm_api_version,
                 "instructions_length": len(instructions),
             },
         )
@@ -243,7 +249,12 @@ class BaseEvaluatorAgent(ABC):
         return LlmAgent(
             name="qualifire_agent_evaluator",
             description="An agent that evaluates test scenarios on other agents",
-            model=get_llm_from_model(self._judge_llm, self._judge_llm_auth),
+            model=get_llm_from_model(
+                self._judge_llm,
+                self._judge_llm_auth,
+                api_base=self._judge_llm_api_base,
+                api_version=self._judge_llm_api_version,
+            ),
             instruction=instructions,
             tools=[
                 FunctionTool(func=self._get_conversation_context_id),
@@ -364,6 +375,8 @@ class BaseEvaluatorAgent(ABC):
                 aws_access_key_id=self._judge_llm_aws_access_key_id,
                 aws_secret_access_key=self._judge_llm_aws_secret_access_key,
                 aws_region=self._judge_llm_aws_region,
+                api_base=self._judge_llm_api_base,
+                api_version=self._judge_llm_api_version,
             )
             return policy_evaluation_result.passed, policy_evaluation_result.reason
         elif scenario.scenario_type == ScenarioType.PROMPT_INJECTION:

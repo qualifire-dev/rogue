@@ -364,10 +364,10 @@ func RenderForm(state *FormState) string {
 			message = state.RedTeamConfigSavedMsg
 		}
 		savedNotification := savedNotificationStyle.Render(message)
-		helpText := helpStyle.Render("t Test Server   ↑/↓ switch fields   ←/→ move cursor/cycle dropdown    Space toggle   Enter activate   Esc Back")
+		helpText := helpStyle.Render("↑/↓ switch fields   ←/→ move cursor/cycle dropdown    Space toggle   Enter activate   Esc Back")
 		helpSection = lipgloss.JoinVertical(lipgloss.Center, savedNotification, helpText)
 	} else {
-		helpSection = helpStyle.Render("t Test Server   ↑/↓ switch fields   ←/→ move cursor/cycle dropdown    Space toggle   Enter activate   Esc Back")
+		helpSection = helpStyle.Render("↑/↓ switch fields   ←/→ move cursor/cycle dropdown    Space toggle   Enter activate   Esc Back")
 	}
 
 	// Calculate content area height (excluding title and help)

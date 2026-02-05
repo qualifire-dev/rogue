@@ -12,11 +12,6 @@ func HandleEvalFormInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 	}
 
 	switch msg.String() {
-	case "t":
-		// Start health check spinner and background health check
-		m.healthSpinner.SetActive(true)
-		return m, tea.Batch(m.healthSpinner.Start(), m.healthCheckCmd())
-
 	case "up":
 		// Clear the red team config saved banner when navigating
 		m.evalState.RedTeamConfigSaved = false

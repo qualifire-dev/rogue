@@ -245,6 +245,8 @@ def _try_fix_with_llm(
     api_key: str | None = None,
     aws_access_key_id: str | None = None,
     aws_secret_access_key: str | None = None,
+    api_base: str | None = None,
+    api_version: str | None = None,
 ) -> PolicyEvaluationResult | None:
     """
     Use an LLM to fix malformed JSON output as a last resort.
@@ -264,6 +266,8 @@ def _try_fix_with_llm(
             api_key=api_key,
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
+            api_base=api_base,
+            api_version=api_version,
             messages=[
                 {
                     "role": "user",
@@ -311,6 +315,8 @@ def _parse_llm_output(
     api_key: str | None = None,
     aws_access_key_id: str | None = None,
     aws_secret_access_key: str | None = None,
+    api_base: str | None = None,
+    api_version: str | None = None,
 ) -> PolicyEvaluationResult:
     """
     Parse LLM output with multiple fallback strategies:
@@ -342,6 +348,8 @@ def _parse_llm_output(
             api_key=api_key,
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
+            api_base=api_base,
+            api_version=api_version,
         )
         if evaluation_result:
             return evaluation_result
@@ -359,6 +367,8 @@ def evaluate_policy(
     aws_access_key_id: str | None = None,
     aws_secret_access_key: str | None = None,
     aws_region: str | None = None,
+    api_base: str | None = None,
+    api_version: str | None = None,
 ) -> PolicyEvaluationResult:
     # litellm import takes a while, importing here to reduce startup time.
     from litellm import completion
@@ -390,12 +400,14 @@ def evaluate_policy(
         EXPECTED_OUTCOME=expected_outcome or "Not provided",
     )
 
-    response = completion(
+    completion_kwargs = dict(
         model=model,
         api_key=api_key,
         aws_access_key_id=aws_access_key_id,
         aws_secret_access_key=aws_secret_access_key,
-        # aws_region=aws_region,
+        aws_region_name=aws_region,
+        api_base=api_base,
+        api_version=api_version,
         messages=[
             {
                 "role": "system",
@@ -408,12 +420,16 @@ def evaluate_policy(
         ],
     )
 
+    response = completion(**completion_kwargs)
+
     result = _parse_llm_output(
         response.choices[0].message.content,
         model=model,
         api_key=api_key,
         aws_access_key_id=aws_access_key_id,
         aws_secret_access_key=aws_secret_access_key,
+        api_base=api_base,
+        api_version=api_version,
     )
 
     logger.info(

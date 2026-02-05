@@ -54,6 +54,7 @@ func (m *Model) summaryGenerationCmd() tea.Cmd {
 		judgeModel := m.evalState.JudgeModel
 		var apiKey string
 		var awsAccessKeyID, awsSecretAccessKey, awsRegion *string
+		var azureEndpoint, azureAPIVersion *string
 
 		// Extract provider from judge model (e.g. "openai/gpt-4" -> "openai" or "bedrock/anthropic.claude-..." -> "bedrock")
 		if parts := strings.Split(judgeModel, "/"); len(parts) >= 2 {
@@ -71,8 +72,19 @@ func (m *Model) summaryGenerationCmd() tea.Cmd {
 					awsRegion = &region
 				}
 				// Don't set apiKey for Bedrock - use AWS credentials only
+			} else if provider == "azure" {
+				// For Azure, extract API key, endpoint and API version
+				if key, ok := m.config.APIKeys["azure"]; ok && key != "" {
+					apiKey = key
+				}
+				if endpoint, ok := m.config.APIKeys["azure_endpoint"]; ok && endpoint != "" {
+					azureEndpoint = &endpoint
+				}
+				if version, ok := m.config.APIKeys["azure_api_version"]; ok && version != "" {
+					azureAPIVersion = &version
+				}
 			} else {
-				// For non-Bedrock providers, extract API key
+				// For other providers, extract API key
 				if key, ok := m.config.APIKeys[provider]; ok {
 					apiKey = key
 				}
@@ -97,6 +109,8 @@ func (m *Model) summaryGenerationCmd() tea.Cmd {
 			awsAccessKeyID,
 			awsSecretAccessKey,
 			awsRegion,
+			azureEndpoint,
+			azureAPIVersion,
 		)
 
 		if err != nil {

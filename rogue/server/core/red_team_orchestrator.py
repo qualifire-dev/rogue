@@ -50,11 +50,15 @@ class RedTeamOrchestrator:
         judge_llm_aws_access_key_id: Optional[str] = None,
         judge_llm_aws_secret_access_key: Optional[str] = None,
         judge_llm_aws_region: Optional[str] = None,
+        judge_llm_api_base: Optional[str] = None,
+        judge_llm_api_version: Optional[str] = None,
         attacker_llm: str = "gpt-4",
         attacker_llm_api_key: Optional[str] = None,
         attacker_llm_aws_access_key_id: Optional[str] = None,
         attacker_llm_aws_secret_access_key: Optional[str] = None,
         attacker_llm_aws_region: Optional[str] = None,
+        attacker_llm_api_base: Optional[str] = None,
+        attacker_llm_api_version: Optional[str] = None,
         business_context: str = "",
         python_entrypoint_file: Optional[str] = None,
     ):
@@ -70,11 +74,15 @@ class RedTeamOrchestrator:
         self.judge_llm_aws_access_key_id = judge_llm_aws_access_key_id
         self.judge_llm_aws_secret_access_key = judge_llm_aws_secret_access_key
         self.judge_llm_aws_region = judge_llm_aws_region
+        self.judge_llm_api_base = judge_llm_api_base
+        self.judge_llm_api_version = judge_llm_api_version
         self.attacker_llm = attacker_llm
         self.attacker_llm_api_key = attacker_llm_api_key
         self.attacker_llm_aws_access_key_id = attacker_llm_aws_access_key_id
         self.attacker_llm_aws_secret_access_key = attacker_llm_aws_secret_access_key
         self.attacker_llm_aws_region = attacker_llm_aws_region
+        self.attacker_llm_api_base = attacker_llm_api_base
+        self.attacker_llm_api_version = attacker_llm_api_version
         self.business_context = business_context
         self.python_entrypoint_file = python_entrypoint_file
         self.logger = get_logger(__name__)
@@ -93,11 +101,15 @@ class RedTeamOrchestrator:
             attacker_llm_aws_access_key_id=attacker_llm_aws_access_key_id,
             attacker_llm_aws_secret_access_key=attacker_llm_aws_secret_access_key,
             attacker_llm_aws_region=attacker_llm_aws_region,
+            attacker_llm_api_base=attacker_llm_api_base,
+            attacker_llm_api_version=attacker_llm_api_version,
             judge_llm=judge_llm,
             judge_llm_auth=judge_llm_api_key,
             judge_llm_aws_access_key_id=judge_llm_aws_access_key_id,
             judge_llm_aws_secret_access_key=judge_llm_aws_secret_access_key,
             judge_llm_aws_region=judge_llm_aws_region,
+            judge_llm_api_base=judge_llm_api_base,
+            judge_llm_api_version=judge_llm_api_version,
             qualifire_api_key=qualifire_api_key,
             python_entrypoint_file=python_entrypoint_file,
         )

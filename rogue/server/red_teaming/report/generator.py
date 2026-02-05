@@ -75,6 +75,8 @@ class ComplianceReportGenerator:
         frameworks: Optional[List[str]] = None,
         judge_llm: Optional[str] = None,
         judge_llm_auth: Optional[str] = None,
+        api_base: Optional[str] = None,
+        api_version: Optional[str] = None,
     ):
         """
         Initialize the report generator.
@@ -85,12 +87,16 @@ class ComplianceReportGenerator:
                        If None, uses frameworks from results.framework_compliance.
             judge_llm: Optional LLM model for generating key finding summaries
             judge_llm_auth: Optional API key for the LLM
+            api_base: Optional API base URL (e.g. for Azure OpenAI)
+            api_version: Optional API version (e.g. for Azure OpenAI)
         """
         self.results = results
         self.frameworks = frameworks or list(results.framework_compliance.keys())
         self._framework_reports: Dict[str, FrameworkReport] = {}
         self.judge_llm = judge_llm
         self.judge_llm_auth = judge_llm_auth
+        self.api_base = api_base
+        self.api_version = api_version
 
     def generate_framework_compliance(
         self,
@@ -582,6 +588,8 @@ class ComplianceReportGenerator:
             judge_llm=self.judge_llm,
             judge_llm_auth=self.judge_llm_auth,
             max_findings=5,
+            api_base=self.api_base,
+            api_version=self.api_version,
         )
 
         # 3. Generate vulnerability table

@@ -141,11 +141,15 @@ class RedTeamService:
                 judge_llm_aws_access_key_id=job.request.judge_llm_aws_access_key_id,
                 judge_llm_aws_secret_access_key=job.request.judge_llm_aws_secret_access_key,  # noqa: E501
                 judge_llm_aws_region=job.request.judge_llm_aws_region,
+                judge_llm_api_base=job.request.judge_llm_api_base,
+                judge_llm_api_version=job.request.judge_llm_api_version,
                 attacker_llm=job.request.attacker_llm,
                 attacker_llm_api_key=job.request.attacker_llm_api_key,
                 attacker_llm_aws_access_key_id=job.request.attacker_llm_aws_access_key_id,  # noqa: E501
                 attacker_llm_aws_secret_access_key=job.request.attacker_llm_aws_secret_access_key,  # noqa: E501
                 attacker_llm_aws_region=job.request.attacker_llm_aws_region,
+                attacker_llm_api_base=job.request.attacker_llm_api_base,
+                attacker_llm_api_version=job.request.attacker_llm_api_version,
                 business_context=job.request.business_context,
                 python_entrypoint_file=job.request.python_entrypoint_file,
             )

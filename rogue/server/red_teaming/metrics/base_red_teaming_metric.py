@@ -42,6 +42,8 @@ class BaseRedTeamingMetric(ABC):
         self.judge_llm = judge_llm
         self.judge_llm_auth = judge_llm_auth
         self.async_mode = async_mode
+        self.api_base = kwargs.get("api_base")
+        self.api_version = kwargs.get("api_version")
         self._llm_instance = None
 
     def _get_llm(self):
@@ -56,6 +58,8 @@ class BaseRedTeamingMetric(ABC):
             self._llm_instance = get_llm_from_model(
                 self.judge_llm,
                 self.judge_llm_auth,
+                api_base=self.api_base,
+                api_version=self.api_version,
             )
             return self._llm_instance
         except Exception as e:
@@ -90,14 +94,18 @@ class BaseRedTeamingMetric(ABC):
                 model = getattr(llm, "model", self.judge_llm)
                 api_key = getattr(llm, "api_key", self.judge_llm_auth)
 
-                response = completion(
+                completion_kwargs = dict(
                     model=model,
                     messages=[
                         {"role": "system", "content": prompt},
                         {"role": "user", "content": "start"},
                     ],
                     api_key=api_key,
+                    api_base=self.api_base,
+                    api_version=self.api_version,
                 )
+
+                response = completion(**completion_kwargs)
                 return response.choices[0].message.content
             # ADK models typically have query() or generate_content()
             # Adapting to common interfaces
@@ -110,14 +118,25 @@ class BaseRedTeamingMetric(ABC):
                 # Fallback: try to use litellm.completion() directly
                 from litellm import completion
 
-                response = completion(
+                completion_kwargs = dict(
                     model=self.judge_llm,
                     messages=[
                         {"role": "system", "content": prompt},
                         {"role": "user", "content": "start"},
                     ],
                     api_key=self.judge_llm_auth,
+                    api_base=self.api_base,
+                    api_version=self.api_version,
                 )
+                logger.debug(
+                    "litellm.completion() call (fallback path)",
+                    extra={
+                        k: v
+                        for k, v in completion_kwargs.items()
+                        if k not in ("api_key", "messages")
+                    },
+                )
+                response = completion(**completion_kwargs)
                 return response.choices[0].message.content
         except Exception as e:
             logger.error(f"Error calling judge LLM: {e}")

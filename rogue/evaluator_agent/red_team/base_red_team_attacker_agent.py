@@ -56,6 +56,10 @@ class BaseRedTeamAttackerAgent(ABC):
         judge_llm_aws_secret_access_key: Optional[str],
         judge_llm_aws_region: Optional[str],
         qualifire_api_key: Optional[str],
+        judge_llm_api_base: Optional[str] = None,
+        judge_llm_api_version: Optional[str] = None,
+        attacker_llm_api_base: Optional[str] = None,
+        attacker_llm_api_version: Optional[str] = None,
     ):
         self._evaluated_agent_address = evaluated_agent_address
         self._protocol = protocol
@@ -69,11 +73,15 @@ class BaseRedTeamAttackerAgent(ABC):
         self._attacker_llm_aws_access_key_id = attacker_llm_aws_access_key_id
         self._attacker_llm_aws_secret_access_key = attacker_llm_aws_secret_access_key
         self._attacker_llm_aws_region = attacker_llm_aws_region
+        self._attacker_llm_api_base = attacker_llm_api_base
+        self._attacker_llm_api_version = attacker_llm_api_version
         self._judge_llm = judge_llm
         self._judge_llm_auth = judge_llm_auth
         self._judge_llm_aws_access_key_id = judge_llm_aws_access_key_id
         self._judge_llm_aws_secret_access_key = judge_llm_aws_secret_access_key
         self._judge_llm_aws_region = judge_llm_aws_region
+        self._judge_llm_api_base = judge_llm_api_base
+        self._judge_llm_api_version = judge_llm_api_version
         self._qualifire_api_key = qualifire_api_key
 
         # Create the underlying orchestrator
@@ -297,6 +305,8 @@ class BaseRedTeamAttackerAgent(ABC):
                     aws_access_key_id=self._judge_llm_aws_access_key_id,
                     aws_secret_access_key=self._judge_llm_aws_secret_access_key,
                     aws_region=self._judge_llm_aws_region,
+                    api_base=self._judge_llm_api_base,
+                    api_version=self._judge_llm_api_version,
                 )
 
                 # Invert the passed/failed logic - if policy evaluation passed,

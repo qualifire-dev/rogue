@@ -43,6 +43,8 @@ type AgentConfig struct {
 	JudgeLLMAWSAccessKeyID     string                 `json:"judge_llm_aws_access_key_id,omitempty"`
 	JudgeLLMAWSSecretAccessKey string                 `json:"judge_llm_aws_secret_access_key,omitempty"`
 	JudgeLLMAWSRegion          string                 `json:"judge_llm_aws_region,omitempty"`
+	JudgeLLMAzureEndpoint      string                 `json:"judge_llm_api_base,omitempty"`
+	JudgeLLMAzureAPIVersion    string                 `json:"judge_llm_api_version,omitempty"`
 	InterviewMode              bool                   `json:"interview_mode"`
 	DeepTestMode               bool                   `json:"deep_test_mode"`
 	ParallelRuns               int                    `json:"parallel_runs"`
@@ -154,6 +156,10 @@ func (sdk *RogueSDK) CreateEvaluation(ctx context.Context, request EvaluationReq
 			"attacker_llm_aws_access_key_id":     request.AgentConfig.JudgeLLMAWSAccessKeyID,
 			"attacker_llm_aws_secret_access_key": request.AgentConfig.JudgeLLMAWSSecretAccessKey,
 			"attacker_llm_aws_region":            request.AgentConfig.JudgeLLMAWSRegion,
+			"judge_llm_api_base":                 request.AgentConfig.JudgeLLMAzureEndpoint,
+			"judge_llm_api_version":              request.AgentConfig.JudgeLLMAzureAPIVersion,
+			"attacker_llm_api_base":              request.AgentConfig.JudgeLLMAzureEndpoint,
+			"attacker_llm_api_version":           request.AgentConfig.JudgeLLMAzureAPIVersion,
 			"business_context":                   request.AgentConfig.BusinessContext,
 			"qualifire_api_key":                  request.AgentConfig.QualifireAPIKey,
 			"max_retries":                        request.MaxRetries,
@@ -607,9 +613,10 @@ func (m *Model) StartEvaluation(
 		}
 	}
 
-	// Extract API key and AWS credentials from config based on judge model provider
+	// Extract API key and AWS/Azure credentials from config based on judge model provider
 	var apiKey string
 	var awsAccessKeyID, awsSecretAccessKey, awsRegion string
+	var azureEndpoint, azureAPIVersion string
 
 	// Extract provider from judge model (e.g. "openai/gpt-4" -> "openai" or "bedrock/anthropic.claude-..." -> "bedrock")
 	if parts := strings.Split(judgeModel, "/"); len(parts) >= 2 {
@@ -627,8 +634,19 @@ func (m *Model) StartEvaluation(
 				awsRegion = region
 			}
 			// Don't set apiKey for Bedrock - use AWS credentials only
+		} else if provider == "azure" {
+			// For Azure, extract API key, endpoint and API version
+			if key, ok := m.config.APIKeys["azure"]; ok {
+				apiKey = key
+			}
+			if endpoint, ok := m.config.APIKeys["azure_endpoint"]; ok {
+				azureEndpoint = endpoint
+			}
+			if version, ok := m.config.APIKeys["azure_api_version"]; ok {
+				azureAPIVersion = version
+			}
 		} else {
-			// For non-Bedrock providers, extract API key
+			// For other providers, extract API key
 			if key, ok := m.config.APIKeys[provider]; ok {
 				apiKey = key
 			}
@@ -650,6 +668,8 @@ func (m *Model) StartEvaluation(
 		JudgeLLMAWSAccessKeyID:     awsAccessKeyID,
 		JudgeLLMAWSSecretAccessKey: awsSecretAccessKey,
 		JudgeLLMAWSRegion:          awsRegion,
+		JudgeLLMAzureEndpoint:      azureEndpoint,
+		JudgeLLMAzureAPIVersion:    azureAPIVersion,
 		InterviewMode:              true,
 		DeepTestMode:               deepTest,
 		ParallelRuns:               parallelRuns,
@@ -699,6 +719,8 @@ func (sdk *RogueSDK) GenerateSummary(
 	awsAccessKeyID *string,
 	awsSecretAccessKey *string,
 	awsRegion *string,
+	azureEndpoint *string,
+	azureAPIVersion *string,
 ) (*SummaryResp, error) {
 	// First get the evaluation job to extract results
 	job, err := sdk.GetEvaluation(ctx, jobID)
@@ -767,6 +789,12 @@ func (sdk *RogueSDK) GenerateSummary(
 		}
 		if awsRegion != nil && *awsRegion != "" {
 			summaryReq["aws_region"] = *awsRegion
+		}
+		if azureEndpoint != nil && *azureEndpoint != "" {
+			summaryReq["api_base"] = *azureEndpoint
+		}
+		if azureAPIVersion != nil && *azureAPIVersion != "" {
+			summaryReq["api_version"] = *azureAPIVersion
 		}
 
 		body, err := json.Marshal(summaryReq)
