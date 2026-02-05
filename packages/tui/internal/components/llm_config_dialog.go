@@ -14,29 +14,91 @@ import (
 func (d LLMConfigDialog) buildSelectableItems() []SelectableItem {
 	var items []SelectableItem
 
-	for i, provider := range d.Providers {
-		// Add provider item
-		items = append(items, SelectableItem{
-			Type:         "provider",
-			ProviderIdx:  i,
-			ModelIdx:     -1,
-			DisplayText:  provider.DisplayName,
-			IsConfigured: provider.Configured,
-			IsSelectable: true, // Only unconfigured providers are selectable for setup
-		})
+	query := strings.ToLower(strings.TrimSpace(d.SearchQuery))
 
-		// Add model items if provider is configured and expanded
-		if provider.Configured && d.ExpandedProviders[i] {
-			for j, model := range provider.Models {
+	for i, provider := range d.Providers {
+		if query == "" {
+			// No search: current behavior
+			items = append(items, SelectableItem{
+				Type:         "provider",
+				ProviderIdx:  i,
+				ModelIdx:     -1,
+				DisplayText:  provider.DisplayName,
+				IsConfigured: provider.Configured,
+				IsSelectable: true,
+			})
+
+			if provider.Configured && d.ExpandedProviders[i] {
+				for j, model := range provider.Models {
+					items = append(items, SelectableItem{
+						Type:         "model",
+						ProviderIdx:  i,
+						ModelIdx:     j,
+						DisplayText:  model,
+						IsConfigured: true,
+						IsSelectable: true,
+					})
+				}
+			}
+		} else {
+			// Search active: filter by query
+			providerNameMatch := strings.Contains(strings.ToLower(provider.DisplayName), query) ||
+				strings.Contains(strings.ToLower(provider.Name), query)
+
+			// Collect matching models
+			var matchingModels []int
+			if provider.Configured {
+				for j, model := range provider.Models {
+					if strings.Contains(strings.ToLower(model), query) {
+						matchingModels = append(matchingModels, j)
+					}
+				}
+			}
+
+			if providerNameMatch {
+				// Provider name matches: show provider + all models (auto-expanded)
 				items = append(items, SelectableItem{
-					Type:         "model",
+					Type:         "provider",
 					ProviderIdx:  i,
-					ModelIdx:     j,
-					DisplayText:  model,
-					IsConfigured: true,
+					ModelIdx:     -1,
+					DisplayText:  provider.DisplayName,
+					IsConfigured: provider.Configured,
 					IsSelectable: true,
 				})
+				if provider.Configured {
+					for j, model := range provider.Models {
+						items = append(items, SelectableItem{
+							Type:         "model",
+							ProviderIdx:  i,
+							ModelIdx:     j,
+							DisplayText:  model,
+							IsConfigured: true,
+							IsSelectable: true,
+						})
+					}
+				}
+			} else if len(matchingModels) > 0 {
+				// Only some models match: show provider header + matching models
+				items = append(items, SelectableItem{
+					Type:         "provider",
+					ProviderIdx:  i,
+					ModelIdx:     -1,
+					DisplayText:  provider.DisplayName,
+					IsConfigured: provider.Configured,
+					IsSelectable: true,
+				})
+				for _, j := range matchingModels {
+					items = append(items, SelectableItem{
+						Type:         "model",
+						ProviderIdx:  i,
+						ModelIdx:     j,
+						DisplayText:  provider.Models[j],
+						IsConfigured: true,
+						IsSelectable: true,
+					})
+				}
 			}
+			// No match: provider is hidden entirely
 		}
 	}
 
@@ -154,7 +216,13 @@ type LLMConfigDialog struct {
 	AzureAPIVersionCursor int
 	AzureDeploymentInput  string
 	AzureDeploymentCursor int
-	ActiveInputField      int // 0=APIKey/AWSAccessKey, 1=AWSSecretKey/AzureEndpoint, 2=AWSRegion/AzureAPIVersion, 3=AzureDeploymentName (for Bedrock/Azure)
+	// Base URL fields (for openai, anthropic, openrouter)
+	BaseURLInput  string
+	BaseURLCursor int
+	// OpenRouter model name field (free text for custom model)
+	OpenRouterModelInput  string
+	OpenRouterModelCursor int
+	ActiveInputField      int // 0=APIKey/AWSAccessKey, 1=AWSSecretKey/AzureEndpoint/BaseURL, 2=AWSRegion/AzureAPIVersion, 3=AzureDeploymentName (for Bedrock/Azure)
 	AvailableModels       []string
 	SelectedModel         int
 	ConfiguredKeys        map[string]string
@@ -163,6 +231,7 @@ type LLMConfigDialog struct {
 	Loading               bool
 	ErrorMessage          string
 	ExpandedProviders     map[int]bool // Track which providers are expanded
+	SearchQuery           string       // Free text search filter for provider selection
 	loadingSpinner        Spinner      // Spinner for loading states
 	ButtonsFocused        bool         // Track whether focus is on buttons (vs input field)
 }
@@ -176,14 +245,23 @@ type LLMConfigResultMsg struct {
 	AWSRegion          string
 	AzureEndpoint      string
 	AzureAPIVersion    string
+	BaseURL            string
 	Model              string
 	Action             string
+}
+
+// providerHasBaseURL returns true for providers that support an optional Base URL field
+func providerHasBaseURL(name string) bool {
+	return name == "openai" || name == "anthropic" || name == "openrouter"
 }
 
 // LLMDialogClosedMsg is sent when LLM dialog is closed
 type LLMDialogClosedMsg struct {
 	Action string
 }
+
+// LLMRefreshModelsMsg is sent when the user presses Ctrl+R in the dialog to refresh models
+type LLMRefreshModelsMsg struct{}
 
 // APIValidationCompleteMsg is sent when API validation is complete
 type APIValidationCompleteMsg struct {
@@ -202,28 +280,55 @@ type SelectableItem struct {
 	IsSelectable bool
 }
 
+
+// modelsForProvider returns dynamic models for a provider if available, otherwise the fallback list.
+func modelsForProvider(provider string, dynamic map[string][]string, fallback []string) []string {
+	if dynamic != nil {
+		if models, ok := dynamic[provider]; ok && len(models) > 0 {
+			return models
+		}
+	}
+	return fallback
+}
+
+// modelsForOpenRouter returns dynamic openrouter models with "openrouter/" prefix, or the fallback list.
+func modelsForOpenRouter(dynamic map[string][]string, fallback []string) []string {
+	if dynamic == nil {
+		return fallback
+	}
+	models, ok := dynamic["openrouter"]
+	if !ok || len(models) == 0 {
+		return fallback
+	}
+	prefixed := make([]string, len(models))
+	for i, m := range models {
+		prefixed[i] = "openrouter/" + m
+	}
+	return prefixed
+}
+
 // NewLLMConfigDialog creates a new LLM configuration dialog
-func NewLLMConfigDialog(configuredKeys map[string]string, selectedProvider, selectedModel string) LLMConfigDialog {
+func NewLLMConfigDialog(configuredKeys map[string]string, selectedProvider, selectedModel string, dynamicModels map[string][]string) LLMConfigDialog {
 	providers := []LLMProvider{
 		{
 			Name:        "openai",
 			DisplayName: "OpenAI",
 			APIKeyName:  "OPENAI_API_KEY",
-			Models:      []string{"gpt-5.1", "gpt-5", "gpt-5-mini", "gpt-5-nano", "gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini"},
+			Models:      modelsForProvider("openai", dynamicModels, []string{"gpt-5.1", "gpt-5", "gpt-5-mini", "gpt-5-nano", "gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini"}),
 			Configured:  configuredKeys["openai"] != "",
 		},
 		{
 			Name:        "anthropic",
 			DisplayName: "Anthropic",
 			APIKeyName:  "ANTHROPIC_API_KEY",
-			Models:      []string{"claude-4-5-sonnet", "claude-4-5-opus", "claude-4-1-opus", "claude-4-sonnet", "claude-4-opus"},
+			Models:      modelsForProvider("anthropic", dynamicModels, []string{"claude-4-5-sonnet", "claude-4-5-opus", "claude-4-1-opus", "claude-4-sonnet", "claude-4-opus"}),
 			Configured:  configuredKeys["anthropic"] != "",
 		},
 		{
 			Name:        "google",
 			DisplayName: "Google AI",
 			APIKeyName:  "GOOGLE_API_KEY",
-			Models:      []string{"gemini-2.5-pro", "gemini-2.5-flash"},
+			Models:      modelsForProvider("google", dynamicModels, []string{"gemini-2.5-pro", "gemini-2.5-flash"}),
 			Configured:  configuredKeys["google"] != "",
 		},
 		{
@@ -265,6 +370,18 @@ func NewLLMConfigDialog(configuredKeys map[string]string, selectedProvider, sele
 			APIKeyName:  "LM_STUDIO_API_KEY",
 			Models:      []string{"lm_studio/DavidAU/OpenAi-GPT-oss-20b-abliterated-uncensored-NEO-Imatrix-gguf", "lm_studio/openai/gpt-oss-20b"},
 			Configured:  configuredKeys["lm_studio"] != "",
+		},
+		{
+			Name:        "openrouter",
+			DisplayName: "OpenRouter",
+			APIKeyName:  "OPENROUTER_API_KEY",
+			Models: modelsForOpenRouter(dynamicModels, []string{
+				"openrouter/openai/gpt-4o",
+				"openrouter/anthropic/claude-sonnet-4",
+				"openrouter/google/gemini-2.5-pro",
+				"openrouter/meta-llama/llama-4-maverick",
+			}),
+			Configured: configuredKeys["openrouter"] != "",
 		},
 	}
 
@@ -364,13 +481,36 @@ func (d LLMConfigDialog) Update(msg tea.Msg) (LLMConfigDialog, tea.Cmd) {
 		}
 		return d, nil
 	case tea.PasteMsg:
+		if d.CurrentStep == ProviderSelectionStep {
+			cleanText := strings.TrimSpace(strings.ReplaceAll(string(msg), "\n", ""))
+			if cleanText != "" {
+				d.SearchQuery += cleanText
+				d.resetSearchSelection()
+			}
+			return d, nil
+		}
 		if d.CurrentStep == APIKeyInputStep {
 			return d.handlePaste(string(msg))
 		}
 		return d, nil
 	case tea.KeyMsg:
 		switch msg.String() {
+		case "ctrl+r":
+			if d.CurrentStep == ProviderSelectionStep {
+				d.Loading = true
+				d.loadingSpinner.SetActive(true)
+				return d, func() tea.Msg {
+					return LLMRefreshModelsMsg{}
+				}
+			}
+			return d, nil
+
 		case "esc":
+			if d.CurrentStep == ProviderSelectionStep && d.SearchQuery != "" {
+				d.SearchQuery = ""
+				d.resetSearchSelection()
+				return d, nil
+			}
 			return d, func() tea.Msg {
 				return LLMDialogClosedMsg{Action: "cancel"}
 			}
@@ -428,6 +568,22 @@ func (d LLMConfigDialog) Update(msg tea.Msg) (LLMConfigDialog, tea.Cmd) {
 					case 3: // Deployment Name
 						if d.AzureDeploymentCursor < len(d.AzureDeploymentInput) {
 							d.AzureDeploymentCursor++
+						}
+					}
+				} else if providerHasBaseURL(provider.Name) {
+					// Handle cursor movement for providers with base URL
+					switch d.ActiveInputField {
+					case 0: // API Key
+						if d.APIKeyCursor < len(d.APIKeyInput) {
+							d.APIKeyCursor++
+						}
+					case 1: // Base URL
+						if d.BaseURLCursor < len(d.BaseURLInput) {
+							d.BaseURLCursor++
+						}
+					case 2: // OpenRouter Model Name
+						if d.OpenRouterModelCursor < len(d.OpenRouterModelInput) {
+							d.OpenRouterModelCursor++
 						}
 					}
 				} else {
@@ -493,6 +649,22 @@ func (d LLMConfigDialog) Update(msg tea.Msg) (LLMConfigDialog, tea.Cmd) {
 							d.AzureDeploymentCursor--
 						}
 					}
+				} else if providerHasBaseURL(provider.Name) {
+					// Handle cursor movement for providers with base URL
+					switch d.ActiveInputField {
+					case 0: // API Key
+						if d.APIKeyCursor > 0 {
+							d.APIKeyCursor--
+						}
+					case 1: // Base URL
+						if d.BaseURLCursor > 0 {
+							d.BaseURLCursor--
+						}
+					case 2: // OpenRouter Model Name
+						if d.OpenRouterModelCursor > 0 {
+							d.OpenRouterModelCursor--
+						}
+					}
 				} else {
 					// Handle cursor movement for regular API key
 					if d.APIKeyCursor > 0 {
@@ -521,9 +693,9 @@ func (d LLMConfigDialog) Update(msg tea.Msg) (LLMConfigDialog, tea.Cmd) {
 					// Move focus from buttons back to input fields
 					d.ButtonsFocused = false
 				} else {
-					// Navigate to previous input field (for Bedrock/Azure)
+					// Navigate to previous input field (for multi-field providers)
 					provider := d.Providers[d.SelectedProvider]
-					if provider.Name == "bedrock" || provider.Name == "azure" {
+					if provider.Name == "bedrock" || provider.Name == "azure" || providerHasBaseURL(provider.Name) {
 						if d.ActiveInputField > 0 {
 							d.ActiveInputField--
 						}
@@ -568,6 +740,17 @@ func (d LLMConfigDialog) Update(msg tea.Msg) (LLMConfigDialog, tea.Cmd) {
 							// Move to buttons if on last field
 							d.ButtonsFocused = true
 						}
+					} else if providerHasBaseURL(provider.Name) {
+						maxField := 1
+						if provider.Name == "openrouter" {
+							maxField = 2 // 3 fields: API Key, Base URL, Model Name
+						}
+						if d.ActiveInputField < maxField {
+							d.ActiveInputField++
+						} else {
+							// Move to buttons if on last field
+							d.ButtonsFocused = true
+						}
 					} else {
 						// Move focus from input field to buttons for other providers
 						d.ButtonsFocused = true
@@ -580,6 +763,13 @@ func (d LLMConfigDialog) Update(msg tea.Msg) (LLMConfigDialog, tea.Cmd) {
 			}
 			return d, nil
 		case "backspace":
+			if d.CurrentStep == ProviderSelectionStep {
+				if len(d.SearchQuery) > 0 {
+					d.SearchQuery = d.SearchQuery[:len(d.SearchQuery)-1]
+					d.resetSearchSelection()
+				}
+				return d, nil
+			}
 			if d.CurrentStep == APIKeyInputStep && !d.ButtonsFocused {
 				provider := d.Providers[d.SelectedProvider]
 				if provider.Name == "bedrock" {
@@ -623,6 +813,25 @@ func (d LLMConfigDialog) Update(msg tea.Msg) (LLMConfigDialog, tea.Cmd) {
 						if d.AzureDeploymentCursor > 0 && len(d.AzureDeploymentInput) > 0 {
 							d.AzureDeploymentInput = d.AzureDeploymentInput[:d.AzureDeploymentCursor-1] + d.AzureDeploymentInput[d.AzureDeploymentCursor:]
 							d.AzureDeploymentCursor--
+						}
+					}
+				} else if providerHasBaseURL(provider.Name) {
+					// Handle backspace for providers with base URL
+					switch d.ActiveInputField {
+					case 0: // API Key
+						if d.APIKeyCursor > 0 && len(d.APIKeyInput) > 0 {
+							d.APIKeyInput = d.APIKeyInput[:d.APIKeyCursor-1] + d.APIKeyInput[d.APIKeyCursor:]
+							d.APIKeyCursor--
+						}
+					case 1: // Base URL
+						if d.BaseURLCursor > 0 && len(d.BaseURLInput) > 0 {
+							d.BaseURLInput = d.BaseURLInput[:d.BaseURLCursor-1] + d.BaseURLInput[d.BaseURLCursor:]
+							d.BaseURLCursor--
+						}
+					case 2: // OpenRouter Model Name
+						if d.OpenRouterModelCursor > 0 && len(d.OpenRouterModelInput) > 0 {
+							d.OpenRouterModelInput = d.OpenRouterModelInput[:d.OpenRouterModelCursor-1] + d.OpenRouterModelInput[d.OpenRouterModelCursor:]
+							d.OpenRouterModelCursor--
 						}
 					}
 				} else {
@@ -674,6 +883,22 @@ func (d LLMConfigDialog) Update(msg tea.Msg) (LLMConfigDialog, tea.Cmd) {
 							d.AzureDeploymentInput = d.AzureDeploymentInput[:d.AzureDeploymentCursor] + d.AzureDeploymentInput[d.AzureDeploymentCursor+1:]
 						}
 					}
+				} else if providerHasBaseURL(provider.Name) {
+					// Handle delete for providers with base URL
+					switch d.ActiveInputField {
+					case 0: // API Key
+						if d.APIKeyCursor < len(d.APIKeyInput) {
+							d.APIKeyInput = d.APIKeyInput[:d.APIKeyCursor] + d.APIKeyInput[d.APIKeyCursor+1:]
+						}
+					case 1: // Base URL
+						if d.BaseURLCursor < len(d.BaseURLInput) {
+							d.BaseURLInput = d.BaseURLInput[:d.BaseURLCursor] + d.BaseURLInput[d.BaseURLCursor+1:]
+						}
+					case 2: // OpenRouter Model Name
+						if d.OpenRouterModelCursor < len(d.OpenRouterModelInput) {
+							d.OpenRouterModelInput = d.OpenRouterModelInput[:d.OpenRouterModelCursor] + d.OpenRouterModelInput[d.OpenRouterModelCursor+1:]
+						}
+					}
 				} else {
 					// Handle delete for regular API key
 					if d.APIKeyCursor < len(d.APIKeyInput) {
@@ -684,6 +909,18 @@ func (d LLMConfigDialog) Update(msg tea.Msg) (LLMConfigDialog, tea.Cmd) {
 			return d, nil
 
 		default:
+			// Handle search input in provider selection step
+			if d.CurrentStep == ProviderSelectionStep {
+				keyStr := msg.String()
+				if keyStr == " " || keyStr == "space" {
+					d.SearchQuery += " "
+					d.resetSearchSelection()
+				} else if len(keyStr) == 1 {
+					d.SearchQuery += keyStr
+					d.resetSearchSelection()
+				}
+				return d, nil
+			}
 			// Handle regular character input (only when input field is focused)
 			if d.CurrentStep == APIKeyInputStep && !d.ButtonsFocused {
 				keyStr := msg.String()
@@ -744,6 +981,32 @@ func (d LLMConfigDialog) Update(msg tea.Msg) (LLMConfigDialog, tea.Cmd) {
 							*cursor++
 						}
 					}
+				} else if providerHasBaseURL(provider.Name) {
+					// Handle input for providers with base URL
+					var input *string
+					var cursor *int
+					switch d.ActiveInputField {
+					case 0: // API Key
+						input = &d.APIKeyInput
+						cursor = &d.APIKeyCursor
+					case 1: // Base URL
+						input = &d.BaseURLInput
+						cursor = &d.BaseURLCursor
+					case 2: // OpenRouter Model Name
+						input = &d.OpenRouterModelInput
+						cursor = &d.OpenRouterModelCursor
+					}
+
+					if input != nil && cursor != nil {
+						if keyStr == " " || keyStr == "space" {
+							*input = (*input)[:*cursor] + " " + (*input)[*cursor:]
+							*cursor++
+						} else if len(keyStr) == 1 {
+							char := keyStr
+							*input = (*input)[:*cursor] + char + (*input)[*cursor:]
+							*cursor++
+						}
+					}
 				} else {
 					// Handle input for regular API key
 					if keyStr == " " || keyStr == "space" {
@@ -763,6 +1026,30 @@ func (d LLMConfigDialog) Update(msg tea.Msg) (LLMConfigDialog, tea.Cmd) {
 	return d, nil
 }
 
+// UpdateProviders replaces the provider list and resets selection state.
+// Used when models are refreshed via Ctrl+R.
+func (d *LLMConfigDialog) UpdateProviders(providers []LLMProvider) {
+	d.Providers = providers
+	d.Loading = false
+	d.loadingSpinner.SetActive(false)
+	d.ExpandedProviders = make(map[int]bool)
+	d.resetSearchSelection()
+}
+
+// resetSearchSelection resets the selection to the first selectable item after a search change
+func (d *LLMConfigDialog) resetSearchSelection() {
+	items := d.buildSelectableItems()
+	d.SelectedModelIdx = 0
+	d.ScrollOffset = 0
+	for i, item := range items {
+		if item.IsSelectable {
+			d.SelectedModelIdx = i
+			break
+		}
+	}
+	d.updateScroll()
+}
+
 // handleEnter processes the enter key based on current step
 func (d LLMConfigDialog) handleEnter() (LLMConfigDialog, tea.Cmd) {
 	switch d.CurrentStep {
@@ -777,6 +1064,7 @@ func (d LLMConfigDialog) handleEnter() (LLMConfigDialog, tea.Cmd) {
 
 		if selectedItem.Type == "model" {
 			// User selected a model directly - configure it
+			d.SearchQuery = ""
 			provider := d.Providers[selectedItem.ProviderIdx]
 			selectedModel := provider.Models[selectedItem.ModelIdx]
 
@@ -798,10 +1086,15 @@ func (d LLMConfigDialog) handleEnter() (LLMConfigDialog, tea.Cmd) {
 					msg.AzureEndpoint = d.ConfiguredKeys["azure_endpoint"]
 					msg.AzureAPIVersion = d.ConfiguredKeys["azure_api_version"]
 				}
+				// For providers with base URL, pass it from config
+				if providerHasBaseURL(provider.Name) {
+					msg.BaseURL = d.ConfiguredKeys[provider.Name+"_api_base"]
+				}
 				return msg
 			}
 		} else if selectedItem.Type == "provider" {
 			// Go to API key input (new config or reconfigure)
+			d.SearchQuery = ""
 			d.SelectedProvider = selectedItem.ProviderIdx
 			d.CurrentStep = APIKeyInputStep
 			d.Buttons = []DialogButton{
@@ -838,6 +1131,21 @@ func (d LLMConfigDialog) handleEnter() (LLMConfigDialog, tea.Cmd) {
 				} else {
 					d.APIKeyInput = d.ConfiguredKeys[provider.Name]
 					d.APIKeyCursor = len(d.APIKeyInput)
+					// Pre-fill base URL for providers that support it
+					if providerHasBaseURL(provider.Name) {
+						d.BaseURLInput = d.ConfiguredKeys[provider.Name+"_api_base"]
+						d.BaseURLCursor = len(d.BaseURLInput)
+					}
+					// Pre-fill OpenRouter model name from configured model
+					if provider.Name == "openrouter" && d.ConfiguredProvider == "openrouter" && d.ConfiguredModel != "" {
+						// Strip "openrouter/" prefix for display
+						model := d.ConfiguredModel
+						if strings.HasPrefix(model, "openrouter/") {
+							model = strings.TrimPrefix(model, "openrouter/")
+						}
+						d.OpenRouterModelInput = model
+						d.OpenRouterModelCursor = len(d.OpenRouterModelInput)
+					}
 				}
 			} else {
 				// Reset all input fields for new configuration
@@ -855,6 +1163,10 @@ func (d LLMConfigDialog) handleEnter() (LLMConfigDialog, tea.Cmd) {
 				d.AzureAPIVersionCursor = len("2025-01-01-preview")
 				d.AzureDeploymentInput = ""
 				d.AzureDeploymentCursor = 0
+				d.BaseURLInput = ""
+				d.BaseURLCursor = 0
+				d.OpenRouterModelInput = ""
+				d.OpenRouterModelCursor = 0
 			}
 
 		}
@@ -906,6 +1218,11 @@ func (d LLMConfigDialog) handleEnter() (LLMConfigDialog, tea.Cmd) {
 				d.ErrorMessage = "API key cannot be empty"
 				return d, nil
 			}
+			// Validate model name for OpenRouter
+			if provider.Name == "openrouter" && d.OpenRouterModelInput == "" {
+				d.ErrorMessage = "Model name is required (e.g. openai/gpt-4o)"
+				return d, nil
+			}
 		}
 
 		d.Loading = true
@@ -936,6 +1253,18 @@ func (d LLMConfigDialog) handleEnter() (LLMConfigDialog, tea.Cmd) {
 				msg.AzureEndpoint = d.AzureEndpointInput
 				msg.AzureAPIVersion = d.AzureAPIVersionInput
 				msg.Model = "azure/" + d.AzureDeploymentInput
+			}
+			// For providers with base URL, include it
+			if providerHasBaseURL(provider.Name) {
+				msg.BaseURL = d.BaseURLInput
+			}
+			// For OpenRouter, use the custom model name from free text input
+			if provider.Name == "openrouter" && d.OpenRouterModelInput != "" {
+				model := d.OpenRouterModelInput
+				if !strings.HasPrefix(model, "openrouter/") {
+					model = "openrouter/" + model
+				}
+				msg.Model = model
 			}
 			return msg
 		}
@@ -977,6 +1306,10 @@ func (d LLMConfigDialog) handleEnter() (LLMConfigDialog, tea.Cmd) {
 			if provider.Name == "azure" {
 				msg.AzureEndpoint = d.AzureEndpointInput
 				msg.AzureAPIVersion = d.AzureAPIVersionInput
+			}
+			// For providers with base URL, include it
+			if providerHasBaseURL(provider.Name) {
+				msg.BaseURL = d.BaseURLInput
 			}
 			return msg
 		}
@@ -1028,6 +1361,19 @@ func (d LLMConfigDialog) handlePaste(clipboardText string) (LLMConfigDialog, tea
 		case 3: // Deployment Name
 			d.AzureDeploymentInput = d.AzureDeploymentInput[:d.AzureDeploymentCursor] + cleanText + d.AzureDeploymentInput[d.AzureDeploymentCursor:]
 			d.AzureDeploymentCursor += len(cleanText)
+		}
+	} else if providerHasBaseURL(provider.Name) {
+		// Handle paste for providers with base URL
+		switch d.ActiveInputField {
+		case 0: // API Key
+			d.APIKeyInput = d.APIKeyInput[:d.APIKeyCursor] + cleanText + d.APIKeyInput[d.APIKeyCursor:]
+			d.APIKeyCursor += len(cleanText)
+		case 1: // Base URL
+			d.BaseURLInput = d.BaseURLInput[:d.BaseURLCursor] + cleanText + d.BaseURLInput[d.BaseURLCursor:]
+			d.BaseURLCursor += len(cleanText)
+		case 2: // OpenRouter Model Name
+			d.OpenRouterModelInput = d.OpenRouterModelInput[:d.OpenRouterModelCursor] + cleanText + d.OpenRouterModelInput[d.OpenRouterModelCursor:]
+			d.OpenRouterModelCursor += len(cleanText)
 		}
 	} else {
 		// Handle paste for regular API key
@@ -1139,7 +1485,32 @@ func (d LLMConfigDialog) renderProviderSelection(t theme.Theme) []string {
 		Align(lipgloss.Left)
 
 	content = append(content, instructionStyle.Render("Select a provider to configure or choose a model from configured providers:"))
-	content = append(content, instructionStyle.Render("✓ = configured provider, ● = currently selected model"))
+	content = append(content, instructionStyle.Render("✓ = configured provider, ● = currently selected model, Ctrl+R = refresh models"))
+
+	// Show search bar
+	searchBoxStyle := lipgloss.NewStyle().
+		Width(d.Width - 6).
+		Border(lipgloss.RoundedBorder()).
+		Background(t.BackgroundPanel()).
+		Padding(0, 1)
+	if d.SearchQuery != "" {
+		searchBoxStyle = searchBoxStyle.BorderForeground(t.Primary())
+		textStyle := lipgloss.NewStyle().
+			Foreground(t.Primary()).
+			Background(t.BackgroundPanel()).
+			Bold(true)
+		cursorStyle := lipgloss.NewStyle().
+			Background(t.Primary()).
+			Foreground(t.BackgroundPanel())
+		content = append(content, searchBoxStyle.Render(textStyle.Render("🔍 "+d.SearchQuery)+cursorStyle.Render(" ")))
+	} else {
+		searchBoxStyle = searchBoxStyle.BorderForeground(t.TextMuted())
+		hintStyle := lipgloss.NewStyle().
+			Foreground(t.TextMuted()).
+			Background(t.BackgroundPanel()).
+			Italic(true)
+		content = append(content, searchBoxStyle.Render(hintStyle.Render("🔍 Type to search models...")))
+	}
 
 	// Show scroll indicators if needed
 	allItems := d.buildSelectableItems()
@@ -1243,6 +1614,17 @@ func (d LLMConfigDialog) renderProviderSelection(t theme.Theme) []string {
 			line = modelLine
 		}
 		content = append(content, line)
+	}
+
+	// Show empty results message when search yields nothing
+	if d.SearchQuery != "" && len(allItems) == 0 {
+		emptyStyle := lipgloss.NewStyle().
+			Foreground(t.TextMuted()).
+			Italic(true).
+			Width(d.Width - 4).
+			Align(lipgloss.Center)
+		content = append(content, "")
+		content = append(content, emptyStyle.Render("No matching models"))
 	}
 
 	// Add scroll indicators at the bottom
@@ -1354,6 +1736,8 @@ func (d LLMConfigDialog) renderAPIKeyInput(t theme.Theme) []string {
 
 	if provider.Name == "bedrock" || provider.Name == "azure" {
 		content = append(content, instructionStyle.Render(fmt.Sprintf("Enter your %s credentials:", provider.DisplayName)))
+	} else if providerHasBaseURL(provider.Name) {
+		content = append(content, instructionStyle.Render(fmt.Sprintf("Enter your %s API key and optional base URL:", provider.DisplayName)))
 	} else {
 		content = append(content, instructionStyle.Render(fmt.Sprintf("Enter your %s API key:", provider.DisplayName)))
 	}
@@ -1431,6 +1815,48 @@ func (d LLMConfigDialog) renderAPIKeyInput(t theme.Theme) []string {
 			Italic(true)
 
 		content = append(content, helpStyle.Render("Environment variables: AZURE_API_KEY, AZURE_API_BASE, AZURE_API_VERSION"))
+	} else if providerHasBaseURL(provider.Name) {
+		// Render API key + base URL fields for providers that support it
+		isFocused := !d.ButtonsFocused
+
+		// API Key
+		isActive := d.ActiveInputField == 0
+		label, input := d.renderInputField(t, "API Key", d.APIKeyInput, d.APIKeyCursor, isFocused, isActive)
+		content = append(content, label)
+		content = append(content, input)
+		content = append(content, "")
+
+		// Base URL (optional)
+		isActive = d.ActiveInputField == 1
+		label, input = d.renderInputField(t, "Base URL (optional)", d.BaseURLInput, d.BaseURLCursor, isFocused, isActive)
+		content = append(content, label)
+		content = append(content, input)
+		content = append(content, "")
+
+		// Model Name field for OpenRouter (free text for any model from openrouter.ai)
+		if provider.Name == "openrouter" {
+			isActive = d.ActiveInputField == 2
+			label, input = d.renderInputField(t, "Model Name (paste from openrouter.ai, e.g. openai/gpt-4o)", d.OpenRouterModelInput, d.OpenRouterModelCursor, isFocused, isActive)
+			content = append(content, label)
+			content = append(content, input)
+			content = append(content, "")
+		}
+
+		// Add help text
+		helpStyle := lipgloss.NewStyle().
+			Foreground(t.TextMuted()).
+			Width(d.Width - 4).
+			Align(lipgloss.Left).
+			Italic(true)
+
+		switch provider.Name {
+		case "openai":
+			content = append(content, helpStyle.Render("Environment variables: OPENAI_API_KEY, OPENAI_API_BASE"))
+		case "anthropic":
+			content = append(content, helpStyle.Render("Environment variables: ANTHROPIC_API_KEY"))
+		case "openrouter":
+			content = append(content, helpStyle.Render("Browse models at openrouter.ai/models \u2022 Env: OPENROUTER_API_KEY"))
+		}
 	} else {
 		// Render regular API key field
 		isFocused := !d.ButtonsFocused
@@ -1459,7 +1885,7 @@ func (d LLMConfigDialog) renderAPIKeyInput(t theme.Theme) []string {
 		Align(lipgloss.Center).
 		Italic(true)
 
-	if provider.Name == "bedrock" || provider.Name == "azure" {
+	if provider.Name == "bedrock" || provider.Name == "azure" || providerHasBaseURL(provider.Name) {
 		if d.ButtonsFocused {
 			content = append(content, navHintStyle.Render("↑ Input fields • ←→ Navigate buttons • Enter: Execute"))
 		} else {

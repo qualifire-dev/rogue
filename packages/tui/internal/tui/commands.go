@@ -10,6 +10,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/rogue/tui/internal/modelcache"
 	"github.com/rogue/tui/internal/screens/redteam_report"
 )
 
@@ -87,6 +88,10 @@ func (m *Model) summaryGenerationCmd() tea.Cmd {
 				// For other providers, extract API key
 				if key, ok := m.config.APIKeys[provider]; ok {
 					apiKey = key
+				}
+				// Check for custom base URL (openai, anthropic, openrouter, etc.)
+				if base, ok := m.config.APIKeys[provider+"_api_base"]; ok && base != "" {
+					azureEndpoint = &base
 				}
 			}
 		}
@@ -250,5 +255,21 @@ func (m *Model) fetchRedTeamReport(jobID string) tea.Cmd {
 			ReportData: &reportData,
 			Err:        nil,
 		}
+	})
+}
+
+// refreshModelCacheCmd fetches models from the API in the background.
+func (m *Model) refreshModelCacheCmd() tea.Cmd {
+	return tea.Cmd(func() tea.Msg {
+		err := m.modelCache.Refresh()
+		return modelcache.ModelCacheRefreshedMsg{Err: err}
+	})
+}
+
+// forceRefreshModelCacheCmd fetches models from the API with user-visible feedback.
+func (m *Model) forceRefreshModelCacheCmd() tea.Cmd {
+	return tea.Cmd(func() tea.Msg {
+		err := m.modelCache.Refresh()
+		return modelcache.ModelCacheRefreshedMsg{Err: err, Manual: true}
 	})
 }

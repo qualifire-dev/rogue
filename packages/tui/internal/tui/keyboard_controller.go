@@ -54,6 +54,9 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (Model, tea.Cmd) {
 	case "ctrl+g":
 		return m.handleGlobalCtrlG()
 
+	case "ctrl+r":
+		return m.handleGlobalCtrlR()
+
 	case "ctrl+h", "?":
 		m.currentScreen = HelpScreen
 		// Initialize help viewport content if not already set
@@ -114,7 +117,7 @@ func (m Model) handleGlobalCtrlN() (Model, tea.Cmd) {
 
 // handleGlobalCtrlL handles Ctrl+L (LLM config) shortcut
 func (m Model) handleGlobalCtrlL() (Model, tea.Cmd) {
-	llmDialog := components.NewLLMConfigDialog(m.config.APIKeys, m.config.SelectedProvider, m.config.SelectedModel)
+	llmDialog := components.NewLLMConfigDialog(m.config.APIKeys, m.config.SelectedProvider, m.config.SelectedModel, m.getDynamicModels())
 	m.llmDialog = &llmDialog
 	return m, nil
 }
@@ -144,6 +147,16 @@ func (m Model) handleGlobalCtrlG() (Model, tea.Cmd) {
 		QualifireEnabled: m.config.QualifireAPIKey != "" && m.config.QualifireEnabled, // Set based on API key and enabled flag
 	}
 	return m, nil
+}
+
+// handleGlobalCtrlR handles Ctrl+R (force refresh model list) shortcut
+func (m Model) handleGlobalCtrlR() (Model, tea.Cmd) {
+	if m.modelCache == nil {
+		return m, nil
+	}
+	d := components.NewInfoDialog("Model List", "Refreshing models from models.dev...")
+	m.dialog = &d
+	return m, m.forceRefreshModelCacheCmd()
 }
 
 // handleGlobalSlash handles "/" key for command input
@@ -365,7 +378,7 @@ func (m Model) handleGlobalEnter(msg tea.KeyMsg) (Model, tea.Cmd) {
 			return m, tea.Batch(m.evalSpinner.Start(), startEvaluationCmd())
 		} else if m.evalState.currentField == EvalFieldJudgeModel {
 			// Open LLM config dialog when Enter is pressed on Judge LLM field
-			llmDialog := components.NewLLMConfigDialog(m.config.APIKeys, m.config.SelectedProvider, m.config.SelectedModel)
+			llmDialog := components.NewLLMConfigDialog(m.config.APIKeys, m.config.SelectedProvider, m.config.SelectedModel, m.getDynamicModels())
 			m.llmDialog = &llmDialog
 			return m, nil
 		} else if m.evalState.currentField == EvalFieldConfigureButton && m.evalState.EvaluationMode == EvaluationModeRedTeam {

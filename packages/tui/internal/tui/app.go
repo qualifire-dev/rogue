@@ -6,6 +6,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea/v2"
 
 	"github.com/rogue/tui/internal/components"
+	"github.com/rogue/tui/internal/modelcache"
 	"github.com/rogue/tui/internal/screens/config"
 	"github.com/rogue/tui/internal/screens/dashboard"
 	"github.com/rogue/tui/internal/screens/help"
@@ -33,6 +34,12 @@ func NewApp() *App {
 
 // Run starts the TUI application
 func (a *App) Run() error {
+	// Initialize model cache
+	mc := modelcache.New()
+	if err := mc.LoadFromDisk(); err != nil {
+		fmt.Printf("Warning: Failed to load model cache: %v\n", err)
+	}
+
 	model := Model{
 		currentScreen: DashboardScreen,
 		evaluations:   []Evaluation{},
@@ -58,6 +65,7 @@ func (a *App) Run() error {
 		helpViewport:          components.NewViewport(4, 80, 20),
 		redTeamReportViewport: components.NewViewport(5, 80, 20),
 		focusedViewport:       0, // Start with events viewport focused
+		modelCache:            mc,
 	}
 
 	// Load existing configuration
@@ -80,12 +88,18 @@ func (a *App) Run() error {
 
 // Init initializes the model
 func (m Model) Init() tea.Cmd {
-	// Start all spinners (they'll only animate when active)
-	return tea.Batch(
+	cmds := []tea.Cmd{
 		m.healthSpinner.Start(),
 		m.summarySpinner.Start(),
 		m.evalSpinner.Start(),
-	)
+	}
+
+	// Refresh model cache in background if stale
+	if m.modelCache != nil && m.modelCache.IsStale() {
+		cmds = append(cmds, m.refreshModelCacheCmd())
+	}
+
+	return tea.Batch(cmds...)
 }
 
 // Update handles messages and updates the model
@@ -121,6 +135,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case components.DialogOpenMsg:
 		return m.handleDialogOpenMsg(msg)
 
+	case components.LLMRefreshModelsMsg:
+		if m.modelCache != nil {
+			return m, m.forceRefreshModelCacheCmd()
+		}
+		return m, nil
+
 	case components.LLMConfigResultMsg:
 		return m.handleLLMConfigResultMsg(msg)
 
@@ -153,6 +173,30 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case redteam.OpenAPIKeyDialogMsg:
 		return m.handleOpenAPIKeyDialogMsg(msg)
+
+	case modelcache.ModelCacheRefreshedMsg:
+		if m.llmDialog != nil {
+			// Refresh was triggered from the LLM dialog — rebuild providers with fresh data
+			if msg.Err != nil {
+				m.llmDialog.Loading = false
+				m.llmDialog.ErrorMessage = fmt.Sprintf("Failed to refresh: %v", msg.Err)
+			} else {
+				freshDialog := components.NewLLMConfigDialog(m.config.APIKeys, m.config.SelectedProvider, m.config.SelectedModel, m.getDynamicModels())
+				m.llmDialog.UpdateProviders(freshDialog.Providers)
+				m.llmDialog.ErrorMessage = ""
+			}
+			return m, nil
+		}
+		if msg.Manual {
+			if msg.Err != nil {
+				d := components.ShowErrorDialog("Model List", fmt.Sprintf("Failed to refresh models: %v", msg.Err))
+				m.dialog = &d
+			} else {
+				d := components.NewInfoDialog("Model List", "Model list refreshed successfully.")
+				m.dialog = &d
+			}
+		}
+		return m, nil
 
 	case tea.KeyMsg:
 		return m.handleKeyMsg(msg)

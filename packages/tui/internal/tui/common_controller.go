@@ -273,7 +273,7 @@ func (m Model) handleCommandSelectedMsg(msg components.CommandSelectedMsg) (Mode
 		m.evalState, m.redTeamConfigState = LoadEvaluationStateFromConfig(&m.config)
 	case "configure_models":
 		// Open LLM configuration dialog
-		llmDialog := components.NewLLMConfigDialog(m.config.APIKeys, m.config.SelectedProvider, m.config.SelectedModel)
+		llmDialog := components.NewLLMConfigDialog(m.config.APIKeys, m.config.SelectedProvider, m.config.SelectedModel, m.getDynamicModels())
 		m.llmDialog = &llmDialog
 		return m, nil
 	case "open_editor":
@@ -356,6 +356,11 @@ func (m Model) handleLLMConfigResultMsg(msg components.LLMConfigResultMsg) (Mode
 				if strings.HasPrefix(msg.Model, "azure/") {
 					m.config.APIKeys["azure_deployment"] = strings.TrimPrefix(msg.Model, "azure/")
 				}
+			}
+
+			// For providers with custom base URL, save it
+			if msg.BaseURL != "" {
+				m.config.APIKeys[msg.Provider+"_api_base"] = msg.BaseURL
 			}
 
 			// If we're on the evaluation screen, update the judge model

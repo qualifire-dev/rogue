@@ -5,6 +5,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/glamour"
 	"github.com/rogue/tui/internal/components"
+	"github.com/rogue/tui/internal/modelcache"
 	"github.com/rogue/tui/internal/screens/config"
 	"github.com/rogue/tui/internal/screens/redteam"
 	"github.com/rogue/tui/internal/screens/redteam_report"
@@ -109,6 +110,9 @@ type Model struct {
 	// Red Team Report state
 	redTeamReportData *redteam_report.ReportData
 	redTeamScanID     string // Qualifire scan ID after successful report
+
+	// Model cache for dynamic model lists
+	modelCache *modelcache.Cache
 }
 
 // Evaluation represents an evaluation

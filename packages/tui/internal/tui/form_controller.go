@@ -202,7 +202,7 @@ func HandleEvalFormInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 	case "tab":
 		// Open LLM config dialog when on Judge Model field
 		if m.evalState.currentField == EvalFieldJudgeModel {
-			llmDialog := components.NewLLMConfigDialog(m.config.APIKeys, m.config.SelectedProvider, m.config.SelectedModel)
+			llmDialog := components.NewLLMConfigDialog(m.config.APIKeys, m.config.SelectedProvider, m.config.SelectedModel, m.getDynamicModels())
 			m.llmDialog = &llmDialog
 			return m, nil
 		}

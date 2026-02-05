@@ -104,3 +104,11 @@ func renderMarkdownSummary(t theme.Theme, summary string) string {
 
 	return strings.Join(styledLines, "\n")
 }
+
+// getDynamicModels returns cached dynamic models, or nil if unavailable.
+func (m Model) getDynamicModels() map[string][]string {
+	if m.modelCache == nil {
+		return nil
+	}
+	return m.modelCache.GetAllProviderModels()
+}

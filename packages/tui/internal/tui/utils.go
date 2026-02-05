@@ -43,8 +43,8 @@ type AgentConfig struct {
 	JudgeLLMAWSAccessKeyID     string                 `json:"judge_llm_aws_access_key_id,omitempty"`
 	JudgeLLMAWSSecretAccessKey string                 `json:"judge_llm_aws_secret_access_key,omitempty"`
 	JudgeLLMAWSRegion          string                 `json:"judge_llm_aws_region,omitempty"`
-	JudgeLLMAzureEndpoint      string                 `json:"judge_llm_api_base,omitempty"`
-	JudgeLLMAzureAPIVersion    string                 `json:"judge_llm_api_version,omitempty"`
+	JudgeLLMAPIBase      string                 `json:"judge_llm_api_base,omitempty"`
+	JudgeLLMAPIVersion    string                 `json:"judge_llm_api_version,omitempty"`
 	InterviewMode              bool                   `json:"interview_mode"`
 	DeepTestMode               bool                   `json:"deep_test_mode"`
 	ParallelRuns               int                    `json:"parallel_runs"`
@@ -156,10 +156,10 @@ func (sdk *RogueSDK) CreateEvaluation(ctx context.Context, request EvaluationReq
 			"attacker_llm_aws_access_key_id":     request.AgentConfig.JudgeLLMAWSAccessKeyID,
 			"attacker_llm_aws_secret_access_key": request.AgentConfig.JudgeLLMAWSSecretAccessKey,
 			"attacker_llm_aws_region":            request.AgentConfig.JudgeLLMAWSRegion,
-			"judge_llm_api_base":                 request.AgentConfig.JudgeLLMAzureEndpoint,
-			"judge_llm_api_version":              request.AgentConfig.JudgeLLMAzureAPIVersion,
-			"attacker_llm_api_base":              request.AgentConfig.JudgeLLMAzureEndpoint,
-			"attacker_llm_api_version":           request.AgentConfig.JudgeLLMAzureAPIVersion,
+			"judge_llm_api_base":                 request.AgentConfig.JudgeLLMAPIBase,
+			"judge_llm_api_version":              request.AgentConfig.JudgeLLMAPIVersion,
+			"attacker_llm_api_base":              request.AgentConfig.JudgeLLMAPIBase,
+			"attacker_llm_api_version":           request.AgentConfig.JudgeLLMAPIVersion,
 			"business_context":                   request.AgentConfig.BusinessContext,
 			"qualifire_api_key":                  request.AgentConfig.QualifireAPIKey,
 			"max_retries":                        request.MaxRetries,
@@ -616,7 +616,7 @@ func (m *Model) StartEvaluation(
 	// Extract API key and AWS/Azure credentials from config based on judge model provider
 	var apiKey string
 	var awsAccessKeyID, awsSecretAccessKey, awsRegion string
-	var azureEndpoint, azureAPIVersion string
+	var apiBase, apiVersion string
 
 	// Extract provider from judge model (e.g. "openai/gpt-4" -> "openai" or "bedrock/anthropic.claude-..." -> "bedrock")
 	if parts := strings.Split(judgeModel, "/"); len(parts) >= 2 {
@@ -640,15 +640,19 @@ func (m *Model) StartEvaluation(
 				apiKey = key
 			}
 			if endpoint, ok := m.config.APIKeys["azure_endpoint"]; ok {
-				azureEndpoint = endpoint
+				apiBase = endpoint
 			}
 			if version, ok := m.config.APIKeys["azure_api_version"]; ok {
-				azureAPIVersion = version
+				apiVersion = version
 			}
 		} else {
 			// For other providers, extract API key
 			if key, ok := m.config.APIKeys[provider]; ok {
 				apiKey = key
+			}
+			// Check for custom base URL (openai, anthropic, openrouter, etc.)
+			if base, ok := m.config.APIKeys[provider+"_api_base"]; ok {
+				apiBase = base
 			}
 		}
 	}
@@ -668,8 +672,8 @@ func (m *Model) StartEvaluation(
 		JudgeLLMAWSAccessKeyID:     awsAccessKeyID,
 		JudgeLLMAWSSecretAccessKey: awsSecretAccessKey,
 		JudgeLLMAWSRegion:          awsRegion,
-		JudgeLLMAzureEndpoint:      azureEndpoint,
-		JudgeLLMAzureAPIVersion:    azureAPIVersion,
+		JudgeLLMAPIBase:            apiBase,
+		JudgeLLMAPIVersion:         apiVersion,
 		InterviewMode:              true,
 		DeepTestMode:               deepTest,
 		ParallelRuns:               parallelRuns,
