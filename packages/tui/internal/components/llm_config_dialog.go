@@ -153,21 +153,21 @@ type LLMConfigDialog struct {
 	// Azure-specific fields
 	AzureEndpointInput    string
 	AzureEndpointCursor   int
-	AzureAPIVersionInput    string
-	AzureAPIVersionCursor   int
-	AzureDeploymentInput    string
-	AzureDeploymentCursor   int
-	ActiveInputField        int // 0=APIKey/AWSAccessKey, 1=AWSSecretKey/AzureEndpoint, 2=AWSRegion/AzureAPIVersion, 3=AzureDeploymentName (for Bedrock/Azure)
-	AvailableModels    []string
-	SelectedModel      int
-	ConfiguredKeys     map[string]string
-	ConfiguredProvider string // Currently configured provider
-	ConfiguredModel    string // Currently configured model
-	Loading            bool
-	ErrorMessage       string
-	ExpandedProviders  map[int]bool // Track which providers are expanded
-	loadingSpinner     Spinner      // Spinner for loading states
-	ButtonsFocused     bool         // Track whether focus is on buttons (vs input field)
+	AzureAPIVersionInput  string
+	AzureAPIVersionCursor int
+	AzureDeploymentInput  string
+	AzureDeploymentCursor int
+	ActiveInputField      int // 0=APIKey/AWSAccessKey, 1=AWSSecretKey/AzureEndpoint, 2=AWSRegion/AzureAPIVersion, 3=AzureDeploymentName (for Bedrock/Azure)
+	AvailableModels       []string
+	SelectedModel         int
+	ConfiguredKeys        map[string]string
+	ConfiguredProvider    string // Currently configured provider
+	ConfiguredModel       string // Currently configured model
+	Loading               bool
+	ErrorMessage          string
+	ExpandedProviders     map[int]bool // Track which providers are expanded
+	loadingSpinner        Spinner      // Spinner for loading states
+	ButtonsFocused        bool         // Track whether focus is on buttons (vs input field)
 }
 
 // LLMConfigResultMsg is sent when LLM configuration is complete
