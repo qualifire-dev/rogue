@@ -90,8 +90,9 @@ type RogueSDK struct {
 }
 
 type SummaryResp struct {
-	Summary StructuredSummary `json:"summary"`
-	Message string            `json:"message"`
+	Summary   StructuredSummary `json:"summary"`
+	Message   string            `json:"message"`
+	ReportURL string            `json:"report_url,omitempty"`
 }
 
 // NewRogueSDK creates a new SDK instance
@@ -873,6 +874,55 @@ func (sdk *RogueSDK) ReportSummary(
 	}
 
 	return nil
+}
+
+// ReportRedTeamScan reports a red team scan to Qualifire
+func (sdk *RogueSDK) ReportRedTeamScan(
+	ctx context.Context,
+	jobID string,
+	qualifireAPIKey string,
+) (scanID string, reportID string, err error) {
+	reqBody := map[string]interface{}{
+		"qualifire_api_key": qualifireAPIKey,
+	}
+
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		return "", "", err
+	}
+
+	endpoint := fmt.Sprintf("/api/v1/red-team/%s/report-to-qualifire", url.PathEscape(jobID))
+	req, err := http.NewRequestWithContext(ctx, "POST", sdk.baseURL+endpoint, bytes.NewReader(body))
+	if err != nil {
+		return "", "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	longTimeoutClient := &http.Client{
+		Timeout: 5 * time.Minute,
+	}
+
+	resp, err := longTimeoutClient.Do(req)
+	if err != nil {
+		return "", "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		return "", "", fmt.Errorf("report red team scan failed: %d %s", resp.StatusCode, string(respBody))
+	}
+
+	var result struct {
+		Success  bool   `json:"success"`
+		ScanID   string `json:"scan_id"`
+		ReportID string `json:"report_id"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", "", err
+	}
+
+	return result.ScanID, result.ReportID, nil
 }
 
 // CheckServerHealth calls GET /health and returns the status string

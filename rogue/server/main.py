@@ -13,6 +13,7 @@ Environment Variables:
 """
 
 import os
+import socket
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -89,6 +90,18 @@ def start_server(
             "health_check_url": f"http://{host}:{port}/api/v1/health",
         },
     )
+
+    # Check if port is already in use before starting
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        result = sock.connect_ex((host, port))
+        if result == 0:
+            logger.error(
+                f"Port {port} is already in use. "
+                f"Please stop the other process or use a different port "
+                f"(set PORT environment variable).",
+                extra={"component": "server_main", "host": host, "port": port},
+            )
+            sys.exit(1)
 
     app = create_app()
 

@@ -171,8 +171,9 @@ func (m *Model) summaryGenerationCmd() tea.Cmd {
 		}
 
 		return SummaryGeneratedMsg{
-			Summary: summary,
-			Err:     err,
+			Summary:   summary,
+			Err:       err,
+			ReportURL: structuredSummary.ReportURL,
 		}
 	})
 }
