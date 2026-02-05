@@ -25,8 +25,8 @@ func (d LLMConfigDialog) buildSelectableItems() []SelectableItem {
 			IsSelectable: true, // Only unconfigured providers are selectable for setup
 		})
 
-		// Add model items if provider is configured
-		if provider.Configured {
+		// Add model items if provider is configured and expanded
+		if provider.Configured && d.ExpandedProviders[i] {
 			for j, model := range provider.Models {
 				items = append(items, SelectableItem{
 					Type:         "model",
@@ -63,6 +63,12 @@ func (d LLMConfigDialog) getButtonText() string {
 	if selectedItem.Type == "model" {
 		return "Use Model"
 	} else if selectedItem.Type == "provider" {
+		if d.Providers[selectedItem.ProviderIdx].Configured {
+			if d.ExpandedProviders[selectedItem.ProviderIdx] {
+				return "Collapse"
+			}
+			return "Expand"
+		}
 		return "Configure"
 	}
 	return "Select"
@@ -144,7 +150,14 @@ type LLMConfigDialog struct {
 	AWSSecretKeyCursor int
 	AWSRegionInput     string
 	AWSRegionCursor    int
-	ActiveInputField   int // 0=APIKey, 1=AWSAccessKey, 2=AWSSecretKey, 3=AWSRegion (for Bedrock)
+	// Azure-specific fields
+	AzureEndpointInput    string
+	AzureEndpointCursor   int
+	AzureAPIVersionInput    string
+	AzureAPIVersionCursor   int
+	AzureDeploymentInput    string
+	AzureDeploymentCursor   int
+	ActiveInputField        int // 0=APIKey/AWSAccessKey, 1=AWSSecretKey/AzureEndpoint, 2=AWSRegion/AzureAPIVersion, 3=AzureDeploymentName (for Bedrock/Azure)
 	AvailableModels    []string
 	SelectedModel      int
 	ConfiguredKeys     map[string]string
@@ -164,6 +177,8 @@ type LLMConfigResultMsg struct {
 	AWSAccessKeyID     string
 	AWSSecretAccessKey string
 	AWSRegion          string
+	AzureEndpoint      string
+	AzureAPIVersion    string
 	Model              string
 	Action             string
 }
@@ -234,6 +249,18 @@ func NewLLMConfigDialog(configuredKeys map[string]string, selectedProvider, sele
 				"bedrock/us.anthropic.claude-haiku-4-5-20251001-v1:0",
 			},
 			Configured: configuredKeys["bedrock"] != "",
+		},
+		{
+			Name:        "azure",
+			DisplayName: "Azure OpenAI",
+			APIKeyName:  "AZURE_API_KEY",
+			Models: func() []string {
+				if deployment := configuredKeys["azure_deployment"]; deployment != "" {
+					return []string{"azure/" + deployment}
+				}
+				return []string{}
+			}(),
+			Configured: configuredKeys["azure"] != "",
 		},
 		{
 			Name:        "lm_studio",
@@ -378,6 +405,26 @@ func (d LLMConfigDialog) Update(msg tea.Msg) (LLMConfigDialog, tea.Cmd) {
 							d.AWSRegionCursor++
 						}
 					}
+				} else if provider.Name == "azure" {
+					// Handle cursor movement for Azure fields
+					switch d.ActiveInputField {
+					case 0: // API Key
+						if d.APIKeyCursor < len(d.APIKeyInput) {
+							d.APIKeyCursor++
+						}
+					case 1: // Endpoint
+						if d.AzureEndpointCursor < len(d.AzureEndpointInput) {
+							d.AzureEndpointCursor++
+						}
+					case 2: // API Version
+						if d.AzureAPIVersionCursor < len(d.AzureAPIVersionInput) {
+							d.AzureAPIVersionCursor++
+						}
+					case 3: // Deployment Name
+						if d.AzureDeploymentCursor < len(d.AzureDeploymentInput) {
+							d.AzureDeploymentCursor++
+						}
+					}
 				} else {
 					// Handle cursor movement for regular API key
 					if d.APIKeyCursor < len(d.APIKeyInput) {
@@ -413,6 +460,26 @@ func (d LLMConfigDialog) Update(msg tea.Msg) (LLMConfigDialog, tea.Cmd) {
 							d.AWSRegionCursor--
 						}
 					}
+				} else if provider.Name == "azure" {
+					// Handle cursor movement for Azure fields
+					switch d.ActiveInputField {
+					case 0: // API Key
+						if d.APIKeyCursor > 0 {
+							d.APIKeyCursor--
+						}
+					case 1: // Endpoint
+						if d.AzureEndpointCursor > 0 {
+							d.AzureEndpointCursor--
+						}
+					case 2: // API Version
+						if d.AzureAPIVersionCursor > 0 {
+							d.AzureAPIVersionCursor--
+						}
+					case 3: // Deployment Name
+						if d.AzureDeploymentCursor > 0 {
+							d.AzureDeploymentCursor--
+						}
+					}
 				} else {
 					// Handle cursor movement for regular API key
 					if d.APIKeyCursor > 0 {
@@ -441,9 +508,9 @@ func (d LLMConfigDialog) Update(msg tea.Msg) (LLMConfigDialog, tea.Cmd) {
 					// Move focus from buttons back to input fields
 					d.ButtonsFocused = false
 				} else {
-					// Navigate to previous input field (for Bedrock)
+					// Navigate to previous input field (for Bedrock/Azure)
 					provider := d.Providers[d.SelectedProvider]
-					if provider.Name == "bedrock" {
+					if provider.Name == "bedrock" || provider.Name == "azure" {
 						if d.ActiveInputField > 0 {
 							d.ActiveInputField--
 						}
@@ -470,18 +537,26 @@ func (d LLMConfigDialog) Update(msg tea.Msg) (LLMConfigDialog, tea.Cmd) {
 				}
 			case APIKeyInputStep:
 				if !d.ButtonsFocused {
-					// Navigate to next input field (for Bedrock) or move to buttons
+					// Navigate to next input field (for Bedrock/Azure) or move to buttons
 					provider := d.Providers[d.SelectedProvider]
-					if provider.Name == "bedrock" {
-						if d.ActiveInputField < 2 {
-							// Move to next field if not on last field
+					if provider.Name == "azure" {
+						if d.ActiveInputField < 3 {
+							// Move to next field if not on last field (4 fields: 0-3)
 							d.ActiveInputField++
 						} else {
-							// Move to buttons if on last field (AWS Region)
+							// Move to buttons if on last field
+							d.ButtonsFocused = true
+						}
+					} else if provider.Name == "bedrock" {
+						if d.ActiveInputField < 2 {
+							// Move to next field if not on last field (3 fields: 0-2)
+							d.ActiveInputField++
+						} else {
+							// Move to buttons if on last field
 							d.ButtonsFocused = true
 						}
 					} else {
-						// Move focus from input field to buttons for non-Bedrock
+						// Move focus from input field to buttons for other providers
 						d.ButtonsFocused = true
 					}
 				}
@@ -513,6 +588,30 @@ func (d LLMConfigDialog) Update(msg tea.Msg) (LLMConfigDialog, tea.Cmd) {
 							d.AWSRegionCursor--
 						}
 					}
+				} else if provider.Name == "azure" {
+					// Handle backspace for Azure fields
+					switch d.ActiveInputField {
+					case 0: // API Key
+						if d.APIKeyCursor > 0 && len(d.APIKeyInput) > 0 {
+							d.APIKeyInput = d.APIKeyInput[:d.APIKeyCursor-1] + d.APIKeyInput[d.APIKeyCursor:]
+							d.APIKeyCursor--
+						}
+					case 1: // Endpoint
+						if d.AzureEndpointCursor > 0 && len(d.AzureEndpointInput) > 0 {
+							d.AzureEndpointInput = d.AzureEndpointInput[:d.AzureEndpointCursor-1] + d.AzureEndpointInput[d.AzureEndpointCursor:]
+							d.AzureEndpointCursor--
+						}
+					case 2: // API Version
+						if d.AzureAPIVersionCursor > 0 && len(d.AzureAPIVersionInput) > 0 {
+							d.AzureAPIVersionInput = d.AzureAPIVersionInput[:d.AzureAPIVersionCursor-1] + d.AzureAPIVersionInput[d.AzureAPIVersionCursor:]
+							d.AzureAPIVersionCursor--
+						}
+					case 3: // Deployment Name
+						if d.AzureDeploymentCursor > 0 && len(d.AzureDeploymentInput) > 0 {
+							d.AzureDeploymentInput = d.AzureDeploymentInput[:d.AzureDeploymentCursor-1] + d.AzureDeploymentInput[d.AzureDeploymentCursor:]
+							d.AzureDeploymentCursor--
+						}
+					}
 				} else {
 					// Handle backspace for regular API key
 					if d.APIKeyCursor > 0 && len(d.APIKeyInput) > 0 {
@@ -540,6 +639,26 @@ func (d LLMConfigDialog) Update(msg tea.Msg) (LLMConfigDialog, tea.Cmd) {
 					case 2: // AWS Region
 						if d.AWSRegionCursor < len(d.AWSRegionInput) {
 							d.AWSRegionInput = d.AWSRegionInput[:d.AWSRegionCursor] + d.AWSRegionInput[d.AWSRegionCursor+1:]
+						}
+					}
+				} else if provider.Name == "azure" {
+					// Handle delete for Azure fields
+					switch d.ActiveInputField {
+					case 0: // API Key
+						if d.APIKeyCursor < len(d.APIKeyInput) {
+							d.APIKeyInput = d.APIKeyInput[:d.APIKeyCursor] + d.APIKeyInput[d.APIKeyCursor+1:]
+						}
+					case 1: // Endpoint
+						if d.AzureEndpointCursor < len(d.AzureEndpointInput) {
+							d.AzureEndpointInput = d.AzureEndpointInput[:d.AzureEndpointCursor] + d.AzureEndpointInput[d.AzureEndpointCursor+1:]
+						}
+					case 2: // API Version
+						if d.AzureAPIVersionCursor < len(d.AzureAPIVersionInput) {
+							d.AzureAPIVersionInput = d.AzureAPIVersionInput[:d.AzureAPIVersionCursor] + d.AzureAPIVersionInput[d.AzureAPIVersionCursor+1:]
+						}
+					case 3: // Deployment Name
+						if d.AzureDeploymentCursor < len(d.AzureDeploymentInput) {
+							d.AzureDeploymentInput = d.AzureDeploymentInput[:d.AzureDeploymentCursor] + d.AzureDeploymentInput[d.AzureDeploymentCursor+1:]
 						}
 					}
 				} else {
@@ -571,6 +690,35 @@ func (d LLMConfigDialog) Update(msg tea.Msg) (LLMConfigDialog, tea.Cmd) {
 					case 2: // AWS Region
 						input = &d.AWSRegionInput
 						cursor = &d.AWSRegionCursor
+					}
+
+					if input != nil && cursor != nil {
+						if keyStr == " " || keyStr == "space" {
+							*input = (*input)[:*cursor] + " " + (*input)[*cursor:]
+							*cursor++
+						} else if len(keyStr) == 1 {
+							char := keyStr
+							*input = (*input)[:*cursor] + char + (*input)[*cursor:]
+							*cursor++
+						}
+					}
+				} else if provider.Name == "azure" {
+					// Handle input for Azure fields
+					var input *string
+					var cursor *int
+					switch d.ActiveInputField {
+					case 0: // API Key
+						input = &d.APIKeyInput
+						cursor = &d.APIKeyCursor
+					case 1: // Endpoint
+						input = &d.AzureEndpointInput
+						cursor = &d.AzureEndpointCursor
+					case 2: // API Version
+						input = &d.AzureAPIVersionInput
+						cursor = &d.AzureAPIVersionCursor
+					case 3: // Deployment Name
+						input = &d.AzureDeploymentInput
+						cursor = &d.AzureDeploymentCursor
 					}
 
 					if input != nil && cursor != nil {
@@ -632,9 +780,19 @@ func (d LLMConfigDialog) handleEnter() (LLMConfigDialog, tea.Cmd) {
 					msg.AWSSecretAccessKey = d.ConfiguredKeys["bedrock_secret_key"]
 					msg.AWSRegion = d.ConfiguredKeys["bedrock_region"]
 				}
+				// For Azure, also get endpoint and API version from config
+				if provider.Name == "azure" {
+					msg.AzureEndpoint = d.ConfiguredKeys["azure_endpoint"]
+					msg.AzureAPIVersion = d.ConfiguredKeys["azure_api_version"]
+				}
 				return msg
 			}
 		} else if selectedItem.Type == "provider" {
+			// If provider is configured, toggle expand/collapse
+			if d.Providers[selectedItem.ProviderIdx].Configured {
+				d.ExpandedProviders[selectedItem.ProviderIdx] = !d.ExpandedProviders[selectedItem.ProviderIdx]
+				return d, nil
+			}
 			// User selected an unconfigured provider - go to API key input
 			d.SelectedProvider = selectedItem.ProviderIdx
 			d.CurrentStep = APIKeyInputStep
@@ -654,6 +812,12 @@ func (d LLMConfigDialog) handleEnter() (LLMConfigDialog, tea.Cmd) {
 			d.AWSSecretKeyCursor = 0
 			d.AWSRegionInput = ""
 			d.AWSRegionCursor = 0
+			d.AzureEndpointInput = ""
+			d.AzureEndpointCursor = 0
+			d.AzureAPIVersionInput = "2025-01-01-preview"
+			d.AzureAPIVersionCursor = len("2025-01-01-preview")
+			d.AzureDeploymentInput = ""
+			d.AzureDeploymentCursor = 0
 			d.ActiveInputField = 0 // Start with first field
 
 		}
@@ -683,6 +847,20 @@ func (d LLMConfigDialog) handleEnter() (LLMConfigDialog, tea.Cmd) {
 			}
 			if d.AWSSecretKeyInput != "" && d.AWSAccessKeyInput == "" {
 				d.ErrorMessage = "AWS Access Key is required when Secret Key is provided"
+				return d, nil
+			}
+		} else if provider.Name == "azure" {
+			// Azure requires API key, endpoint, and deployment name
+			if d.APIKeyInput == "" {
+				d.ErrorMessage = "API key cannot be empty"
+				return d, nil
+			}
+			if d.AzureEndpointInput == "" {
+				d.ErrorMessage = "Azure endpoint URL is required"
+				return d, nil
+			}
+			if d.AzureDeploymentInput == "" {
+				d.ErrorMessage = "Deployment name is required"
 				return d, nil
 			}
 		} else {
@@ -715,6 +893,12 @@ func (d LLMConfigDialog) handleEnter() (LLMConfigDialog, tea.Cmd) {
 				msg.AWSAccessKeyID = d.AWSAccessKeyInput
 				msg.AWSSecretAccessKey = d.AWSSecretKeyInput
 				msg.AWSRegion = d.AWSRegionInput
+			}
+			// For Azure, include endpoint, API version, and deployment name as model
+			if provider.Name == "azure" {
+				msg.AzureEndpoint = d.AzureEndpointInput
+				msg.AzureAPIVersion = d.AzureAPIVersionInput
+				msg.Model = "azure/" + d.AzureDeploymentInput
 			}
 			return msg
 		}
@@ -752,6 +936,11 @@ func (d LLMConfigDialog) handleEnter() (LLMConfigDialog, tea.Cmd) {
 				msg.AWSSecretAccessKey = d.AWSSecretKeyInput
 				msg.AWSRegion = d.AWSRegionInput
 			}
+			// For Azure, include endpoint and API version
+			if provider.Name == "azure" {
+				msg.AzureEndpoint = d.AzureEndpointInput
+				msg.AzureAPIVersion = d.AzureAPIVersionInput
+			}
 			return msg
 		}
 
@@ -786,6 +975,22 @@ func (d LLMConfigDialog) handlePaste(clipboardText string) (LLMConfigDialog, tea
 		case 2: // AWS Region
 			d.AWSRegionInput = d.AWSRegionInput[:d.AWSRegionCursor] + cleanText + d.AWSRegionInput[d.AWSRegionCursor:]
 			d.AWSRegionCursor += len(cleanText)
+		}
+	} else if provider.Name == "azure" {
+		// Handle paste for Azure fields
+		switch d.ActiveInputField {
+		case 0: // API Key
+			d.APIKeyInput = d.APIKeyInput[:d.APIKeyCursor] + cleanText + d.APIKeyInput[d.APIKeyCursor:]
+			d.APIKeyCursor += len(cleanText)
+		case 1: // Endpoint
+			d.AzureEndpointInput = d.AzureEndpointInput[:d.AzureEndpointCursor] + cleanText + d.AzureEndpointInput[d.AzureEndpointCursor:]
+			d.AzureEndpointCursor += len(cleanText)
+		case 2: // API Version
+			d.AzureAPIVersionInput = d.AzureAPIVersionInput[:d.AzureAPIVersionCursor] + cleanText + d.AzureAPIVersionInput[d.AzureAPIVersionCursor:]
+			d.AzureAPIVersionCursor += len(cleanText)
+		case 3: // Deployment Name
+			d.AzureDeploymentInput = d.AzureDeploymentInput[:d.AzureDeploymentCursor] + cleanText + d.AzureDeploymentInput[d.AzureDeploymentCursor:]
+			d.AzureDeploymentCursor += len(cleanText)
 		}
 	} else {
 		// Handle paste for regular API key
@@ -945,13 +1150,23 @@ func (d LLMConfigDialog) renderProviderSelection(t theme.Theme) []string {
 				providerLine = nameStyle.Render("  " + item.DisplayText)
 			}
 
-			// Add configured status
+			// Add configured status and expand/collapse indicator
 			if item.IsConfigured {
 				statusStyle := lipgloss.NewStyle().
 					Foreground(t.Success()).
 					Background(t.BackgroundPanel()).
 					Italic(true)
 				providerLine += statusStyle.Render(" ✓")
+
+				// Add expand/collapse chevron
+				chevronStyle := lipgloss.NewStyle().
+					Foreground(t.TextMuted()).
+					Background(t.BackgroundPanel())
+				if d.ExpandedProviders[item.ProviderIdx] {
+					providerLine += chevronStyle.Render(" ▾")
+				} else {
+					providerLine += chevronStyle.Render(" ▸")
+				}
 			}
 
 			line = providerLine
@@ -1100,7 +1315,7 @@ func (d LLMConfigDialog) renderAPIKeyInput(t theme.Theme) []string {
 		Width(d.Width - 4).
 		Align(lipgloss.Left)
 
-	if provider.Name == "bedrock" {
+	if provider.Name == "bedrock" || provider.Name == "azure" {
 		content = append(content, instructionStyle.Render(fmt.Sprintf("Enter your %s credentials:", provider.DisplayName)))
 	} else {
 		content = append(content, instructionStyle.Render(fmt.Sprintf("Enter your %s API key:", provider.DisplayName)))
@@ -1139,6 +1354,46 @@ func (d LLMConfigDialog) renderAPIKeyInput(t theme.Theme) []string {
 			Italic(true)
 
 		content = append(content, helpStyle.Render("Environment variables: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION"))
+	} else if provider.Name == "azure" {
+		// Render Azure-specific fields
+		isFocused := !d.ButtonsFocused
+
+		// API Key
+		isActive := d.ActiveInputField == 0
+		label, input := d.renderInputField(t, "API Key", d.APIKeyInput, d.APIKeyCursor, isFocused, isActive)
+		content = append(content, label)
+		content = append(content, input)
+		content = append(content, "")
+
+		// Endpoint URL
+		isActive = d.ActiveInputField == 1
+		label, input = d.renderInputField(t, "Endpoint URL", d.AzureEndpointInput, d.AzureEndpointCursor, isFocused, isActive)
+		content = append(content, label)
+		content = append(content, input)
+		content = append(content, "")
+
+		// API Version
+		isActive = d.ActiveInputField == 2
+		label, input = d.renderInputField(t, "API Version", d.AzureAPIVersionInput, d.AzureAPIVersionCursor, isFocused, isActive)
+		content = append(content, label)
+		content = append(content, input)
+		content = append(content, "")
+
+		// Deployment Name
+		isActive = d.ActiveInputField == 3
+		label, input = d.renderInputField(t, "Deployment Name", d.AzureDeploymentInput, d.AzureDeploymentCursor, isFocused, isActive)
+		content = append(content, label)
+		content = append(content, input)
+		content = append(content, "")
+
+		// Add help text
+		helpStyle := lipgloss.NewStyle().
+			Foreground(t.TextMuted()).
+			Width(d.Width - 4).
+			Align(lipgloss.Left).
+			Italic(true)
+
+		content = append(content, helpStyle.Render("Environment variables: AZURE_API_KEY, AZURE_API_BASE, AZURE_API_VERSION"))
 	} else {
 		// Render regular API key field
 		isFocused := !d.ButtonsFocused
@@ -1167,7 +1422,7 @@ func (d LLMConfigDialog) renderAPIKeyInput(t theme.Theme) []string {
 		Align(lipgloss.Center).
 		Italic(true)
 
-	if provider.Name == "bedrock" {
+	if provider.Name == "bedrock" || provider.Name == "azure" {
 		if d.ButtonsFocused {
 			content = append(content, navHintStyle.Render("↑ Input fields • ←→ Navigate buttons • Enter: Execute"))
 		} else {

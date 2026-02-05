@@ -50,6 +50,8 @@ class InterviewerService:
         aws_access_key_id: str | None = None,
         aws_secret_access_key: str | None = None,
         aws_region: str | None = None,
+        api_base: str | None = None,
+        api_version: str | None = None,
     ):
         self._model = model
 
@@ -59,6 +61,8 @@ class InterviewerService:
         self._aws_access_key_id = aws_access_key_id
         self._aws_secret_access_key = aws_secret_access_key
         self._aws_region = aws_region
+        self._api_base = api_base
+        self._api_version = api_version
 
         self._messages = [
             {"role": "system", "content": INTERVIEWER_SYSTEM_PROMPT},
@@ -103,7 +107,9 @@ class InterviewerService:
                 api_key=self._llm_provider_api_key,
                 aws_access_key_id=self._aws_access_key_id,
                 aws_secret_access_key=self._aws_secret_access_key,
-                # aws_region=self._aws_region,
+                aws_region_name=self._aws_region,
+                api_base=self._api_base,
+                api_version=self._api_version,
             )
 
             self._messages.append(

@@ -174,6 +174,8 @@ class LLMService:
         aws_access_key_id: Optional[str] = None,
         aws_secret_access_key: Optional[str] = None,
         aws_region: Optional[str] = None,
+        api_base: Optional[str] = None,
+        api_version: Optional[str] = None,
     ) -> Scenarios:
         # litellm import takes a while, importing here to reduce startup time.
         from litellm import completion
@@ -213,7 +215,9 @@ class LLMService:
                 api_key=api_key,
                 aws_access_key_id=aws_access_key_id,
                 aws_secret_access_key=aws_secret_access_key,
-                # aws_region=aws_region,
+                aws_region_name=aws_region,
+                api_base=api_base,
+                api_version=api_version,
             )
 
             raw_data = (
@@ -238,6 +242,8 @@ class LLMService:
         aws_access_key_id: Optional[str] = None,
         aws_secret_access_key: Optional[str] = None,
         aws_region: Optional[str] = None,
+        api_base: Optional[str] = None,
+        api_version: Optional[str] = None,
     ) -> StructuredSummary:
         # litellm import takes a while, importing here to reduce startup time.
         from litellm import completion
@@ -267,7 +273,9 @@ class LLMService:
                 api_key=api_key,
                 aws_access_key_id=aws_access_key_id,
                 aws_secret_access_key=aws_secret_access_key,
-                # aws_region=aws_region,
+                aws_region_name=aws_region,
+                api_base=api_base,
+                api_version=api_version,
             )
 
             # Parse the JSON response from the LLM

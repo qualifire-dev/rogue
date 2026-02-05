@@ -300,6 +300,8 @@ class AgentConfig(BaseModel):
     judge_llm_aws_access_key_id: Optional[str] = None
     judge_llm_aws_secret_access_key: Optional[str] = None
     judge_llm_aws_region: Optional[str] = None
+    judge_llm_api_base: Optional[str] = None
+    judge_llm_api_version: Optional[str] = None
     business_context: str = ""
     qualifire_api_key: Optional[str] = None
     evaluation_mode: EvaluationMode = Field(
@@ -702,6 +704,8 @@ class StartInterviewRequest(BaseModel):
     aws_access_key_id: Optional[str] = None
     aws_secret_access_key: Optional[str] = None
     aws_region: Optional[str] = None
+    api_base: Optional[str] = None
+    api_version: Optional[str] = None
 
 
 class StartInterviewResponse(BaseModel):
@@ -823,11 +827,15 @@ class RedTeamRequest(BaseModel):
     judge_llm_aws_access_key_id: Optional[str] = None
     judge_llm_aws_secret_access_key: Optional[str] = None
     judge_llm_aws_region: Optional[str] = None
+    judge_llm_api_base: Optional[str] = None
+    judge_llm_api_version: Optional[str] = None
     attacker_llm: str = "gpt-4"
     attacker_llm_api_key: Optional[str] = None
     attacker_llm_aws_access_key_id: Optional[str] = None
     attacker_llm_aws_secret_access_key: Optional[str] = None
     attacker_llm_aws_region: Optional[str] = None
+    attacker_llm_api_base: Optional[str] = None
+    attacker_llm_api_version: Optional[str] = None
     business_context: str = ""
     qualifire_api_key: Optional[str] = None
     max_retries: int = 3
@@ -894,6 +902,8 @@ class ScenarioGenerationRequest(BaseModel):
     aws_access_key_id: Optional[str] = None
     aws_secret_access_key: Optional[str] = None
     aws_region: Optional[str] = None
+    api_base: Optional[str] = None
+    api_version: Optional[str] = None
     count: int = 10
 
 
@@ -913,6 +923,8 @@ class SummaryGenerationRequest(BaseModel):
     aws_access_key_id: Optional[str] = None
     aws_secret_access_key: Optional[str] = None
     aws_region: Optional[str] = None
+    api_base: Optional[str] = None
+    api_version: Optional[str] = None
     job_id: Optional[str] = None
     deep_test: bool = False
     judge_model: Optional[str] = None

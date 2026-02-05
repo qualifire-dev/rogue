@@ -42,6 +42,8 @@ class BaseRedTeamingMetric(ABC):
         self.judge_llm = judge_llm
         self.judge_llm_auth = judge_llm_auth
         self.async_mode = async_mode
+        self.api_base = kwargs.get("api_base")
+        self.api_version = kwargs.get("api_version")
         self._llm_instance = None
 
     def _get_llm(self):
@@ -97,6 +99,8 @@ class BaseRedTeamingMetric(ABC):
                         {"role": "user", "content": "start"},
                     ],
                     api_key=api_key,
+                    api_base=self.api_base,
+                    api_version=self.api_version,
                 )
                 return response.choices[0].message.content
             # ADK models typically have query() or generate_content()
@@ -117,6 +121,8 @@ class BaseRedTeamingMetric(ABC):
                         {"role": "user", "content": "start"},
                     ],
                     api_key=self.judge_llm_auth,
+                    api_base=self.api_base,
+                    api_version=self.api_version,
                 )
                 return response.choices[0].message.content
         except Exception as e:

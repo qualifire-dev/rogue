@@ -310,6 +310,20 @@ func (m Model) handleLLMConfigResultMsg(msg components.LLMConfigResultMsg) (Mode
 				}
 			}
 
+			// For Azure, also save endpoint, API version, and deployment name separately
+			if msg.Provider == "azure" {
+				if msg.AzureEndpoint != "" {
+					m.config.APIKeys["azure_endpoint"] = msg.AzureEndpoint
+				}
+				if msg.AzureAPIVersion != "" {
+					m.config.APIKeys["azure_api_version"] = msg.AzureAPIVersion
+				}
+				// Save deployment name (strip "azure/" prefix from model)
+				if strings.HasPrefix(msg.Model, "azure/") {
+					m.config.APIKeys["azure_deployment"] = strings.TrimPrefix(msg.Model, "azure/")
+				}
+			}
+
 			// If we're on the evaluation screen, update the judge model
 			if m.currentScreen == NewEvaluationScreen && m.evalState != nil {
 				// Check if model already has provider prefix (e.g., "bedrock/anthropic.claude-...")

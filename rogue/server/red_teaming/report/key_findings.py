@@ -18,6 +18,8 @@ def generate_key_findings(
     judge_llm: Optional[str] = None,
     judge_llm_auth: Optional[str] = None,
     max_findings: int = 5,
+    api_base: Optional[str] = None,
+    api_version: Optional[str] = None,
 ) -> List[KeyFinding]:
     """
     Generate top key findings from vulnerability results.
@@ -69,6 +71,8 @@ def generate_key_findings(
             vuln_conversations,
             judge_llm,
             judge_llm_auth,
+            api_base=api_base,
+            api_version=api_version,
         )
 
         # Extract attack IDs that succeeded (filter out None and convert to str)
@@ -111,6 +115,8 @@ def generate_vulnerability_summary(
     conversations: List[Dict[str, Any]],
     judge_llm: Optional[str] = None,
     judge_llm_auth: Optional[str] = None,
+    api_base: Optional[str] = None,
+    api_version: Optional[str] = None,
 ) -> str:
     """
     Generate an LLM-powered summary of what happened during vulnerability exploitation.
@@ -141,6 +147,8 @@ def generate_vulnerability_summary(
             conversations,
             judge_llm,
             judge_llm_auth,
+            api_base=api_base,
+            api_version=api_version,
         )
     except Exception as e:
         logger.warning(
@@ -204,6 +212,8 @@ def _generate_llm_summary(
     conversations: List[Dict[str, Any]],
     judge_llm: str,
     judge_llm_auth: str,
+    api_base: Optional[str] = None,
+    api_version: Optional[str] = None,
 ) -> str:
     """
     Generate an LLM-powered summary of the vulnerability exploitation.
@@ -272,6 +282,8 @@ Be specific but concise. Focus on facts from the examples above."""
             messages=[{"role": "user", "content": prompt}],
             api_key=judge_llm_auth,
             temperature=0.3,  # Lower temperature for more factual summaries
+            api_base=api_base,
+            api_version=api_version,
         )
 
         summary = response.choices[0].message.content.strip()

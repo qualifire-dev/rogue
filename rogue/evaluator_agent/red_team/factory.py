@@ -27,11 +27,15 @@ class _CommonKwargs(TypedDict):
     attacker_llm_aws_access_key_id: Optional[str]
     attacker_llm_aws_secret_access_key: Optional[str]
     attacker_llm_aws_region: Optional[str]
+    attacker_llm_api_base: Optional[str]
+    attacker_llm_api_version: Optional[str]
     judge_llm: str
     judge_llm_auth: Optional[str]
     judge_llm_aws_access_key_id: Optional[str]
     judge_llm_aws_secret_access_key: Optional[str]
     judge_llm_aws_region: Optional[str]
+    judge_llm_api_base: Optional[str]
+    judge_llm_api_version: Optional[str]
     qualifire_api_key: Optional[str]
 
 
@@ -48,11 +52,15 @@ def create_red_team_attacker_agent(
     attacker_llm_aws_access_key_id: Optional[str] = None,
     attacker_llm_aws_secret_access_key: Optional[str] = None,
     attacker_llm_aws_region: Optional[str] = None,
+    attacker_llm_api_base: Optional[str] = None,
+    attacker_llm_api_version: Optional[str] = None,
     judge_llm: str = "gpt-4",
     judge_llm_auth: Optional[str] = None,
     judge_llm_aws_access_key_id: Optional[str] = None,
     judge_llm_aws_secret_access_key: Optional[str] = None,
     judge_llm_aws_region: Optional[str] = None,
+    judge_llm_api_base: Optional[str] = None,
+    judge_llm_api_version: Optional[str] = None,
     qualifire_api_key: Optional[str] = None,
     python_entrypoint_file: Optional[str] = None,
 ) -> BaseRedTeamAttackerAgent:
@@ -124,11 +132,15 @@ def create_red_team_attacker_agent(
         "attacker_llm_aws_access_key_id": attacker_llm_aws_access_key_id,
         "attacker_llm_aws_secret_access_key": attacker_llm_aws_secret_access_key,
         "attacker_llm_aws_region": attacker_llm_aws_region,
+        "attacker_llm_api_base": attacker_llm_api_base,
+        "attacker_llm_api_version": attacker_llm_api_version,
         "judge_llm": judge_llm,
         "judge_llm_auth": judge_llm_auth,
         "judge_llm_aws_access_key_id": judge_llm_aws_access_key_id,
         "judge_llm_aws_secret_access_key": judge_llm_aws_secret_access_key,
         "judge_llm_aws_region": judge_llm_aws_region,
+        "judge_llm_api_base": judge_llm_api_base,
+        "judge_llm_api_version": judge_llm_api_version,
         "qualifire_api_key": qualifire_api_key,
     }
 

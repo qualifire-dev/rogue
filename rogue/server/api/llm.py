@@ -54,6 +54,8 @@ async def generate_scenarios(request: ScenarioGenerationRequest):
             aws_access_key_id=request.aws_access_key_id,
             aws_secret_access_key=request.aws_secret_access_key,
             aws_region=request.aws_region,
+            api_base=request.api_base,
+            api_version=request.api_version,
         )
 
         logger.info(f"Successfully generated {len(scenarios.scenarios)} scenarios")
@@ -326,6 +328,8 @@ async def generate_summary(
                 aws_access_key_id=request.aws_access_key_id,
                 aws_secret_access_key=request.aws_secret_access_key,
                 aws_region=request.aws_region,
+                api_base=request.api_base,
+                api_version=request.api_version,
             )
 
         logger.info("Successfully generated evaluation summary")

@@ -102,6 +102,8 @@ async def arun_evaluator_agent(
     judge_llm_aws_region: Optional[str] = None,
     evaluation_mode: EvaluationMode = EvaluationMode.POLICY,
     python_entrypoint_file: Optional[str] = None,
+    judge_llm_api_base: Optional[str] = None,
+    judge_llm_api_version: Optional[str] = None,
 ) -> AsyncGenerator[tuple[str, Any], None]:
     """
     Run the evaluator agent for policy-based evaluation.
@@ -174,6 +176,8 @@ async def arun_evaluator_agent(
             judge_llm_aws_access_key_id=judge_llm_aws_access_key_id,
             judge_llm_aws_secret_access_key=judge_llm_aws_secret_access_key,
             judge_llm_aws_region=judge_llm_aws_region,
+            judge_llm_api_base=judge_llm_api_base,
+            judge_llm_api_version=judge_llm_api_version,
             debug=False,
             deep_test_mode=deep_test_mode,
             chat_update_callback=update_queue.put_nowait,

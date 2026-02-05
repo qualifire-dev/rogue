@@ -43,6 +43,8 @@ class EvaluationOrchestrator:
         judge_llm_aws_access_key_id: str | None = None,
         judge_llm_aws_secret_access_key: str | None = None,
         judge_llm_aws_region: str | None = None,
+        judge_llm_api_base: str | None = None,
+        judge_llm_api_version: str | None = None,
         python_entrypoint_file: str | None = None,
     ):
         self.protocol = protocol
@@ -55,6 +57,8 @@ class EvaluationOrchestrator:
         self.judge_llm_aws_access_key_id = judge_llm_aws_access_key_id
         self.judge_llm_aws_secret_access_key = judge_llm_aws_secret_access_key
         self.judge_llm_aws_region = judge_llm_aws_region
+        self.judge_llm_api_base = judge_llm_api_base
+        self.judge_llm_api_version = judge_llm_api_version
         self.scenarios = scenarios
         self.business_context = business_context
         self.deep_test_mode = deep_test_mode
@@ -125,6 +129,8 @@ class EvaluationOrchestrator:
                 deep_test_mode=self.deep_test_mode,
                 evaluation_mode=EvaluationMode.POLICY,
                 python_entrypoint_file=self.python_entrypoint_file,
+                judge_llm_api_base=self.judge_llm_api_base,
+                judge_llm_api_version=self.judge_llm_api_version,
             ):
                 update_count += 1
                 self.logger.debug(
