@@ -18,6 +18,9 @@ def _normalize_azure_endpoint(api_base: str, model: str) -> str:
     if not model.startswith("azure/"):
         return api_base
 
+    if "/openai/deployments/" in api_base:
+        return api_base
+
     deployment_name = model.split("/")[-1]
 
     return f"{api_base}/openai/deployments/{deployment_name}"
