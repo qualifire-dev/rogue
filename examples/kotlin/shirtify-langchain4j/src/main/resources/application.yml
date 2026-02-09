@@ -1,0 +1,15 @@
+server:
+  port: 10003
+
+spring:
+  application:
+    name: shirtify-langchain4j
+
+# LangChain4j OpenAI Configuration
+langchain4j:
+  open-ai:
+    chat-model:
+      api-key: ${OPENAI_API_KEY}
+      model-name: gpt-4o
+      log-requests: true
+      log-responses: true
