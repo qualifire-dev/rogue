@@ -24,11 +24,11 @@ def get_evaluation_service():
     return EvaluationService()
 
 
-@router.post("", response_model=EvaluationResponse)
-async def create_evaluation(
+async def enqueue_evaluation(
     request: EvaluationRequest,
     background_tasks: BackgroundTasks,
-    evaluation_service: EvaluationService = Depends(get_evaluation_service),
+    evaluation_service: EvaluationService,
+    endpoint: str,
 ):
     job_id = str(uuid.uuid4())
 
@@ -46,7 +46,7 @@ async def create_evaluation(
 
     # Build extra logging info
     extra_info = {
-        "endpoint": "/evaluations",
+        "endpoint": endpoint,
         "method": "POST",
         "agent_url": str(request.agent_config.evaluated_agent_url),
         "scenario_count": scenario_count,
@@ -79,6 +79,20 @@ async def create_evaluation(
         job_id=job_id,
         status=EvaluationStatus.PENDING,
         message="Evaluation job created successfully",
+    )
+
+
+@router.post("", response_model=EvaluationResponse)
+async def create_evaluation(
+    request: EvaluationRequest,
+    background_tasks: BackgroundTasks,
+    evaluation_service: EvaluationService = Depends(get_evaluation_service),
+):
+    return await enqueue_evaluation(
+        request=request,
+        background_tasks=background_tasks,
+        evaluation_service=evaluation_service,
+        endpoint="/evaluations",
     )
 
 
