@@ -31,6 +31,10 @@ class OpenAIAPIEvaluatorAgent(BaseEvaluatorAgent):
         *args,
         **kwargs,
     ):
+        evaluated_agent_address = evaluated_agent_address.removesuffix(
+            "/chat/completions",
+        )
+
         super().__init__(
             evaluated_agent_address=evaluated_agent_address,
             protocol=Protocol.OPENAI_API,

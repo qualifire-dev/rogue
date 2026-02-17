@@ -65,6 +65,25 @@
             "envFile": "${workspaceFolder}/.env"
         },
         {
+            "name": "Rogue CLI Chat Completions",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "./.venv/bin/python",
+            "module": "rogue",
+            "args": [
+                "cli",
+                "--evaluated-agent-url",
+                "http://localhost:10001/",
+                "--protocol",
+                "openai_api",
+                "--judge-llm",
+                "openai/gpt-4o-mini",
+                "--workdir",
+                "./examples/tshirt_store_agent/.rogue"
+            ],
+            "envFile": "${workspaceFolder}/.env"
+        },
+        {
             "name": "Rogue TUI",
             "type": "go",
             "request": "launch",
