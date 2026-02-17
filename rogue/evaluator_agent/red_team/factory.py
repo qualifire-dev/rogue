@@ -9,6 +9,7 @@ from ...server.red_teaming.models import RedTeamConfig as InternalRedTeamConfig
 from .a2a_red_team_attacker_agent import A2ARedTeamAttackerAgent
 from .base_red_team_attacker_agent import BaseRedTeamAttackerAgent
 from .mcp_red_team_attacker_agent import MCPRedTeamAttackerAgent
+from .openai_api_red_team_attacker_agent import OpenAIAPIRedTeamAttackerAgent
 from .python_red_team_attacker_agent import PythonRedTeamAttackerAgent
 
 
@@ -68,9 +69,9 @@ def create_red_team_attacker_agent(
     Create a red team attacker agent based on the protocol.
 
     Args:
-        protocol: The protocol to use (A2A, MCP, or PYTHON)
+        protocol: The protocol to use (A2A, MCP, PYTHON, or OPENAI_API)
         transport: Optional transport type for MCP
-        evaluated_agent_url: URL of the agent to attack (for A2A/MCP)
+        evaluated_agent_url: URL of the agent to attack (for A2A/MCP/OPENAI_API)
         evaluated_agent_auth_type: Authentication type for the evaluated agent
         evaluated_agent_auth_credentials: Authentication credentials
         red_team_config: Full red team configuration
@@ -152,6 +153,10 @@ def create_red_team_attacker_agent(
         if not evaluated_agent_url:
             raise ValueError("evaluated_agent_url is required for MCP protocol")
         return MCPRedTeamAttackerAgent(**common_kwargs)
+    elif protocol == Protocol.OPENAI_API:
+        if not evaluated_agent_url:
+            raise ValueError("evaluated_agent_url is required for OPENAI_API protocol")
+        return OpenAIAPIRedTeamAttackerAgent(**common_kwargs)
     elif protocol == Protocol.PYTHON:
         if not python_entrypoint_file:
             raise ValueError(
