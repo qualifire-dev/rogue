@@ -125,7 +125,7 @@ class OpenAIAPIEvaluatorAgent(BaseEvaluatorAgent):
 
             # Call the evaluated agent via litellm
             response = await acompletion(
-                model="openai/gpt-3.5-turbo",  # Default model, can be overridden
+                model="openai/evaluated-agent",  # Default model, can be overridden
                 messages=messages,
                 api_base=self._evaluated_agent_address,
                 extra_headers=self._headers,
