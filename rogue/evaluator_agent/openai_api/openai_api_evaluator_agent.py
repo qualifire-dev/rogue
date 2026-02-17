@@ -25,6 +25,11 @@ class OpenAIAPIEvaluatorAgent(BaseEvaluatorAgent):
         business_context: Optional[str],
         headers: Optional[dict[str, str]] = None,
         judge_llm_auth: Optional[str] = None,
+        judge_llm_aws_access_key_id: Optional[str] = None,
+        judge_llm_aws_secret_access_key: Optional[str] = None,
+        judge_llm_aws_region: Optional[str] = None,
+        judge_llm_api_base: Optional[str] = None,
+        judge_llm_api_version: Optional[str] = None,
         debug: bool = False,
         deep_test_mode: bool = False,
         chat_update_callback: Optional[Callable[[dict], None]] = None,
@@ -44,6 +49,11 @@ class OpenAIAPIEvaluatorAgent(BaseEvaluatorAgent):
             business_context=business_context,
             headers=headers,
             judge_llm_auth=judge_llm_auth,
+            judge_llm_aws_access_key_id=judge_llm_aws_access_key_id,
+            judge_llm_aws_secret_access_key=judge_llm_aws_secret_access_key,
+            judge_llm_aws_region=judge_llm_aws_region,
+            judge_llm_api_base=judge_llm_api_base,
+            judge_llm_api_version=judge_llm_api_version,
             debug=debug,
             deep_test_mode=deep_test_mode,
             chat_update_callback=chat_update_callback,
@@ -137,7 +147,16 @@ class OpenAIAPIEvaluatorAgent(BaseEvaluatorAgent):
             )
 
             # Extract the assistant's response
-            assistant_message = response.choices[0].message.content or ""
+            if len(response.choices) == 0 or not response.choices[0].message.content:
+                logger.warning(
+                    "No response from evaluated agent",
+                    extra={
+                        "response": response,
+                    },
+                )
+                return {"response": ""}
+
+            assistant_message = response.choices[0].message.content
 
             logger.info(
                 "✅ OpenAI API call successful - received response from evaluated agent",

@@ -67,12 +67,21 @@ class OpenAIAPIRedTeamAttackerAgent(BaseRedTeamAttackerAgent):
                 model="openai/evaluated-agent",
                 messages=self._context_id_to_messages[context_id],
                 api_base=self._evaluated_agent_address,
-                headers=headers,
+                extra_headers=headers,
                 timeout=30.0,
             )
 
             # Extract the assistant's response
-            assistant_message = response.choices[0].message.content or ""
+            if len(response.choices) == 0 or not response.choices[0].message.content:
+                logger.warning(
+                    "No response from evaluated agent",
+                    extra={
+                        "response": response,
+                    },
+                )
+                return "No response from agent"
+
+            assistant_message = response.choices[0].message.content
 
             # Add assistant response to message history
             self._context_id_to_messages[context_id].append(

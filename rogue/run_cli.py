@@ -474,33 +474,34 @@ async def ping_openai_api_server(
     headers: dict[str, str] | None = None,
 ) -> None:
     """Validate OpenAI API endpoint is reachable."""
-    if transport == Transport.CHAT_COMPLETIONS:
-        try:
-            # Simple health check - try to reach the base URL
-            response = requests.get(
-                agent_url,
-                timeout=5,
-                headers=headers or {},
+    if transport != Transport.CHAT_COMPLETIONS:
+        raise ValueError(f"Unsupported transport: {transport} for OpenAI API protocol")
+    try:
+        # Simple health check - try to reach the base URL
+        response = requests.get(
+            agent_url,
+            timeout=5,
+            headers=headers or {},
+        )
+        # OpenAI API endpoints typically return 404 for GET on root
+        # but should be reachable
+        if response.status_code not in [200, 404, 405]:
+            logger.warning(
+                "OpenAI API endpoint returned unexpected status",
+                extra={
+                    "status_code": response.status_code,
+                    "agent_url": agent_url,
+                },
             )
-            # OpenAI API endpoints typically return 404 for GET on root
-            # but should be reachable
-            if response.status_code not in [200, 404, 405]:
-                logger.warning(
-                    "OpenAI API endpoint returned unexpected status",
-                    extra={
-                        "status_code": response.status_code,
-                        "agent_url": agent_url,
-                    },
-                )
-        except requests.exceptions.RequestException:
-            logger.debug(
-                "Failed to connect to OpenAI API endpoint",
-                extra={"agent_url": agent_url},
-            )
-            raise ValueError(
-                f"Failed to connect to OpenAI API endpoint at {agent_url}. "
-                "Please ensure the agent is running and accessible.",
-            )
+    except requests.exceptions.RequestException:
+        logger.debug(
+            "Failed to connect to OpenAI API endpoint",
+            extra={"agent_url": agent_url},
+        )
+        raise ValueError(
+            f"Failed to connect to OpenAI API endpoint at {agent_url}. "
+            "Please ensure the agent is running and accessible.",
+        )
 
 
 async def ping_python_entrypoint(
