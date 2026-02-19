@@ -1,7 +1,7 @@
 """
 Evaluator Agent Module.
 
-Provides agents for evaluating AI systems using different protocols (A2A, MCP).
+Provides agents for evaluating AI systems using different protocols (A2A, MCP, OpenAI API).
 Policy evaluation uses scenario-based testing.
 Red team evaluation is handled by the server's red_teaming module.
 """
@@ -11,11 +11,13 @@ from . import (
     base_evaluator_agent,
     evaluator_agent_factory,
     mcp,
+    openai_api,
     policy_evaluation,
     run_evaluator_agent,
 )
 from .a2a import A2AEvaluatorAgent
 from .mcp import MCPEvaluatorAgent
+from .openai_api import OpenAIAPIEvaluatorAgent
 
 __all__ = [
     "base_evaluator_agent",
@@ -24,6 +26,8 @@ __all__ = [
     "run_evaluator_agent",
     "a2a",
     "mcp",
+    "openai_api",
     "A2AEvaluatorAgent",
     "MCPEvaluatorAgent",
+    "OpenAIAPIEvaluatorAgent",
 ]

@@ -13,12 +13,14 @@ from rogue_sdk.types import Protocol, Scenarios, Transport
 from .a2a.a2a_evaluator_agent import A2AEvaluatorAgent
 from .base_evaluator_agent import BaseEvaluatorAgent
 from .mcp.mcp_evaluator_agent import MCPEvaluatorAgent
+from .openai_api.openai_api_evaluator_agent import OpenAIAPIEvaluatorAgent
 from .python.python_evaluator_agent import PythonEvaluatorAgent
 
 _PROTOCOL_TO_AGENT_CLASS = {
     Protocol.A2A: A2AEvaluatorAgent,
     Protocol.MCP: MCPEvaluatorAgent,
     Protocol.PYTHON: PythonEvaluatorAgent,
+    Protocol.OPENAI_API: OpenAIAPIEvaluatorAgent,
 }
 
 
@@ -48,9 +50,9 @@ def get_evaluator_agent(
     by the server's red_teaming.orchestrator module.
 
     Args:
-        protocol: Communication protocol (A2A, MCP, or PYTHON)
+        protocol: Communication protocol (A2A, MCP, PYTHON, or OPENAI_API)
         transport: Transport mechanism (not used for PYTHON protocol)
-        evaluated_agent_address: URL of the agent to evaluate (for A2A/MCP)
+        evaluated_agent_address: URL of the agent to evaluate (for A2A/MCP/OPENAI_API)
         judge_llm: LLM to use for evaluation
         scenarios: Scenarios to test
         business_context: Business context for the target agent
@@ -100,7 +102,7 @@ def get_evaluator_agent(
             **kwargs,
         )
 
-    # Handle A2A and MCP protocols
+    # Handle A2A, MCP, and OPENAI_API protocols
     if not evaluated_agent_address:
         raise ValueError(
             f"evaluated_agent_address is required for {protocol.value} protocol",

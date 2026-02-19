@@ -14,9 +14,10 @@ import (
 type Protocol string
 
 const (
-	ProtocolA2A    Protocol = "a2a"
-	ProtocolMCP    Protocol = "mcp"
-	ProtocolPython Protocol = "python"
+	ProtocolA2A       Protocol = "a2a"
+	ProtocolMCP       Protocol = "mcp"
+	ProtocolPython    Protocol = "python"
+	ProtocolOpenAIAPI Protocol = "openai_api"
 )
 
 type Transport string
@@ -28,6 +29,9 @@ const (
 
 	// a2a transports
 	TransportHTTP Transport = "http"
+
+	// openai_api transports
+	TransportChatCompletions Transport = "chat_completions"
 )
 
 type EvaluationMode string
@@ -480,7 +484,7 @@ func (m *Model) triggerSummaryGeneration() {
 
 // getAllProtocols returns all available protocol options
 func getAllProtocols() []Protocol {
-	return []Protocol{ProtocolA2A, ProtocolMCP, ProtocolPython}
+	return []Protocol{ProtocolA2A, ProtocolMCP, ProtocolPython, ProtocolOpenAIAPI}
 }
 
 // getTransportsForProtocol returns valid transport options for a given protocol
@@ -490,6 +494,8 @@ func getTransportsForProtocol(protocol Protocol) []Transport {
 		return []Transport{TransportStreamableHTTP, TransportSSE}
 	case ProtocolA2A:
 		return []Transport{TransportHTTP}
+	case ProtocolOpenAIAPI:
+		return []Transport{TransportChatCompletions}
 	case ProtocolPython:
 		return []Transport{} // Python protocol doesn't use network transport
 	default:

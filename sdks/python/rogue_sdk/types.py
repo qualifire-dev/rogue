@@ -78,6 +78,7 @@ class Protocol(str, Enum):
     A2A = "a2a"
     MCP = "mcp"
     PYTHON = "python"
+    OPENAI_API = "openai_api"
 
     def get_default_transport(self) -> "Transport":
         if self == Protocol.A2A:
@@ -87,6 +88,8 @@ class Protocol(str, Enum):
         elif self == Protocol.PYTHON:
             # Python protocol doesn't use network transport
             return None  # type: ignore
+        elif self == Protocol.OPENAI_API:
+            return Transport.CHAT_COMPLETIONS
         raise ValueError(f"No default transport for protocol {self}")
 
 
@@ -100,6 +103,9 @@ class Transport(str, Enum):
     STREAMABLE_HTTP = "streamable_http"
     SSE = "sse"
 
+    # OpenAI API transports
+    CHAT_COMPLETIONS = "chat_completions"
+
     def is_valid_for_protocol(self, protocol: Protocol) -> bool:
         return self in PROTOCOL_TO_TRANSPORTS[protocol]
 
@@ -108,6 +114,7 @@ PROTOCOL_TO_TRANSPORTS: dict[Protocol, list[Transport]] = {
     Protocol.A2A: [Transport.HTTP],
     Protocol.MCP: [Transport.STREAMABLE_HTTP, Transport.SSE],
     Protocol.PYTHON: [],  # Python protocol doesn't use network transport
+    Protocol.OPENAI_API: [Transport.CHAT_COMPLETIONS],
 }
 
 # Core Models
