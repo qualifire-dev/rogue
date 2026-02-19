@@ -53,9 +53,14 @@ def common_parser() -> ArgumentParser:
     parent_parser.add_argument(
         "--example",
         type=str,
-        choices=["tshirt_store", "tshirt_store_langgraph_mcp"],
+        choices=[
+            "tshirt_store",
+            "tshirt_store_langgraph_mcp",
+            "tshirt_store_chat_completions",
+        ],
         help="Run with an example agent "
-        "(e.g., tshirt_store, tshirt_store_langgraph_mcp)",
+        "(e.g., tshirt_store, tshirt_store_langgraph_mcp, "
+        "tshirt_store_chat_completions)",
     )
     parent_parser.add_argument(
         "--example-host",
@@ -147,6 +152,17 @@ def start_example_agent(
             str(port),
             "--transport",
             "streamable-http",
+        ]
+    elif example_name == "tshirt_store_chat_completions":
+        # Use subprocess to run the example agent
+        cmd = [
+            sys.executable,
+            "-m",
+            "examples.openai_api.chat_completions_agent",
+            "--host",
+            host,
+            "--port",
+            str(port),
         ]
     else:
         logger.error(f"Unknown example: {example_name}")
