@@ -219,6 +219,7 @@ class DeckardClient:
 
         return [
             # Single-turn premium
+            "html-indirect-prompt-injection",
             "homoglyph",
             "citation",
             "gcg",

@@ -509,6 +509,7 @@ PROMPT_SECURITY_VULNERABILITIES = [
             AttackId.PROMPT_INJECTION,
             AttackId.CONTEXT_POISONING,
             AttackId.INPUT_BYPASS,
+            AttackId.HTML_INDIRECT_PROMPT_INJECTION,
         ],
     ),
     VulnerabilityDef(
