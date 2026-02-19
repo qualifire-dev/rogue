@@ -80,7 +80,7 @@ class DeckardClient:
             "User-Agent": "rogue-red-teaming/1.0",
         }
         if self.api_key:
-            headers["X-API-Key"] = self.api_key
+            headers["X-Qualifire-API-Key"] = self.api_key
         return headers
 
     async def generate_attack_payload(
