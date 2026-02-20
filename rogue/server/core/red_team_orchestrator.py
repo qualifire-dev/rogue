@@ -7,12 +7,7 @@ attack generation, providing more creative and adaptive testing.
 
 from typing import Any, AsyncGenerator, Optional, Tuple
 
-from rogue_sdk.types import (
-    AuthType,
-    Protocol,
-    RedTeamConfig,
-    Transport,
-)
+from rogue_sdk.types import AuthType, Protocol, RedTeamConfig, Transport
 
 from ...common.logging import get_logger
 from ...evaluator_agent.red_team.factory import create_red_team_attacker_agent
@@ -61,6 +56,7 @@ class RedTeamOrchestrator:
         attacker_llm_api_version: Optional[str] = None,
         business_context: str = "",
         python_entrypoint_file: Optional[str] = None,
+        deckard_base_url: Optional[str] = None,
     ):
         self.protocol = protocol
         self.transport = transport
@@ -85,6 +81,7 @@ class RedTeamOrchestrator:
         self.attacker_llm_api_version = attacker_llm_api_version
         self.business_context = business_context
         self.python_entrypoint_file = python_entrypoint_file
+        self.deckard_base_url = deckard_base_url
         self.logger = get_logger(__name__)
 
         # Create attacker agent
@@ -112,6 +109,7 @@ class RedTeamOrchestrator:
             judge_llm_api_version=judge_llm_api_version,
             qualifire_api_key=qualifire_api_key,
             python_entrypoint_file=python_entrypoint_file,
+            deckard_base_url=deckard_base_url,
         )
 
     async def run_scan(self) -> AsyncGenerator[Tuple[str, Any], None]:

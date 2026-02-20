@@ -45,23 +45,26 @@ const (
 type EvalFormField int
 
 // EvalField constants for form field indices
-// Policy mode: Protocol(0), AgentURL/PythonFile(1), Transport(2), JudgeModel(3), DeepTest(4), EvaluationMode(5), StartButton(6)
-// Red Team mode adds: ScanType(6), ConfigureButton(7), StartButton(8)
-// Note: Transport field is skipped for Python protocol
+// Policy mode: Protocol(0), AgentURL/PythonFile(1), Transport(2), AuthType(3), AuthCredentials(4), JudgeModel(5), DeepTest(6), EvaluationMode(7), StartButton(8)
+// Red Team mode adds: ScanType(8), ConfigureButton(9), StartButton(10)
+// Note: Transport, AuthType, AuthCredentials fields are skipped for Python protocol
+// Note: AuthCredentials field is skipped when AuthType is no_auth
 const (
 	EvalFieldProtocol EvalFormField = iota
 	EvalFieldAgentURL               // Also used for PythonEntrypointFile when protocol is Python
 	EvalFieldTransport
+	EvalFieldAuthType        // Skipped for Python protocol
+	EvalFieldAuthCredentials // Skipped for Python protocol; skipped when AuthType is no_auth
 	EvalFieldJudgeModel
 	EvalFieldDeepTest
 	EvalFieldEvaluationMode
-	// Policy mode start button / Red Team mode scan type (both at index 6)
+	// Policy mode start button / Red Team mode scan type (both at index 8)
 	EvalFieldStartButtonPolicy
-	EvalFieldConfigureButton    // 7 - Red Team mode only
-	EvalFieldStartButtonRedTeam // 8 - Red Team mode only
+	EvalFieldConfigureButton    // 9 - Red Team mode only
+	EvalFieldStartButtonRedTeam // 10 - Red Team mode only
 )
 
-// EvalFieldScanType is an alias - in Red Team mode, index 6 is the scan type field
+// EvalFieldScanType is an alias - in Red Team mode, index 8 is the scan type field
 const EvalFieldScanType = EvalFieldStartButtonPolicy
 
 // ScanType represents the type of red team scan
@@ -89,6 +92,8 @@ type EvaluationViewState struct {
 	AgentURL             string
 	AgentProtocol        Protocol
 	AgentTransport       Transport
+	AgentAuthType        AuthType
+	AgentAuthCredentials string
 	PythonEntrypointFile string // Path to Python file with call_agent function (for Python protocol)
 	JudgeModel           string
 	ParallelRuns         int
@@ -121,9 +126,10 @@ type EvaluationViewState struct {
 	StructuredSummary StructuredSummary
 
 	// Editing state for New Evaluation
-	// Policy mode: 0: Protocol, 1: AgentURL/PythonFile, 2: Transport, 3: JudgeModel, 4: DeepTest, 5: EvaluationMode, 6: StartButton
-	// Red Team mode: 0: Protocol, 1: AgentURL/PythonFile, 2: Transport, 3: JudgeModel, 4: DeepTest, 5: EvaluationMode, 6: ScanType, 7: ConfigureButton, 8: StartButton
-	// Note: Transport field is skipped for Python protocol
+	// Policy mode: 0: Protocol, 1: AgentURL/PythonFile, 2: Transport, 3: AuthType, 4: AuthCredentials, 5: JudgeModel, 6: DeepTest, 7: EvaluationMode, 8: StartButton
+	// Red Team mode: 0: Protocol, 1: AgentURL/PythonFile, 2: Transport, 3: AuthType, 4: AuthCredentials, 5: JudgeModel, 6: DeepTest, 7: EvaluationMode, 8: ScanType, 9: ConfigureButton, 10: StartButton
+	// Note: Transport, AuthType, AuthCredentials fields are skipped for Python protocol
+	// Note: AuthCredentials field is skipped when AuthType is no_auth
 	currentField EvalFormField // Field index for form navigation
 	cursorPos    int           // rune index in current text field
 }
@@ -142,6 +148,8 @@ type UserConfigFromFile struct {
 	PythonEntrypointFile string `json:"python_entrypoint_file"`
 	EvaluationMode       string `json:"evaluation_mode"`
 	ScanType             string `json:"scan_type"`
+	AuthType             string `json:"auth_type"`
+	AuthCredentials      string `json:"auth_credentials"`
 }
 
 // loadUserConfigFromWorkdir reads .rogue/user_config.json upward from CWD
@@ -184,8 +192,8 @@ func findUserConfigPath() string {
 	return filepath.Join(wd, ".rogue", "user_config.json")
 }
 
-// saveUserConfig saves the protocol, evaluation mode, scan type and other settings to user_config.json
-func saveUserConfig(protocol Protocol, transport Transport, agentURL, pythonEntrypointFile string, evaluationMode EvaluationMode, scanType ScanType) error {
+// saveUserConfig saves the protocol, evaluation mode, scan type, auth settings and other settings to user_config.json
+func saveUserConfig(protocol Protocol, transport Transport, agentURL, pythonEntrypointFile string, evaluationMode EvaluationMode, scanType ScanType, authType AuthType, authCredentials string) error {
 	configPath := findUserConfigPath()
 
 	// Read existing config to preserve other fields
@@ -198,11 +206,15 @@ func saveUserConfig(protocol Protocol, transport Transport, agentURL, pythonEntr
 	existingData["protocol"] = string(protocol)
 	if protocol == ProtocolPython {
 		existingData["python_entrypoint_file"] = pythonEntrypointFile
-		// Clear transport for Python protocol
+		// Clear transport and auth for Python protocol
 		delete(existingData, "transport")
+		delete(existingData, "auth_type")
+		delete(existingData, "auth_credentials")
 	} else {
 		existingData["transport"] = string(transport)
 		existingData["evaluated_agent_url"] = agentURL
+		existingData["auth_type"] = string(authType)
+		existingData["auth_credentials"] = authCredentials
 		// Clear python entrypoint for non-Python protocols
 		delete(existingData, "python_entrypoint_file")
 	}
@@ -304,6 +316,11 @@ func LoadEvaluationStateFromConfig(appConfig *config.Config) (*EvaluationViewSta
 	if userConfig.Transport != "" {
 		agentTransport = Transport(userConfig.Transport)
 	}
+	agentAuthType := AuthTypeNoAuth
+	if userConfig.AuthType != "" {
+		agentAuthType = AuthType(userConfig.AuthType)
+	}
+	agentAuthCredentials := userConfig.AuthCredentials
 	pythonEntrypointFile := userConfig.PythonEntrypointFile
 
 	// Load evaluation mode from config
@@ -384,6 +401,8 @@ func LoadEvaluationStateFromConfig(appConfig *config.Config) (*EvaluationViewSta
 		AgentURL:             agentURL,
 		AgentProtocol:        agentProtocol,
 		AgentTransport:       agentTransport,
+		AgentAuthType:        agentAuthType,
+		AgentAuthCredentials: agentAuthCredentials,
 		PythonEntrypointFile: pythonEntrypointFile,
 		JudgeModel:           judgeModel,
 		ParallelRuns:         1,
@@ -424,6 +443,8 @@ func (m *Model) startEval(ctx context.Context, st *EvaluationViewState) {
 		st.AgentURL,
 		st.AgentProtocol,
 		st.AgentTransport,
+		st.AgentAuthType,
+		st.AgentAuthCredentials,
 		st.Scenarios,
 		st.JudgeModel,
 		st.ParallelRuns,
@@ -573,6 +594,37 @@ func (st *EvaluationViewState) cycleTransport(reverse bool) {
 	}
 
 	st.AgentTransport = transports[currentIdx]
+}
+
+// getAllAuthTypes returns all available auth type options
+func getAllAuthTypes() []AuthType {
+	return []AuthType{AuthTypeNoAuth, AuthTypeAPIKey, AuthTypeBearer, AuthTypeBasic}
+}
+
+// cycleAuthType cycles to the next auth type option
+func (st *EvaluationViewState) cycleAuthType(reverse bool) {
+	authTypes := getAllAuthTypes()
+	currentIdx := 0
+	for i, a := range authTypes {
+		if a == st.AgentAuthType {
+			currentIdx = i
+			break
+		}
+	}
+
+	if reverse {
+		currentIdx--
+		if currentIdx < 0 {
+			currentIdx = len(authTypes) - 1
+		}
+	} else {
+		currentIdx++
+		if currentIdx >= len(authTypes) {
+			currentIdx = 0
+		}
+	}
+
+	st.AgentAuthType = authTypes[currentIdx]
 }
 
 // cycleEvaluationMode cycles between Policy and Red Team modes

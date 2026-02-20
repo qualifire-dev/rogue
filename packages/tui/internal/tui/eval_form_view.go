@@ -32,6 +32,8 @@ func (m Model) RenderNewEvaluation() string {
 		AgentURL:             m.evalState.AgentURL,
 		Protocol:             string(m.evalState.AgentProtocol),
 		Transport:            string(m.evalState.AgentTransport),
+		AuthType:             string(m.evalState.AgentAuthType),
+		AuthCredentials:      m.evalState.AgentAuthCredentials,
 		PythonEntrypointFile: m.evalState.PythonEntrypointFile,
 		JudgeModel:           m.evalState.JudgeModel,
 		DeepTest:             m.evalState.DeepTest,

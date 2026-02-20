@@ -9,16 +9,18 @@ const (
 	FormFieldProtocol FormField = iota
 	FormFieldAgentURL           // Also used for PythonEntrypointFile when protocol is Python
 	FormFieldTransport
+	FormFieldAuthType        // Skipped for Python protocol
+	FormFieldAuthCredentials // Skipped for Python protocol; skipped when AuthType is no_auth
 	FormFieldJudgeModel
 	FormFieldDeepTest
 	FormFieldEvaluationMode
-	// Policy mode start button / Red Team mode scan type (both at index 6)
+	// Policy mode start button / Red Team mode scan type (both at index 8)
 	FormFieldStartButtonPolicy
-	FormFieldConfigureButton    // 7 - Red Team mode only
-	FormFieldStartButtonRedTeam // 8 - Red Team mode only
+	FormFieldConfigureButton    // 9 - Red Team mode only
+	FormFieldStartButtonRedTeam // 10 - Red Team mode only
 )
 
-// FormFieldScanType is an alias - in Red Team mode, index 6 is the scan type field
+// FormFieldScanType is an alias - in Red Team mode, index 8 is the scan type field
 const FormFieldScanType = FormFieldStartButtonPolicy
 
 // FormState contains all data needed to render the evaluation form
@@ -31,6 +33,8 @@ type FormState struct {
 	AgentURL             string
 	Protocol             string
 	Transport            string
+	AuthType             string // "no_auth", "api_key", "bearer_token", "basic"
+	AuthCredentials      string // Credential value (API key, token, or base64 username:password)
 	PythonEntrypointFile string // Path to Python file with call_agent function (for Python protocol)
 	JudgeModel           string
 	DeepTest             bool
@@ -40,9 +44,10 @@ type FormState struct {
 	ScanType             string // "basic", "full", or "custom" (only shown in Red Team mode)
 
 	// Editing state
-	// Policy mode: 0: Protocol, 1: AgentURL/PythonFile, 2: Transport, 3: JudgeModel, 4: DeepTest, 5: EvaluationMode, 6: StartButton
-	// Red Team mode: 0: Protocol, 1: AgentURL/PythonFile, 2: Transport, 3: JudgeModel, 4: DeepTest, 5: EvaluationMode, 6: ScanType, 7: Configure, 8: StartButton
-	// Note: Transport field is skipped for Python protocol
+	// Policy mode: 0: Protocol, 1: AgentURL/PythonFile, 2: Transport, 3: AuthType, 4: AuthCredentials, 5: JudgeModel, 6: DeepTest, 7: EvaluationMode, 8: StartButton
+	// Red Team mode: 0: Protocol, 1: AgentURL/PythonFile, 2: Transport, 3: AuthType, 4: AuthCredentials, 5: JudgeModel, 6: DeepTest, 7: EvaluationMode, 8: ScanType, 9: Configure, 10: StartButton
+	// Note: Transport, AuthType, AuthCredentials fields are skipped for Python protocol
+	// Note: AuthCredentials field is skipped when AuthType is no_auth
 	CurrentField int
 	CursorPos    int
 

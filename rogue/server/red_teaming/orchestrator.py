@@ -41,6 +41,7 @@ from .risk_scoring import calculate_risk_score
 # Premium attacks that require the Deckard service
 PREMIUM_ATTACKS = {
     # Single-turn premium
+    "html-indirect-prompt-injection",
     "homoglyph",
     "citation",
     "gcg",
@@ -128,7 +129,7 @@ class RedTeamOrchestrator:
         # Initialize Deckard client for premium attacks
         self._deckard_url = deckard_base_url or os.getenv(
             "DECKARD_BASE_URL",
-            "http://localhost:9100",
+            "https://deckard.rogue.security",
         )
         self._deckard_client: Optional[DeckardClient] = None
         if qualifire_api_key:

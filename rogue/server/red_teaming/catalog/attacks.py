@@ -28,6 +28,7 @@ class AttackId(str, Enum):
     PROMPT_PROBING = "prompt-probing"
 
     # Premium single-turn attacks
+    HTML_INDIRECT_PROMPT_INJECTION = "html-indirect-prompt-injection"
     HEX = "hex"
     LEETSPEAK = "leetspeak"
     HOMOGLYPH = "homoglyph"
@@ -190,6 +191,17 @@ PREMIUM_SINGLE_TURN_ATTACKS = [
         name="Semantic Manipulation",
         category=AttackCategory.SINGLE_TURN,
         description="Uses semantic tricks and complex phrasing to disguise intent",
+        premium=True,
+    ),
+    # Indirect injection attacks
+    AttackDef(
+        id=AttackId.HTML_INDIRECT_PROMPT_INJECTION,
+        name="HTML Indirect Prompt Injection",
+        category=AttackCategory.SINGLE_TURN,
+        description=(
+            "Tricks web-browsing agents into fetching a URL that serves HTML "
+            "with hidden prompt injection instructions"
+        ),
         premium=True,
     ),
     # Advanced premium attacks

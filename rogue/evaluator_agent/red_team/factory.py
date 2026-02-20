@@ -38,6 +38,7 @@ class _CommonKwargs(TypedDict):
     judge_llm_api_base: Optional[str]
     judge_llm_api_version: Optional[str]
     qualifire_api_key: Optional[str]
+    deckard_base_url: Optional[str]
 
 
 def create_red_team_attacker_agent(
@@ -64,6 +65,7 @@ def create_red_team_attacker_agent(
     judge_llm_api_version: Optional[str] = None,
     qualifire_api_key: Optional[str] = None,
     python_entrypoint_file: Optional[str] = None,
+    deckard_base_url: Optional[str] = None,
 ) -> BaseRedTeamAttackerAgent:
     """
     Create a red team attacker agent based on the protocol.
@@ -143,6 +145,7 @@ def create_red_team_attacker_agent(
         "judge_llm_api_base": judge_llm_api_base,
         "judge_llm_api_version": judge_llm_api_version,
         "qualifire_api_key": qualifire_api_key,
+        "deckard_base_url": deckard_base_url,
     }
 
     if protocol == Protocol.A2A:

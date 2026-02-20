@@ -845,6 +845,7 @@ class RedTeamRequest(BaseModel):
     attacker_llm_api_version: Optional[str] = None
     business_context: str = ""
     qualifire_api_key: Optional[str] = None
+    deckard_base_url: Optional[str] = None
     max_retries: int = 3
     timeout_seconds: int = 600
 

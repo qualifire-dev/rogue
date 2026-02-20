@@ -7,6 +7,22 @@ import (
 	"github.com/rogue/tui/internal/theme"
 )
 
+// authTypeDisplayName returns the human-readable label for an auth type string
+func authTypeDisplayName(authType string) string {
+	switch authType {
+	case "no_auth", "":
+		return "No Auth"
+	case "api_key":
+		return "API Key"
+	case "bearer_token":
+		return "Bearer Token"
+	case "basic":
+		return "Basic Auth"
+	default:
+		return authType
+	}
+}
+
 // RenderForm renders the new evaluation form screen
 func RenderForm(state *FormState) string {
 	t := theme.CurrentTheme()
@@ -186,6 +202,9 @@ func RenderForm(state *FormState) string {
 		evalMode = "🔴 Red Team"
 	}
 
+	// Prepare auth type display value
+	authTypeDisplay := authTypeDisplayName(state.AuthType)
+
 	// Prepare scan type display value (only for Red Team mode)
 	scanTypeDisplay := "Basic"
 	if state.ScanType == "full" {
@@ -198,11 +217,11 @@ func RenderForm(state *FormState) string {
 	}
 
 	// Determine start button index based on mode
-	// Policy mode: StartButton at 6
-	// Red Team mode: StartButton at 8 (after ScanType at 6, Configure at 7)
-	startButtonIndex := 6
+	// Policy mode: StartButton at 8
+	// Red Team mode: StartButton at 10 (after ScanType at 8, Configure at 9)
+	startButtonIndex := 8
 	if isRedTeam {
-		startButtonIndex = 8
+		startButtonIndex = 10
 	}
 
 	// Helper function to render the start button
@@ -274,34 +293,41 @@ func RenderForm(state *FormState) string {
 	// Build the content sections
 	// Protocol is shown first, then Agent URL/Python File, then Transport (if applicable)
 	isPythonProtocol := protocol == "python"
+	showAuthCredentials := !isPythonProtocol && state.AuthType != "no_auth" && state.AuthType != ""
 	var formFields []string
 
 	if isPythonProtocol {
-		// Python protocol: show Protocol, Python File, then other fields (no Transport)
+		// Python protocol: show Protocol, Python File, then other fields (no Transport/Auth)
 		pythonFile := state.PythonEntrypointFile
 		formFields = []string{
 			renderDropdownField(0, "Protocol:", protocol),
 			renderTextField(1, "Python File:", pythonFile),
-			// No Transport field for Python protocol
-			renderTextField(3, "Judge LLM:", judge),
-			renderToggleField(4, "Deep Test:", deep),
-			renderDropdownField(5, "Mode:", evalMode),
+			// No Transport, AuthType, AuthCredentials for Python protocol
+			renderTextField(5, "Judge LLM:", judge),
+			renderToggleField(6, "Deep Test:", deep),
+			renderDropdownField(7, "Mode:", evalMode),
 		}
 	} else {
-		// A2A/MCP protocols: show Protocol, Agent URL, Transport, then other fields
+		// A2A/MCP/OpenAI protocols: show Protocol, Agent URL, Transport, Auth, then other fields
 		formFields = []string{
 			renderDropdownField(0, "Protocol:", protocol),
 			renderTextField(1, "Agent URL:", agent),
 			renderDropdownField(2, "Transport:", transport),
-			renderTextField(3, "Judge LLM:", judge),
-			renderToggleField(4, "Deep Test:", deep),
-			renderDropdownField(5, "Mode:", evalMode),
+			renderDropdownField(3, "Auth Type:", authTypeDisplay),
 		}
+		if showAuthCredentials {
+			formFields = append(formFields, renderTextField(4, "Credentials:", state.AuthCredentials))
+		}
+		formFields = append(formFields,
+			renderTextField(5, "Judge LLM:", judge),
+			renderToggleField(6, "Deep Test:", deep),
+			renderDropdownField(7, "Mode:", evalMode),
+		)
 	}
 
 	// Add ScanType dropdown and Configure button only in Red Team mode
 	if isRedTeam {
-		formFields = append(formFields, renderDropdownField(6, "Scan Type:", scanTypeDisplay))
+		formFields = append(formFields, renderDropdownField(int(FormFieldScanType), "Scan Type:", scanTypeDisplay))
 
 		// Configure button for custom scan configuration - styled like other fields
 		configActive := state.CurrentField == int(FormFieldConfigureButton)

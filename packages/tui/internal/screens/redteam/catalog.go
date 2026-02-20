@@ -161,6 +161,8 @@ var AttackCatalog = map[string]*Attack{
 	"permission-escalation": {ID: "permission-escalation", Name: "Permission Escalation", Category: AttackCategorySingleTurn, Description: "Attempts to bypass permission checks by claiming elevated status", Premium: true},
 	"system-override":       {ID: "system-override", Name: "System Override", Category: AttackCategorySingleTurn, Description: "Uses explicit system override commands to bypass restrictions", Premium: true},
 	"semantic-manipulation": {ID: "semantic-manipulation", Name: "Semantic Manipulation", Category: AttackCategorySingleTurn, Description: "Uses semantic tricks and complex phrasing to disguise intent", Premium: true},
+	// Indirect injection attacks
+	"html-indirect-prompt-injection": {ID: "html-indirect-prompt-injection", Name: "HTML Indirect Prompt Injection", Category: AttackCategorySingleTurn, Description: "Tricks web-browsing agents into fetching a URL that serves HTML with hidden prompt injection instructions", Premium: true},
 	// Advanced premium attacks
 	"citation":         {ID: "citation", Name: "Citation", Category: AttackCategorySingleTurn, Description: "Frames harmful content as academic citations or references", Premium: true},
 	"gcg":              {ID: "gcg", Name: "GCG (Greedy Coordinate Gradient)", Category: AttackCategorySingleTurn, Description: "Gradient-based adversarial suffix generation", Premium: true},
