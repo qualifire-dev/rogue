@@ -30,21 +30,24 @@ func HandleEvalFormInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 				m.evalState.currentField == EvalFieldAuthCredentials {
 				m.evalState.currentField--
 			}
-			// Set cursor to end of field content when switching fields
-			switch m.evalState.currentField {
-			case EvalFieldAgentURL:
-				if m.evalState.AgentProtocol == ProtocolPython {
-					m.evalState.cursorPos = len([]rune(m.evalState.PythonEntrypointFile))
-				} else {
-					m.evalState.cursorPos = len([]rune(m.evalState.AgentURL))
-				}
-			case EvalFieldAuthCredentials:
-				m.evalState.cursorPos = len([]rune(m.evalState.AgentAuthCredentials))
-			case EvalFieldJudgeModel:
-				m.evalState.cursorPos = len([]rune(m.evalState.JudgeModel))
-			default:
-				m.evalState.cursorPos = 0
+		} else {
+			// Wrap around: jump from top field to the start button
+			m.evalState.currentField = m.evalState.getStartButtonIndex()
+		}
+		// Set cursor to end of field content when switching fields
+		switch m.evalState.currentField {
+		case EvalFieldAgentURL:
+			if m.evalState.AgentProtocol == ProtocolPython {
+				m.evalState.cursorPos = len([]rune(m.evalState.PythonEntrypointFile))
+			} else {
+				m.evalState.cursorPos = len([]rune(m.evalState.AgentURL))
 			}
+		case EvalFieldAuthCredentials:
+			m.evalState.cursorPos = len([]rune(m.evalState.AgentAuthCredentials))
+		case EvalFieldJudgeModel:
+			m.evalState.cursorPos = len([]rune(m.evalState.JudgeModel))
+		default:
+			m.evalState.cursorPos = 0
 		}
 		return m, nil
 
@@ -68,21 +71,24 @@ func HandleEvalFormInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 				m.evalState.currentField == EvalFieldAuthCredentials {
 				m.evalState.currentField++
 			}
-			// Set cursor to end of field content when switching fields
-			switch m.evalState.currentField {
-			case EvalFieldAgentURL:
-				if m.evalState.AgentProtocol == ProtocolPython {
-					m.evalState.cursorPos = len([]rune(m.evalState.PythonEntrypointFile))
-				} else {
-					m.evalState.cursorPos = len([]rune(m.evalState.AgentURL))
-				}
-			case EvalFieldAuthCredentials:
-				m.evalState.cursorPos = len([]rune(m.evalState.AgentAuthCredentials))
-			case EvalFieldJudgeModel:
-				m.evalState.cursorPos = len([]rune(m.evalState.JudgeModel))
-			default:
-				m.evalState.cursorPos = 0
+		} else {
+			// Wrap around: jump from start button back to the top field
+			m.evalState.currentField = EvalFieldProtocol
+		}
+		// Set cursor to end of field content when switching fields
+		switch m.evalState.currentField {
+		case EvalFieldAgentURL:
+			if m.evalState.AgentProtocol == ProtocolPython {
+				m.evalState.cursorPos = len([]rune(m.evalState.PythonEntrypointFile))
+			} else {
+				m.evalState.cursorPos = len([]rune(m.evalState.AgentURL))
 			}
+		case EvalFieldAuthCredentials:
+			m.evalState.cursorPos = len([]rune(m.evalState.AgentAuthCredentials))
+		case EvalFieldJudgeModel:
+			m.evalState.cursorPos = len([]rune(m.evalState.JudgeModel))
+		default:
+			m.evalState.cursorPos = 0
 		}
 		return m, nil
 
