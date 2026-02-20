@@ -48,7 +48,7 @@ func (m Model) handlePasteMsg(msg tea.PasteMsg) (Model, tea.Cmd) {
 			return m, nil
 		}
 
-		// Only paste into text fields (Agent URL/Python File and Judge Model)
+		// Only paste into text fields (Agent URL/Python File, Auth Credentials, and Judge Model)
 		switch m.evalState.currentField {
 		case EvalFieldAgentURL:
 			// Insert at cursor position (for Agent URL or Python File depending on protocol)
@@ -68,6 +68,22 @@ func (m Model) handlePasteMsg(msg tea.PasteMsg) (Model, tea.Cmd) {
 				m.evalState.PythonEntrypointFile,
 				m.evalState.EvaluationMode,
 				m.getScanType(),
+				m.evalState.AgentAuthType,
+				m.evalState.AgentAuthCredentials,
+			)
+		case EvalFieldAuthCredentials:
+			runes := []rune(m.evalState.AgentAuthCredentials)
+			m.evalState.AgentAuthCredentials = string(runes[:m.evalState.cursorPos]) + cleanText + string(runes[m.evalState.cursorPos:])
+			m.evalState.cursorPos += len([]rune(cleanText))
+			go saveUserConfig(
+				m.evalState.AgentProtocol,
+				m.evalState.AgentTransport,
+				m.evalState.AgentURL,
+				m.evalState.PythonEntrypointFile,
+				m.evalState.EvaluationMode,
+				m.getScanType(),
+				m.evalState.AgentAuthType,
+				m.evalState.AgentAuthCredentials,
 			)
 		case EvalFieldJudgeModel:
 			// Insert at cursor position

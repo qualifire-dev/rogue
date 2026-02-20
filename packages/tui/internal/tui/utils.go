@@ -20,7 +20,8 @@ type AuthType string
 
 const (
 	AuthTypeNoAuth AuthType = "no_auth"
-	AuthTypeBearer AuthType = "bearer"
+	AuthTypeAPIKey AuthType = "api_key"
+	AuthTypeBearer AuthType = "bearer_token"
 	AuthTypeBasic  AuthType = "basic"
 )
 
@@ -36,7 +37,7 @@ type AgentConfig struct {
 	EvaluatedAgentProtocol     Protocol               `json:"protocol"`
 	EvaluatedAgentTransport    Transport              `json:"transport,omitempty"`
 	EvaluatedAgentAuthType     AuthType               `json:"evaluated_agent_auth_type"`
-	EvaluatedAgentCredentials  string                 `json:"evaluated_agent_credentials,omitempty"`
+	EvaluatedAgentCredentials  string                 `json:"evaluated_agent_auth_credentials,omitempty"`
 	PythonEntrypointFile       string                 `json:"python_entrypoint_file,omitempty"`
 	JudgeLLMModel              string                 `json:"judge_llm"`
 	JudgeLLMAPIKey             string                 `json:"judge_llm_api_key,omitempty"`
@@ -591,6 +592,8 @@ func (m *Model) StartEvaluation(
 	agentURL string,
 	agentProtocol Protocol,
 	agentTransport Transport,
+	agentAuthType AuthType,
+	agentAuthCredentials string,
 	scenarios []EvalScenario,
 	judgeModel string,
 	parallelRuns int,
@@ -666,7 +669,8 @@ func (m *Model) StartEvaluation(
 	// Build evaluation request
 	agentConfig := AgentConfig{
 		EvaluatedAgentProtocol:     agentProtocol,
-		EvaluatedAgentAuthType:     AuthTypeNoAuth,
+		EvaluatedAgentAuthType:     agentAuthType,
+		EvaluatedAgentCredentials:  agentAuthCredentials,
 		JudgeLLMModel:              judgeModel,
 		JudgeLLMAPIKey:             apiKey,
 		JudgeLLMAWSAccessKeyID:     awsAccessKeyID,
