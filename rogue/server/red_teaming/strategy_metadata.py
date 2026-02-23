@@ -154,6 +154,13 @@ STRATEGY_REGISTRY: Dict[str, StrategyMetadata] = {
         description="Attempt to leak system prompts or instructions",
         category="LLM_06",
     ),
+    # Indirect injection via external content
+    "html-indirect-prompt-injection": StrategyMetadata(
+        human_exploitable=True,
+        complexity="low",
+        description="Inject hidden instructions via HTML served to web-browsing agents",
+        category="LLM_02",
+    ),
     # Insecure output handling
     "sql_injection": StrategyMetadata(
         human_exploitable=True,
