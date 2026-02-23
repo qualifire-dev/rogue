@@ -89,7 +89,8 @@
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}/packages/tui/cmd/rogue/main.go",
-            "console": "integratedTerminal"
+            "console": "integratedTerminal",
+            "envFile": "${workspaceFolder}/.env"
         },
         {
             "name": "Rogue AIO",

@@ -343,7 +343,10 @@ async def generate_red_team_summary(
 
 class ReportToQualifireRequest(BaseModel):
     qualifire_api_key: str
-    qualifire_url: str = ""
+    qualifire_url: str = os.getenv(
+        "QUALIFIRE_BASE_URL",
+        "https://app.qualifire.ai",
+    )
 
 
 class ReportToQualifireResponse(BaseModel):

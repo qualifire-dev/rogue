@@ -4,6 +4,7 @@ Type definitions for Rogue Agent Evaluator Python SDK.
 These types mirror the FastAPI server models and provide type safety.
 """
 
+import os
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
@@ -1008,7 +1009,10 @@ class ReportSummaryRequest(BaseModel):
     judge_model: Optional[str] = None
     start_time: Optional[datetime] = None
     qualifire_api_key: Optional[str] = None
-    qualifire_url: Optional[str] = "https://app.qualifire.ai"
+    qualifire_url: Optional[str] = os.getenv(
+        "QUALIFIRE_BASE_URL",
+        "https://app.qualifire.ai",
+    )
 
 
 class ReportSummaryResponse(BaseModel):

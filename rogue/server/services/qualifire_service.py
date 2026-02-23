@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 
 import requests
 from loguru import logger
@@ -46,7 +47,7 @@ class QualifireService:
         job,
         report,
         qualifire_api_key: str,
-        qualifire_url: str = "",
+        qualifire_url: Optional[str] = None,
     ):
         """Report red team scan results to Qualifire platform.
 
@@ -58,7 +59,7 @@ class QualifireService:
         """
         if not qualifire_url:
             qualifire_url = os.getenv(
-                "QUALIFIRE_URL",
+                "QUALIFIRE_BASE_URL",
                 "https://app.qualifire.ai",
             )
 
