@@ -292,6 +292,9 @@ func (v *Viewport) Update(msg tea.Msg) (*Viewport, tea.Cmd) {
 
 // View renders the viewport into a string
 func (v Viewport) View() string {
+	if v.Height <= 0 || v.Width <= 0 {
+		return ""
+	}
 	if len(v.lines) == 0 {
 		// Return empty styled area if no content
 		return v.Style.Render(strings.Repeat("\n", max(0, v.Height-1)))
