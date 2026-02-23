@@ -364,42 +364,77 @@ class RedTeamOrchestrator:
         is_multi_turn = self._is_multi_turn_attack(attack_id)
         max_turns = 15 if is_multi_turn else 1
 
+        max_agent_retries = 3
+
         for turn in range(1, max_turns + 1):
             try:
-                # Get attack payload from Deckard
-                payload = await self._deckard_client.generate_attack_payload(
-                    attack_id=attack_id,
-                    vulnerability_id=vulnerability_id,
-                    business_context=self.business_context,
-                    conversation_history=conversation_history,
-                    attack_state=attack_state,
-                    turn_number=turn,
-                    attempt_num=turn - 1,
-                )
+                # Attempt to generate payload + send message,
+                # retrying on transient errors
+                agent_response = None
+                payload = None
+                for agent_attempt in range(1, max_agent_retries + 1):
+                    # Re-generate the attack payload on each attempt so retries
+                    # get a fresh attack message rather than replaying the same one.
+                    payload = await self._deckard_client.generate_attack_payload(
+                        attack_id=attack_id,
+                        vulnerability_id=vulnerability_id,
+                        business_context=self.business_context,
+                        conversation_history=conversation_history,
+                        attack_state=attack_state,
+                        turn_number=turn,
+                        attempt_num=turn - 1,
+                    )
 
-                attack_message = payload.get("attack_message", "")
-                should_continue = payload.get("should_continue", False)
-                attack_state = payload.get("updated_state", {})
-                metadata = payload.get("metadata", {})
+                    attack_message = payload.get("attack_message", "")
+                    should_continue = payload.get("should_continue", False)
+                    attack_state = payload.get("updated_state", {})
+                    metadata = payload.get("metadata", {})
 
-                if not attack_message:
-                    logger.warning(f"Empty attack message from Deckard for {attack_id}")
+                    if not attack_message:
+                        logger.warning(
+                            "Empty attack message from Deckard",
+                            extra={
+                                "attack_id": attack_id,
+                            },
+                        )
+                        break
+
+                    logger.debug(
+                        "Premium attack turn",
+                        extra={
+                            "turn": turn,
+                            "agent_attempt": agent_attempt,
+                            "attack_id": attack_id,
+                            "is_multi_turn": is_multi_turn,
+                            "should_continue": should_continue,
+                        },
+                    )
+
+                    try:
+                        agent_response = await message_sender(
+                            attack_message,
+                            session_id,
+                        )
+                    except Exception:
+                        logger.exception("Failed to send message")
+                        break
+
+                    if self._should_retry_attack_message(str(agent_response)):
+                        if agent_attempt < max_agent_retries:
+                            logger.warning(
+                                "Retrying attack message",
+                                extra={
+                                    "agent_attempt": agent_attempt,
+                                    "attack_id": attack_id,
+                                    "turn": turn,
+                                    "agent_response": agent_response,
+                                },
+                            )
+                            agent_response = None
+                            continue
                     break
 
-                logger.debug(
-                    f"Premium attack turn {turn}",
-                    extra={
-                        "attack_id": attack_id,
-                        "is_multi_turn": is_multi_turn,
-                        "should_continue": should_continue,
-                    },
-                )
-
-                # Send to target agent
-                try:
-                    agent_response = await message_sender(attack_message, session_id)
-                except Exception as e:
-                    logger.error(f"Failed to send message: {e}")
+                if agent_response is None or payload is None:
                     break
 
                 # Update conversation history
@@ -417,8 +452,8 @@ class RedTeamOrchestrator:
                         attack_message,
                         str(agent_response),
                     )
-                except Exception as e:
-                    logger.error(f"Failed to evaluate response: {e}")
+                except Exception:
+                    logger.exception("Failed to evaluate response")
                     evaluation = {"vulnerability_detected": False, "severity": "low"}
 
                 # Record result
@@ -478,6 +513,15 @@ class RedTeamOrchestrator:
                 break
 
         return results
+
+    def _should_retry_attack_message(self, response: str) -> bool:
+        """Return True if the response should trigger a retry."""
+        retryable_patterns = [
+            "Unhandled stop reason: error",
+        ]
+        return any(
+            pattern.lower() in response.lower() for pattern in retryable_patterns
+        )
 
     def get_vulnerabilities_to_test(self) -> List[str]:
         """Get the list of vulnerability IDs that will be tested."""
