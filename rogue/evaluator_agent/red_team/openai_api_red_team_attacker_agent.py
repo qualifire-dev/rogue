@@ -4,6 +4,7 @@ from types import TracebackType
 from typing import Optional, Self, Type
 
 from loguru import logger
+from rogue_sdk.types import AuthType
 
 from .base_red_team_attacker_agent import BaseRedTeamAttackerAgent
 
@@ -58,9 +59,12 @@ class OpenAIAPIRedTeamAttackerAgent(BaseRedTeamAttackerAgent):
 
             # Prepare headers
             headers = {}
+            api_key_kwargs = {}
             if self._auth_type and self._auth_credentials:
                 auth_headers = self._auth_type.get_auth_header(self._auth_credentials)
                 headers.update(auth_headers)
+                if self._auth_type in [AuthType.API_KEY, AuthType.BEARER_TOKEN]:
+                    api_key_kwargs["api_key"] = self._auth_credentials
 
             # Call the evaluated agent via litellm
             response = await acompletion(
@@ -69,6 +73,7 @@ class OpenAIAPIRedTeamAttackerAgent(BaseRedTeamAttackerAgent):
                 api_base=self._evaluated_agent_address,
                 extra_headers=headers,
                 timeout=30.0,
+                **api_key_kwargs,
             )
 
             # Extract the assistant's response
