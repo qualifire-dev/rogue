@@ -93,3 +93,7 @@ bin/
 
 # Go TUI
 packages/tui/cmd/rogue/__debug*
+
+# Gradle / Kotlin
+.gradle/
+**/build/
