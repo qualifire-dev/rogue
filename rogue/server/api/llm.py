@@ -334,15 +334,15 @@ async def generate_summary(
 
         logger.info("Successfully generated evaluation summary")
 
-        if not request.deckard_api_key:
-            env_api_key = os.getenv("DECKARD_API_KEY")
+        if not request.rogue_security_api_key:
+            env_api_key = os.getenv("ROGUE_SECURITY_API_KEY")
             if env_api_key:
-                request.deckard_api_key = env_api_key
+                request.rogue_security_api_key = env_api_key
 
-        if request.deckard_api_key and request.job_id:
+        if request.rogue_security_api_key and request.job_id:
 
             logger.info(
-                "Reporting summary to Deckard",
+                "Reporting summary to Rogue Security",
                 extra={"job_id": request.job_id},
             )
 
@@ -370,8 +370,8 @@ async def generate_summary(
                         else datetime.now(timezone.utc)
                     ),
                     judge_model=job.judge_model if job else request.judge_model,
-                    deckard_base_url=request.deckard_base_url,
-                    deckard_api_key=request.deckard_api_key,
+                    rogue_security_base_url=request.rogue_security_base_url,
+                    rogue_security_api_key=request.rogue_security_api_key,
                 ),
                 evaluation_results=evaluation_results,
             )
@@ -414,10 +414,10 @@ async def report_summary_handler(
                 detail="Evaluation results not found or empty",
             )
 
-        if not request.deckard_api_key:
-            env_api_key = os.getenv("DECKARD_API_KEY")
+        if not request.rogue_security_api_key:
+            env_api_key = os.getenv("ROGUE_SECURITY_API_KEY")
             if env_api_key:
-                request.deckard_api_key = env_api_key
+                request.rogue_security_api_key = env_api_key
 
         DeckardService.report_summary(
             ReportSummaryRequest(
@@ -426,8 +426,8 @@ async def report_summary_handler(
                 deep_test=request.deep_test,
                 start_time=job.created_at,
                 judge_model=job.judge_model,
-                deckard_api_key=request.deckard_api_key,
-                deckard_base_url=request.deckard_base_url,
+                rogue_security_api_key=request.rogue_security_api_key,
+                rogue_security_base_url=request.rogue_security_base_url,
             ),
             evaluation_results=EvaluationResults(results=results),
         )

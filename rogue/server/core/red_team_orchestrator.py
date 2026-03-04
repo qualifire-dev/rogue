@@ -108,7 +108,7 @@ class RedTeamOrchestrator:
             judge_llm_api_base=judge_llm_api_base,
             judge_llm_api_version=judge_llm_api_version,
             python_entrypoint_file=python_entrypoint_file,
-            deckard_base_url=rogue_security_base_url,
+            rogue_security_base_url=rogue_security_base_url,
             rogue_security_api_key=rogue_security_api_key,
         )
 

@@ -158,7 +158,7 @@ class RogueHttpClient:
         data = SummaryGenerationRequest(
             results=results,
             model=model,
-            deckard_api_key=rogue_security_api_key,
+            rogue_security_api_key=rogue_security_api_key,
             job_id=job_id,
             deep_test=deep_test,
             judge_model=judge_model,

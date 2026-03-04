@@ -844,8 +844,8 @@ class RedTeamRequest(BaseModel):
     attacker_llm_api_base: Optional[str] = None
     attacker_llm_api_version: Optional[str] = None
     business_context: str = ""
-    deckard_api_key: Optional[str] = None
-    deckard_base_url: Optional[str] = None
+    rogue_security_api_key: Optional[str] = None
+    rogue_security_base_url: Optional[str] = None
     max_retries: int = 3
     timeout_seconds: int = 600
 
@@ -936,8 +936,8 @@ class SummaryGenerationRequest(BaseModel):
     job_id: Optional[str] = None
     deep_test: bool = False
     judge_model: Optional[str] = None
-    deckard_api_key: Optional[str] = None
-    deckard_base_url: Optional[str] = None
+    rogue_security_api_key: Optional[str] = None
+    rogue_security_base_url: Optional[str] = None
 
 
 class StructuredSummary(BaseModel):
@@ -1007,8 +1007,8 @@ class ReportSummaryRequest(BaseModel):
     deep_test: bool = False
     judge_model: Optional[str] = None
     start_time: Optional[datetime] = None
-    deckard_api_key: Optional[str] = None
-    deckard_base_url: Optional[str] = None
+    rogue_security_api_key: Optional[str] = None
+    rogue_security_base_url: Optional[str] = None
 
 
 class ReportSummaryResponse(BaseModel):

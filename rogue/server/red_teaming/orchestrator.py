@@ -23,7 +23,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 from loguru import logger
 
-from ..deckard_attacks import DeckardClient, DeckardClientError
+from ..deckard_attacks import RogueSecurityClient, RogueSecurityClientError
 from .catalog.attacks import ATTACK_CATALOG, get_attack
 from .catalog.framework_mappings import get_framework
 from .catalog.vulnerabilities import VULNERABILITY_CATALOG, get_vulnerability
@@ -105,7 +105,7 @@ class RedTeamOrchestrator:
         config: RedTeamConfig,
         business_context: str = "",
         rogue_security_api_key: Optional[str] = None,
-        deckard_base_url: Optional[str] = None,
+        rogue_security_base_url: Optional[str] = None,
     ):
         """
         Initialize the orchestrator.
@@ -114,9 +114,10 @@ class RedTeamOrchestrator:
             config: Red team configuration with vulnerabilities, attacks, etc.
             business_context: Context about the agent being tested
             rogue_security_api_key: Optional API key for premium features
-            deckard_base_url: Optional base URL for Deckard service
+            rogue_security_base_url: Optional base URL for Rogue Security service
                               (defaults to DECKARD_BASE_URL env var)
         """
+
         self.config = config
         self.business_context = business_context
         self.rogue_security_api_key = rogue_security_api_key
@@ -127,18 +128,18 @@ class RedTeamOrchestrator:
         self._actual_seed = seed
 
         # Initialize Deckard client for premium attacks
-        self._deckard_url = deckard_base_url or os.getenv(
+        self._deckard_url = rogue_security_base_url or os.getenv(
             "DECKARD_BASE_URL",
             "https://deckard.rogue.security",
         )
-        self._deckard_client: Optional[DeckardClient] = None
+        self._deckard_client: Optional[RogueSecurityClient] = None
         if rogue_security_api_key:
-            self._deckard_client = DeckardClient(
+            self._deckard_client = RogueSecurityClient(
                 api_key=rogue_security_api_key,
                 base_url=self._deckard_url,
             )
             logger.info(
-                "DeckardClient initialized for premium attacks",
+                "RogueSecurityClient initialized for premium attacks",
                 extra={"base_url": self._deckard_url},
             )
 
@@ -505,8 +506,8 @@ class RedTeamOrchestrator:
                     )
                     break
 
-            except DeckardClientError as e:
-                logger.error(f"Deckard API error: {e}")
+            except RogueSecurityClientError as e:
+                logger.error(f"Rogue Security API error: {e}")
                 break
             except Exception as e:
                 logger.error(f"Premium attack turn {turn} failed: {e}")

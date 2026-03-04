@@ -60,7 +60,7 @@ class BaseRedTeamAttackerAgent(ABC):
         judge_llm_api_version: Optional[str] = None,
         attacker_llm_api_base: Optional[str] = None,
         attacker_llm_api_version: Optional[str] = None,
-        deckard_base_url: Optional[str] = None,
+        rogue_security_base_url: Optional[str] = None,
     ):
         self._evaluated_agent_address = evaluated_agent_address
         self._protocol = protocol
@@ -84,14 +84,14 @@ class BaseRedTeamAttackerAgent(ABC):
         self._judge_llm_api_base = judge_llm_api_base
         self._judge_llm_api_version = judge_llm_api_version
         self._rogue_security_api_key = rogue_security_api_key
-        self._deckard_base_url = deckard_base_url
+        self._rogue_security_base_url = rogue_security_base_url
 
         # Create the underlying orchestrator
         self._orchestrator = RedTeamOrchestrator(
             config=red_team_config,
             business_context=business_context,
             rogue_security_api_key=rogue_security_api_key,
-            deckard_base_url=deckard_base_url,
+            rogue_security_base_url=rogue_security_base_url,
         )
 
         # Store for easy access

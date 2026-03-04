@@ -15,7 +15,7 @@ class DeckardService:
         evaluation_results: EvaluationResults,
     ):
         logger.info(
-            "Reporting summary to Deckard",
+            "Reporting summary to Rogue Security",
         )
 
         api_evaluation_result = convert_with_structured_summary(
@@ -27,18 +27,20 @@ class DeckardService:
         )
 
         response = requests.post(
-            f"{request.deckard_base_url}/api/rogue/v1/report",
-            headers={"X-deckard-key": request.deckard_api_key},
+            f"{request.rogue_security_base_url}/api/rogue/v1/report",
+            headers={"X-Rogue-API-Key": request.rogue_security_api_key},
             json=api_evaluation_result.model_dump(mode="json"),
             timeout=300,
         )
 
         if not response.ok:
             logger.error(
-                "Failed to report summary to Deckard",
+                "Failed to report summary to Rogue Security",
                 extra={"response": response.json()},
             )
-            raise Exception(f"Failed to report summary to Deckard: {response.json()}")
+            raise Exception(
+                f"Failed to report summary to Rogue Security: {response.json()}",
+            )
 
         return response.json()
 
@@ -46,20 +48,20 @@ class DeckardService:
     def report_red_team_scan(
         job,
         report,
-        deckard_api_key: str,
-        deckard_base_url: Optional[str] = None,
+        rogue_security_api_key: str,
+        rogue_security_base_url: Optional[str] = None,
     ):
         """Report red team scan results to Rogue Security platform.
 
         Args:
             job: RedTeamJob with request and results
             report: RedTeamReport generated from ComplianceReportGenerator
-            deckard_api_key: API key for Rogue Security
-            deckard_base_url: Base URL for Rogue Security API
+            rogue_security_api_key: API key for Rogue Security
+            rogue_security_base_url: Base URL for Rogue Security API
         """
-        if not deckard_base_url:
-            deckard_base_url = os.getenv(
-                "DECKARD_BASE_URL",
+        if not rogue_security_base_url:
+            rogue_security_base_url = os.getenv(
+                "ROGUE_SECURITY_BASE_URL",
                 "https://app.rogue.security",
             )
 
@@ -145,8 +147,8 @@ class DeckardService:
         }
 
         response = requests.post(
-            f"{deckard_base_url}/api/rogue/v1/red-team",
-            headers={"X-rogue-API-Key": deckard_api_key},
+            f"{rogue_security_base_url}/api/rogue/v1/red-team",
+            headers={"X-rogue-API-Key": rogue_security_api_key},
             json=payload,
             timeout=300,
         )
@@ -164,7 +166,7 @@ class DeckardService:
                 },
             )
             raise Exception(
-                f"Failed to report red team scan to Deckard: "
+                f"Failed to report red team scan to Rogue Security: "
                 f"{response.status_code} {body}",
             )
 
@@ -172,13 +174,13 @@ class DeckardService:
             return response.json()
         except Exception:
             logger.error(
-                "Deckard returned non-JSON response",
+                "Rogue Security returned non-JSON response",
                 extra={
                     "status_code": response.status_code,
                     "response_text": response.text[:500],
                 },
             )
             raise Exception(
-                f"Deckard returned non-JSON response: "
+                f"Rogue Security returned non-JSON response: "
                 f"{response.status_code} {response.text[:500]}",
             )

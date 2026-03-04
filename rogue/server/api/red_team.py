@@ -276,16 +276,18 @@ async def generate_red_team_summary(
 
         logger.info("Successfully generated red team compliance report")
 
-        # Auto-report to Deckard if API key is available
-        deckard_api_key = job.request.deckard_api_key if job.request else None
-        if not deckard_api_key:
-            deckard_api_key = os.getenv("DECKARD_API_KEY")
+        # Auto-report to Rogue Security if API key is available
+        rogue_security_api_key = (
+            job.request.rogue_security_api_key if job.request else None
+        )
+        if not rogue_security_api_key:
+            rogue_security_api_key = os.getenv("ROGUE_SECURITY_API_KEY")
 
         report_url = None
-        if deckard_api_key:
+        if rogue_security_api_key:
             try:
                 logger.info(
-                    "Auto-reporting red team scan to Deckard",
+                    "Auto-reporting red team scan to Rogue Security",
                     extra={"job_id": job_id},
                 )
 
@@ -305,9 +307,9 @@ async def generate_red_team_summary(
                 result = DeckardService.report_red_team_scan(
                     job=job,
                     report=full_report,
-                    deckard_api_key=deckard_api_key,
-                    deckard_base_url=(
-                        job.request.deckard_base_url if job.request else None
+                    rogue_security_api_key=rogue_security_api_key,
+                    rogue_security_base_url=(
+                        job.request.rogue_security_base_url if job.request else None
                     ),
                 )
 
@@ -412,8 +414,8 @@ async def report_red_team_to_rogue_security(
         result = DeckardService.report_red_team_scan(
             job=job,
             report=report,
-            deckard_api_key=request.rogue_security_api_key,
-            deckard_base_url=request.rogue_security_base_url,
+            rogue_security_api_key=request.rogue_security_api_key,
+            rogue_security_base_url=request.rogue_security_base_url,
         )
 
         return ReportToRogueSecurityResponse(
