@@ -134,37 +134,37 @@ func Render(width, height int, cfg *Config, configState *ConfigState) string {
 	)
 	sections = append(sections, "  "+serverURLLine)
 
-	// Qualifire Integration field
-	var qualifireDisplay string
-	if configState != nil && configState.ActiveField == ConfigFieldQualifire {
+	// Rogue Security Integration field
+	var rogueSecurityDisplay string
+	if configState != nil && configState.ActiveField == ConfigFieldRogueSecurity {
 		// Show toggle state with highlight when active
-		if configState.QualifireEnabled {
-			qualifireDisplay = activeValueStyle.Width(20).Render("✅ Enabled")
+		if configState.RogueSecurityEnabled {
+			rogueSecurityDisplay = activeValueStyle.Width(20).Render("✅ Enabled")
 		} else {
-			qualifireDisplay = activeValueStyle.Width(20).Render("❌ Disabled")
+			rogueSecurityDisplay = activeValueStyle.Width(20).Render("❌ Disabled")
 		}
 	} else {
 		// Show current state based on both API key and enabled flag
-		if cfg.QualifireAPIKey != "" && cfg.QualifireEnabled {
-			qualifireDisplay = valueStyle.Width(20).Render("✅ Enabled")
+		if cfg.RogueSecurityAPIKey != "" && cfg.RogueSecurityEnabled {
+			rogueSecurityDisplay = valueStyle.Width(20).Render("✅ Enabled")
 			// Update config state if not initialized
 			if configState != nil {
-				configState.QualifireEnabled = true
+				configState.RogueSecurityEnabled = true
 			}
 		} else {
-			qualifireDisplay = valueStyle.Width(20).Render("❌ Disabled")
+			rogueSecurityDisplay = valueStyle.Width(20).Render("❌ Disabled")
 			// Update config state if not initialized
 			if configState != nil {
-				configState.QualifireEnabled = false
+				configState.RogueSecurityEnabled = false
 			}
 		}
 	}
 
-	qualifireLine := lipgloss.JoinHorizontal(lipgloss.Left,
-		labelStyle.Render("Qualifire Integration:"),
-		qualifireDisplay,
+	rogueSecurityLine := lipgloss.JoinHorizontal(lipgloss.Left,
+		labelStyle.Render("Rogue Security Integration:"),
+		rogueSecurityDisplay,
 	)
-	sections = append(sections, "  "+qualifireLine)
+	sections = append(sections, "  "+rogueSecurityLine)
 
 	// Theme Configuration Section
 	sections = append(sections, sectionHeaderStyle.Render("🎨 Theme Settings"))

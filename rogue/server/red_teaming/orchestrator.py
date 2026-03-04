@@ -23,7 +23,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 from loguru import logger
 
-from ..qualifire_attacks import DeckardClient, DeckardClientError
+from ..deckard_attacks import RogueSecurityClient, RogueSecurityClientError
 from .catalog.attacks import ATTACK_CATALOG, get_attack
 from .catalog.framework_mappings import get_framework
 from .catalog.vulnerabilities import VULNERABILITY_CATALOG, get_vulnerability
@@ -96,7 +96,7 @@ class RedTeamOrchestrator:
     Attributes:
         config: Red team configuration
         business_context: Context about the agent being tested
-        qualifire_api_key: Optional API key for premium attacks/evaluation
+        rogue_security_api_key: Optional API key for premium attacks/evaluation
         random_generator: Random number generator for reproducibility
     """
 
@@ -104,8 +104,8 @@ class RedTeamOrchestrator:
         self,
         config: RedTeamConfig,
         business_context: str = "",
-        qualifire_api_key: Optional[str] = None,
-        deckard_base_url: Optional[str] = None,
+        rogue_security_api_key: Optional[str] = None,
+        rogue_security_base_url: Optional[str] = None,
     ):
         """
         Initialize the orchestrator.
@@ -113,13 +113,14 @@ class RedTeamOrchestrator:
         Args:
             config: Red team configuration with vulnerabilities, attacks, etc.
             business_context: Context about the agent being tested
-            qualifire_api_key: Optional API key for premium features
-            deckard_base_url: Optional base URL for Deckard service
+            rogue_security_api_key: Optional API key for premium features
+            rogue_security_base_url: Optional base URL for Rogue Security service
                               (defaults to DECKARD_BASE_URL env var)
         """
+
         self.config = config
         self.business_context = business_context
-        self.qualifire_api_key = qualifire_api_key
+        self.rogue_security_api_key = rogue_security_api_key
 
         # Initialize random generator for reproducibility
         seed = config.random_seed if config.random_seed else int(time.time())
@@ -127,18 +128,18 @@ class RedTeamOrchestrator:
         self._actual_seed = seed
 
         # Initialize Deckard client for premium attacks
-        self._deckard_url = deckard_base_url or os.getenv(
+        self._deckard_url = rogue_security_base_url or os.getenv(
             "DECKARD_BASE_URL",
             "https://deckard.rogue.security",
         )
-        self._deckard_client: Optional[DeckardClient] = None
-        if qualifire_api_key:
-            self._deckard_client = DeckardClient(
-                api_key=qualifire_api_key,
+        self._deckard_client: Optional[RogueSecurityClient] = None
+        if rogue_security_api_key:
+            self._deckard_client = RogueSecurityClient(
+                api_key=rogue_security_api_key,
                 base_url=self._deckard_url,
             )
             logger.info(
-                "DeckardClient initialized for premium attacks",
+                "RogueSecurityClient initialized for premium attacks",
                 extra={"base_url": self._deckard_url},
             )
 
@@ -182,7 +183,7 @@ class RedTeamOrchestrator:
             from .catalog.vulnerabilities import get_full_scan_vulnerabilities
 
             vulns = get_full_scan_vulnerabilities()
-            if not self.qualifire_api_key:
+            if not self.rogue_security_api_key:
                 # Filter out premium-only vulnerabilities if no API key
                 vulns = [
                     v
@@ -195,7 +196,7 @@ class RedTeamOrchestrator:
         else:  # Custom scan
             # Use explicitly provided vulnerabilities
             vulns = self.config.vulnerabilities
-            if not self.qualifire_api_key:
+            if not self.rogue_security_api_key:
                 # Filter out premium vulnerabilities and warn user
                 premium_filtered = [
                     v
@@ -211,7 +212,7 @@ class RedTeamOrchestrator:
                 if premium_filtered:
                     logger.warning(
                         f"⚠️ {len(premium_filtered)} premium vulnerability(s) "
-                        f"filtered out (no QUALIFIRE_API_KEY): {premium_filtered}",
+                        f"filtered out (no ROGUE_SECURITY_API_KEY): {premium_filtered}",
                     )
             return vulns
 
@@ -228,7 +229,7 @@ class RedTeamOrchestrator:
             from .catalog.attacks import get_full_scan_attacks
 
             attacks = get_full_scan_attacks()
-            if not self.qualifire_api_key:
+            if not self.rogue_security_api_key:
                 # Filter out premium attacks
                 attacks = [
                     a
@@ -240,7 +241,7 @@ class RedTeamOrchestrator:
         else:  # Custom scan
             # Use explicitly provided attacks
             attacks = self.config.attacks
-            if not self.qualifire_api_key:
+            if not self.rogue_security_api_key:
                 # Filter out premium attacks and warn user
                 original_count = len(attacks)
                 premium_filtered = [
@@ -256,13 +257,13 @@ class RedTeamOrchestrator:
                 if premium_filtered:
                     logger.warning(
                         f"⚠️ {len(premium_filtered)} premium attack(s) filtered out "
-                        f"(no QUALIFIRE_API_KEY): {premium_filtered}. "
-                        f"Set QUALIFIRE_API_KEY to use premium attacks.",
+                        f"(no ROGUE_SECURITY_API_KEY): {premium_filtered}. "
+                        f"Set ROGUE_SECURITY_API_KEY to use premium attacks.",
                     )
                 if not attacks and original_count > 0:
                     logger.error(
                         "❌ All selected attacks were premium and filtered out! "
-                        "Set QUALIFIRE_API_KEY or select non-premium attacks.",
+                        "Set ROGUE_SECURITY_API_KEY or select non-premium attacks.",
                     )
             return attacks
 
@@ -505,8 +506,8 @@ class RedTeamOrchestrator:
                     )
                     break
 
-            except DeckardClientError as e:
-                logger.error(f"Deckard API error: {e}")
+            except RogueSecurityClientError as e:
+                logger.error(f"Rogue Security API error: {e}")
                 break
             except Exception as e:
                 logger.error(f"Premium attack turn {turn} failed: {e}")

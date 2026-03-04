@@ -36,29 +36,29 @@ func HandleConfigEnter(m Model) (Model, tea.Cmd) {
 		return m, nil
 	} else {
 		// Handle field-specific actions
-		if m.configState.ActiveField == ConfigFieldQualifire {
-			// Toggle Qualifire integration
-			if !m.configState.QualifireEnabled {
+		if m.configState.ActiveField == ConfigFieldRogueSecurity {
+			// Toggle Rogue Security integration
+			if !m.configState.RogueSecurityEnabled {
 				// Show API key input dialog (pre-populate with existing key if available)
 				dialog := components.NewInputDialog(
-					"Configure Qualifire API Key",
-					"Enter your Qualifire API key to enable integration:",
-					m.config.QualifireAPIKey,
+					"Configure Rogue Security API Key",
+					"Enter your Rogue Security API key to enable integration:",
+					m.config.RogueSecurityAPIKey,
 				)
 				// Customize the buttons for this specific use case
 				dialog.Buttons = []components.DialogButton{
-					{Label: "Save", Action: "save_qualifire", Style: components.PrimaryButton},
+					{Label: "Save", Action: "save_rogue_security", Style: components.PrimaryButton},
 				}
 				// Position cursor at end of existing key if there is one
-				dialog.InputCursor = len(m.config.QualifireAPIKey)
+				dialog.InputCursor = len(m.config.RogueSecurityAPIKey)
 				// Set the selected button to 0 since there's only one button now
 				dialog.SelectedBtn = 0
 				m.dialog = &dialog
 				return m, nil
 			} else {
 				// Toggle the enabled state (keep API key stored)
-				m.configState.QualifireEnabled = !m.configState.QualifireEnabled
-				m.config.QualifireEnabled = m.configState.QualifireEnabled
+				m.configState.RogueSecurityEnabled = !m.configState.RogueSecurityEnabled
+				m.config.RogueSecurityEnabled = m.configState.RogueSecurityEnabled
 				m.configState.HasChanges = true
 				// Save the updated enabled state
 				config.Save(&m.config)
@@ -98,9 +98,9 @@ func HandleConfigInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 				if m.configState.IsEditing {
 					m.configState.IsEditing = false
 				}
-				m.configState.ActiveField = ConfigFieldQualifire
-				// Qualifire field doesn't auto-enter edit mode
-			} else if m.configState.ActiveField == ConfigFieldQualifire {
+				m.configState.ActiveField = ConfigFieldRogueSecurity
+				// Rogue Security field doesn't auto-enter edit mode
+			} else if m.configState.ActiveField == ConfigFieldRogueSecurity {
 				m.configState.ActiveField = ConfigFieldServerURL
 				// Automatically enter edit mode for server URL field
 				m.configState.IsEditing = true
@@ -125,9 +125,9 @@ func HandleConfigInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 				if m.configState.IsEditing {
 					m.configState.IsEditing = false
 				}
-				m.configState.ActiveField = ConfigFieldQualifire
-				// Qualifire field doesn't auto-enter edit mode
-			} else if m.configState.ActiveField == ConfigFieldQualifire {
+				m.configState.ActiveField = ConfigFieldRogueSecurity
+				// Rogue Security field doesn't auto-enter edit mode
+			} else if m.configState.ActiveField == ConfigFieldRogueSecurity {
 				m.configState.ActiveField = ConfigFieldTheme
 				// Theme field doesn't auto-enter edit mode - user must press Enter to select themes
 			}
@@ -161,30 +161,30 @@ func HandleConfigInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m, nil
 
 	case "space", " ":
-		// Handle space key for Qualifire toggle
-		if m.configState.ActiveField == ConfigFieldQualifire && !m.configState.IsEditing {
-			// Toggle Qualifire integration (same logic as Enter key)
-			if !m.configState.QualifireEnabled {
+		// Handle space key for Rogue Security toggle
+		if m.configState.ActiveField == ConfigFieldRogueSecurity && !m.configState.IsEditing {
+			// Toggle Rogue Security integration (same logic as Enter key)
+			if !m.configState.RogueSecurityEnabled {
 				// Show API key input dialog (pre-populate with existing key if available)
 				dialog := components.NewInputDialog(
-					"Configure Qualifire API Key",
-					"Enter your Qualifire API key to enable integration:",
-					m.config.QualifireAPIKey,
+					"Configure Rogue Security API Key",
+					"Enter your Rogue Security API key to enable integration:",
+					m.config.RogueSecurityAPIKey,
 				)
 				// Customize the buttons for this specific use case
 				dialog.Buttons = []components.DialogButton{
-					{Label: "Save", Action: "save_qualifire", Style: components.PrimaryButton},
+					{Label: "Save", Action: "save_rogue_security", Style: components.PrimaryButton},
 				}
 				// Position cursor at end of existing key if there is one
-				dialog.InputCursor = len(m.config.QualifireAPIKey)
+				dialog.InputCursor = len(m.config.RogueSecurityAPIKey)
 				// Set the selected button to 0 since there's only one button now
 				dialog.SelectedBtn = 0
 				m.dialog = &dialog
 				return m, nil
 			} else {
 				// Toggle the enabled state (keep API key stored)
-				m.configState.QualifireEnabled = !m.configState.QualifireEnabled
-				m.config.QualifireEnabled = m.configState.QualifireEnabled
+				m.configState.RogueSecurityEnabled = !m.configState.RogueSecurityEnabled
+				m.config.RogueSecurityEnabled = m.configState.RogueSecurityEnabled
 				m.configState.HasChanges = true
 				// Save the updated enabled state
 				config.Save(&m.config)
@@ -240,10 +240,10 @@ func (m *Model) handleConfigSave() {
 		}
 	}
 
-	// Save Qualifire integration state if it changed
-	if m.configState.ActiveField == ConfigFieldQualifire {
+	// Save Rogue Security integration state if it changed
+	if m.configState.ActiveField == ConfigFieldRogueSecurity {
 		// Update config enabled state to match the UI state
-		m.config.QualifireEnabled = m.configState.QualifireEnabled
+		m.config.RogueSecurityEnabled = m.configState.RogueSecurityEnabled
 		m.configState.HasChanges = true
 	}
 

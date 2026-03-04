@@ -235,7 +235,6 @@ func (m Model) handleSummaryGeneratedMsg(msg SummaryGeneratedMsg) (Model, tea.Cm
 		}
 		// Extract scan ID from report URL if present (auto-reported server-side)
 		if msg.ReportURL != "" {
-			// URL format: https://app.qualifire.ai/red-team/{scan_id}
 			parts := strings.Split(msg.ReportURL, "/")
 			if len(parts) > 0 {
 				m.redTeamScanID = parts[len(parts)-1]
@@ -260,14 +259,14 @@ func (m Model) handleRedTeamReportFetchedMsg(msg RedTeamReportFetchedMsg) (Model
 		// Navigate to the red team report screen
 		m.currentScreen = RedTeamReportScreen
 
-		// Auto-report to Qualifire if API key is configured
-		if m.config.QualifireEnabled && m.config.QualifireAPIKey != "" && m.evalState != nil && m.evalState.JobID != "" {
+		// Auto-report to Rogue Security if API key is configured
+		if m.config.RogueSecurityEnabled && m.config.RogueSecurityAPIKey != "" && m.evalState != nil && m.evalState.JobID != "" {
 			go func() {
 				sdk := NewRogueSDK(m.config.ServerURL)
 				scanID, _, err := sdk.ReportRedTeamScan(
 					context.Background(),
 					m.evalState.JobID,
-					m.config.QualifireAPIKey,
+					m.config.RogueSecurityAPIKey,
 				)
 				if err == nil && scanID != "" {
 					m.redTeamScanID = scanID
@@ -303,13 +302,13 @@ func (m Model) handleCommandSelectedMsg(msg components.CommandSelectedMsg) (Mode
 		m.currentScreen = ConfigurationScreen
 		// Initialize config state when entering configuration screen
 		m.configState = &ConfigState{
-			ActiveField:      ConfigFieldServerURL,
-			ServerURL:        m.config.ServerURL,
-			CursorPos:        len(m.config.ServerURL), // Start cursor at end of existing text
-			ThemeIndex:       m.findCurrentThemeIndex(),
-			IsEditing:        true, // Automatically start editing the server URL field
-			HasChanges:       false,
-			QualifireEnabled: m.config.QualifireAPIKey != "" && m.config.QualifireEnabled, // Set based on API key and enabled flag
+			ActiveField:          ConfigFieldServerURL,
+			ServerURL:            m.config.ServerURL,
+			CursorPos:            len(m.config.ServerURL), // Start cursor at end of existing text
+			ThemeIndex:           m.findCurrentThemeIndex(),
+			IsEditing:            true, // Automatically start editing the server URL field
+			HasChanges:           false,
+			RogueSecurityEnabled: m.config.RogueSecurityAPIKey != "" && m.config.RogueSecurityEnabled, // Set based on API key and enabled flag
 		}
 	case "help":
 		m.currentScreen = HelpScreen
@@ -428,31 +427,31 @@ func (m Model) handleDialogClosedMsg(msg components.DialogClosedMsg) (Model, tea
 
 	if m.dialog != nil {
 		switch msg.Action {
-		case "save_qualifire_and_report":
-			// Handle Qualifire API key save and report persistence
-			if m.dialog != nil && m.dialog.Title == "Configure Qualifire API Key" {
+		case "save_rogue_security_and_report":
+			// Handle Rogue Security API key save and report persistence
+			if m.dialog != nil && m.dialog.Title == "Configure Rogue Security API Key" {
 				// Save the API key to config (allow empty to clear the key)
-				m.config.QualifireAPIKey = msg.Input
+				m.config.RogueSecurityAPIKey = msg.Input
 				// Only enable integration if there's an API key
 				if msg.Input != "" {
-					m.config.QualifireEnabled = true
+					m.config.RogueSecurityEnabled = true
 					if m.configState != nil {
-						m.configState.QualifireEnabled = true
+						m.configState.RogueSecurityEnabled = true
 						m.configState.HasChanges = true
 					}
 				}
 
 				// immediately report the summary
 				if m.evalState != nil && m.evalState.Completed {
-					parsedAPIKey := m.config.QualifireAPIKey
-					if !m.config.QualifireEnabled {
+					parsedAPIKey := m.config.RogueSecurityAPIKey
+					if !m.config.RogueSecurityEnabled {
 						parsedAPIKey = ""
 					}
 
 					sdk := NewRogueSDK(m.config.ServerURL)
 
 					if m.evalState.EvaluationMode == EvaluationModeRedTeam {
-						// Red team: report scan to Qualifire
+						// Red team: report scan to Rogue Security
 						scanID, _, err := sdk.ReportRedTeamScan(
 							context.Background(),
 							m.evalState.JobID,
@@ -491,7 +490,7 @@ func (m Model) handleDialogClosedMsg(msg components.DialogClosedMsg) (Model, tea
 						// Show error dialog
 						errorDialog := components.ShowErrorDialog(
 							"Configuration Error",
-							fmt.Sprintf("Failed to save Qualifire configuration: %v", err),
+							fmt.Sprintf("Failed to save Rogue Security configuration: %v", err),
 						)
 						m.dialog = &errorDialog
 						return m, nil
@@ -500,22 +499,22 @@ func (m Model) handleDialogClosedMsg(msg components.DialogClosedMsg) (Model, tea
 						var message string
 						if msg.Input != "" {
 							if m.evalState.EvaluationMode == EvaluationModeRedTeam && m.redTeamScanID != "" {
-								qualifireBase := os.Getenv("QUALIFIRE_URL")
-								if qualifireBase == "" {
-									qualifireBase = "https://app.qualifire.ai"
+								rogueSecurityBase := os.Getenv("ROGUE_SECURITY_URL")
+								if rogueSecurityBase == "" {
+									rogueSecurityBase = "https://app.rogue.security"
 								}
 								message = fmt.Sprintf(
 									"Report saved. See the full report at %s/red-team/%s",
-									qualifireBase, m.redTeamScanID,
+									rogueSecurityBase, m.redTeamScanID,
 								)
 							} else {
-								message = "Qualifire API key has been successfully saved and integration is now enabled. Your evaluation report will now be automatically persisted."
+								message = "Rogue Security API key has been successfully saved and integration is now enabled. Your evaluation report will now be automatically persisted."
 							}
 						} else {
-							message = "Qualifire API key has been cleared and integration is now disabled."
+							message = "Rogue Security API key has been cleared and integration is now disabled."
 						}
 						successDialog := components.NewInfoDialog(
-							"Qualifire Configured",
+							"Rogue Security Configured",
 							message,
 						)
 						m.dialog = &successDialog
@@ -523,23 +522,23 @@ func (m Model) handleDialogClosedMsg(msg components.DialogClosedMsg) (Model, tea
 					}
 				}
 			}
-		case "save_qualifire":
-			// Handle Qualifire API key save
-			if m.dialog != nil && m.dialog.Title == "Configure Qualifire API Key" {
+		case "save_rogue_security":
+			// Handle Rogue Security API key save
+			if m.dialog != nil && m.dialog.Title == "Configure Rogue Security API Key" {
 				// Save the API key to config (allow empty to clear the key)
-				m.config.QualifireAPIKey = msg.Input
+				m.config.RogueSecurityAPIKey = msg.Input
 				// Only enable integration if there's an API key
 				if msg.Input != "" {
-					m.config.QualifireEnabled = true
+					m.config.RogueSecurityEnabled = true
 					if m.configState != nil {
-						m.configState.QualifireEnabled = true
+						m.configState.RogueSecurityEnabled = true
 						m.configState.HasChanges = true
 					}
 				} else {
 					// If API key is cleared, disable integration
-					m.config.QualifireEnabled = false
+					m.config.RogueSecurityEnabled = false
 					if m.configState != nil {
-						m.configState.QualifireEnabled = false
+						m.configState.RogueSecurityEnabled = false
 						m.configState.HasChanges = true
 					}
 				}
@@ -550,7 +549,7 @@ func (m Model) handleDialogClosedMsg(msg components.DialogClosedMsg) (Model, tea
 					// Show error dialog
 					errorDialog := components.ShowErrorDialog(
 						"Configuration Error",
-						fmt.Sprintf("Failed to save Qualifire configuration: %v", err),
+						fmt.Sprintf("Failed to save Rogue Security configuration: %v", err),
 					)
 					m.dialog = &errorDialog
 					return m, nil
@@ -558,12 +557,12 @@ func (m Model) handleDialogClosedMsg(msg components.DialogClosedMsg) (Model, tea
 					// Show appropriate success dialog
 					var message string
 					if msg.Input != "" {
-						message = "Qualifire API key has been successfully saved and integration is now enabled. Your evaluation report will now be automatically persisted."
+						message = "Rogue Security API key has been successfully saved and integration is now enabled. Your evaluation report will now be automatically persisted."
 					} else {
-						message = "Qualifire API key has been cleared and integration is now disabled."
+						message = "Rogue Security API key has been cleared and integration is now disabled."
 					}
 					successDialog := components.NewInfoDialog(
-						"Qualifire Configured",
+						"Rogue Security Configured",
 						message,
 					)
 					m.dialog = &successDialog
@@ -571,41 +570,41 @@ func (m Model) handleDialogClosedMsg(msg components.DialogClosedMsg) (Model, tea
 				}
 			}
 		case "save_redteam_api_key":
-			// Handle Qualifire API key save from red team config screen
+			// Handle Rogue Security API key save from red team config screen
 			if m.redTeamConfigState != nil {
-				m.redTeamConfigState.QualifireAPIKey = msg.Input
+				m.redTeamConfigState.RogueSecurityAPIKey = msg.Input
 				// Save the updated configuration
 				if err := redteam.SaveRedTeamConfig(m.redTeamConfigState); err != nil {
 					fmt.Printf("DEBUG: Error saving red team config: %v\n", err)
 				}
 			}
 			// Also update main config so StartEvaluation can use it
-			m.config.QualifireAPIKey = msg.Input
-			m.config.QualifireEnabled = msg.Input != ""
+			m.config.RogueSecurityAPIKey = msg.Input
+			m.config.RogueSecurityEnabled = msg.Input != ""
 			// Save the config so it persists
 			if err := config.Save(&m.config); err != nil {
 				fmt.Printf("DEBUG: Error saving main config: %v\n", err)
 			} else {
-				fmt.Printf("DEBUG: Saved QualifireAPIKey (length: %d) to config\n", len(msg.Input))
+				fmt.Printf("DEBUG: Saved RogueSecurityAPIKey (length: %d) to config\n", len(msg.Input))
 			}
 			m.dialog = nil
 			return m, nil
 
-		case "configure_qualifire":
-			// Handle "Configure Qualifire" from report persistence dialog
+		case "configure_rogue_security":
+			// Handle "Configure Rogue Security" from report persistence dialog
 			if m.dialog != nil && m.dialog.Title == "Preserve Evaluation Report" {
-				// Close current dialog and open Qualifire API key dialog
+				// Close current dialog and open Rogue Security API key dialog
 				dialog := components.NewInputDialog(
-					"Configure Qualifire API Key",
-					"Enter your Qualifire API key to enable integration:",
-					m.config.QualifireAPIKey,
+					"Configure Rogue Security API Key",
+					"Enter your Rogue Security API key to enable integration:",
+					m.config.RogueSecurityAPIKey,
 				)
 				// Customize the buttons for this specific use case
 				dialog.Buttons = []components.DialogButton{
-					{Label: "Save", Action: "save_qualifire_and_report", Style: components.PrimaryButton},
+					{Label: "Save", Action: "save_rogue_security_and_report", Style: components.PrimaryButton},
 				}
 				// Position cursor at end of existing key if there is one
-				dialog.InputCursor = len(m.config.QualifireAPIKey)
+				dialog.InputCursor = len(m.config.RogueSecurityAPIKey)
 				dialog.SelectedBtn = 0
 				m.dialog = &dialog
 				return m, nil
@@ -614,7 +613,7 @@ func (m Model) handleDialogClosedMsg(msg components.DialogClosedMsg) (Model, tea
 			// Handle "Don't Show Again" from report persistence dialog
 			if m.dialog != nil && m.dialog.Title == "Preserve Evaluation Report" {
 				// Save the preference and exit to dashboard
-				m.config.DontShowQualifirePrompt = true
+				m.config.DontShowRogueSecurityPrompt = true
 				config.Save(&m.config)
 				m.dialog = nil
 				m.currentScreen = DashboardScreen
@@ -748,8 +747,8 @@ func (m Model) handleScenarioEditorMsg(msg scenarios.ScenarioEditorMsg) (Model, 
 // handleOpenAPIKeyDialogMsg handles opening the API key dialog from the red team config screen
 func (m Model) handleOpenAPIKeyDialogMsg(msg redteam.OpenAPIKeyDialogMsg) (Model, tea.Cmd) {
 	dialog := components.NewInputDialog(
-		"Configure Qualifire API Key",
-		"Enter your Qualifire API key to enable premium features.\nGet your key at: https://qualifire.ai/api-keys",
+		"Configure Rogue Security API Key",
+		"Enter your Rogue Security API key to enable premium features.\nGet your key at: https://app.rogue.security/settings/api-keys",
 		msg.CurrentKey,
 	)
 	// Customize the buttons

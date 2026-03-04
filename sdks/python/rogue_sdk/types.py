@@ -4,7 +4,6 @@ Type definitions for Rogue Agent Evaluator Python SDK.
 These types mirror the FastAPI server models and provide type safety.
 """
 
-import os
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
@@ -311,7 +310,7 @@ class AgentConfig(BaseModel):
     judge_llm_api_base: Optional[str] = None
     judge_llm_api_version: Optional[str] = None
     business_context: str = ""
-    qualifire_api_key: Optional[str] = None
+    rogue_security_api_key: Optional[str] = None
     evaluation_mode: EvaluationMode = Field(
         default=EvaluationMode.POLICY,
         description="Evaluation mode: policy testing or red teaming",
@@ -845,8 +844,8 @@ class RedTeamRequest(BaseModel):
     attacker_llm_api_base: Optional[str] = None
     attacker_llm_api_version: Optional[str] = None
     business_context: str = ""
-    qualifire_api_key: Optional[str] = None
-    deckard_base_url: Optional[str] = None
+    rogue_security_api_key: Optional[str] = None
+    rogue_security_base_url: Optional[str] = None
     max_retries: int = 3
     timeout_seconds: int = 600
 
@@ -937,8 +936,8 @@ class SummaryGenerationRequest(BaseModel):
     job_id: Optional[str] = None
     deep_test: bool = False
     judge_model: Optional[str] = None
-    qualifire_api_key: Optional[str] = None
-    qualifire_url: Optional[str] = "https://app.qualifire.ai"
+    rogue_security_api_key: Optional[str] = None
+    rogue_security_base_url: Optional[str] = None
 
 
 class StructuredSummary(BaseModel):
@@ -1008,11 +1007,8 @@ class ReportSummaryRequest(BaseModel):
     deep_test: bool = False
     judge_model: Optional[str] = None
     start_time: Optional[datetime] = None
-    qualifire_api_key: Optional[str] = None
-    qualifire_url: Optional[str] = os.getenv(
-        "QUALIFIRE_BASE_URL",
-        "https://app.qualifire.ai",
-    )
+    rogue_security_api_key: Optional[str] = None
+    rogue_security_base_url: Optional[str] = None
 
 
 class ReportSummaryResponse(BaseModel):

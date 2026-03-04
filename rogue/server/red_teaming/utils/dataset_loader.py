@@ -12,14 +12,14 @@ from loguru import logger
 L1B3RT4S_URL = (
     "https://raw.githubusercontent.com/elder-plinius/L1B3RT4S/main/OPENAI.mkd"
 )
-QUALIFIRE_DATASET_NAME = "qualifire/prompt-injections-benchmark"
+ROGUE_SECURITY_DATASET_NAME = "qualifire/prompt-injections-benchmark"
 
 
 class DatasetLoader:
     """Loader for external prompt injection datasets."""
 
     _l1b3rt4s_cache: Optional[List[str]] = None
-    _qualifire_cache: Optional[List[str]] = None
+    _rogue_security_cache: Optional[List[str]] = None
 
     @classmethod
     def get_l1b3rt4s_prompts(cls) -> List[str]:
@@ -63,9 +63,9 @@ class DatasetLoader:
             return []
 
     @classmethod
-    def get_qualifire_prompts(cls, sample_size: int = 100) -> List[str]:
+    def get_rogue_security_prompts(cls, sample_size: int = 100) -> List[str]:
         """
-        Fetch prompts from Qualifire dataset.
+        Fetch prompts from Rogue Security dataset.
 
         Args:
             sample_size: Number of samples to load (to avoid memory issues)
@@ -73,8 +73,8 @@ class DatasetLoader:
         Returns:
             List of jailbreak prompts.
         """
-        if cls._qualifire_cache is not None:
-            return cls._qualifire_cache
+        if cls._rogue_security_cache is not None:
+            return cls._rogue_security_cache
 
         try:
             # datasets import takes a while, import locally
@@ -83,13 +83,13 @@ class DatasetLoader:
             # Try loading 'test' split, fallback to 'train' if needed
             try:
                 dataset = load_dataset(
-                    QUALIFIRE_DATASET_NAME,
+                    ROGUE_SECURITY_DATASET_NAME,
                     split="test",
                 )  # nosec: B615
             except Exception:
                 # Fallback or retry with different split if 'test' fails
                 dataset = load_dataset(
-                    QUALIFIRE_DATASET_NAME,
+                    ROGUE_SECURITY_DATASET_NAME,
                     split="train",
                 )  # nosec: B615
 
@@ -107,12 +107,12 @@ class DatasetLoader:
                 prompts.append(item["text"])
                 count += 1
 
-            logger.info(f"Loaded {len(prompts)} prompts from Qualifire")
-            cls._qualifire_cache = prompts
+            logger.info(f"Loaded {len(prompts)} prompts from Rogue Security")
+            cls._rogue_security_cache = prompts
             return prompts
 
         except Exception as e:
-            logger.warning(f"Failed to load Qualifire prompts: {e}")
+            logger.warning(f"Failed to load Rogue Security prompts: {e}")
             return []
 
     @classmethod
@@ -120,5 +120,5 @@ class DatasetLoader:
         """Get all available advanced prompts."""
         prompts = []
         prompts.extend(cls.get_l1b3rt4s_prompts())
-        prompts.extend(cls.get_qualifire_prompts())
+        prompts.extend(cls.get_rogue_security_prompts())
         return prompts

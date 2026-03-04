@@ -28,7 +28,7 @@ type StartEvaluationMsg struct{}
 type SummaryGeneratedMsg struct {
 	Summary   string
 	Err       error
-	ReportURL string // Qualifire report URL if auto-reported
+	ReportURL string // Rogue Security report URL if auto-reported
 }
 
 // RedTeamReportFetchedMsg contains the result of red team report fetch
@@ -109,7 +109,7 @@ type Model struct {
 
 	// Red Team Report state
 	redTeamReportData *redteam_report.ReportData
-	redTeamScanID     string // Qualifire scan ID after successful report
+	redTeamScanID     string // Rogue Security scan ID after successful report
 
 	// Model cache for dynamic model lists
 	modelCache *modelcache.Cache
@@ -136,9 +136,9 @@ type ConfigField = config.ConfigField
 
 // Re-export constants
 const (
-	ConfigFieldServerURL = config.ConfigFieldServerURL
-	ConfigFieldTheme     = config.ConfigFieldTheme
-	ConfigFieldQualifire = config.ConfigFieldQualifire
+	ConfigFieldServerURL     = config.ConfigFieldServerURL
+	ConfigFieldTheme         = config.ConfigFieldTheme
+	ConfigFieldRogueSecurity = config.ConfigFieldRogueSecurity
 )
 
 // EvalScenario represents a single evaluation scenario

@@ -5,7 +5,7 @@ Provides vulnerability-centric red teaming capabilities with:
 - 87+ vulnerability types organized by category
 - Multiple attack techniques (single-turn, multi-turn, agentic)
 - Framework mappings for compliance reporting (OWASP, MITRE, NIST, etc.)
-- Premium features via Qualifire API integration
+- Premium features via Rogue Security API integration
 """
 
 from . import attacks, catalog, metrics, report, vulnerabilities

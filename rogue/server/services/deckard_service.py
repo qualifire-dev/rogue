@@ -8,14 +8,14 @@ from rogue_sdk.types import EvaluationResults, ReportSummaryRequest
 from .api_format_service import convert_with_structured_summary
 
 
-class QualifireService:
+class DeckardService:
     @staticmethod
     def report_summary(
         request: ReportSummaryRequest,
         evaluation_results: EvaluationResults,
     ):
         logger.info(
-            "Reporting summary to Qualifire",
+            "Reporting summary to Rogue Security",
         )
 
         api_evaluation_result = convert_with_structured_summary(
@@ -27,18 +27,20 @@ class QualifireService:
         )
 
         response = requests.post(
-            f"{request.qualifire_url}/api/rogue/v1/report",
-            headers={"X-qualifire-key": request.qualifire_api_key},
+            f"{request.rogue_security_base_url}/api/rogue/v1/report",
+            headers={"X-Rogue-API-Key": request.rogue_security_api_key},
             json=api_evaluation_result.model_dump(mode="json"),
             timeout=300,
         )
 
         if not response.ok:
             logger.error(
-                "Failed to report summary to Qualifire",
+                "Failed to report summary to Rogue Security",
                 extra={"response": response.json()},
             )
-            raise Exception(f"Failed to report summary to Qualifire: {response.json()}")
+            raise Exception(
+                f"Failed to report summary to Rogue Security: {response.json()}",
+            )
 
         return response.json()
 
@@ -46,24 +48,24 @@ class QualifireService:
     def report_red_team_scan(
         job,
         report,
-        qualifire_api_key: str,
-        qualifire_url: Optional[str] = None,
+        rogue_security_api_key: str,
+        rogue_security_base_url: Optional[str] = None,
     ):
-        """Report red team scan results to Qualifire platform.
+        """Report red team scan results to Rogue Security platform.
 
         Args:
             job: RedTeamJob with request and results
             report: RedTeamReport generated from ComplianceReportGenerator
-            qualifire_api_key: API key for Qualifire
-            qualifire_url: Base URL for Qualifire API
+            rogue_security_api_key: API key for Rogue Security
+            rogue_security_base_url: Base URL for Rogue Security API
         """
-        if not qualifire_url:
-            qualifire_url = os.getenv(
-                "QUALIFIRE_BASE_URL",
-                "https://app.qualifire.ai",
+        if not rogue_security_base_url:
+            rogue_security_base_url = os.getenv(
+                "ROGUE_SECURITY_BASE_URL",
+                "https://app.rogue.security",
             )
 
-        logger.info("Reporting red team scan to Qualifire")
+        logger.info("Reporting red team scan to Rogue Security")
 
         results = job.results
 
@@ -145,8 +147,8 @@ class QualifireService:
         }
 
         response = requests.post(
-            f"{qualifire_url}/api/rogue/v1/red-team",
-            headers={"X-qualifire-key": qualifire_api_key},
+            f"{rogue_security_base_url}/api/rogue/v1/red-team",
+            headers={"X-rogue-API-Key": rogue_security_api_key},
             json=payload,
             timeout=300,
         )
@@ -157,14 +159,14 @@ class QualifireService:
             except Exception:
                 body = response.text
             logger.error(
-                "Failed to report red team scan to Qualifire",
+                "Failed to report red team scan to Rogue Security",
                 extra={
                     "status_code": response.status_code,
                     "response": body,
                 },
             )
             raise Exception(
-                f"Failed to report red team scan to Qualifire: "
+                f"Failed to report red team scan to Rogue Security: "
                 f"{response.status_code} {body}",
             )
 
@@ -172,13 +174,13 @@ class QualifireService:
             return response.json()
         except Exception:
             logger.error(
-                "Qualifire returned non-JSON response",
+                "Rogue Security returned non-JSON response",
                 extra={
                     "status_code": response.status_code,
                     "response_text": response.text[:500],
                 },
             )
             raise Exception(
-                f"Qualifire returned non-JSON response: "
+                f"Rogue Security returned non-JSON response: "
                 f"{response.status_code} {response.text[:500]}",
             )

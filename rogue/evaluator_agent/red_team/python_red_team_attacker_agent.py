@@ -44,7 +44,7 @@ class PythonRedTeamAttackerAgent(BaseRedTeamAttackerAgent):
         judge_llm_aws_access_key_id: Optional[str],
         judge_llm_aws_secret_access_key: Optional[str],
         judge_llm_aws_region: Optional[str],
-        qualifire_api_key: Optional[str],
+        rogue_security_api_key: Optional[str],
         python_entrypoint_file: Optional[str] = None,
         **kwargs: object,
     ):
@@ -73,7 +73,7 @@ class PythonRedTeamAttackerAgent(BaseRedTeamAttackerAgent):
             judge_llm_aws_access_key_id=judge_llm_aws_access_key_id,
             judge_llm_aws_secret_access_key=judge_llm_aws_secret_access_key,
             judge_llm_aws_region=judge_llm_aws_region,
-            qualifire_api_key=qualifire_api_key,
+            rogue_security_api_key=rogue_security_api_key,
         )
         self._python_file_path = Path(python_file_path)
         self._module: Optional[ModuleType] = None

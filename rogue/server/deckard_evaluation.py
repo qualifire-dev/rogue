@@ -1,7 +1,7 @@
 """
-Qualifire Evaluation Client Stub.
+Rogue Security Evaluation Client Stub.
 
-This module provides a stub interface for the Qualifire premium evaluation API.
+This module provides a stub interface for the Rogue Security premium evaluation API.
 Premium evaluation provides more sophisticated vulnerability detection and
 scoring capabilities.
 """
@@ -11,18 +11,18 @@ from typing import Any, Dict, List, Optional
 from loguru import logger
 
 
-class QualifireEvaluationClientError(Exception):
-    """Error raised by QualifireEvaluationClient."""
+class RogueSecurityEvaluationClientError(Exception):
+    """Error raised by RogueSecurityEvaluationClient."""
 
     pass
 
 
-class QualifireEvaluationClient:
+class RogueSecurityEvaluationClient:
     """
-    Client for Qualifire premium vulnerability evaluation.
+    Client for Rogue Security premium vulnerability evaluation.
 
-    This is a stub implementation. When a Qualifire API key is provided,
-    the client will connect to the Qualifire cloud service for premium
+    This is a stub implementation. When a Rogue Security API key is provided,
+    the client will connect to the Rogue Security cloud service for premium
     evaluation capabilities.
 
     Premium evaluation features:
@@ -35,14 +35,14 @@ class QualifireEvaluationClient:
     def __init__(
         self,
         api_key: Optional[str] = None,
-        base_url: str = "https://app.qualifire.ai",
+        base_url: str = "https://app.rogue.security",
     ):
         """
-        Initialize the Qualifire evaluation client.
+        Initialize the Rogue Security evaluation client.
 
         Args:
-            api_key: Qualifire API key for premium features
-            base_url: Base URL for Qualifire API
+            api_key: Rogue Security API key for premium features
+            base_url: Base URL for Rogue Security API
         """
         self.api_key = api_key
         self.base_url = base_url
@@ -50,11 +50,11 @@ class QualifireEvaluationClient:
 
         if self._is_configured:
             logger.info(
-                "QualifireEvaluationClient initialized with API key",
+                "RogueSecurityEvaluationClient initialized with API key",
                 extra={"base_url": base_url},
             )
         else:
-            logger.debug("QualifireEvaluationClient initialized without API key")
+            logger.debug("RogueSecurityEvaluationClient initialized without API key")
 
     @property
     def is_configured(self) -> bool:
@@ -89,16 +89,16 @@ class QualifireEvaluationClient:
             }
 
         Raises:
-            QualifireEvaluationClientError: If API key is not configured
-            NotImplementedError: Qualifire integration not yet implemented
+            RogueSecurityEvaluationClientError: If API key is not configured
+            NotImplementedError: Rogue Security integration not yet implemented
         """
         if not self._is_configured:
-            raise QualifireEvaluationClientError(
-                "Qualifire API key required for premium evaluation. "
-                "Get your API key at https://qualifire.ai/api-keys",
+            raise RogueSecurityEvaluationClientError(
+                "Rogue Security API key required for premium evaluation. "
+                "Get your API key at https://app.rogue.security/settings/api-keys",
             )
 
-        # TODO: Implement Qualifire API call
+        # TODO: Implement Rogue Security API call
         # POST /v1/evaluate
         # {
         #     "conversation": conversation,
@@ -106,7 +106,7 @@ class QualifireEvaluationClient:
         #     "context": context
         # }
         raise NotImplementedError(
-            "Qualifire evaluation API integration coming soon. "
+            "Rogue Security evaluation API integration coming soon. "
             f"Requested: vulnerability={vulnerability_id}",
         )
 
@@ -129,19 +129,19 @@ class QualifireEvaluationClient:
             List of evaluation results in the same order as input
 
         Raises:
-            QualifireEvaluationClientError: If API key is not configured
-            NotImplementedError: Qualifire integration not yet implemented
+            RogueSecurityEvaluationClientError: If API key is not configured
+            NotImplementedError: Rogue Security integration not yet implemented
         """
         if not self._is_configured:
-            raise QualifireEvaluationClientError(
-                "Qualifire API key required for batch evaluation. "
-                "Get your API key at https://qualifire.ai/api-keys",
+            raise RogueSecurityEvaluationClientError(
+                "Rogue Security API key required for batch evaluation. "
+                "Get your API key at https://app.rogue.security/settings/api-keys",
             )
 
-        # TODO: Implement Qualifire API call
+        # TODO: Implement Rogue Security API call
         # POST /v1/evaluate/batch
         raise NotImplementedError(
-            f"Qualifire batch evaluation API integration coming soon. "
+            f"Rogue Security batch evaluation API integration coming soon. "
             f"Requested: {len(evaluations)} evaluations",
         )
 
@@ -164,19 +164,19 @@ class QualifireEvaluationClient:
             Dictionary mapping vulnerability IDs to evaluation results
 
         Raises:
-            QualifireEvaluationClientError: If API key is not configured
-            NotImplementedError: Qualifire integration not yet implemented
+            RogueSecurityEvaluationClientError: If API key is not configured
+            NotImplementedError: Rogue Security integration not yet implemented
         """
         if not self._is_configured:
-            raise QualifireEvaluationClientError(
-                "Qualifire API key required for cross-category analysis. "
-                "Get your API key at https://qualifire.ai/api-keys",
+            raise RogueSecurityEvaluationClientError(
+                "Rogue Security API key required for cross-category analysis. "
+                "Get your API key at https://app.rogue.security/settings/api-keys",
             )
 
-        # TODO: Implement Qualifire API call
+        # TODO: Implement Rogue Security API call
         # POST /v1/evaluate/cross-category
         raise NotImplementedError(
-            "Qualifire cross-category analysis API integration coming soon.",
+            "Rogue Security cross-category analysis API integration coming soon.",
         )
 
     async def generate_remediation(
@@ -197,19 +197,19 @@ class QualifireEvaluationClient:
             Detailed remediation recommendations string
 
         Raises:
-            QualifireEvaluationClientError: If API key is not configured
-            NotImplementedError: Qualifire integration not yet implemented
+            RogueSecurityEvaluationClientError: If API key is not configured
+            NotImplementedError: Rogue Security integration not yet implemented
         """
         if not self._is_configured:
-            raise QualifireEvaluationClientError(
-                "Qualifire API key required for remediation generation. "
-                "Get your API key at https://qualifire.ai/api-keys",
+            raise RogueSecurityEvaluationClientError(
+                "Rogue Security API key required for remediation generation. "
+                "Get your API key at https://app.rogue.security/settings/api-keys",
             )
 
-        # TODO: Implement Qualifire API call
+        # TODO: Implement Rogue Security API call
         # POST /v1/evaluate/remediation
         raise NotImplementedError(
-            "Qualifire remediation API integration coming soon. "
+            "Rogue Security remediation API integration coming soon. "
             f"Requested: vulnerability={vulnerability_id}, severity={severity}",
         )
 

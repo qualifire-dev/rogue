@@ -99,8 +99,8 @@ func (m *Model) summaryGenerationCmd() tea.Cmd {
 		// Create a context with longer timeout for summary generation
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 		defer cancel()
-		parsedAPIKey := &m.config.QualifireAPIKey
-		if !m.config.QualifireEnabled {
+		parsedAPIKey := &m.config.RogueSecurityAPIKey
+		if !m.config.RogueSecurityEnabled {
 			parsedAPIKey = nil
 		}
 		structuredSummary, err := sdk.GenerateSummary(

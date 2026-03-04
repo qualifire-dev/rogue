@@ -4,7 +4,6 @@
 
 <div align="center">
 
-
 <a href="https://trendshift.io/repositories/15191" target="_blank"><img src="https://trendshift.io/api/badge/repositories/15191" alt="qualifire-dev%2Frogue | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 
 ![Tests](https://github.com/qualifire-dev/rogue/actions/workflows/test.yml/badge.svg?branch=main)
@@ -70,11 +69,11 @@ https://github.com/user-attachments/assets/b5c04772-6916-4aab-825b-6a7476d77787
 
 ### Supported Protocols
 
-| Protocol | Transport | Description |
-|----------|-----------|-------------|
-| **A2A** | HTTP | [Google's Agent-to-Agent](https://a2a-protocol.org/latest/) protocol |
-| **MCP** | SSE, STREAMABLE_HTTP | [Model Context Protocol](https://modelcontextprotocol.io/) via `send_message` tool |
-| **Python** | — | Direct Python function calls (no network protocol) |
+| Protocol   | Transport            | Description                                                                        |
+| ---------- | -------------------- | ---------------------------------------------------------------------------------- |
+| **A2A**    | HTTP                 | [Google's Agent-to-Agent](https://a2a-protocol.org/latest/) protocol               |
+| **MCP**    | SSE, STREAMABLE_HTTP | [Model Context Protocol](https://modelcontextprotocol.io/) via `send_message` tool |
+| **Python** | —                    | Direct Python function calls (no network protocol)                                 |
 
 See examples in [`examples/`](./examples/) for reference implementations.
 
@@ -88,10 +87,10 @@ For agents implemented as Python functions without A2A or MCP:
 def call_agent(messages: list[dict]) -> str:
     """
     Process conversation and return response.
-    
+
     Args:
         messages: List of {"role": "user"|"assistant", "content": "..."}
-    
+
     Returns:
         Agent's response as a string
     """
@@ -292,4 +291,4 @@ GOOGLE_API_KEY="..."
 Licensed under a proprietary license — see [LICENSE](LICENSE.md).
 
 Free for personal and internal use. Commercial hosting requires licensing.
-Contact: `admin@qualifire.ai`
+Contact: `hello@rogue.security`

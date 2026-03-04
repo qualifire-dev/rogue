@@ -305,4 +305,4 @@ python -m flake8 rogue_sdk/
 This project is licensed under a License - see the [LICENSE](LICENSE.md) file for details.
 This means that you can use this freely and forever but you are not allowed to host and sell this software.
 
-If you have any queries about the license and commercial use for this project please email `admin@qualifire.ai`
+If you have any queries about the license and commercial use for this project please email `hello@rogue.security`.

@@ -135,8 +135,8 @@ class RedTeamService:
                 evaluated_agent_auth_type=job.request.evaluated_agent_auth_type,
                 evaluated_agent_auth_credentials=job.request.evaluated_agent_auth_credentials,  # noqa: E501
                 red_team_config=job.request.red_team_config,
-                qualifire_api_key=job.request.qualifire_api_key,
-                deckard_base_url=job.request.deckard_base_url,
+                rogue_security_api_key=job.request.rogue_security_api_key,
+                rogue_security_base_url=job.request.rogue_security_base_url,
                 judge_llm=job.request.judge_llm,
                 judge_llm_api_key=job.request.judge_llm_api_key,
                 judge_llm_aws_access_key_id=job.request.judge_llm_aws_access_key_id,

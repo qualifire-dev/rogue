@@ -247,7 +247,7 @@ class BaseEvaluatorAgent(ABC):
             )
 
         return LlmAgent(
-            name="qualifire_agent_evaluator",
+            name="rogue_security_agent_evaluator",
             description="An agent that evaluates test scenarios on other agents",
             model=get_llm_from_model(
                 self._judge_llm,

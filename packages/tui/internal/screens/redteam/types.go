@@ -101,7 +101,7 @@ type RedTeamConfigState struct {
 	// Configuration
 	ScanType                ScanType
 	AttacksPerVulnerability int
-	QualifireAPIKey         string
+	RogueSecurityAPIKey     string
 
 	// Dialogs
 	ShowFrameworkDialog bool
