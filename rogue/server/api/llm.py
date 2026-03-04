@@ -23,8 +23,8 @@ from rogue.server.services.evaluation_service import EvaluationService
 
 from ...common.logging import get_logger
 from ..models.api_format import ServerSummaryGenerationResponse
+from ..services.deckard_service import DeckardService
 from ..services.llm_service import LLMService
-from ..services.qualifire_service import QualifireService
 
 router = APIRouter(prefix="/llm", tags=["llm"])
 logger = get_logger(__name__)
@@ -334,15 +334,15 @@ async def generate_summary(
 
         logger.info("Successfully generated evaluation summary")
 
-        if not request.qualifire_api_key:
-            env_api_key = os.getenv("QUALIFIRE_API_KEY")
+        if not request.deckard_api_key:
+            env_api_key = os.getenv("DECKARD_API_KEY")
             if env_api_key:
-                request.qualifire_api_key = env_api_key
+                request.deckard_api_key = env_api_key
 
-        if request.qualifire_api_key and request.job_id:
+        if request.deckard_api_key and request.job_id:
 
             logger.info(
-                "Reporting summary to Qualifire",
+                "Reporting summary to Deckard",
                 extra={"job_id": request.job_id},
             )
 
@@ -359,7 +359,7 @@ async def generate_summary(
                 extra={"summary": summary, "results": request.results},
             )
 
-            QualifireService.report_summary(
+            DeckardService.report_summary(
                 ReportSummaryRequest(
                     job_id=request.job_id,
                     structured_summary=summary,
@@ -370,8 +370,8 @@ async def generate_summary(
                         else datetime.now(timezone.utc)
                     ),
                     judge_model=job.judge_model if job else request.judge_model,
-                    qualifire_url=request.qualifire_url,
-                    qualifire_api_key=request.qualifire_api_key,
+                    deckard_base_url=request.deckard_base_url,
+                    deckard_api_key=request.deckard_api_key,
                 ),
                 evaluation_results=evaluation_results,
             )
@@ -395,7 +395,7 @@ async def report_summary_handler(
     evaluation_service: EvaluationService = Depends(get_evaluation_service),
 ):
     """
-    Report summary to Qualifire.
+    Report summary to Deckard.
     """
     try:
         job = await evaluation_service.get_job(request.job_id)
@@ -414,20 +414,20 @@ async def report_summary_handler(
                 detail="Evaluation results not found or empty",
             )
 
-        if not request.qualifire_api_key:
-            env_api_key = os.getenv("QUALIFIRE_API_KEY")
+        if not request.deckard_api_key:
+            env_api_key = os.getenv("DECKARD_API_KEY")
             if env_api_key:
-                request.qualifire_api_key = env_api_key
+                request.deckard_api_key = env_api_key
 
-        QualifireService.report_summary(
+        DeckardService.report_summary(
             ReportSummaryRequest(
                 job_id=request.job_id,
                 structured_summary=request.structured_summary,
                 deep_test=request.deep_test,
                 start_time=job.created_at,
                 judge_model=job.judge_model,
-                qualifire_api_key=request.qualifire_api_key,
-                qualifire_url=request.qualifire_url,
+                deckard_api_key=request.deckard_api_key,
+                deckard_base_url=request.deckard_base_url,
             ),
             evaluation_results=EvaluationResults(results=results),
         )

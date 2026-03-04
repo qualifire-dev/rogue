@@ -55,7 +55,7 @@ class BaseRedTeamAttackerAgent(ABC):
         judge_llm_aws_access_key_id: Optional[str],
         judge_llm_aws_secret_access_key: Optional[str],
         judge_llm_aws_region: Optional[str],
-        qualifire_api_key: Optional[str],
+        rogue_security_api_key: Optional[str],
         judge_llm_api_base: Optional[str] = None,
         judge_llm_api_version: Optional[str] = None,
         attacker_llm_api_base: Optional[str] = None,
@@ -83,14 +83,14 @@ class BaseRedTeamAttackerAgent(ABC):
         self._judge_llm_aws_region = judge_llm_aws_region
         self._judge_llm_api_base = judge_llm_api_base
         self._judge_llm_api_version = judge_llm_api_version
-        self._qualifire_api_key = qualifire_api_key
+        self._rogue_security_api_key = rogue_security_api_key
         self._deckard_base_url = deckard_base_url
 
         # Create the underlying orchestrator
         self._orchestrator = RedTeamOrchestrator(
             config=red_team_config,
             business_context=business_context,
-            qualifire_api_key=qualifire_api_key,
+            rogue_security_api_key=rogue_security_api_key,
             deckard_base_url=deckard_base_url,
         )
 

@@ -135,9 +135,9 @@ def set_cli_args(parser: ArgumentParser) -> None:
         help="Minimum test cases per attack type (default: 5)",
     )
     parser.add_argument(
-        "--qualifire-api-key",
+        "--rogue-security-api-key",
         required=False,
-        help="API key to use when reporting summary to Qualifire. "
+        help="API key to use when reporting summary to Rogue Security. "
         "Can be left unset if env is used.",
     )
 
@@ -292,7 +292,7 @@ async def create_report(
     output_report_file: Path,
     job_id: str | None = None,
     judge_llm_api_key_secret: SecretStr | None = None,
-    qualifire_api_key_secret: SecretStr | None = None,
+    rogue_security_api_key_secret: SecretStr | None = None,
     deep_test_mode: bool = False,
     judge_model: str | None = None,
 ) -> str:
@@ -302,9 +302,9 @@ async def create_report(
         else None
     )
 
-    qualifire_api_key = (
-        qualifire_api_key_secret.get_secret_value()
-        if qualifire_api_key_secret
+    rogue_security_api_key = (
+        rogue_security_api_key_secret.get_secret_value()
+        if rogue_security_api_key_secret
         else None
     )
 
@@ -320,7 +320,7 @@ async def create_report(
             results=results,
             model=judge_llm,
             api_key=judge_llm_api_key,
-            qualifire_api_key=qualifire_api_key,
+            rogue_security_api_key=rogue_security_api_key,
             job_id=job_id,
             deep_test=deep_test_mode,
             judge_model=judge_model,
@@ -646,7 +646,7 @@ async def run_cli(args: Namespace) -> int:
         judge_llm_api_key_secret=cli_input.judge_llm_api_key,
         deep_test_mode=cli_input.deep_test_mode,
         judge_model=cli_input.judge_llm,
-        qualifire_api_key_secret=cli_input.qualifire_api_key,
+        rogue_security_api_key_secret=cli_input.rogue_security_api_key,
     )
 
     logger.info("Report saved", extra={"report_file": cli_input.output_report_file})
@@ -654,9 +654,9 @@ async def run_cli(args: Namespace) -> int:
     console = Console()
     console.print(Markdown(report_summary))
 
-    if cli_input.qualifire_api_key is None:
+    if cli_input.rogue_security_api_key is None:
         console.print(
-            """[red]Qualifire API key is not set. This report will not persist, it if highly recommended set it using the --qualifire-api-key flag or the QUALIFIRE_API_KEY environment variable.[/red] """,  # noqa: E501
+            """[red]Rogue Security API key is not set. This report will not persist, it if highly recommended set it using the --rogue-security-api-key flag or the ROGUE_SECURITY_API_KEY environment variable.[/red] """,  # noqa: E501
         )
 
     return get_exit_code(results)

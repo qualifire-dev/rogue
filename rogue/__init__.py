@@ -62,5 +62,5 @@ __all__ = [
 
 # Version info
 __version__ = get_version("rogue-ai")
-__author__ = "Qualifire"
+__author__ = "Rogue Security"
 __description__ = "Library for evaluating AI agents against scenarios"

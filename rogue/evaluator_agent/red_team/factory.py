@@ -37,7 +37,7 @@ class _CommonKwargs(TypedDict):
     judge_llm_aws_region: Optional[str]
     judge_llm_api_base: Optional[str]
     judge_llm_api_version: Optional[str]
-    qualifire_api_key: Optional[str]
+    rogue_security_api_key: Optional[str]
     deckard_base_url: Optional[str]
 
 
@@ -63,7 +63,7 @@ def create_red_team_attacker_agent(
     judge_llm_aws_region: Optional[str] = None,
     judge_llm_api_base: Optional[str] = None,
     judge_llm_api_version: Optional[str] = None,
-    qualifire_api_key: Optional[str] = None,
+    rogue_security_api_key: Optional[str] = None,
     python_entrypoint_file: Optional[str] = None,
     deckard_base_url: Optional[str] = None,
 ) -> BaseRedTeamAttackerAgent:
@@ -88,7 +88,7 @@ def create_red_team_attacker_agent(
         judge_llm_aws_access_key_id: AWS credentials for judge LLM
         judge_llm_aws_secret_access_key: AWS credentials for judge LLM
         judge_llm_aws_region: AWS region for judge LLM
-        qualifire_api_key: Optional API key for premium features
+        rogue_security_api_key: Optional API key for premium features
         python_entrypoint_file: Path to Python file with call_agent function
             (required for PYTHON protocol)
 
@@ -144,7 +144,7 @@ def create_red_team_attacker_agent(
         "judge_llm_aws_region": judge_llm_aws_region,
         "judge_llm_api_base": judge_llm_api_base,
         "judge_llm_api_version": judge_llm_api_version,
-        "qualifire_api_key": qualifire_api_key,
+        "rogue_security_api_key": rogue_security_api_key,
         "deckard_base_url": deckard_base_url,
     }
 

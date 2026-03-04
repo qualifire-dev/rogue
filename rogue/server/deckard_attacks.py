@@ -25,7 +25,7 @@ class DeckardClientError(Exception):
 
 
 # Backwards compatibility alias
-QualifireAttackClientError = DeckardClientError
+RogueSecurityAttackClientError = DeckardClientError
 
 
 class DeckardClient:
@@ -50,13 +50,13 @@ class DeckardClient:
         Initialize the Deckard client.
 
         Args:
-            api_key: Qualifire API key for premium features
+            api_key: Rogue Security API key for premium features
             base_url: Base URL for Deckard API (defaults to DECKARD_BASE_URL env var
-                      or https://app.qualifire.ai)
+                      or https://app.rogue.security)
         """
-        self.api_key = api_key or os.getenv("QUALIFIRE_API_KEY")
+        self.api_key = api_key or os.getenv("ROGUE_SECURITY_API_KEY")
         self.base_url = (
-            base_url or os.getenv("DECKARD_BASE_URL") or "https://app.qualifire.ai"
+            base_url or os.getenv("DECKARD_BASE_URL") or "https://app.rogue.security"
         )
         self._is_configured = self.api_key is not None and len(self.api_key) > 0
 
@@ -80,7 +80,7 @@ class DeckardClient:
             "User-Agent": "rogue-red-teaming/1.0",
         }
         if self.api_key:
-            headers["X-Qualifire-API-Key"] = self.api_key
+            headers["X-Rogue-API-Key"] = self.api_key
         return headers
 
     async def generate_attack_payload(
@@ -129,8 +129,8 @@ class DeckardClient:
         """
         if not self._is_configured:
             raise DeckardClientError(
-                "QUALIFIRE_API_KEY required for premium attacks. "
-                "Get your API key at https://qualifire.ai/api-keys",
+                "ROGUE_SECURITY_API_KEY required for premium attacks. "
+                "Get your API key at https://app.rogue.security/settings/api-keys",
             )
 
         try:
@@ -244,4 +244,4 @@ class DeckardClient:
 
 
 # Backwards compatibility alias
-QualifireAttackClient = DeckardClient
+RogueSecurityAttackClient = DeckardClient

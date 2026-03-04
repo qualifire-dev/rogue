@@ -61,10 +61,10 @@ func HandleKeyPress(state *RedTeamConfigState, msg tea.KeyMsg) (*RedTeamConfigSt
 		// Open framework dialog
 		state.ShowFrameworkDialog = true
 
-	// TODO: Re-enable when Qualifire API key feature is released
+	// TODO: Re-enable when Rogue Security API key feature is released
 	// case "q":
 	// 	// Return command to open API key dialog via main controller
-	// 	return state, OpenAPIKeyDialogCmd(state.QualifireAPIKey)
+	// 	return state, OpenAPIKeyDialogCmd(state.RogueSecurityAPIKey)
 
 	case "+", "=":
 		// Increase attacks per vulnerability
@@ -300,7 +300,7 @@ func toggleSelection(state *RedTeamConfigState) *RedTeamConfigState {
 			if state.FocusedItem < len(vulns) {
 				vuln := vulns[state.FocusedItem]
 				// Check if premium and no API key
-				if vuln.Premium && state.QualifireAPIKey == "" {
+				if vuln.Premium && state.RogueSecurityAPIKey == "" {
 					return state // Can't select premium without API key
 				}
 				state.SelectedVulnerabilities[vuln.ID] = !state.SelectedVulnerabilities[vuln.ID]
@@ -313,7 +313,7 @@ func toggleSelection(state *RedTeamConfigState) *RedTeamConfigState {
 			if state.FocusedItem < len(attacks) {
 				attack := attacks[state.FocusedItem]
 				// Check if premium and no API key
-				if attack.Premium && state.QualifireAPIKey == "" {
+				if attack.Premium && state.RogueSecurityAPIKey == "" {
 					return state // Can't select premium without API key
 				}
 				state.SelectedAttacks[attack.ID] = !state.SelectedAttacks[attack.ID]
@@ -335,7 +335,7 @@ func toggleCategorySelection(state *RedTeamConfigState) *RedTeamConfigState {
 			// Check if all are selected
 			allSelected := true
 			for _, vuln := range vulns {
-				if !vuln.Premium || state.QualifireAPIKey != "" {
+				if !vuln.Premium || state.RogueSecurityAPIKey != "" {
 					if !state.SelectedVulnerabilities[vuln.ID] {
 						allSelected = false
 						break
@@ -345,7 +345,7 @@ func toggleCategorySelection(state *RedTeamConfigState) *RedTeamConfigState {
 
 			// Toggle all
 			for _, vuln := range vulns {
-				if !vuln.Premium || state.QualifireAPIKey != "" {
+				if !vuln.Premium || state.RogueSecurityAPIKey != "" {
 					state.SelectedVulnerabilities[vuln.ID] = !allSelected
 				}
 			}
@@ -358,7 +358,7 @@ func toggleCategorySelection(state *RedTeamConfigState) *RedTeamConfigState {
 			// Check if all are selected
 			allSelected := true
 			for _, attack := range attacks {
-				if !attack.Premium || state.QualifireAPIKey != "" {
+				if !attack.Premium || state.RogueSecurityAPIKey != "" {
 					if !state.SelectedAttacks[attack.ID] {
 						allSelected = false
 						break
@@ -368,7 +368,7 @@ func toggleCategorySelection(state *RedTeamConfigState) *RedTeamConfigState {
 
 			// Toggle all
 			for _, attack := range attacks {
-				if !attack.Premium || state.QualifireAPIKey != "" {
+				if !attack.Premium || state.RogueSecurityAPIKey != "" {
 					state.SelectedAttacks[attack.ID] = !allSelected
 				}
 			}
@@ -386,7 +386,7 @@ func selectAllInCategory(state *RedTeamConfigState) *RedTeamConfigState {
 		if state.FocusedCategory < len(categories) {
 			vulns := GetSortedVulnerabilitiesForCategory(categories[state.FocusedCategory])
 			for _, vuln := range vulns {
-				if !vuln.Premium || state.QualifireAPIKey != "" {
+				if !vuln.Premium || state.RogueSecurityAPIKey != "" {
 					state.SelectedVulnerabilities[vuln.ID] = true
 				}
 			}
@@ -396,7 +396,7 @@ func selectAllInCategory(state *RedTeamConfigState) *RedTeamConfigState {
 		if state.FocusedCategory < len(categories) {
 			attacks := GetSortedAttacksForCategory(categories[state.FocusedCategory])
 			for _, attack := range attacks {
-				if !attack.Premium || state.QualifireAPIKey != "" {
+				if !attack.Premium || state.RogueSecurityAPIKey != "" {
 					state.SelectedAttacks[attack.ID] = true
 				}
 			}
@@ -465,7 +465,7 @@ func applyFullPreset(state *RedTeamConfigState) *RedTeamConfigState {
 	}
 
 	// If API key present, also select premium
-	if state.QualifireAPIKey != "" {
+	if state.RogueSecurityAPIKey != "" {
 		for id, vuln := range VulnerabilityCatalog {
 			if vuln.Premium {
 				state.SelectedVulnerabilities[id] = true
@@ -495,7 +495,7 @@ func applyFrameworkSelection(state *RedTeamConfigState) *RedTeamConfigState {
 	state.SelectedVulnerabilities = make(map[string]bool)
 	for _, vulnID := range GetUniqueVulnerabilitiesForFrameworks(selectedFWs) {
 		vuln := GetVulnerability(vulnID)
-		if vuln != nil && (!vuln.Premium || state.QualifireAPIKey != "") {
+		if vuln != nil && (!vuln.Premium || state.RogueSecurityAPIKey != "") {
 			state.SelectedVulnerabilities[vulnID] = true
 		}
 	}
@@ -508,7 +508,7 @@ func applyFrameworkSelection(state *RedTeamConfigState) *RedTeamConfigState {
 			if vuln != nil {
 				for _, attackID := range vuln.DefaultAttacks {
 					attack := GetAttack(attackID)
-					if attack != nil && (!attack.Premium || state.QualifireAPIKey != "") {
+					if attack != nil && (!attack.Premium || state.RogueSecurityAPIKey != "") {
 						attacksToSelect[attackID] = true
 					}
 				}

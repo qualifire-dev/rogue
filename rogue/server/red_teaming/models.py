@@ -66,7 +66,7 @@ class VulnerabilityDef:
         category: Category grouping for UI organization
         description: Detailed description of what this vulnerability tests
         default_attacks: List of attack IDs that are effective for this vulnerability
-        premium: Whether this requires a Qualifire API key
+        premium: Whether this requires a Rogue Security API key
     """
 
     id: str
@@ -98,7 +98,7 @@ class AttackDef:
         name: Human-readable display name
         category: Attack category (single-turn, multi-turn, agentic)
         description: Description of the attack technique
-        premium: Whether this requires a Qualifire API key
+        premium: Whether this requires a Rogue Security API key
     """
 
     id: str

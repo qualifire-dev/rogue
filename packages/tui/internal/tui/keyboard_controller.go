@@ -138,13 +138,13 @@ func (m Model) handleGlobalCtrlG() (Model, tea.Cmd) {
 	m.currentScreen = ConfigurationScreen
 	// Initialize config state when entering configuration screen
 	m.configState = &ConfigState{
-		ActiveField:      ConfigFieldServerURL,
-		ServerURL:        m.config.ServerURL,
-		CursorPos:        len(m.config.ServerURL), // Start cursor at end of existing text
-		ThemeIndex:       m.findCurrentThemeIndex(),
-		IsEditing:        true, // Automatically start editing the server URL field
-		HasChanges:       false,
-		QualifireEnabled: m.config.QualifireAPIKey != "" && m.config.QualifireEnabled, // Set based on API key and enabled flag
+		ActiveField:          ConfigFieldServerURL,
+		ServerURL:            m.config.ServerURL,
+		CursorPos:            len(m.config.ServerURL), // Start cursor at end of existing text
+		ThemeIndex:           m.findCurrentThemeIndex(),
+		IsEditing:            true, // Automatically start editing the server URL field
+		HasChanges:           false,
+		RogueSecurityEnabled: m.config.RogueSecurityAPIKey != "" && m.config.RogueSecurityEnabled, // Set based on API key and enabled flag
 	}
 	return m, nil
 }
@@ -318,11 +318,11 @@ func (m Model) handleGlobalEscape(msg tea.KeyMsg) (Model, tea.Cmd) {
 	}
 
 	if m.currentScreen == EvaluationDetailScreen {
-		// Check if we should show the Qualifire persistence dialog
+		// Check if we should show the Rogue Security persistence dialog
 		shouldShowDialog := m.evalState != nil &&
 			m.evalState.Completed &&
-			m.config.QualifireAPIKey == "" &&
-			!m.config.DontShowQualifirePrompt
+			m.config.RogueSecurityAPIKey == "" &&
+			!m.config.DontShowRogueSecurityPrompt
 
 		if shouldShowDialog {
 			// Show report persistence dialog
@@ -407,7 +407,7 @@ func (m Model) handleGlobalEnter(msg tea.KeyMsg) (Model, tea.Cmd) {
 			m.currentScreen = RedTeamConfigScreen
 			// Initialize red team config state if needed
 			if m.redTeamConfigState == nil {
-				m.redTeamConfigState = initRedTeamConfigState(m.evalState.RedTeamConfig, m.config.QualifireAPIKey)
+				m.redTeamConfigState = initRedTeamConfigState(m.evalState.RedTeamConfig, m.config.RogueSecurityAPIKey)
 			}
 			return m, nil
 		}
@@ -510,12 +510,12 @@ func (m Model) routeKeyToScreen(msg tea.KeyMsg) (Model, tea.Cmd) {
 }
 
 // initRedTeamConfigState initializes the red team config state from the evaluation config
-func initRedTeamConfigState(config *RedTeamConfig, qualifireAPIKey string) *redteam.RedTeamConfigState {
+func initRedTeamConfigState(config *RedTeamConfig, rogueSecurityAPIKey string) *redteam.RedTeamConfigState {
 	state := redteam.NewRedTeamConfigState()
 
 	// Set the API key from main config
-	if qualifireAPIKey != "" {
-		state.QualifireAPIKey = qualifireAPIKey
+	if rogueSecurityAPIKey != "" {
+		state.RogueSecurityAPIKey = rogueSecurityAPIKey
 	}
 
 	if config == nil {
@@ -556,7 +556,7 @@ func initRedTeamConfigState(config *RedTeamConfig, qualifireAPIKey string) *redt
 				state.SelectedAttacks[id] = true
 			}
 			// If API key present, also select premium
-			if state.QualifireAPIKey != "" {
+			if state.RogueSecurityAPIKey != "" {
 				for id, vuln := range redteam.VulnerabilityCatalog {
 					if vuln.Premium {
 						state.SelectedVulnerabilities[id] = true
@@ -573,14 +573,14 @@ func initRedTeamConfigState(config *RedTeamConfig, qualifireAPIKey string) *redt
 		// Copy existing selections, filtering out premium items if no API key
 		for _, v := range config.Vulnerabilities {
 			vuln := redteam.GetVulnerability(v)
-			if vuln != nil && (!vuln.Premium || state.QualifireAPIKey != "") {
+			if vuln != nil && (!vuln.Premium || state.RogueSecurityAPIKey != "") {
 				state.SelectedVulnerabilities[v] = true
 			}
 		}
 
 		for _, a := range config.Attacks {
 			attack := redteam.GetAttack(a)
-			if attack != nil && (!attack.Premium || state.QualifireAPIKey != "") {
+			if attack != nil && (!attack.Premium || state.RogueSecurityAPIKey != "") {
 				state.SelectedAttacks[a] = true
 			}
 		}

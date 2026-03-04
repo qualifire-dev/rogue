@@ -39,7 +39,7 @@ class RedTeamOrchestrator:
         evaluated_agent_auth_type: AuthType,
         evaluated_agent_auth_credentials: Optional[str],
         red_team_config: RedTeamConfig,
-        qualifire_api_key: Optional[str],
+        rogue_security_api_key: Optional[str],
         judge_llm: str,
         judge_llm_api_key: Optional[str],
         judge_llm_aws_access_key_id: Optional[str] = None,
@@ -56,7 +56,7 @@ class RedTeamOrchestrator:
         attacker_llm_api_version: Optional[str] = None,
         business_context: str = "",
         python_entrypoint_file: Optional[str] = None,
-        deckard_base_url: Optional[str] = None,
+        rogue_security_base_url: Optional[str] = None,
     ):
         self.protocol = protocol
         self.transport = transport
@@ -64,7 +64,7 @@ class RedTeamOrchestrator:
         self.evaluated_agent_auth_type = evaluated_agent_auth_type
         self.evaluated_agent_auth_credentials = evaluated_agent_auth_credentials
         self.red_team_config = red_team_config
-        self.qualifire_api_key = qualifire_api_key
+        self.rogue_security_api_key = rogue_security_api_key
         self.judge_llm = judge_llm
         self.judge_llm_api_key = judge_llm_api_key
         self.judge_llm_aws_access_key_id = judge_llm_aws_access_key_id
@@ -81,7 +81,7 @@ class RedTeamOrchestrator:
         self.attacker_llm_api_version = attacker_llm_api_version
         self.business_context = business_context
         self.python_entrypoint_file = python_entrypoint_file
-        self.deckard_base_url = deckard_base_url
+        self.rogue_security_base_url = rogue_security_base_url
         self.logger = get_logger(__name__)
 
         # Create attacker agent
@@ -107,9 +107,9 @@ class RedTeamOrchestrator:
             judge_llm_aws_region=judge_llm_aws_region,
             judge_llm_api_base=judge_llm_api_base,
             judge_llm_api_version=judge_llm_api_version,
-            qualifire_api_key=qualifire_api_key,
             python_entrypoint_file=python_entrypoint_file,
-            deckard_base_url=deckard_base_url,
+            deckard_base_url=rogue_security_base_url,
+            rogue_security_api_key=rogue_security_api_key,
         )
 
     async def run_scan(self) -> AsyncGenerator[Tuple[str, Any], None]:

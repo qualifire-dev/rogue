@@ -51,7 +51,7 @@ type AgentConfig struct {
 	ParallelRuns               int                    `json:"parallel_runs"`
 	EvaluationMode             string                 `json:"evaluation_mode,omitempty"`
 	RedTeamConfig              map[string]interface{} `json:"red_team_config,omitempty"`
-	QualifireAPIKey            string                 `json:"qualifire_api_key,omitempty"`
+	RogueSecurityAPIKey        string                 `json:"rogue_security_api_key,omitempty"`
 	BusinessContext            string                 `json:"business_context,omitempty"`
 }
 
@@ -162,7 +162,7 @@ func (sdk *RogueSDK) CreateEvaluation(ctx context.Context, request EvaluationReq
 			"attacker_llm_api_base":              request.AgentConfig.JudgeLLMAPIBase,
 			"attacker_llm_api_version":           request.AgentConfig.JudgeLLMAPIVersion,
 			"business_context":                   request.AgentConfig.BusinessContext,
-			"qualifire_api_key":                  request.AgentConfig.QualifireAPIKey,
+			"rogue_security_api_key":             request.AgentConfig.RogueSecurityAPIKey,
 			"max_retries":                        request.MaxRetries,
 			"timeout_seconds":                    request.TimeoutSeconds,
 		}
@@ -660,10 +660,10 @@ func (m *Model) StartEvaluation(
 		}
 	}
 
-	// Get Qualifire API key from config
-	qualifireAPIKey := ""
-	if m.config.QualifireEnabled && m.config.QualifireAPIKey != "" {
-		qualifireAPIKey = m.config.QualifireAPIKey
+	// Get Rogue Security API key from config
+	rogueSecurityAPIKey := ""
+	if m.config.RogueSecurityEnabled && m.config.RogueSecurityAPIKey != "" {
+		rogueSecurityAPIKey = m.config.RogueSecurityAPIKey
 	}
 
 	// Build evaluation request
@@ -683,7 +683,7 @@ func (m *Model) StartEvaluation(
 		ParallelRuns:               parallelRuns,
 		EvaluationMode:             evaluationMode,
 		RedTeamConfig:              redTeamConfig,
-		QualifireAPIKey:            qualifireAPIKey,
+		RogueSecurityAPIKey:        rogueSecurityAPIKey,
 		BusinessContext:            businessContext,
 	}
 
@@ -721,7 +721,7 @@ func (m *Model) StartEvaluation(
 func (sdk *RogueSDK) GenerateSummary(
 	ctx context.Context,
 	jobID, model, apiKey string,
-	qualifireAPIKey *string,
+	rogueSecurityAPIKey *string,
 	deepTest bool,
 	judgeModel string,
 	awsAccessKeyID *string,
@@ -768,11 +768,11 @@ func (sdk *RogueSDK) GenerateSummary(
 				"results": job.Results,
 			},
 			"job_id": jobID,
-			"qualifire_api_key": func() string {
-				if qualifireAPIKey == nil {
+			"rogue_security_api_key": func() string {
+				if rogueSecurityAPIKey == nil {
 					return ""
 				}
-				return *qualifireAPIKey
+				return *rogueSecurityAPIKey
 			}(),
 			"deep_test":   deepTest,
 			"judge_model": judgeModel,
@@ -842,21 +842,21 @@ func (sdk *RogueSDK) GenerateSummary(
 	return &summaryResp, nil
 }
 
-// ReportSummary reports a summary to Qualifire
+// ReportSummary reports a summary to Rogue Security
 func (sdk *RogueSDK) ReportSummary(
 	ctx context.Context,
 	jobID string,
 	summary StructuredSummary,
 	deepTest bool,
 	judgeModel string,
-	qualifireAPIKey string,
+	rogueSecurityAPIKey string,
 ) error {
 	reportReq := map[string]interface{}{
-		"job_id":             jobID,
-		"structured_summary": summary,
-		"deep_test":          deepTest,
-		"judge_model":        judgeModel,
-		"qualifire_api_key":  qualifireAPIKey,
+		"job_id":                 jobID,
+		"structured_summary":     summary,
+		"deep_test":              deepTest,
+		"judge_model":            judgeModel,
+		"rogue_security_api_key": rogueSecurityAPIKey,
 	}
 
 	body, err := json.Marshal(reportReq)
@@ -884,14 +884,14 @@ func (sdk *RogueSDK) ReportSummary(
 	return nil
 }
 
-// ReportRedTeamScan reports a red team scan to Qualifire
+// ReportRedTeamScan reports a red team scan to Rogue Security
 func (sdk *RogueSDK) ReportRedTeamScan(
 	ctx context.Context,
 	jobID string,
-	qualifireAPIKey string,
+	rogueSecurityAPIKey string,
 ) (scanID string, reportID string, err error) {
 	reqBody := map[string]interface{}{
-		"qualifire_api_key": qualifireAPIKey,
+		"rogue_security_api_key": rogueSecurityAPIKey,
 	}
 
 	body, err := json.Marshal(reqBody)
@@ -899,7 +899,7 @@ func (sdk *RogueSDK) ReportRedTeamScan(
 		return "", "", err
 	}
 
-	endpoint := fmt.Sprintf("/api/v1/red-team/%s/report-to-qualifire", url.PathEscape(jobID))
+	endpoint := fmt.Sprintf("/api/v1/red-team/%s/report-to-rogue-security", url.PathEscape(jobID))
 	req, err := http.NewRequestWithContext(ctx, "POST", sdk.baseURL+endpoint, bytes.NewReader(body))
 	if err != nil {
 		return "", "", err

@@ -19,7 +19,7 @@ from rogue_sdk.types import (
 
 from ...common.logging import get_logger, set_request_context
 from ..models.api_format import ServerSummaryGenerationResponse
-from ..services.qualifire_service import QualifireService
+from ..services.deckard_service import DeckardService
 from ..services.red_team_service import RedTeamService
 
 router = APIRouter(prefix="/red-team", tags=["red-team"])
@@ -276,16 +276,16 @@ async def generate_red_team_summary(
 
         logger.info("Successfully generated red team compliance report")
 
-        # Auto-report to Qualifire if API key is available
-        qualifire_api_key = job.request.qualifire_api_key if job.request else None
-        if not qualifire_api_key:
-            qualifire_api_key = os.getenv("QUALIFIRE_API_KEY")
+        # Auto-report to Deckard if API key is available
+        deckard_api_key = job.request.deckard_api_key if job.request else None
+        if not deckard_api_key:
+            deckard_api_key = os.getenv("DECKARD_API_KEY")
 
         report_url = None
-        if qualifire_api_key:
+        if deckard_api_key:
             try:
                 logger.info(
-                    "Auto-reporting red team scan to Qualifire",
+                    "Auto-reporting red team scan to Deckard",
                     extra={"job_id": job_id},
                 )
 
@@ -302,26 +302,29 @@ async def generate_red_team_summary(
                     ),
                 )
 
-                result = QualifireService.report_red_team_scan(
+                result = DeckardService.report_red_team_scan(
                     job=job,
                     report=full_report,
-                    qualifire_api_key=qualifire_api_key,
+                    deckard_api_key=deckard_api_key,
+                    deckard_base_url=(
+                        job.request.deckard_base_url if job.request else None
+                    ),
                 )
 
                 scan_id = result.get("scan_id")
                 if scan_id:
                     base_url = os.getenv(
-                        "QUALIFIRE_URL",
-                        "https://app.qualifire.ai",
+                        "ROGUE_SECURITY_URL",
+                        "https://app.rogue.security",
                     )
                     report_url = f"{base_url}/red-team/{scan_id}"
                     logger.info(
-                        "Successfully auto-reported to Qualifire",
+                        "Successfully auto-reported to Deckard",
                         extra={"scan_id": scan_id},
                     )
             except Exception as e:
                 logger.warning(
-                    "Failed to auto-report to Qualifire (non-fatal)",
+                    "Failed to auto-report to Deckard (non-fatal)",
                     extra={"error": str(e)},
                 )
 
@@ -341,35 +344,35 @@ async def generate_red_team_summary(
         )
 
 
-class ReportToQualifireRequest(BaseModel):
-    qualifire_api_key: str
-    qualifire_url: str = os.getenv(
-        "QUALIFIRE_BASE_URL",
-        "https://app.qualifire.ai",
+class ReportToRogueSecurityRequest(BaseModel):
+    rogue_security_api_key: str
+    rogue_security_base_url: str = os.getenv(
+        "ROGUE_SECURITY_URL",
+        "https://app.rogue.security",
     )
 
 
-class ReportToQualifireResponse(BaseModel):
+class ReportToRogueSecurityResponse(BaseModel):
     success: bool
     scan_id: Optional[str] = None
     report_id: Optional[str] = None
 
 
 @router.post(
-    "/{job_id}/report-to-qualifire",
-    response_model=ReportToQualifireResponse,
+    "/{job_id}/report-to-rogue-security",
+    response_model=ReportToRogueSecurityResponse,
 )
-async def report_red_team_to_qualifire(
+async def report_red_team_to_rogue_security(
     job_id: str,
-    request: ReportToQualifireRequest,
+    request: ReportToRogueSecurityRequest,
     red_team_service: RedTeamService = Depends(get_red_team_service),
 ):
     """
-    Report red team scan results to Qualifire platform.
+    Report red team scan results to Rogue Security platform.
 
     Args:
         job_id: The unique identifier of the red team scan job
-        request: Contains qualifire_api_key and optional qualifire_url
+        request: Contains rogue_security_api_key and optional rogue_security_base_url
     """
     try:
         job = await red_team_service.get_job(job_id)
@@ -406,14 +409,14 @@ async def report_red_team_to_qualifire(
             random_seed=random_seed,
         )
 
-        result = QualifireService.report_red_team_scan(
+        result = DeckardService.report_red_team_scan(
             job=job,
             report=report,
-            qualifire_api_key=request.qualifire_api_key,
-            qualifire_url=request.qualifire_url,
+            deckard_api_key=request.rogue_security_api_key,
+            deckard_base_url=request.rogue_security_base_url,
         )
 
-        return ReportToQualifireResponse(
+        return ReportToRogueSecurityResponse(
             success=True,
             scan_id=result.get("scan_id"),
             report_id=result.get("report_id"),
@@ -422,10 +425,10 @@ async def report_red_team_to_qualifire(
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception("Failed to report red team scan to Qualifire")
+        logger.exception("Failed to report red team scan to Rogue Security")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to report to Qualifire: {str(e)}",
+            detail=f"Failed to report to Rogue Security: {str(e)}",
         )
 
 
