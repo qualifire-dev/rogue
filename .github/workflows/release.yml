@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     permissions:
       contents: read
     concurrency:
@@ -66,7 +66,7 @@ jobs:
           retention-days: 90
 
   publish_rogue_ai_sdk:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     needs: build
     permissions:
       contents: read
@@ -100,7 +100,7 @@ jobs:
           packages-dir: "./dist/rogue-ai-sdk"
 
   publish_rogue_ai:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     needs: build
     permissions:
       contents: read
@@ -133,7 +133,7 @@ jobs:
           packages-dir: "./dist/rogue-ai"
 
   create_github_release:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     needs:
       - publish_rogue_ai
       - publish_rogue_ai_sdk
