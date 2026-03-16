@@ -340,41 +340,35 @@ async def generate_summary(
                 request.rogue_security_api_key = env_api_key
 
         if request.rogue_security_api_key and request.job_id:
-
-            logger.info(
-                "Reporting summary to Rogue Security",
-                extra={"job_id": request.job_id},
-            )
-
-            job = await evaluation_service.get_job(request.job_id)
-
-            if not job and not request.judge_model and not request.deep_test:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Job not found and judge model and deep test are not provided",  # noqa: E501
+            try:
+                logger.info(
+                    "Reporting summary to Rogue Security",
+                    extra={"job_id": request.job_id},
                 )
 
-            logger.info(
-                "Summary",
-                extra={"summary": summary, "results": request.results},
-            )
+                job = await evaluation_service.get_job(request.job_id)
 
-            DeckardService.report_summary(
-                ReportSummaryRequest(
-                    job_id=request.job_id,
-                    structured_summary=summary,
-                    deep_test=job.deep_test if job else request.deep_test,
-                    start_time=(
-                        job.created_at
-                        if job is not None
-                        else datetime.now(timezone.utc)
+                DeckardService.report_summary(
+                    ReportSummaryRequest(
+                        job_id=request.job_id,
+                        structured_summary=summary,
+                        deep_test=job.deep_test if job else request.deep_test,
+                        start_time=(
+                            job.created_at
+                            if job is not None
+                            else datetime.now(timezone.utc)
+                        ),
+                        judge_model=job.judge_model if job else request.judge_model,
+                        rogue_security_base_url=request.rogue_security_base_url,
+                        rogue_security_api_key=request.rogue_security_api_key,
                     ),
-                    judge_model=job.judge_model if job else request.judge_model,
-                    rogue_security_base_url=request.rogue_security_base_url,
-                    rogue_security_api_key=request.rogue_security_api_key,
-                ),
-                evaluation_results=evaluation_results,
-            )
+                    evaluation_results=evaluation_results,
+                )
+            except Exception as report_err:
+                logger.warning(
+                    "Failed to report summary to Rogue Security (non-fatal)",
+                    extra={"error": str(report_err)},
+                )
 
         return ServerSummaryGenerationResponse(
             summary=summary,

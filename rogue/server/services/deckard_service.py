@@ -5,8 +5,6 @@ import requests
 from loguru import logger
 from rogue_sdk.types import EvaluationResults, ReportSummaryRequest
 
-from .api_format_service import convert_with_structured_summary
-
 
 class DeckardService:
     @staticmethod
@@ -18,18 +16,75 @@ class DeckardService:
             "Reporting summary to Rogue Security",
         )
 
-        api_evaluation_result = convert_with_structured_summary(
-            evaluation_results=evaluation_results,
-            structured_summary=request.structured_summary,
-            deep_test=request.deep_test,
-            start_time=request.start_time,
-            judge_model=request.judge_model,
+        # Map policy evaluation results to red team scan format
+        # expected by the Rogue Security API
+        results = evaluation_results.results
+        total_scenarios = len(results)
+        failed_scenarios = sum(1 for r in results if not r.passed)
+
+        breakdown: list[dict[str, object]] = []
+        for r in results:
+            flagged = sum(1 for c in r.conversations if not c.passed)
+            total = len(r.conversations)
+            success_rate = flagged / total if total > 0 else 0.0
+            breakdown.append(
+                {
+                    "name": r.scenario.scenario,
+                    "vulnerability_id": r.scenario.scenario_type or "policy",
+                    "cvss_score": success_rate * 10,
+                    "severity": (
+                        "high"
+                        if success_rate > 0.5
+                        else "medium" if success_rate > 0 else "low"
+                    ),
+                    "description": r.scenario.expected_outcome or "",
+                    "attacks": [],
+                    "success_rate": success_rate,
+                },
+            )
+
+        overall_score = (
+            (total_scenarios - failed_scenarios) / total_scenarios * 100
+            if total_scenarios > 0
+            else 100.0
         )
 
+        payload = {
+            "redTeamScan": {
+                "protocol": "a2a",
+                "scanType": "custom",
+                "model": request.judge_model or "unknown",
+                "url": "",
+                "vulnerabilitiesDetected": failed_scenarios,
+            },
+            "redTeamReport": {
+                "overallSecurityScore": overall_score,
+                "criticalFindingCount": 0,
+                "highFindingCount": len(
+                    [b for b in breakdown if b["severity"] == "high"],
+                ),
+                "mediumFindingCount": len(
+                    [b for b in breakdown if b["severity"] == "medium"],
+                ),
+                "lowFindingCount": len(
+                    [b for b in breakdown if b["severity"] == "low"],
+                ),
+                "frameworks": [
+                    {
+                        "name": "Policy Compliance",
+                        "total_vulnerabilities": total_scenarios,
+                        "total_checked": total_scenarios,
+                        "failed_count": failed_scenarios,
+                    },
+                ],
+                "breakdown": breakdown,
+            },
+        }
+
         response = requests.post(
-            f"{request.rogue_security_base_url}/api/rogue/v1/report",
+            f"{request.rogue_security_base_url}/api/v1/red-team",
             headers={"X-Rogue-API-Key": request.rogue_security_api_key},
-            json=api_evaluation_result.model_dump(mode="json"),
+            json=payload,
             timeout=300,
         )
 
@@ -61,7 +116,7 @@ class DeckardService:
         """
         if not rogue_security_base_url:
             rogue_security_base_url = os.getenv(
-                "ROGUE_SECURITY_BASE_URL",
+                "ROGUE_SECURITY_URL",
                 "https://app.rogue.security",
             )
 
@@ -70,7 +125,7 @@ class DeckardService:
         results = job.results
 
         payload = {
-            "rogueRedTeamScan": {
+            "redTeamScan": {
                 "protocol": job.request.evaluated_agent_protocol.value,
                 "transport": (
                     str(job.request.evaluated_agent_transport)
@@ -81,13 +136,8 @@ class DeckardService:
                 "model": job.request.judge_llm,
                 "vulnerabilities": [
                     {
-                        "id": v.vulnerability_id,
                         "name": v.vulnerability_name,
                         "passed": v.passed,
-                        "attacks_attempted": v.attacks_attempted,
-                        "attacks_successful": v.attacks_successful,
-                        "severity": v.severity,
-                        "cvss_score": v.cvss_score,
                     }
                     for v in results.vulnerability_results
                 ],
@@ -108,38 +158,30 @@ class DeckardService:
                 ),
                 "vulnerabilitiesDetected": results.total_vulnerabilities_found,
             },
-            "rogueRedTeamReport": {
+            "redTeamReport": {
                 "criticalFindingCount": report.highlights.critical_count,
                 "highFindingCount": report.highlights.high_count,
                 "mediumFindingCount": report.highlights.medium_count,
                 "lowFindingCount": report.highlights.low_count,
                 "frameworks": [
                     {
-                        "id": fc.framework_id,
                         "name": fc.framework_name,
-                        "compliance_score": fc.compliance_score,
                         "total_vulnerabilities": fc.total_count,
                         "total_checked": fc.tested_count,
-                        "passed_count": fc.passed_count,
                         "failed_count": fc.tested_count - fc.passed_count,
-                        "status": fc.status,
                     }
                     for fc in report.framework_coverage
                 ],
                 "overallSecurityScore": report.highlights.overall_score,
                 "breakdown": [
                     {
-                        "id": vt.vulnerability_id,
-                        "vulnerability_id": vt.vulnerability_id,
                         "name": vt.vulnerability_name,
-                        "severity": vt.severity or "low",
+                        "vulnerability_id": vt.vulnerability_id,
                         "cvss_score": vt.success_rate,
-                        "success_rate": vt.success_rate,
+                        "severity": vt.severity or "low",
                         "description": ", ".join(vt.attacks_used),
                         "attacks": vt.attacks_used,
-                        "attacks_attempted": vt.attacks_attempted,
-                        "attacks_successful": vt.attacks_successful,
-                        "status": vt.passed,
+                        "success_rate": vt.success_rate,
                     }
                     for vt in report.vulnerability_table
                 ],
@@ -147,8 +189,8 @@ class DeckardService:
         }
 
         response = requests.post(
-            f"{rogue_security_base_url}/api/rogue/v1/red-team",
-            headers={"X-rogue-API-Key": rogue_security_api_key},
+            f"{rogue_security_base_url}/api/v1/red-team",
+            headers={"X-Rogue-API-Key": rogue_security_api_key},
             json=payload,
             timeout=300,
         )

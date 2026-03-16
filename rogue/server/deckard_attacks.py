@@ -52,12 +52,12 @@ class RogueSecurityClient:
         Args:
             api_key: Rogue Security API key for premium features
             base_url: Base URL for Rogue Security API (defaults to
-            ROGUE_SECURITY_BASE_URL env var or https://deckard.rogue.security)
+            DECKARD_BASE_URL env var or https://deckard.rogue.security)
         """
         self.api_key = api_key or os.getenv("ROGUE_SECURITY_API_KEY")
         self.base_url = (
             base_url
-            or os.getenv("ROGUE_SECURITY_BASE_URL")
+            or os.getenv("DECKARD_BASE_URL")
             or "https://deckard.rogue.security"
         )
         self._is_configured = self.api_key is not None and len(self.api_key) > 0

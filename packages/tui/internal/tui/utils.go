@@ -37,7 +37,7 @@ type AgentConfig struct {
 	EvaluatedAgentProtocol     Protocol               `json:"protocol"`
 	EvaluatedAgentTransport    Transport              `json:"transport,omitempty"`
 	EvaluatedAgentAuthType     AuthType               `json:"evaluated_agent_auth_type"`
-	EvaluatedAgentCredentials  string                 `json:"evaluated_agent_auth_credentials,omitempty"`
+	EvaluatedAgentCredentials  string                 `json:"evaluated_agent_credentials,omitempty"`
 	PythonEntrypointFile       string                 `json:"python_entrypoint_file,omitempty"`
 	JudgeLLMModel              string                 `json:"judge_llm"`
 	JudgeLLMAPIKey             string                 `json:"judge_llm_api_key,omitempty"`
@@ -664,6 +664,11 @@ func (m *Model) StartEvaluation(
 	rogueSecurityAPIKey := ""
 	if m.config.RogueSecurityEnabled && m.config.RogueSecurityAPIKey != "" {
 		rogueSecurityAPIKey = m.config.RogueSecurityAPIKey
+	}
+
+	// Reset auth type to no_auth if credentials are empty
+	if agentAuthType != AuthTypeNoAuth && agentAuthCredentials == "" {
+		agentAuthType = AuthTypeNoAuth
 	}
 
 	// Build evaluation request

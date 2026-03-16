@@ -4,6 +4,7 @@ Type definitions for Rogue Agent Evaluator Python SDK.
 These types mirror the FastAPI server models and provide type safety.
 """
 
+import os
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
@@ -937,7 +938,10 @@ class SummaryGenerationRequest(BaseModel):
     deep_test: bool = False
     judge_model: Optional[str] = None
     rogue_security_api_key: Optional[str] = None
-    rogue_security_base_url: Optional[str] = None
+    rogue_security_base_url: Optional[str] = os.getenv(
+        "ROGUE_SECURITY_URL",
+        "https://app.rogue.security",
+    )
 
 
 class StructuredSummary(BaseModel):
@@ -1008,7 +1012,10 @@ class ReportSummaryRequest(BaseModel):
     judge_model: Optional[str] = None
     start_time: Optional[datetime] = None
     rogue_security_api_key: Optional[str] = None
-    rogue_security_base_url: Optional[str] = None
+    rogue_security_base_url: Optional[str] = os.getenv(
+        "ROGUE_SECURITY_URL",
+        "https://app.rogue.security",
+    )
 
 
 class ReportSummaryResponse(BaseModel):
