@@ -1,7 +1,7 @@
 """
-Simple Deckard Client for Premium Attack Generation.
+Simple Rogue Security Client for Premium Attack Generation.
 
-This module provides a simplified client interface for the Deckard premium attack
+This module provides a simplified client interface for the Rogue Security premium attack
 generation service. All premium attacks (single-turn, multi-turn, and agentic)
 are routed through a single unified endpoint.
 
@@ -18,17 +18,17 @@ import httpx
 from loguru import logger
 
 
-class DeckardClientError(Exception):
-    """Error raised by DeckardClient."""
+class RogueSecurityClientError(Exception):
+    """Error raised by RogueSecurityClient."""
 
     pass
 
 
 # Backwards compatibility alias
-QualifireAttackClientError = DeckardClientError
+RogueSecurityAttackClientError = RogueSecurityClientError
 
 
-class DeckardClient:
+class RogueSecurityClient:
     """
     Simple client for Deckard premium attack service.
 
@@ -47,26 +47,28 @@ class DeckardClient:
         base_url: Optional[str] = None,
     ):
         """
-        Initialize the Deckard client.
+        Initialize the Rogue Security client.
 
         Args:
-            api_key: Qualifire API key for premium features
-            base_url: Base URL for Deckard API (defaults to DECKARD_BASE_URL env var
-                      or https://app.qualifire.ai)
+            api_key: Rogue Security API key for premium features
+            base_url: Base URL for Rogue Security API (defaults to
+            DECKARD_BASE_URL env var or https://deckard.rogue.security)
         """
-        self.api_key = api_key or os.getenv("QUALIFIRE_API_KEY")
+        self.api_key = api_key or os.getenv("ROGUE_SECURITY_API_KEY")
         self.base_url = (
-            base_url or os.getenv("DECKARD_BASE_URL") or "https://app.qualifire.ai"
+            base_url
+            or os.getenv("DECKARD_BASE_URL")
+            or "https://deckard.rogue.security"
         )
         self._is_configured = self.api_key is not None and len(self.api_key) > 0
 
         if self._is_configured:
             logger.info(
-                "DeckardClient initialized with API key",
+                "RogueSecurityClient initialized with API key",
                 extra={"base_url": self.base_url},
             )
         else:
-            logger.debug("DeckardClient initialized without API key")
+            logger.debug("RogueSecurityClient initialized without API key")
 
     @property
     def is_configured(self) -> bool:
@@ -80,7 +82,7 @@ class DeckardClient:
             "User-Agent": "rogue-red-teaming/1.0",
         }
         if self.api_key:
-            headers["X-Qualifire-API-Key"] = self.api_key
+            headers["X-Rogue-API-Key"] = self.api_key
         return headers
 
     async def generate_attack_payload(
@@ -94,7 +96,7 @@ class DeckardClient:
         attempt_num: int = 0,
     ) -> Dict[str, Any]:
         """
-        Generate an attack payload from Deckard service.
+        Generate an attack payload from Rogue Security service.
 
         This is the single entry point for ALL premium attacks. The Deckard
         service handles attack type routing internally based on attack_id.
@@ -116,10 +118,10 @@ class DeckardClient:
                 - metadata: Additional attack metadata
 
         Raises:
-            DeckardClientError: If API key is not configured or API call fails
+            RogueSecurityClientError: If API key is not configured or API call fails
 
         Example:
-            >>> client = DeckardClient(api_key="...")
+            >>> client = RogueSecurityClient(api_key="...")
             >>> result = await client.generate_attack_payload(
             ...     attack_id="homoglyph",
             ...     vulnerability_id="bias-gender",
@@ -128,9 +130,9 @@ class DeckardClient:
             >>> print(result["attack_message"])
         """
         if not self._is_configured:
-            raise DeckardClientError(
-                "QUALIFIRE_API_KEY required for premium attacks. "
-                "Get your API key at https://qualifire.ai/api-keys",
+            raise RogueSecurityClientError(
+                "ROGUE_SECURITY_API_KEY required for premium attacks. "
+                "Get your API key at https://app.rogue.security/settings/api-keys",
             )
 
         try:
@@ -156,12 +158,12 @@ class DeckardClient:
                 f"Deckard API error: {e.response.status_code}",
                 extra={"detail": e.response.text},
             )
-            raise DeckardClientError(
+            raise RogueSecurityClientError(
                 f"Attack generation failed: {e.response.status_code}",
             ) from e
         except Exception as e:
             logger.error(f"Deckard API call failed: {e}")
-            raise DeckardClientError(f"Attack generation failed: {e}") from e
+            raise RogueSecurityClientError(f"Attack generation failed: {e}") from e
 
     async def list_attacks(self) -> Dict[str, Any]:
         """
@@ -244,4 +246,4 @@ class DeckardClient:
 
 
 # Backwards compatibility alias
-QualifireAttackClient = DeckardClient
+RogueSecurityAttackClient = RogueSecurityClient

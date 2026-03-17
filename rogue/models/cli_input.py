@@ -19,7 +19,7 @@ class CLIInput(BaseModel):
     python_entrypoint_file: Path | None = None  # For PYTHON protocol
     judge_llm: str
     judge_llm_api_key: SecretStr | None = None
-    qualifire_api_key: SecretStr | None = None
+    rogue_security_api_key: SecretStr | None = None
     input_scenarios_file: Path = workdir / "scenarios.json"
     output_report_file: Path = workdir / "report.md"
     business_context: str
@@ -116,7 +116,7 @@ class PartialCLIInput(BaseModel):
     owasp_categories: Optional[List[str]] = None
     attacks_per_category: int = Field(default=5)
     min_tests_per_attack: int = Field(default=3)
-    qualifire_api_key: SecretStr | None = None
+    rogue_security_api_key: SecretStr | None = None
 
     def model_post_init(self, __context):
         # Set defaults based on workdir if not provided

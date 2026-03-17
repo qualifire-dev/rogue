@@ -19,8 +19,10 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from ..common.logging import configure_logger, get_logger
 from .api.evaluation import router as evaluation_router
@@ -61,6 +63,18 @@ def create_app() -> FastAPI:
         allow_methods=["GET", "POST", "PUT", "DELETE"],
         allow_headers=["*"],
     )
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_exception_handler(
+        request: Request,
+        exc: RequestValidationError,
+    ):
+        errors = [{k: v for k, v in e.items() if k != "ctx"} for e in exc.errors()]
+        logger.error(
+            "Validation error",
+            extra={"errors": errors},
+        )
+        return JSONResponse(status_code=422, content={"detail": errors})
 
     app.include_router(health_router, prefix="/api/v1")
     app.include_router(evaluation_router, prefix="/api/v1")

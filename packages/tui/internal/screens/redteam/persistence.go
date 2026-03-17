@@ -16,7 +16,7 @@ type RedTeamConfigFile struct {
 	SelectedAttacks         []string        `yaml:"attacks"`
 	SelectedFrameworks      []string        `yaml:"frameworks,omitempty"`
 	AttacksPerVulnerability int             `yaml:"attacks_per_vulnerability"`
-	QualifireAPIKey         string          `yaml:"qualifire_api_key,omitempty"`
+	RogueSecurityAPIKey     string          `yaml:"rogue_security_api_key,omitempty"`
 	CategoryExpanded        map[string]bool `yaml:"category_expanded,omitempty"`
 }
 
@@ -59,7 +59,7 @@ func SaveRedTeamConfig(state *RedTeamConfigState) error {
 	config := RedTeamConfigFile{
 		ScanType:                string(state.ScanType),
 		AttacksPerVulnerability: state.AttacksPerVulnerability,
-		QualifireAPIKey:         state.QualifireAPIKey,
+		RogueSecurityAPIKey:     state.RogueSecurityAPIKey,
 		CategoryExpanded:        state.CategoryExpanded,
 	}
 
@@ -123,8 +123,8 @@ func LoadRedTeamConfig(state *RedTeamConfigState) error {
 	// Apply loaded config to state
 	state.ScanType = ScanType(config.ScanType)
 	state.AttacksPerVulnerability = config.AttacksPerVulnerability
-	if config.QualifireAPIKey != "" {
-		state.QualifireAPIKey = config.QualifireAPIKey
+	if config.RogueSecurityAPIKey != "" {
+		state.RogueSecurityAPIKey = config.RogueSecurityAPIKey
 	}
 
 	// Load category expansion state
@@ -138,7 +138,7 @@ func LoadRedTeamConfig(state *RedTeamConfigState) error {
 	state.SelectedVulnerabilities = make(map[string]bool)
 	for _, id := range config.SelectedVulnerabilities {
 		vuln := GetVulnerability(id)
-		if vuln != nil && (!vuln.Premium || state.QualifireAPIKey != "") {
+		if vuln != nil && (!vuln.Premium || state.RogueSecurityAPIKey != "") {
 			state.SelectedVulnerabilities[id] = true
 		}
 	}
@@ -147,7 +147,7 @@ func LoadRedTeamConfig(state *RedTeamConfigState) error {
 	state.SelectedAttacks = make(map[string]bool)
 	for _, id := range config.SelectedAttacks {
 		attack := GetAttack(id)
-		if attack != nil && (!attack.Premium || state.QualifireAPIKey != "") {
+		if attack != nil && (!attack.Premium || state.RogueSecurityAPIKey != "") {
 			state.SelectedAttacks[id] = true
 		}
 	}

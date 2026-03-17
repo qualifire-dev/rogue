@@ -19,7 +19,7 @@ func TestSaveAndLoadRedTeamConfig(t *testing.T) {
 	state := NewRedTeamConfigState()
 	state.ScanType = ScanTypeCustom
 	state.AttacksPerVulnerability = 5
-	state.QualifireAPIKey = "test-api-key-123"
+	state.RogueSecurityAPIKey = "test-api-key-123"
 	state.SelectedVulnerabilities["prompt-extraction"] = true
 	state.SelectedVulnerabilities["sql-injection"] = true
 	state.SelectedAttacks["base64"] = true
@@ -43,7 +43,7 @@ func TestSaveAndLoadRedTeamConfig(t *testing.T) {
 	// Clear the default values to test loading
 	loadedState.ScanType = ScanTypeBasic
 	loadedState.AttacksPerVulnerability = 3
-	loadedState.QualifireAPIKey = ""
+	loadedState.RogueSecurityAPIKey = ""
 	loadedState.SelectedVulnerabilities = make(map[string]bool)
 	loadedState.SelectedAttacks = make(map[string]bool)
 	loadedState.CategoryExpanded = make(map[string]bool)
@@ -62,8 +62,8 @@ func TestSaveAndLoadRedTeamConfig(t *testing.T) {
 		t.Errorf("Expected AttacksPerVulnerability 5, got %d", loadedState.AttacksPerVulnerability)
 	}
 
-	if loadedState.QualifireAPIKey != "test-api-key-123" {
-		t.Errorf("Expected QualifireAPIKey 'test-api-key-123', got %s", loadedState.QualifireAPIKey)
+	if loadedState.RogueSecurityAPIKey != "test-api-key-123" {
+		t.Errorf("Expected RogueSecurityAPIKey 'test-api-key-123', got %s", loadedState.RogueSecurityAPIKey)
 	}
 
 	if !loadedState.SelectedVulnerabilities["prompt-extraction"] {

@@ -133,16 +133,16 @@ func NewReportPersistenceDialog() Dialog {
 	return Dialog{
 		Type:    ConfirmationDialog,
 		Title:   "Preserve Evaluation Report",
-		Message: "Your evaluation report will be lost when you exit. Enable Qualifire integration to automatically persist reports for future reference.",
+		Message: "Your evaluation report will be lost when you exit. Enable Rogue Security integration to automatically persist reports for future reference.",
 		Buttons: []DialogButton{
-			{Label: "Configure Qualifire", Action: "configure_qualifire", Style: PrimaryButton},
+			{Label: "Configure Rogue Security", Action: "configure_rogue_security", Style: PrimaryButton},
 			{Label: "Cancel", Action: "cancel", Style: SecondaryButton},
 			{Label: "Don't Show Again", Action: "dont_show_again", Style: SecondaryButton},
 		},
 		Width:       80,
 		Height:      12,
 		Focused:     true,
-		SelectedBtn: 0, // Default to "Configure Qualifire"
+		SelectedBtn: 0, // Default to "Configure Rogue Security"
 	}
 }
 

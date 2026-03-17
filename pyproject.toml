@@ -1,7 +1,7 @@
 [project]
 name = "rogue-ai"
 dynamic = ["version"]
-description = "Rogue agent evaluator by Qualifire"
+description = "Rogue agent evaluator by Rogue Security"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [

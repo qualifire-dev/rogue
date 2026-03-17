@@ -12,11 +12,13 @@ The TUI now automatically saves and loads red team configuration from a `.rogue/
 ## Configuration File Location
 
 The configuration file is located at:
+
 ```
 <project-root>/.rogue/redteam.yaml
 ```
 
 The TUI will automatically:
+
 1. Search upward from the current working directory to find an existing `.rogue/` folder
 2. Fall back to creating `.rogue/redteam.yaml` in the current working directory
 
@@ -25,20 +27,20 @@ The TUI will automatically:
 The configuration is stored in YAML format:
 
 ```yaml
-scan_type: custom                        # "basic", "full", or "custom"
-vulnerabilities:                         # List of selected vulnerability IDs
+scan_type: custom # "basic", "full", or "custom"
+vulnerabilities: # List of selected vulnerability IDs
   - prompt-extraction
   - sql-injection
   - excessive-agency
-attacks:                                 # List of selected attack IDs
+attacks: # List of selected attack IDs
   - base64
   - prompt-probing
   - social-engineering-prompt-extraction
-frameworks:                              # Optional: selected frameworks
+frameworks: # Optional: selected frameworks
   - owasp-llm
-attacks_per_vulnerability: 5             # Number of attacks per vulnerability (1-10)
-qualifire_api_key: your-api-key-here    # Optional: Qualifire API key
-category_expanded:                       # UI state: which categories are expanded
+attacks_per_vulnerability: 5 # Number of attacks per vulnerability (1-10)
+rogue_security_api_key: your-api-key-here # Optional: Rogue Security API key
+category_expanded: # UI state: which categories are expanded
   Content Safety: true
   Prompt Security: true
 ```
@@ -52,7 +54,7 @@ The configuration is **automatically saved** whenever you:
 - Select/deselect all items in a category (keys 'a' or 'n')
 - Apply a framework selection (key 'f' then Enter)
 - Change attacks per vulnerability (keys + or -)
-- Set or update the Qualifire API key (key 'q')
+- Set or update the Rogue Security API key (key 'q')
 
 No manual save action is required!
 
@@ -64,6 +66,7 @@ The configuration is **automatically loaded** when:
 - The TUI initializes the red team config state
 
 If no configuration file exists, default values are used:
+
 - Scan type: `basic`
 - Attacks per vulnerability: `3`
 - No vulnerabilities or attacks selected (basic preset will be empty initially)
@@ -121,12 +124,15 @@ Save the file, and the TUI will load these settings next time.
 ### Functions
 
 #### `SaveRedTeamConfig(state *RedTeamConfigState) error`
+
 Saves the current red team configuration to `.rogue/redteam.yaml`.
 
 #### `LoadRedTeamConfig(state *RedTeamConfigState) error`
+
 Loads the red team configuration from `.rogue/redteam.yaml` into the provided state.
 
 #### `GetRedTeamConfigPath() string`
+
 Returns the path where the configuration file is (or will be) saved.
 
 ### Called Automatically By

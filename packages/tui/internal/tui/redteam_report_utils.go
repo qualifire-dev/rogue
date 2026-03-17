@@ -25,7 +25,7 @@ func (m *Model) initializeRedTeamReportViewport() {
 	// Build report content
 	content := redteam_report.BuildReportContent(m.width, m.redTeamReportData)
 
-	// Prepend Qualifire link if available
+	// Prepend Rogue Security link if available
 	if m.redTeamScanID != "" {
 		t := theme.CurrentTheme()
 		linkStyle := lipgloss.NewStyle().
@@ -36,13 +36,13 @@ func (m *Model) initializeRedTeamReportViewport() {
 			Align(lipgloss.Center).
 			Padding(1, 0)
 
-		qualifireBase := os.Getenv("QUALIFIRE_URL")
-		if qualifireBase == "" {
-			qualifireBase = "https://app.qualifire.ai"
+		rogueSecurityBase := os.Getenv("ROGUE_SECURITY_URL")
+		if rogueSecurityBase == "" {
+			rogueSecurityBase = "https://app.rogue.security"
 		}
-		reportURL := fmt.Sprintf("%s/red-team/%s", qualifireBase, m.redTeamScanID)
+		reportURL := fmt.Sprintf("%s/red-team/%s", rogueSecurityBase, m.redTeamScanID)
 		linkText := linkStyle.Render(
-			strings.Join([]string{"✅ Report saved to Qualifire: ", reportURL}, ""),
+			strings.Join([]string{"✅ Report saved to Rogue Security: ", reportURL}, ""),
 		)
 		content = linkText + "\n\n" + content
 	}

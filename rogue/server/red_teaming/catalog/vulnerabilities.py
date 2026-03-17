@@ -1083,7 +1083,7 @@ def get_basic_scan_vulnerabilities() -> List[str]:
     Get vulnerability IDs for basic (free) scan.
 
     Returns a curated list of essential vulnerabilities that don't require
-    a Qualifire API key. Only includes free vulnerabilities from
+    a Rogue Security API key. Only includes free vulnerabilities from
     Prompt Security and PII Protection categories.
     """
     return [

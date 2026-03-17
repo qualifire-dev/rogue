@@ -5,7 +5,7 @@ Attempts to override system instructions by injecting adversarial prompts.
 
 NOTE: This is a FREE attack - it uses only standard prompt injection techniques.
 L1B3RT4S/Pliny prompts are PREMIUM and handled separately by the pliny-injections
-vulnerability which requires a Qualifire API key.
+vulnerability which requires a Rogue Security API key.
 """
 
 from typing import Callable, List
@@ -21,7 +21,7 @@ class PromptInjection(BaseSingleTurnAttack):
 
     This is a FREE attack that uses standard prompt injection techniques.
     Premium L1B3RT4S/Pliny prompts are NOT used here - they require
-    a Qualifire API key and are handled by the pliny-injections vulnerability.
+    a Rogue Security API key and are handled by the pliny-injections vulnerability.
     """
 
     name = "Prompt Injection"
@@ -36,18 +36,20 @@ class PromptInjection(BaseSingleTurnAttack):
         if self._prompt_pool:
             return
 
-        # 1. Qualifire Generators (free prompts from HuggingFace dataset)
+        # 1. Rogue Security Generators (free prompts from HuggingFace dataset)
         try:
-            q_prompts = DatasetLoader.get_qualifire_prompts(sample_size=10)
-            if q_prompts:
-                for prefix in q_prompts:
+            rogue_security_prompts = DatasetLoader.get_rogue_security_prompts(
+                sample_size=10,
+            )
+            if rogue_security_prompts:
+                for prefix in rogue_security_prompts:
 
-                    def q_gen(att: str, p: str = prefix) -> str:
+                    def rogue_security_gen(att: str, p: str = prefix) -> str:
                         return f"{p}\n\n{att}"
 
-                    self._prompt_pool.append(q_gen)
+                    self._prompt_pool.append(rogue_security_gen)
         except Exception as e:
-            logger.exception(f"Failed to get Qualifire prompt: {e}")
+            logger.exception(f"Failed to get Rogue Security prompt: {e}")
 
         # 2. Standard Generators (always available)
         self._prompt_pool = [

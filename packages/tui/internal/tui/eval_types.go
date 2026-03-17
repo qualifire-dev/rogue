@@ -337,8 +337,8 @@ func LoadEvaluationStateFromConfig(appConfig *config.Config) (*EvaluationViewSta
 
 	// Load red team config from .rogue/redteam.yaml to get saved vulnerabilities/attacks
 	redTeamConfigState := redteam.NewRedTeamConfigState()
-	if appConfig.QualifireAPIKey != "" {
-		redTeamConfigState.QualifireAPIKey = appConfig.QualifireAPIKey
+	if appConfig.RogueSecurityAPIKey != "" {
+		redTeamConfigState.RogueSecurityAPIKey = appConfig.RogueSecurityAPIKey
 	}
 
 	// Build vulnerabilities list from saved state

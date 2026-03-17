@@ -171,7 +171,7 @@ func renderVulnerabilityPanel(state *RedTeamConfigState, width, height int) stri
 				isFocusedItem := state.ActivePanel == 0 && state.FocusedCategory == catIdx && state.FocusedItem == itemIdx
 				if isFocusedItem {
 					b.WriteString(focusedItemStyle.Render(itemText))
-				} else if vuln.Premium && state.QualifireAPIKey == "" {
+				} else if vuln.Premium && state.RogueSecurityAPIKey == "" {
 					b.WriteString(disabledStyle.Render(itemText))
 				} else if state.SelectedVulnerabilities[vuln.ID] {
 					b.WriteString(selectedStyle.Render(itemText))
@@ -250,7 +250,7 @@ func renderAttackPanel(state *RedTeamConfigState, width, height int) string {
 				isFocusedItem := state.ActivePanel == 1 && state.FocusedCategory == catIdx && state.FocusedItem == itemIdx
 				if isFocusedItem {
 					b.WriteString(focusedItemStyle.Render(itemText))
-				} else if attack.Premium && state.QualifireAPIKey == "" {
+				} else if attack.Premium && state.RogueSecurityAPIKey == "" {
 					b.WriteString(disabledStyle.Render(itemText))
 				} else if state.SelectedAttacks[attack.ID] {
 					b.WriteString(selectedStyle.Render(itemText))
@@ -279,7 +279,7 @@ func renderStatusBar(state *RedTeamConfigState, width int) string {
 		state.AttacksPerVulnerability,
 	)
 
-	if state.HasPremiumSelections() && state.QualifireAPIKey == "" {
+	if state.HasPremiumSelections() && state.RogueSecurityAPIKey == "" {
 		status += " | ⚠ Premium features require API key"
 	}
 
@@ -349,11 +349,11 @@ func RenderAPIKeyDialog(state *RedTeamConfigState, width, height int) string {
 
 	dialogWidth := 60
 
-	b.WriteString(titleStyle.Render("Qualifire API Key"))
+	b.WriteString(titleStyle.Render("Rogue Security API Key"))
 	b.WriteString("\n\n")
-	b.WriteString(itemStyle.Render("Premium features require a Qualifire API key."))
+	b.WriteString(itemStyle.Render("Premium features require a Rogue Security API key."))
 	b.WriteString("\n")
-	b.WriteString(itemStyle.Render("Get your key at: https://qualifire.ai/api-keys"))
+	b.WriteString(itemStyle.Render("Get your key at: https://app.rogue.security/settings/api-keys"))
 	b.WriteString("\n\n")
 
 	// Input field

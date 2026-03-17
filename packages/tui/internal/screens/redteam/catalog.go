@@ -145,7 +145,7 @@ var AttackCatalog = map[string]*Attack{
 	"prompt-probing":   {ID: "prompt-probing", Name: "Prompt Probing", Category: AttackCategorySingleTurn, Description: "Attempts to extract system prompts through probing questions", Premium: false},
 
 	// ==========================================================================
-	// SINGLE-TURN PREMIUM ATTACKS (Require Deckard service)
+	// SINGLE-TURN PREMIUM ATTACKS (Require Rogue Security service)
 	// ==========================================================================
 	// Encoding-based attacks (premium)
 	"hex":       {ID: "hex", Name: "Hex Encoding", Category: AttackCategorySingleTurn, Description: "Encodes the attack input in hexadecimal to bypass filters", Premium: true},
@@ -170,7 +170,7 @@ var AttackCatalog = map[string]*Attack{
 	"best-of-n":        {ID: "best-of-n", Name: "Best-of-N", Category: AttackCategorySingleTurn, Description: "Generates multiple variations and selects the most effective", Premium: true},
 
 	// ==========================================================================
-	// MULTI-TURN PREMIUM ATTACKS (Require Deckard service)
+	// MULTI-TURN PREMIUM ATTACKS (Require Rogue Security service)
 	// ==========================================================================
 	"social-engineering-prompt-extraction": {ID: "social-engineering-prompt-extraction", Name: "Social Engineering Prompt Extraction", Category: AttackCategoryMultiTurn, Description: "Uses trust-building and social engineering to extract system prompts", Premium: true},
 	"multi-turn-jailbreak":                 {ID: "multi-turn-jailbreak", Name: "Multi-turn Jailbreaks", Category: AttackCategoryMultiTurn, Description: "Progressive jailbreaking across multiple conversation turns", Premium: true},
@@ -183,7 +183,7 @@ var AttackCatalog = map[string]*Attack{
 	"bad-likert-judge":                     {ID: "bad-likert-judge", Name: "Bad Likert Judge", Category: AttackCategoryMultiTurn, Description: "Manipulates the agent by acting as a strict evaluator", Premium: true},
 
 	// ==========================================================================
-	// AGENTIC ATTACKS (All Premium - Require Deckard service)
+	// AGENTIC ATTACKS (All Premium - Require Rogue Security service)
 	// ==========================================================================
 	"iterative-jailbreak":   {ID: "iterative-jailbreak", Name: "Iterative Jailbreaks", Category: AttackCategoryAgentic, Description: "AI-driven iterative refinement of jailbreak attempts", Premium: true},
 	"meta-agent-jailbreak":  {ID: "meta-agent-jailbreak", Name: "Meta-Agent Jailbreaks", Category: AttackCategoryAgentic, Description: "Uses a meta-agent to orchestrate attack strategies", Premium: true},

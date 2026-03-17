@@ -15,10 +15,10 @@ func HandleEvalDetailInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 
 	switch msg.String() {
 	case "b":
-		// Check if we should show the Qualifire persistence dialog
+		// Check if we should show the Rogue Security persistence dialog
 		shouldShowDialog := m.evalState.Completed &&
-			m.config.QualifireAPIKey == "" &&
-			!m.config.DontShowQualifirePrompt
+			m.config.RogueSecurityAPIKey == "" &&
+			!m.config.DontShowRogueSecurityPrompt
 
 		if shouldShowDialog {
 			// Show report persistence dialog
