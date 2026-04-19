@@ -319,7 +319,7 @@ async def generate_red_team_summary(
                         "ROGUE_SECURITY_URL",
                         "https://app.rogue.security",
                     )
-                    report_url = f"{base_url}/red-team/{scan_id}"
+                    report_url = f"{base_url}/api/v1/red-team/{scan_id}"
                     logger.info(
                         "Successfully auto-reported to Deckard",
                         extra={"scan_id": scan_id},
