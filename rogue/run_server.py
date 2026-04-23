@@ -3,13 +3,14 @@ import os
 import socket
 import time
 from argparse import ArgumentParser, Namespace
-from ipaddress import ip_address
+
 from pathlib import Path
 
 import psutil
 import requests
 from loguru import logger
 
+from .common.network import get_host_for_url
 from .server.main import start_server
 
 
@@ -95,15 +96,7 @@ def wait_until_server_ready(
             # Double-check with HTTP request to ensure the server is fully ready
             try:
                 # Normalize host for HTTP requests (handle 0.0.0.0/:: and IPv6)
-                http_host = host
-                if host in ("0.0.0.0", "::"):  # nosec B104
-                    http_host = "127.0.0.1"
-                else:
-                    try:
-                        if ip_address(host).version == 6:
-                            http_host = f"[{host}]"
-                    except ValueError:
-                        pass  # hostname, leave as-is
+                http_host = get_host_for_url(host)
 
                 response = requests.get(
                     f"http://{http_host}:{port}/api/v1/health",
@@ -155,6 +148,9 @@ def run_server(
         )
         if background_wait_for_ready:
             if not wait_until_server_ready(process, host, port):
+                # Terminate the orphan process before raising
+                process.terminate()
+                process.join(timeout=5)
                 raise Exception("Server failed to start")
             logger.info("Rogue server ready", extra={"host": host, "port": port})
         return process
