@@ -366,6 +366,21 @@ class Scenario(BaseModel):
     dataset: Optional[str] = None
     expected_outcome: Optional[str] = None
     dataset_sample_size: Optional[int] = None
+    multi_turn: bool = Field(
+        default=True,
+        description=(
+            "When true, the rogue agent drives a dynamic multi-turn conversation "
+            "guided by the scenario text (free-form goal or stepped plan) and stops "
+            "on goal-achieved or max_turns. When false, scenario runs via the "
+            "existing single-turn / deep_test_mode path."
+        ),
+    )
+    max_turns: int = Field(
+        default=10,
+        ge=1,
+        le=100,
+        description="Maximum rogue-agent turns before stopping a multi-turn run.",
+    )
 
     @model_validator(mode="after")
     def validate_dataset_for_type(self) -> "Scenario":
@@ -419,6 +434,18 @@ class Scenarios(BaseModel):
 
     def get_prompt_injection_scenarios(self) -> "Scenarios":
         return self.get_scenarios_by_type(ScenarioType.PROMPT_INJECTION)
+
+    def get_multi_turn_scenarios(self) -> "Scenarios":
+        """Return scenarios flagged for dynamic multi-turn driving."""
+        return Scenarios(
+            scenarios=[s for s in self.scenarios if s.multi_turn],
+        )
+
+    def get_single_turn_scenarios(self) -> "Scenarios":
+        """Return scenarios that should run via the existing single-turn path."""
+        return Scenarios(
+            scenarios=[s for s in self.scenarios if not s.multi_turn],
+        )
 
 
 class ChatMessage(BaseModel):

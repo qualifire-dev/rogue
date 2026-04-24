@@ -251,16 +251,29 @@ func loadScenariosWithContextFromWorkdir() ScenariosWithContext {
 					Scenario        string `json:"scenario"`
 					ScenarioType    string `json:"scenario_type"`
 					ExpectedOutcome string `json:"expected_outcome"`
+					MultiTurn       *bool  `json:"multi_turn"`
+					MaxTurns        *int   `json:"max_turns"`
 				} `json:"scenarios"`
 			}
 			if json.Unmarshal(b, &v) == nil {
 				out := make([]EvalScenario, 0, len(v.Scenarios))
 				for _, s := range v.Scenarios {
 					if s.Scenario != "" {
+						// Defaults: multi-turn on, 10 max turns (mirrors Python Scenario).
+						multiTurn := true
+						if s.MultiTurn != nil {
+							multiTurn = *s.MultiTurn
+						}
+						maxTurns := 10
+						if s.MaxTurns != nil {
+							maxTurns = *s.MaxTurns
+						}
 						out = append(out, EvalScenario{
 							Scenario:        s.Scenario,
 							ScenarioType:    s.ScenarioType,
 							ExpectedOutcome: s.ExpectedOutcome,
+							MultiTurn:       multiTurn,
+							MaxTurns:        maxTurns,
 						})
 					}
 				}

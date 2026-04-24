@@ -711,10 +711,16 @@ func (m *Model) StartEvaluation(
 
 	// Convert scenarios
 	for _, s := range scenarios {
+		maxTurns := s.MaxTurns
+		if maxTurns <= 0 {
+			maxTurns = 10
+		}
 		request.Scenarios = append(request.Scenarios, EvalScenario{
 			Scenario:        s.Scenario,
 			ScenarioType:    s.ScenarioType,
 			ExpectedOutcome: s.ExpectedOutcome,
+			MultiTurn:       s.MultiTurn,
+			MaxTurns:        maxTurns,
 		})
 	}
 
