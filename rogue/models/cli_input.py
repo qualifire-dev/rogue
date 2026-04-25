@@ -23,7 +23,6 @@ class CLIInput(BaseModel):
     input_scenarios_file: Path = workdir / "scenarios.json"
     output_report_file: Path = workdir / "report.md"
     business_context: str
-    deep_test_mode: bool = False
     evaluation_mode: EvaluationMode = EvaluationMode.POLICY
     owasp_categories: Optional[List[str]] = None
     attacks_per_category: int = 5
@@ -111,7 +110,6 @@ class PartialCLIInput(BaseModel):
     business_context_file: Path = None  # type: ignore # fixed in model_post_init
     input_scenarios_file: Path = None  # type: ignore # fixed in model_post_init
     output_report_file: Path = None  # type: ignore # fixed in model_post_init
-    deep_test_mode: bool = False
     evaluation_mode: EvaluationMode = Field(default=EvaluationMode.POLICY)
     owasp_categories: Optional[List[str]] = None
     attacks_per_category: int = Field(default=5)

@@ -44,11 +44,11 @@ const (
 // EvalFormField represents the field indices for the evaluation form
 type EvalFormField int
 
-// EvalField constants for form field indices
-// Policy mode: Protocol(0), AgentURL/PythonFile(1), Transport(2), AuthType(3), AuthCredentials(4), JudgeModel(5), DeepTest(6), EvaluationMode(7), StartButton(8)
-// Red Team mode adds: ScanType(8), ConfigureButton(9), StartButton(10)
-// Note: Transport, AuthType, AuthCredentials fields are skipped for Python protocol
-// Note: AuthCredentials field is skipped when AuthType is no_auth
+// EvalField constants for form field indices.
+// Policy mode:   Protocol(0), AgentURL/PythonFile(1), Transport(2), AuthType(3), AuthCredentials(4), JudgeModel(5), EvaluationMode(6), StartButton(7)
+// Red Team mode: Protocol(0), AgentURL/PythonFile(1), Transport(2), AuthType(3), AuthCredentials(4), JudgeModel(5), EvaluationMode(6), ScanType(7), Configure(8), StartButton(9)
+// Notes: Transport/AuthType/AuthCredentials fields are skipped for the Python protocol;
+// AuthCredentials is also skipped when AuthType is no_auth.
 const (
 	EvalFieldProtocol EvalFormField = iota
 	EvalFieldAgentURL               // Also used for PythonEntrypointFile when protocol is Python
@@ -56,15 +56,14 @@ const (
 	EvalFieldAuthType        // Skipped for Python protocol
 	EvalFieldAuthCredentials // Skipped for Python protocol; skipped when AuthType is no_auth
 	EvalFieldJudgeModel
-	EvalFieldDeepTest
 	EvalFieldEvaluationMode
-	// Policy mode start button / Red Team mode scan type (both at index 8)
+	// Policy mode start button / Red Team mode scan type (both share index 7).
 	EvalFieldStartButtonPolicy
-	EvalFieldConfigureButton    // 9 - Red Team mode only
-	EvalFieldStartButtonRedTeam // 10 - Red Team mode only
+	EvalFieldConfigureButton    // Red Team mode only
+	EvalFieldStartButtonRedTeam // Red Team mode only
 )
 
-// EvalFieldScanType is an alias - in Red Team mode, index 8 is the scan type field
+// EvalFieldScanType is an alias — in Red Team mode this slot is the scan type field.
 const EvalFieldScanType = EvalFieldStartButtonPolicy
 
 // ScanType represents the type of red team scan
@@ -97,7 +96,6 @@ type EvaluationViewState struct {
 	PythonEntrypointFile string // Path to Python file with call_agent function (for Python protocol)
 	JudgeModel           string
 	ParallelRuns         int
-	DeepTest             bool
 	Scenarios            []EvalScenario
 	BusinessContext      string // Business context for red team attacks
 
@@ -126,10 +124,9 @@ type EvaluationViewState struct {
 	StructuredSummary StructuredSummary
 
 	// Editing state for New Evaluation
-	// Policy mode: 0: Protocol, 1: AgentURL/PythonFile, 2: Transport, 3: AuthType, 4: AuthCredentials, 5: JudgeModel, 6: DeepTest, 7: EvaluationMode, 8: StartButton
-	// Red Team mode: 0: Protocol, 1: AgentURL/PythonFile, 2: Transport, 3: AuthType, 4: AuthCredentials, 5: JudgeModel, 6: DeepTest, 7: EvaluationMode, 8: ScanType, 9: ConfigureButton, 10: StartButton
-	// Note: Transport, AuthType, AuthCredentials fields are skipped for Python protocol
-	// Note: AuthCredentials field is skipped when AuthType is no_auth
+	// Policy mode:   0:Protocol 1:AgentURL/PythonFile 2:Transport 3:AuthType 4:AuthCredentials 5:JudgeModel 6:EvaluationMode 7:StartButton
+	// Red Team mode: 0:Protocol 1:AgentURL/PythonFile 2:Transport 3:AuthType 4:AuthCredentials 5:JudgeModel 6:EvaluationMode 7:ScanType 8:ConfigureButton 9:StartButton
+	// Note: Transport/AuthType/AuthCredentials are skipped for Python protocol; AuthCredentials is skipped when AuthType is no_auth
 	currentField EvalFormField // Field index for form navigation
 	cursorPos    int           // rune index in current text field
 }
@@ -419,7 +416,6 @@ func LoadEvaluationStateFromConfig(appConfig *config.Config) (*EvaluationViewSta
 		PythonEntrypointFile: pythonEntrypointFile,
 		JudgeModel:           judgeModel,
 		ParallelRuns:         1,
-		DeepTest:             false,
 		Scenarios:            scenariosWithContext.Scenarios,
 		BusinessContext:      scenariosWithContext.BusinessContext,
 		EvaluationMode:       evaluationMode,
@@ -461,7 +457,6 @@ func (m *Model) startEval(ctx context.Context, st *EvaluationViewState) {
 		st.Scenarios,
 		st.JudgeModel,
 		st.ParallelRuns,
-		st.DeepTest,
 		string(st.EvaluationMode),
 		redTeamConfigMap,
 		st.BusinessContext,
@@ -704,14 +699,14 @@ func (st *EvaluationViewState) cycleScanType(reverse bool) {
 	st.RedTeamConfig.ScanType = scanTypes[currentIdx]
 }
 
-// getMaxFieldIndex returns the maximum field index based on the current evaluation mode
-// Policy mode: 6 (StartButton)
-// Red Team mode: 8 (StartButton after ScanType and Configure)
+// getMaxFieldIndex returns the maximum field index based on the current evaluation mode.
+// Policy mode:   StartButton (last reachable field)
+// Red Team mode: StartButton (last reachable field, after ScanType and Configure)
 func (st *EvaluationViewState) getMaxFieldIndex() EvalFormField {
 	if st.EvaluationMode == EvaluationModeRedTeam {
-		return EvalFieldStartButtonRedTeam // ScanType at 6, Configure at 7, StartButton at 8
+		return EvalFieldStartButtonRedTeam
 	}
-	return EvalFieldStartButtonPolicy // StartButton at 6
+	return EvalFieldStartButtonPolicy
 }
 
 // getStartButtonIndex returns the index of the start button based on evaluation mode

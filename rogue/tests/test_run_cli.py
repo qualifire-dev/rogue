@@ -33,7 +33,6 @@ from rogue.run_cli import get_cli_input
                 input_scenarios_file=Path(".") / ".rogue" / "scenarios.json",
                 output_report_file=Path(".") / ".rogue" / "report.md",
                 business_context="my business",
-                deep_test_mode=False,
             ),
         ),
         (  # Only config file
@@ -57,7 +56,6 @@ from rogue.run_cli import get_cli_input
                 input_scenarios_file=Path(".") / ".rogue" / "scenarios.json",
                 output_report_file=Path(".") / ".rogue" / "report.md",
                 business_context="my business",
-                deep_test_mode=False,
             ),
         ),
         (  # Both config file and CLI args
@@ -80,7 +78,6 @@ from rogue.run_cli import get_cli_input
                 input_scenarios_file=Path(".") / ".rogue" / "scenarios.json",
                 output_report_file=Path(".") / ".rogue" / "report.md",
                 business_context="my business",
-                deep_test_mode=False,
             ),
         ),
     ],

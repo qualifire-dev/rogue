@@ -31,7 +31,6 @@ class OpenAIAPIEvaluatorAgent(BaseEvaluatorAgent):
         judge_llm_api_base: Optional[str] = None,
         judge_llm_api_version: Optional[str] = None,
         debug: bool = False,
-        deep_test_mode: bool = False,
         chat_update_callback: Optional[Callable[[dict], None]] = None,
         *args,
         **kwargs,
@@ -55,7 +54,6 @@ class OpenAIAPIEvaluatorAgent(BaseEvaluatorAgent):
             judge_llm_api_base=judge_llm_api_base,
             judge_llm_api_version=judge_llm_api_version,
             debug=debug,
-            deep_test_mode=deep_test_mode,
             chat_update_callback=chat_update_callback,
         )
 

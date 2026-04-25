@@ -51,7 +51,6 @@ class EvaluationLibrary:
                 "agent_url": str(agent_config.evaluated_agent_url),
                 "scenario_count": len(scenarios.scenarios),
                 "judge_llm": agent_config.judge_llm,
-                "deep_test_mode": agent_config.deep_test_mode,
                 "business_context_length": len(business_context),
                 "has_progress_callback": progress_callback is not None,
             },
@@ -70,7 +69,6 @@ class EvaluationLibrary:
                 judge_llm_api_key=agent_config.judge_llm_api_key,
                 scenarios=scenarios,
                 business_context=business_context,
-                deep_test_mode=agent_config.deep_test_mode,
             )
 
             logger.info("📋 ScenarioEvaluationService created successfully")
@@ -161,7 +159,6 @@ class EvaluationLibrary:
             judge_llm_api_key=agent_config.judge_llm_api_key,
             scenarios=scenarios,
             business_context=business_context,
-            deep_test_mode=agent_config.deep_test_mode,
         )
 
         async for update_type, data in service.evaluate_scenarios():

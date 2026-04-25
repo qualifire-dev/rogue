@@ -182,7 +182,6 @@ class TestEvaluationResults:
         api_format = convert_to_api_format(
             evaluation_results=results,
             structured_summary=structured_summary,
-            deep_test=True,
             judge_model="openai/gpt-4o-mini",
         )
 
@@ -197,7 +196,6 @@ class TestEvaluationResults:
         assert api_format.summary == "Test summary for overall evaluation"
         assert api_format.keyFindings == "• Key finding 1\n• Key finding 2"
         assert api_format.recommendation == "• Recommendation 1\n• Recommendation 2"
-        assert api_format.deepTest is True
         assert api_format.judgeModel == "openai/gpt-4o-mini"
         assert api_format.scenarios[0].conversations[0].passed is True
         assert api_format.scenarios[0].conversations[0].reason == "reason"
@@ -213,6 +211,5 @@ class TestEvaluationResults:
         assert api_format.summary == "Test summary for overall evaluation"
         assert api_format.keyFindings == "• Key finding 1\n• Key finding 2"
         assert api_format.recommendation == "• Recommendation 1\n• Recommendation 2"
-        assert api_format.deepTest is True
         assert api_format.judgeModel == "openai/gpt-4o-mini"
         assert isinstance(api_format.startTime, datetime)

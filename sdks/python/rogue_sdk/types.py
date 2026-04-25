@@ -302,7 +302,6 @@ class AgentConfig(BaseModel):
     service_llm: str = "openai/gpt-4.1"
     judge_llm: str = "openai/o4-mini"
     interview_mode: bool = True
-    deep_test_mode: bool = False
     parallel_runs: int = 1
     judge_llm_api_key: Optional[str] = None
     judge_llm_aws_access_key_id: Optional[str] = None
@@ -371,8 +370,8 @@ class Scenario(BaseModel):
         description=(
             "When true, the rogue agent drives a dynamic multi-turn conversation "
             "guided by the scenario text (free-form goal or stepped plan) and stops "
-            "on goal-achieved or max_turns. When false, scenario runs via the "
-            "existing single-turn / deep_test_mode path."
+            "on goal-achieved or max_turns. When false, the scenario runs as a "
+            "single direct message via the ADK-backed single-turn path."
         ),
     )
     max_turns: int = Field(
@@ -825,7 +824,6 @@ class EvaluationJob(BaseModel):
     )
     error_message: Optional[str] = None
     progress: float = 0.0
-    deep_test: bool = False
     judge_model: Optional[str] = None
 
 
@@ -962,12 +960,13 @@ class SummaryGenerationRequest(BaseModel):
     api_base: Optional[str] = None
     api_version: Optional[str] = None
     job_id: Optional[str] = None
-    deep_test: bool = False
     judge_model: Optional[str] = None
     rogue_security_api_key: Optional[str] = None
-    rogue_security_base_url: Optional[str] = os.getenv(
-        "ROGUE_SECURITY_URL",
-        "https://app.rogue.security",
+    rogue_security_base_url: Optional[str] = Field(
+        default_factory=lambda: os.getenv(
+            "ROGUE_SECURITY_URL",
+            "https://app.rogue.security",
+        ),
     )
 
 
@@ -1035,13 +1034,14 @@ class ReportSummaryRequest(BaseModel):
 
     job_id: str
     structured_summary: Optional[StructuredSummary] = None
-    deep_test: bool = False
     judge_model: Optional[str] = None
     start_time: Optional[datetime] = None
     rogue_security_api_key: Optional[str] = None
-    rogue_security_base_url: Optional[str] = os.getenv(
-        "ROGUE_SECURITY_URL",
-        "https://app.rogue.security",
+    rogue_security_base_url: Optional[str] = Field(
+        default_factory=lambda: os.getenv(
+            "ROGUE_SECURITY_URL",
+            "https://app.rogue.security",
+        ),
     )
 
 

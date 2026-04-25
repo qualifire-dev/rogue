@@ -104,7 +104,6 @@ func (m Model) handleGlobalCtrlN() (Model, tea.Cmd) {
 		AgentTransport:  TransportHTTP,
 		JudgeModel:      judgeModel,
 		ParallelRuns:    1,
-		DeepTest:        false,
 		Scenarios:       scenariosWithContext.Scenarios,
 		BusinessContext: scenariosWithContext.BusinessContext,
 		EvaluationMode:  EvaluationModePolicy,

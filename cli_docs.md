@@ -38,7 +38,6 @@ uv run -m rogue cli [OPTIONS]
 | --judge-llm-api-key           | No                                                    |                                 | API key for LLM (see environment section).                                                                                                              |
 | --business-context            | Yes*<br/>Unless `--business-context-file` is supplied |                                 | Business context as a string.                                                                                                                           |
 | --business-context-file       | Yes*<br/>Unless `--business-context` is supplied      | `<workdir>/business_context.md` | OR path to file containing the business context.<br/>If both given, `--business-context` has priority                                                   |
-| --deep-test-mode              | No                                                    | `False`                         | Enables extended testing behavior.                                                                                                                      |
 | --debug                       | No                                                    | `False`                         | Enable verbose logging.                                                                                                                                 |
 
 ### 📊 Config file

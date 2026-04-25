@@ -150,52 +150,11 @@ func RenderForm(state *FormState) string {
 		return fieldContainer.Render(fieldContent)
 	}
 
-	// Helper function to render a toggle field
-	renderToggleField := func(fieldIndex int, label, value string) string {
-		active := state.CurrentField == fieldIndex
-
-		labelStyle := lipgloss.NewStyle().
-			Foreground(t.TextMuted()).
-			Background(t.Background()).
-			Width(20).
-			Align(lipgloss.Right)
-
-		valueStyle := lipgloss.NewStyle().
-			Foreground(t.Text()).
-			Background(t.Background()).
-			Padding(0, 1)
-
-		if active {
-			labelStyle = labelStyle.Foreground(t.Primary()).Bold(true)
-			valueStyle = valueStyle.
-				Foreground(t.Primary()).
-				Background(t.Background()).
-				Bold(true)
-		}
-
-		// Create a full-width container for the field
-		fieldContainer := lipgloss.NewStyle().
-			Width(state.Width-4).
-			Background(t.Background()).
-			Padding(0, 2)
-
-		fieldContent := lipgloss.JoinHorizontal(lipgloss.Left,
-			labelStyle.Render(label),
-			valueStyle.Render(value),
-		)
-
-		return fieldContainer.Render(fieldContent)
-	}
-
 	// Prepare field values
 	agent := state.AgentURL
 	protocol := state.Protocol
 	transport := state.Transport
 	judge := state.JudgeModel
-	deep := "❌"
-	if state.DeepTest {
-		deep = "✅"
-	}
 	evalMode := "Policy"
 	isRedTeam := state.EvaluationMode == "red_team"
 	if isRedTeam {
@@ -216,12 +175,13 @@ func RenderForm(state *FormState) string {
 		scanTypeDisplay = "✓ Basic"
 	}
 
-	// Determine start button index based on mode
-	// Policy mode: StartButton at 8
-	// Red Team mode: StartButton at 10 (after ScanType at 8, Configure at 9)
-	startButtonIndex := 8
+	// Determine start button index based on mode.
+	// Use the enum constants instead of magic numbers — the indices shift
+	// whenever fields are added or removed (e.g. the DeepTest removal),
+	// and a stale literal silently breaks the active-field highlight.
+	startButtonIndex := int(FormFieldStartButtonPolicy)
 	if isRedTeam {
-		startButtonIndex = 10
+		startButtonIndex = int(FormFieldStartButtonRedTeam)
 	}
 
 	// Helper function to render the start button
@@ -304,8 +264,7 @@ func RenderForm(state *FormState) string {
 			renderTextField(1, "Python File:", pythonFile),
 			// No Transport, AuthType, AuthCredentials for Python protocol
 			renderTextField(5, "Judge LLM:", judge),
-			renderToggleField(6, "Deep Test:", deep),
-			renderDropdownField(7, "Mode:", evalMode),
+			renderDropdownField(6, "Mode:", evalMode),
 		}
 	} else {
 		// A2A/MCP/OpenAI protocols: show Protocol, Agent URL, Transport, Auth, then other fields
@@ -320,8 +279,7 @@ func RenderForm(state *FormState) string {
 		}
 		formFields = append(formFields,
 			renderTextField(5, "Judge LLM:", judge),
-			renderToggleField(6, "Deep Test:", deep),
-			renderDropdownField(7, "Mode:", evalMode),
+			renderDropdownField(6, "Mode:", evalMode),
 		)
 	}
 

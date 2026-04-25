@@ -97,7 +97,6 @@ async def arun_evaluator_agent(
     judge_llm_api_key: Optional[str],
     scenarios: Scenarios,
     business_context: str,
-    deep_test_mode: bool,
     judge_llm_aws_access_key_id: Optional[str] = None,
     judge_llm_aws_secret_access_key: Optional[str] = None,
     judge_llm_aws_region: Optional[str] = None,
@@ -113,6 +112,10 @@ async def arun_evaluator_agent(
     using the server's red_teaming module. This function only handles
     policy-based scenario evaluation.
 
+    Scenarios are partitioned by their ``multi_turn`` flag:
+    ``multi_turn=False`` → single-turn ADK path, ``multi_turn=True`` →
+    dedicated dynamic multi-turn driver.
+
     Args:
         protocol: Communication protocol (A2A or MCP)
         transport: Transport mechanism
@@ -123,7 +126,6 @@ async def arun_evaluator_agent(
         judge_llm_api_key: API key for judge LLM
         scenarios: Scenarios to test
         business_context: Business context for the target agent
-        deep_test_mode: Enable deep testing mode
         judge_llm_aws_access_key_id: AWS access key ID for judge LLM
         judge_llm_aws_secret_access_key: AWS secret access key for judge LLM
         judge_llm_aws_region: AWS region for judge LLM
@@ -141,7 +143,6 @@ async def arun_evaluator_agent(
             "auth_type": auth_type.value,
             "judge_llm": judge_llm,
             "scenario_count": len(scenarios.scenarios),
-            "deep_test_mode": deep_test_mode,
         },
     )
 
@@ -175,7 +176,6 @@ async def arun_evaluator_agent(
             judge_llm_api_key=judge_llm_api_key,
             scenarios=single_turn_scenarios,
             business_context=business_context,
-            deep_test_mode=deep_test_mode,
             judge_llm_aws_access_key_id=judge_llm_aws_access_key_id,
             judge_llm_aws_secret_access_key=judge_llm_aws_secret_access_key,
             judge_llm_aws_region=judge_llm_aws_region,
@@ -196,7 +196,6 @@ async def arun_evaluator_agent(
             judge_llm_api_key=judge_llm_api_key,
             scenarios=multi_turn_scenarios,
             business_context=business_context,
-            deep_test_mode=deep_test_mode,
             judge_llm_aws_access_key_id=judge_llm_aws_access_key_id,
             judge_llm_aws_secret_access_key=judge_llm_aws_secret_access_key,
             judge_llm_aws_region=judge_llm_aws_region,
@@ -217,7 +216,6 @@ async def _arun_single_turn_evaluator_agent(
     judge_llm_api_key: Optional[str],
     scenarios: Scenarios,
     business_context: str,
-    deep_test_mode: bool,
     judge_llm_aws_access_key_id: Optional[str] = None,
     judge_llm_aws_secret_access_key: Optional[str] = None,
     judge_llm_aws_region: Optional[str] = None,
@@ -253,7 +251,6 @@ async def _arun_single_turn_evaluator_agent(
             judge_llm_api_base=judge_llm_api_base,
             judge_llm_api_version=judge_llm_api_version,
             debug=False,
-            deep_test_mode=deep_test_mode,
             chat_update_callback=update_queue.put_nowait,
             python_entrypoint_file=python_entrypoint_file,
         )
@@ -370,7 +367,6 @@ def run_evaluator_agent(
     judge_llm_api_key: Optional[str],
     scenarios: Scenarios,
     business_context: str,
-    deep_test_mode: bool,
 ) -> EvaluationResults:
     """Synchronous wrapper for arun_evaluator_agent."""
 
@@ -385,7 +381,6 @@ def run_evaluator_agent(
             judge_llm_api_key=judge_llm_api_key,
             scenarios=scenarios,
             business_context=business_context,
-            deep_test_mode=deep_test_mode,
         ):
             if update_type == "results":
                 return data

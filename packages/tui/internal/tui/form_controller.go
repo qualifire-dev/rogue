@@ -272,12 +272,6 @@ func HandleEvalFormInput(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 		}
 		return m, nil
 
-	case "space":
-		if m.evalState.currentField == EvalFieldDeepTest {
-			m.evalState.DeepTest = !m.evalState.DeepTest
-			return m, nil
-		}
-
 	case "tab":
 		// Open LLM config dialog when on Judge Model field
 		if m.evalState.currentField == EvalFieldJudgeModel {

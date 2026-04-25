@@ -178,7 +178,6 @@ uvx rogue-ai cli \
 | `--business-context`     | Context string or `--business-context-file` |
 | `--input-scenarios-file` | Scenarios JSON                              |
 | `--output-report-file`   | Report output path                          |
-| `--deep-test-mode`       | Extended testing                            |
 
 ---
 

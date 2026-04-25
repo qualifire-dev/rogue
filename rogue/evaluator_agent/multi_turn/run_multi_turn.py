@@ -38,7 +38,6 @@ async def arun_multi_turn_evaluator(
     judge_llm_api_key: Optional[str],
     scenarios: Scenarios,
     business_context: str,
-    deep_test_mode: bool,
     judge_llm_aws_access_key_id: Optional[str] = None,
     judge_llm_aws_secret_access_key: Optional[str] = None,
     judge_llm_aws_region: Optional[str] = None,
@@ -60,7 +59,6 @@ async def arun_multi_turn_evaluator(
         "🟦 multi-turn driver starting",
         extra={
             "scenario_count": len(scenarios.scenarios),
-            "deep_test_mode": deep_test_mode,
             "judge_llm": judge_llm,
             "protocol": protocol.value,
         },
@@ -84,7 +82,6 @@ async def arun_multi_turn_evaluator(
         judge_llm_api_base=judge_llm_api_base,
         judge_llm_api_version=judge_llm_api_version,
         debug=False,
-        deep_test_mode=deep_test_mode,
         chat_update_callback=update_queue.put_nowait,
         python_entrypoint_file=python_entrypoint_file,
     )
@@ -104,15 +101,13 @@ async def arun_multi_turn_evaluator(
         async def driver_task() -> None:
             try:
                 for scenario in scenarios.scenarios:
-                    conversations = 3 if deep_test_mode else 1
-                    for conv_idx in range(conversations):
-                        await _drive_one_conversation(
-                            evaluator_agent=evaluator_agent,
-                            scenario=scenario,
-                            business_context=business_context,
-                            conversation_index=conv_idx,
-                            llm_kwargs=llm_kwargs,
-                        )
+                    await _drive_one_conversation(
+                        evaluator_agent=evaluator_agent,
+                        scenario=scenario,
+                        business_context=business_context,
+                        conversation_index=0,
+                        llm_kwargs=llm_kwargs,
+                    )
             except Exception:
                 logger.exception("💥 multi-turn driver task failed")
             finally:

@@ -47,7 +47,6 @@ type AgentConfig struct {
 	JudgeLLMAPIBase            string                 `json:"judge_llm_api_base,omitempty"`
 	JudgeLLMAPIVersion         string                 `json:"judge_llm_api_version,omitempty"`
 	InterviewMode              bool                   `json:"interview_mode"`
-	DeepTestMode               bool                   `json:"deep_test_mode"`
 	ParallelRuns               int                    `json:"parallel_runs"`
 	EvaluationMode             string                 `json:"evaluation_mode,omitempty"`
 	RedTeamConfig              map[string]interface{} `json:"red_team_config,omitempty"`
@@ -597,7 +596,6 @@ func (m *Model) StartEvaluation(
 	scenarios []EvalScenario,
 	judgeModel string,
 	parallelRuns int,
-	deepTest bool,
 	evaluationMode string,
 	redTeamConfig map[string]interface{},
 	businessContext string,
@@ -684,7 +682,6 @@ func (m *Model) StartEvaluation(
 		JudgeLLMAPIBase:            apiBase,
 		JudgeLLMAPIVersion:         apiVersion,
 		InterviewMode:              true,
-		DeepTestMode:               deepTest,
 		ParallelRuns:               parallelRuns,
 		EvaluationMode:             evaluationMode,
 		RedTeamConfig:              redTeamConfig,
@@ -733,7 +730,6 @@ func (sdk *RogueSDK) GenerateSummary(
 	ctx context.Context,
 	jobID, model, apiKey string,
 	rogueSecurityAPIKey *string,
-	deepTest bool,
 	judgeModel string,
 	awsAccessKeyID *string,
 	awsSecretAccessKey *string,
@@ -785,7 +781,6 @@ func (sdk *RogueSDK) GenerateSummary(
 				}
 				return *rogueSecurityAPIKey
 			}(),
-			"deep_test":   deepTest,
 			"judge_model": judgeModel,
 		}
 	}
@@ -858,14 +853,12 @@ func (sdk *RogueSDK) ReportSummary(
 	ctx context.Context,
 	jobID string,
 	summary StructuredSummary,
-	deepTest bool,
 	judgeModel string,
 	rogueSecurityAPIKey string,
 ) error {
 	reportReq := map[string]interface{}{
 		"job_id":                 jobID,
 		"structured_summary":     summary,
-		"deep_test":              deepTest,
 		"judge_model":            judgeModel,
 		"rogue_security_api_key": rogueSecurityAPIKey,
 	}

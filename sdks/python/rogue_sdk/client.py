@@ -151,7 +151,6 @@ class RogueHttpClient:
         api_key: Optional[str] = None,
         rogue_security_api_key: Optional[str] = None,
         job_id: Optional[str] = None,
-        deep_test: bool = False,
         judge_model: Optional[str] = None,
     ) -> SummaryGenerationResponse:
         """Generate summary via API."""
@@ -160,7 +159,6 @@ class RogueHttpClient:
             model=model,
             rogue_security_api_key=rogue_security_api_key,
             job_id=job_id,
-            deep_test=deep_test,
             judge_model=judge_model,
         )
         if api_key:

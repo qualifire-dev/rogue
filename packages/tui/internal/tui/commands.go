@@ -109,7 +109,6 @@ func (m *Model) summaryGenerationCmd() tea.Cmd {
 			judgeModel,
 			apiKey,
 			parsedAPIKey,
-			m.evalState.DeepTest,
 			judgeModel,
 			awsAccessKeyID,
 			awsSecretAccessKey,

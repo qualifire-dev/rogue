@@ -248,7 +248,6 @@ class RogueSDK:
         transport: Transport | None = None,
         auth_type: AuthType = AuthType.NO_AUTH,
         auth_credentials: Optional[str] = None,
-        deep_test: bool = False,
         timeout: float = 600.0,
         evaluation_mode: Optional[EvaluationMode] = None,
         owasp_categories: Optional[List[str]] = None,
@@ -268,7 +267,6 @@ class RogueSDK:
             transport: Transport mechanism (not used for PYTHON protocol)
             auth_type: Authentication type for agent
             auth_credentials: Authentication credentials
-            deep_test: Enable deep testing mode
             timeout: Timeout in seconds
             evaluation_mode: Policy or red team mode
             owasp_categories: OWASP categories for red team mode
@@ -288,7 +286,6 @@ class RogueSDK:
             evaluated_agent_credentials=auth_credentials,
             judge_llm=judge_model,
             judge_llm_api_key=judge_llm_api_key,
-            deep_test_mode=deep_test,
             interview_mode=True,
             parallel_runs=1,
             business_context=business_context,
@@ -330,7 +327,6 @@ class RogueSDK:
         api_key: Optional[str] = None,
         rogue_security_api_key: Optional[str] = None,
         job_id: Optional[str] = None,
-        deep_test: bool = False,
         judge_model: Optional[str] = None,
     ) -> Tuple[str, StructuredSummary]:
         """Generate evaluation summary from results."""
@@ -340,7 +336,6 @@ class RogueSDK:
             api_key=api_key,
             rogue_security_api_key=rogue_security_api_key,
             job_id=job_id,
-            deep_test=deep_test,
             judge_model=judge_model,
         )
 

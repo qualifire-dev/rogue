@@ -20,7 +20,6 @@ from ..models.api_format import (
 def convert_to_api_format(
     evaluation_results: EvaluationResults,
     structured_summary: Optional[StructuredSummary] = None,
-    deep_test: bool = False,
     start_time: Optional[datetime] = None,
     judge_model: Optional[str] = None,
 ) -> ApiEvaluationResult:
@@ -29,7 +28,6 @@ def convert_to_api_format(
     Args:
         evaluation_results: Legacy evaluation results to convert
         structured_summary: Structured summary from LLM with separate sections
-        deep_test: Whether deep test mode was enabled
         start_time: When the evaluation started (defaults to current time)
         judge_model: The LLM judge model used
 
@@ -107,7 +105,6 @@ def convert_to_api_format(
         summary=summary,
         keyFindings=key_findings,
         recommendation=recommendation,
-        deepTest=deep_test,
         startTime=start_time,
         judgeModel=judge_model,
     )
@@ -116,7 +113,6 @@ def convert_to_api_format(
 def convert_with_structured_summary(
     evaluation_results: EvaluationResults,
     structured_summary: Optional[StructuredSummary] = None,
-    deep_test: bool = False,
     start_time: Optional[datetime] = None,
     judge_model: Optional[str] = None,
 ) -> ApiEvaluationResult:
@@ -125,7 +121,6 @@ def convert_with_structured_summary(
     Args:
         evaluation_results: Legacy evaluation results to convert
         structured_summary: Structured summary from LLM
-        deep_test: Whether deep test mode was enabled
         start_time: When the evaluation started
         judge_model: The LLM judge model used
 
@@ -135,7 +130,6 @@ def convert_with_structured_summary(
     return convert_to_api_format(
         evaluation_results=evaluation_results,
         structured_summary=structured_summary,
-        deep_test=deep_test,
         start_time=start_time,
         judge_model=judge_model,
     )

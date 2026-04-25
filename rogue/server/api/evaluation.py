@@ -51,7 +51,6 @@ async def create_evaluation(
         "agent_url": str(request.agent_config.evaluated_agent_url),
         "scenario_count": scenario_count,
         "judge_llm": request.agent_config.judge_llm,
-        "deep_test_mode": request.agent_config.deep_test_mode,
         "max_retries": request.max_retries,
         "timeout_seconds": request.timeout_seconds,
     }
@@ -63,7 +62,6 @@ async def create_evaluation(
         status=EvaluationStatus.PENDING,
         created_at=datetime.now(timezone.utc),
         request=request,
-        deep_test=request.agent_config.deep_test_mode,
         judge_model=request.agent_config.judge_llm,
     )
 
