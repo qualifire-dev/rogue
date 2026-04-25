@@ -6,7 +6,6 @@ import requests
 from loguru import logger
 from rogue_sdk.types import EvaluationResults, ReportSummaryRequest
 
-
 _MAX_CONTENT_LEN = 64 * 1024
 
 
