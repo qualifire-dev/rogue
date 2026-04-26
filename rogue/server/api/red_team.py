@@ -7,7 +7,7 @@ from functools import lru_cache
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from rogue_sdk.types import (
     EvaluationStatus,
     RedTeamJob,
@@ -348,9 +348,11 @@ async def generate_red_team_summary(
 
 class ReportToRogueSecurityRequest(BaseModel):
     rogue_security_api_key: str
-    rogue_security_base_url: str = os.getenv(
-        "ROGUE_SECURITY_URL",
-        "https://app.rogue.security",
+    rogue_security_base_url: str = Field(
+        default_factory=lambda: os.getenv(
+            "ROGUE_SECURITY_URL",
+            "https://app.rogue.security",
+        ),
     )
 
 

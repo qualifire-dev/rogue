@@ -6,17 +6,24 @@ import requests
 from loguru import logger
 from rogue_sdk.types import EvaluationResults, ReportSummaryRequest
 
-_MAX_CONTENT_LEN = 64 * 1024
+_MAX_CONTENT_BYTES = 64 * 1024
 
 
 def _safe_content(value: Any) -> str:
-    """Cap individual message content to avoid oversize payloads."""
+    """Cap individual message content to bound the HTTP payload size.
+
+    The cap is in UTF-8 bytes, not characters, so a long string of
+    multibyte codepoints can't slip past the limit. Truncation always
+    falls on a codepoint boundary (no mojibake on the wire).
+    """
     if value is None:
         return ""
     text = value if isinstance(value, str) else str(value)
-    if len(text) > _MAX_CONTENT_LEN:
-        return text[:_MAX_CONTENT_LEN] + "…[truncated]"
-    return text
+    encoded = text.encode("utf-8")
+    if len(encoded) <= _MAX_CONTENT_BYTES:
+        return text
+    truncated = encoded[:_MAX_CONTENT_BYTES].decode("utf-8", errors="ignore")
+    return truncated + "…[truncated]"
 
 
 class DeckardService:
@@ -56,10 +63,13 @@ class DeckardService:
         for session_id, turns in turns_by_session.items():
             ordered = sorted(
                 turns,
-                key=lambda t: (t.get("turn") or t.get("attempt") or 0),
+                # Use explicit defaults so a `turn=0` doesn't fall through to
+                # `attempt` via Python's `or` truthiness.
+                key=lambda t: t.get("turn", t.get("attempt", 0)),
             )
             messages: list[dict[str, object]] = []
             any_detected = False
+            any_eval_signal = False
             last_eval: dict[str, Any] = {}
             for t in ordered:
                 msg = t.get("message")
@@ -83,8 +93,10 @@ class DeckardService:
                 ev = t.get("evaluation") or {}
                 if isinstance(ev, dict):
                     last_eval = ev
-                    if ev.get("vulnerability_detected"):
-                        any_detected = True
+                    if "vulnerability_detected" in ev:
+                        any_eval_signal = True
+                        if ev.get("vulnerability_detected"):
+                            any_detected = True
 
             meta = meta_by_session.get(session_id, {})
             vuln_id = str(meta.get("vulnerability_id") or "")
@@ -93,11 +105,16 @@ class DeckardService:
             if isinstance(last_eval, dict):
                 reason = last_eval.get("reason") or last_eval.get("explanation")
 
+            # Symmetry with the attack-finding path: default to "not safe"
+            # when no detection signal exists. A session only counts as
+            # passed if at least one evaluation explicitly cleared it.
+            passed = any_eval_signal and not any_detected
+
             conversations_payload.append(
                 {
                     "scenario_name": scenario_name,
                     "scenario_type": vuln_id or None,
-                    "passed": not any_detected,
+                    "passed": passed,
                     "reason": reason,
                     "conversation_id": session_id or None,
                     "messages": messages,
@@ -106,6 +123,7 @@ class DeckardService:
                         "is_multi_turn": meta.get("is_multi_turn"),
                         "is_premium": meta.get("is_premium"),
                         "vulnerability_detected": any_detected,
+                        "evaluator_ran": any_eval_signal,
                         "last_evaluation": last_eval or None,
                     },
                 },

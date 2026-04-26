@@ -165,8 +165,22 @@ async def arun_evaluator_agent(
         },
     )
 
+    # `multi_turn=False` is meant to mean "one user message, one assistant
+    # reply, then evaluate" — the toggle the user sees in the TUI promises
+    # that. Historically these scenarios fell through to the ADK runner,
+    # which is itself agentic: its LLM was free to make many tool calls
+    # back to the target, so the conversation didn't actually look any
+    # different from a multi-turn run. Route them through the same
+    # explicit driver as multi-turn, with `max_turns=1` clamped so the
+    # bound is always honored regardless of what was saved on disk.
     if single_turn_scenarios.scenarios:
-        async for update in _arun_single_turn_evaluator_agent(
+        clamped_scenarios = Scenarios(
+            scenarios=[
+                s.model_copy(update={"max_turns": 1})
+                for s in single_turn_scenarios.scenarios
+            ],
+        )
+        async for update in arun_multi_turn_evaluator(
             protocol=protocol,
             transport=transport,
             evaluated_agent_url=evaluated_agent_url,
@@ -174,7 +188,7 @@ async def arun_evaluator_agent(
             auth_credentials=auth_credentials,
             judge_llm=judge_llm,
             judge_llm_api_key=judge_llm_api_key,
-            scenarios=single_turn_scenarios,
+            scenarios=clamped_scenarios,
             business_context=business_context,
             judge_llm_aws_access_key_id=judge_llm_aws_access_key_id,
             judge_llm_aws_secret_access_key=judge_llm_aws_secret_access_key,
