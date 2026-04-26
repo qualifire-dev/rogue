@@ -44,7 +44,6 @@ class ApiEvaluationResult(BaseModel):
     summary: Optional[str] = None
     keyFindings: Optional[str] = None
     recommendation: Optional[str] = None
-    deepTest: bool = False
     startTime: datetime
     judgeModel: Optional[str] = None
 

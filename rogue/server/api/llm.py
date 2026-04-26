@@ -352,7 +352,6 @@ async def generate_summary(
                     ReportSummaryRequest(
                         job_id=request.job_id,
                         structured_summary=summary,
-                        deep_test=job.deep_test if job else request.deep_test,
                         start_time=(
                             job.created_at
                             if job is not None
@@ -417,7 +416,6 @@ async def report_summary_handler(
             ReportSummaryRequest(
                 job_id=request.job_id,
                 structured_summary=request.structured_summary,
-                deep_test=request.deep_test,
                 start_time=job.created_at,
                 judge_model=job.judge_model,
                 rogue_security_api_key=request.rogue_security_api_key,

@@ -135,6 +135,46 @@ class TestScenarios:
         assert result.scenarios[0].scenario_type == ScenarioType.PROMPT_INJECTION
 
 
+class TestMultiTurn:
+    def test_defaults_multi_turn_on(self):
+        """Scenarios default to multi_turn=True and max_turns=10."""
+        scenario = Scenario(scenario="get a discount")
+        assert scenario.multi_turn is True
+        assert scenario.max_turns == 10
+
+    def test_legacy_json_defaults(self):
+        """Legacy JSON without multi_turn / max_turns picks up defaults."""
+        scenario = Scenario.model_validate_json(
+            '{"scenario":"legacy","scenario_type":"policy"}',
+        )
+        assert scenario.multi_turn is True
+        assert scenario.max_turns == 10
+
+    def test_explicit_values_preserved(self):
+        scenario = Scenario(
+            scenario="direct single turn",
+            multi_turn=False,
+            max_turns=3,
+        )
+        assert scenario.multi_turn is False
+        assert scenario.max_turns == 3
+
+    @pytest.mark.parametrize("bad_value", [0, -1, 101, 9999])
+    def test_max_turns_bounds_enforced(self, bad_value):
+        with pytest.raises(ValidationError):
+            Scenario(scenario="x", max_turns=bad_value)
+
+    def test_partition_helpers(self):
+        multi = Scenario(scenario="multi goal")
+        single = Scenario(scenario="single shot", multi_turn=False)
+        collection = Scenarios(scenarios=[multi, single])
+
+        multi_only = collection.get_multi_turn_scenarios().scenarios
+        single_only = collection.get_single_turn_scenarios().scenarios
+        assert [s.scenario for s in multi_only] == ["multi goal"]
+        assert [s.scenario for s in single_only] == ["single shot"]
+
+
 class TestAuthType:
     @pytest.mark.parametrize(
         "auth_type, auth_credentials, expected_header",

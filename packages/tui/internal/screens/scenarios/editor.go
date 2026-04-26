@@ -42,6 +42,9 @@ type ScenarioEditor struct {
 	scenarioTextArea        *components.TextArea
 	expectedOutcomeTextArea *components.TextArea
 
+	// Multi-turn editing state (reflected into editing.{MultiTurn,MaxTurns} on save)
+	maxTurnsBuffer string
+
 	// Interview mode
 	interviewMode               bool                 // true when in interview mode
 	interviewSessionID          string               // current interview session

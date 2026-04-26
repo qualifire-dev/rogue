@@ -112,7 +112,6 @@ agent_config = AgentConfig(
     evaluated_agent_auth_type=AuthType.NO_AUTH,
     judge_llm="openai/gpt-4o-mini",
     interview_mode=True,
-    deep_test_mode=False,
     parallel_runs=1
 )
 ```
@@ -230,7 +229,6 @@ async def advanced_evaluation():
         evaluated_agent_auth_type=AuthType.API_KEY,
         evaluated_agent_credentials="your-agent-api-key",
         judge_llm="openai/gpt-4o-mini",
-        deep_test_mode=True
     )
     
     # Define scenarios

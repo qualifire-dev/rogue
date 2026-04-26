@@ -37,7 +37,6 @@ def get_evaluator_agent(
     judge_llm_aws_secret_access_key: Optional[str] = None,
     judge_llm_aws_region: Optional[str] = None,
     debug: bool = False,
-    deep_test_mode: bool = False,
     chat_update_callback: Optional[Callable[[dict], None]] = None,
     python_entrypoint_file: Optional[str] = None,
     **kwargs,
@@ -62,7 +61,6 @@ def get_evaluator_agent(
         judge_llm_aws_secret_access_key: AWS secret access key for judge LLM
         judge_llm_aws_region: AWS region for judge LLM
         debug: Enable debug logging
-        deep_test_mode: Enable deep testing mode
         chat_update_callback: Callback for chat updates
         python_entrypoint_file: Path to Python file with call_agent function
             (required for PYTHON protocol)
@@ -97,7 +95,6 @@ def get_evaluator_agent(
             judge_llm_aws_secret_access_key=judge_llm_aws_secret_access_key,
             judge_llm_aws_region=judge_llm_aws_region,
             debug=debug,
-            deep_test_mode=deep_test_mode,
             chat_update_callback=chat_update_callback,
             **kwargs,
         )
@@ -120,7 +117,6 @@ def get_evaluator_agent(
         judge_llm_aws_secret_access_key=judge_llm_aws_secret_access_key,
         judge_llm_aws_region=judge_llm_aws_region,
         debug=debug,
-        deep_test_mode=deep_test_mode,
         chat_update_callback=chat_update_callback,
         **kwargs,
     )

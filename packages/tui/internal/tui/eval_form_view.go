@@ -36,7 +36,6 @@ func (m Model) RenderNewEvaluation() string {
 		AuthCredentials:      m.evalState.AgentAuthCredentials,
 		PythonEntrypointFile: m.evalState.PythonEntrypointFile,
 		JudgeModel:           m.evalState.JudgeModel,
-		DeepTest:             m.evalState.DeepTest,
 		ServerURL:            m.evalState.ServerURL,
 		ScenariosCount:       len(m.evalState.Scenarios),
 		EvaluationMode:       string(m.evalState.EvaluationMode),

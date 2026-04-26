@@ -146,6 +146,11 @@ type EvalScenario struct {
 	Scenario        string `json:"scenario"`
 	ScenarioType    string `json:"scenario_type"`
 	ExpectedOutcome string `json:"expected_outcome,omitempty"`
+	// MultiTurn enables dynamic multi-turn driving with per-turn goal-check.
+	// Defaults to true (set by the loader when missing from disk).
+	MultiTurn bool `json:"multi_turn"`
+	// MaxTurns caps the multi-turn loop when MultiTurn is true.
+	MaxTurns int `json:"max_turns,omitempty"`
 }
 
 // EvaluationEvent represents an event during evaluation

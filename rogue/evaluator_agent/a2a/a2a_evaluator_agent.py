@@ -27,7 +27,6 @@ class A2AEvaluatorAgent(BaseEvaluatorAgent):
         headers: Optional[dict[str, str]] = None,
         judge_llm_auth: Optional[str] = None,
         debug: bool = False,
-        deep_test_mode: bool = False,
         chat_update_callback: Optional[Callable[[dict], None]] = None,
         http_client: Optional[AsyncClient] = None,
         **kwargs,
@@ -42,7 +41,6 @@ class A2AEvaluatorAgent(BaseEvaluatorAgent):
             business_context=business_context,
             judge_llm_auth=judge_llm_auth,
             debug=debug,
-            deep_test_mode=deep_test_mode,
             chat_update_callback=chat_update_callback,
             **kwargs,
         )

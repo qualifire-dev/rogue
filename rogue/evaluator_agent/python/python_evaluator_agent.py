@@ -41,7 +41,6 @@ class PythonEvaluatorAgent(BaseEvaluatorAgent):
         judge_llm_aws_secret_access_key: Optional[str] = None,
         judge_llm_aws_region: Optional[str] = None,
         debug: bool = False,
-        deep_test_mode: bool = False,
         chat_update_callback: Optional[Callable[[dict], None]] = None,
         **kwargs,
     ) -> None:
@@ -58,7 +57,6 @@ class PythonEvaluatorAgent(BaseEvaluatorAgent):
             judge_llm_aws_secret_access_key=judge_llm_aws_secret_access_key,
             judge_llm_aws_region=judge_llm_aws_region,
             debug=debug,
-            deep_test_mode=deep_test_mode,
             chat_update_callback=chat_update_callback,
             **kwargs,
         )

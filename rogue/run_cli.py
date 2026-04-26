@@ -100,12 +100,6 @@ def set_cli_args(parser: ArgumentParser) -> None:
         "Can be left unset if env is used.",
     )
     parser.add_argument(
-        "--deep-test-mode",
-        default=False,
-        action="store_true",
-        help="Enable deep test mode",
-    )
-    parser.add_argument(
         "--evaluation-mode",
         choices=[e.value for e in EvaluationMode],
         type=EvaluationMode,
@@ -173,7 +167,6 @@ async def run_scenarios(
     scenarios: Scenarios,
     evaluation_results_output_path: Path,
     business_context: str,
-    deep_test_mode: bool,
     evaluation_mode: EvaluationMode = EvaluationMode.POLICY,
     owasp_categories: list[str] | None = None,
     attacks_per_category: int = 5,
@@ -203,7 +196,6 @@ async def run_scenarios(
         scenarios=scenarios,
         evaluation_results_output_path=evaluation_results_output_path,
         business_context=business_context,
-        deep_test_mode=deep_test_mode,
         evaluation_mode=evaluation_mode,
         owasp_categories=owasp_categories,
         attacks_per_category=attacks_per_category,
@@ -223,7 +215,6 @@ async def _run_scenarios_with_sdk(
     scenarios: Scenarios,
     evaluation_results_output_path: Path,
     business_context: str,
-    deep_test_mode: bool,
     evaluation_mode: EvaluationMode = EvaluationMode.POLICY,
     owasp_categories: list[str] | None = None,
     attacks_per_category: int = 5,
@@ -253,7 +244,6 @@ async def _run_scenarios_with_sdk(
             auth_credentials=evaluated_agent_auth_credentials,
             judge_model=judge_llm,
             judge_llm_api_key=judge_llm_api_key,
-            deep_test=deep_test_mode,
             evaluation_mode=evaluation_mode,
             owasp_categories=owasp_categories,
             attacks_per_category=attacks_per_category,
@@ -293,7 +283,6 @@ async def create_report(
     job_id: str | None = None,
     judge_llm_api_key_secret: SecretStr | None = None,
     rogue_security_api_key_secret: SecretStr | None = None,
-    deep_test_mode: bool = False,
     judge_model: str | None = None,
 ) -> str:
     judge_llm_api_key = (
@@ -322,7 +311,6 @@ async def create_report(
             api_key=judge_llm_api_key,
             rogue_security_api_key=rogue_security_api_key,
             job_id=job_id,
-            deep_test=deep_test_mode,
             judge_model=judge_model,
         )
     except Exception as e:
@@ -625,7 +613,6 @@ async def run_cli(args: Namespace) -> int:
         scenarios=scenarios,
         evaluation_results_output_path=args.workdir / "evaluation_results.json",
         business_context=cli_input.business_context,
-        deep_test_mode=cli_input.deep_test_mode,
         evaluation_mode=cli_input.evaluation_mode,
         owasp_categories=cli_input.owasp_categories,
         attacks_per_category=cli_input.attacks_per_category,
@@ -644,7 +631,6 @@ async def run_cli(args: Namespace) -> int:
         job_id=job_id,
         output_report_file=cli_input.output_report_file,
         judge_llm_api_key_secret=cli_input.judge_llm_api_key,
-        deep_test_mode=cli_input.deep_test_mode,
         judge_model=cli_input.judge_llm,
         rogue_security_api_key_secret=cli_input.rogue_security_api_key,
     )

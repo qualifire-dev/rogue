@@ -134,7 +134,6 @@ class EvaluationService:
                 judge_llm_api_version=agent_config.judge_llm_api_version,
                 scenarios=scenarios,
                 business_context=agent_config.business_context,
-                deep_test_mode=agent_config.deep_test_mode,
                 python_entrypoint_file=agent_config.python_entrypoint_file,
             )
 

@@ -472,7 +472,6 @@ func (m Model) handleDialogClosedMsg(msg components.DialogClosedMsg) (Model, tea
 							context.Background(),
 							m.evalState.JobID,
 							m.evalState.StructuredSummary,
-							m.evalState.DeepTest,
 							m.evalState.JudgeModel,
 							parsedAPIKey,
 						)

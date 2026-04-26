@@ -40,7 +40,6 @@ class ScenarioEvaluationService:
         judge_llm_api_key: str | None,
         scenarios: Scenarios,
         business_context: str,
-        deep_test_mode: bool,
     ):
         self._protocol = protocol
         self._transport = transport
@@ -51,7 +50,6 @@ class ScenarioEvaluationService:
         self._judge_llm_api_key = judge_llm_api_key
         self._scenarios = scenarios
         self._business_context = business_context
-        self._deep_test_mode = deep_test_mode
         self._results = EvaluationResults()
 
     async def evaluate_scenarios(self) -> AsyncGenerator[tuple[str, Any], None]:
@@ -70,7 +68,6 @@ class ScenarioEvaluationService:
                 "scenario_count": len(self._scenarios.scenarios),
                 "agent_url": self._evaluated_agent_url,
                 "judge_llm": self._judge_llm,
-                "deep_test_mode": self._deep_test_mode,
             },
         )
 
@@ -103,7 +100,6 @@ class ScenarioEvaluationService:
                 judge_llm_api_key=self._judge_llm_api_key,
                 scenarios=self._scenarios,
                 business_context=self._business_context,
-                deep_test_mode=self._deep_test_mode,
                 evaluation_mode=EvaluationMode.POLICY,
             ):
                 update_count += 1

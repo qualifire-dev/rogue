@@ -302,7 +302,6 @@ class AgentConfig(BaseModel):
     service_llm: str = "openai/gpt-4.1"
     judge_llm: str = "openai/o4-mini"
     interview_mode: bool = True
-    deep_test_mode: bool = False
     parallel_runs: int = 1
     judge_llm_api_key: Optional[str] = None
     judge_llm_aws_access_key_id: Optional[str] = None
@@ -366,6 +365,21 @@ class Scenario(BaseModel):
     dataset: Optional[str] = None
     expected_outcome: Optional[str] = None
     dataset_sample_size: Optional[int] = None
+    multi_turn: bool = Field(
+        default=True,
+        description=(
+            "When true, the rogue agent drives a dynamic multi-turn conversation "
+            "guided by the scenario text (free-form goal or stepped plan) and stops "
+            "on goal-achieved or max_turns. When false, the scenario runs as a "
+            "single direct message via the ADK-backed single-turn path."
+        ),
+    )
+    max_turns: int = Field(
+        default=10,
+        ge=1,
+        le=100,
+        description="Maximum rogue-agent turns before stopping a multi-turn run.",
+    )
 
     @model_validator(mode="after")
     def validate_dataset_for_type(self) -> "Scenario":
@@ -419,6 +433,18 @@ class Scenarios(BaseModel):
 
     def get_prompt_injection_scenarios(self) -> "Scenarios":
         return self.get_scenarios_by_type(ScenarioType.PROMPT_INJECTION)
+
+    def get_multi_turn_scenarios(self) -> "Scenarios":
+        """Return scenarios flagged for dynamic multi-turn driving."""
+        return Scenarios(
+            scenarios=[s for s in self.scenarios if s.multi_turn],
+        )
+
+    def get_single_turn_scenarios(self) -> "Scenarios":
+        """Return scenarios that should run via the existing single-turn path."""
+        return Scenarios(
+            scenarios=[s for s in self.scenarios if not s.multi_turn],
+        )
 
 
 class ChatMessage(BaseModel):
@@ -798,7 +824,6 @@ class EvaluationJob(BaseModel):
     )
     error_message: Optional[str] = None
     progress: float = 0.0
-    deep_test: bool = False
     judge_model: Optional[str] = None
 
 
@@ -935,12 +960,13 @@ class SummaryGenerationRequest(BaseModel):
     api_base: Optional[str] = None
     api_version: Optional[str] = None
     job_id: Optional[str] = None
-    deep_test: bool = False
     judge_model: Optional[str] = None
     rogue_security_api_key: Optional[str] = None
-    rogue_security_base_url: Optional[str] = os.getenv(
-        "ROGUE_SECURITY_URL",
-        "https://app.rogue.security",
+    rogue_security_base_url: Optional[str] = Field(
+        default_factory=lambda: os.getenv(
+            "ROGUE_SECURITY_URL",
+            "https://app.rogue.security",
+        ),
     )
 
 
@@ -1008,13 +1034,14 @@ class ReportSummaryRequest(BaseModel):
 
     job_id: str
     structured_summary: Optional[StructuredSummary] = None
-    deep_test: bool = False
     judge_model: Optional[str] = None
     start_time: Optional[datetime] = None
     rogue_security_api_key: Optional[str] = None
-    rogue_security_base_url: Optional[str] = os.getenv(
-        "ROGUE_SECURITY_URL",
-        "https://app.rogue.security",
+    rogue_security_base_url: Optional[str] = Field(
+        default_factory=lambda: os.getenv(
+            "ROGUE_SECURITY_URL",
+            "https://app.rogue.security",
+        ),
     )
 
 

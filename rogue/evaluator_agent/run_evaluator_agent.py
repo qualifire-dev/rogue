@@ -21,6 +21,7 @@ from rogue_sdk.types import (
 
 from ..common.agent_sessions import create_session
 from .evaluator_agent_factory import get_evaluator_agent
+from .multi_turn import arun_multi_turn_evaluator
 
 if TYPE_CHECKING:
     from google.adk.runners import Runner
@@ -96,7 +97,6 @@ async def arun_evaluator_agent(
     judge_llm_api_key: Optional[str],
     scenarios: Scenarios,
     business_context: str,
-    deep_test_mode: bool,
     judge_llm_aws_access_key_id: Optional[str] = None,
     judge_llm_aws_secret_access_key: Optional[str] = None,
     judge_llm_aws_region: Optional[str] = None,
@@ -112,6 +112,10 @@ async def arun_evaluator_agent(
     using the server's red_teaming module. This function only handles
     policy-based scenario evaluation.
 
+    Scenarios are partitioned by their ``multi_turn`` flag:
+    ``multi_turn=False`` → single-turn ADK path, ``multi_turn=True`` →
+    dedicated dynamic multi-turn driver.
+
     Args:
         protocol: Communication protocol (A2A or MCP)
         transport: Transport mechanism
@@ -122,7 +126,6 @@ async def arun_evaluator_agent(
         judge_llm_api_key: API key for judge LLM
         scenarios: Scenarios to test
         business_context: Business context for the target agent
-        deep_test_mode: Enable deep testing mode
         judge_llm_aws_access_key_id: AWS access key ID for judge LLM
         judge_llm_aws_secret_access_key: AWS secret access key for judge LLM
         judge_llm_aws_region: AWS region for judge LLM
@@ -131,10 +134,6 @@ async def arun_evaluator_agent(
     Yields:
         Tuple of (update_type, data) where update_type is "chat" or "results"
     """
-    # ADK imports take a while, importing them here to reduce startup time
-    from google.adk.runners import Runner
-    from google.adk.sessions import InMemorySessionService
-
     logger.info(
         "🤖 arun_evaluator_agent starting",
         extra={
@@ -144,7 +143,6 @@ async def arun_evaluator_agent(
             "auth_type": auth_type.value,
             "judge_llm": judge_llm,
             "scenario_count": len(scenarios.scenarios),
-            "deep_test_mode": deep_test_mode,
         },
     )
 
@@ -156,6 +154,94 @@ async def arun_evaluator_agent(
         )
         yield "results", EvaluationResults()
         return
+
+    single_turn_scenarios = scenarios.get_single_turn_scenarios()
+    multi_turn_scenarios = scenarios.get_multi_turn_scenarios()
+    logger.info(
+        "📋 scenario partition",
+        extra={
+            "single_turn": len(single_turn_scenarios.scenarios),
+            "multi_turn": len(multi_turn_scenarios.scenarios),
+        },
+    )
+
+    # `multi_turn=False` is meant to mean "one user message, one assistant
+    # reply, then evaluate" — the toggle the user sees in the TUI promises
+    # that. Historically these scenarios fell through to the ADK runner,
+    # which is itself agentic: its LLM was free to make many tool calls
+    # back to the target, so the conversation didn't actually look any
+    # different from a multi-turn run. Route them through the same
+    # explicit driver as multi-turn, with `max_turns=1` clamped so the
+    # bound is always honored regardless of what was saved on disk.
+    if single_turn_scenarios.scenarios:
+        clamped_scenarios = Scenarios(
+            scenarios=[
+                s.model_copy(update={"max_turns": 1})
+                for s in single_turn_scenarios.scenarios
+            ],
+        )
+        async for update in arun_multi_turn_evaluator(
+            protocol=protocol,
+            transport=transport,
+            evaluated_agent_url=evaluated_agent_url,
+            auth_type=auth_type,
+            auth_credentials=auth_credentials,
+            judge_llm=judge_llm,
+            judge_llm_api_key=judge_llm_api_key,
+            scenarios=clamped_scenarios,
+            business_context=business_context,
+            judge_llm_aws_access_key_id=judge_llm_aws_access_key_id,
+            judge_llm_aws_secret_access_key=judge_llm_aws_secret_access_key,
+            judge_llm_aws_region=judge_llm_aws_region,
+            python_entrypoint_file=python_entrypoint_file,
+            judge_llm_api_base=judge_llm_api_base,
+            judge_llm_api_version=judge_llm_api_version,
+        ):
+            yield update
+
+    if multi_turn_scenarios.scenarios:
+        async for update in arun_multi_turn_evaluator(
+            protocol=protocol,
+            transport=transport,
+            evaluated_agent_url=evaluated_agent_url,
+            auth_type=auth_type,
+            auth_credentials=auth_credentials,
+            judge_llm=judge_llm,
+            judge_llm_api_key=judge_llm_api_key,
+            scenarios=multi_turn_scenarios,
+            business_context=business_context,
+            judge_llm_aws_access_key_id=judge_llm_aws_access_key_id,
+            judge_llm_aws_secret_access_key=judge_llm_aws_secret_access_key,
+            judge_llm_aws_region=judge_llm_aws_region,
+            python_entrypoint_file=python_entrypoint_file,
+            judge_llm_api_base=judge_llm_api_base,
+            judge_llm_api_version=judge_llm_api_version,
+        ):
+            yield update
+
+
+async def _arun_single_turn_evaluator_agent(
+    protocol: Protocol,
+    transport: Optional[Transport],
+    evaluated_agent_url: Optional[str],
+    auth_type: AuthType,
+    auth_credentials: Optional[str],
+    judge_llm: str,
+    judge_llm_api_key: Optional[str],
+    scenarios: Scenarios,
+    business_context: str,
+    judge_llm_aws_access_key_id: Optional[str] = None,
+    judge_llm_aws_secret_access_key: Optional[str] = None,
+    judge_llm_aws_region: Optional[str] = None,
+    python_entrypoint_file: Optional[str] = None,
+    judge_llm_api_base: Optional[str] = None,
+    judge_llm_api_version: Optional[str] = None,
+) -> AsyncGenerator[tuple[str, Any], None]:
+    """Original ADK-driven single-turn path. Scenarios passed in here must all
+    have ``multi_turn=False``; the public dispatcher partitions beforehand."""
+    # ADK imports take a while, importing them here to reduce startup time
+    from google.adk.runners import Runner
+    from google.adk.sessions import InMemorySessionService
 
     try:
         headers = auth_type.get_auth_header(auth_credentials)
@@ -179,7 +265,6 @@ async def arun_evaluator_agent(
             judge_llm_api_base=judge_llm_api_base,
             judge_llm_api_version=judge_llm_api_version,
             debug=False,
-            deep_test_mode=deep_test_mode,
             chat_update_callback=update_queue.put_nowait,
             python_entrypoint_file=python_entrypoint_file,
         )
@@ -296,7 +381,6 @@ def run_evaluator_agent(
     judge_llm_api_key: Optional[str],
     scenarios: Scenarios,
     business_context: str,
-    deep_test_mode: bool,
 ) -> EvaluationResults:
     """Synchronous wrapper for arun_evaluator_agent."""
 
@@ -311,7 +395,6 @@ def run_evaluator_agent(
             judge_llm_api_key=judge_llm_api_key,
             scenarios=scenarios,
             business_context=business_context,
-            deep_test_mode=deep_test_mode,
         ):
             if update_type == "results":
                 return data

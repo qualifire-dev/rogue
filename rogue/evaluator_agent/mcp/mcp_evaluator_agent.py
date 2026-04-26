@@ -23,7 +23,6 @@ class MCPEvaluatorAgent(BaseEvaluatorAgent):
         headers: Optional[dict[str, str]] = None,
         judge_llm_auth: Optional[str] = None,
         debug: bool = False,
-        deep_test_mode: bool = False,
         chat_update_callback: Optional[Callable[[dict], None]] = None,
         *args,
         **kwargs,
@@ -38,7 +37,6 @@ class MCPEvaluatorAgent(BaseEvaluatorAgent):
             headers=headers,
             judge_llm_auth=judge_llm_auth,
             debug=debug,
-            deep_test_mode=deep_test_mode,
             chat_update_callback=chat_update_callback,
         )
 

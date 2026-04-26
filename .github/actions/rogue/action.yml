@@ -26,9 +26,6 @@ inputs:
   judge_llm_api_key:
     description: "API key to use when communicating with the LLM provider. Can be left unset if env is used."
     required: false
-  deep_test_mode:
-    description: "Enable deep test mode"
-    required: false
   business_context_file:
     description: "A file containing a description of the business context of the evaluated agent"
     required: false
@@ -70,10 +67,6 @@ runs:
 
         if [[ -n "${{ inputs.judge_llm_api_key }}" ]]; then
           ARGS+=(--judge-llm-api-key "${{ inputs.judge_llm_api_key }}")
-        fi
-
-        if [[ -n "${{ inputs.deep_test_mode }}" ]]; then
-          ARGS+=(--deep-test-mode "${{ inputs.deep_test_mode }}")
         fi
 
         if [[ -n "${{ inputs.business_context_file }}" ]]; then
