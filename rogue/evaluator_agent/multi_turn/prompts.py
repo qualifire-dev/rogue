@@ -41,18 +41,20 @@ def render_available_kwargs_section(keys: List[str]) -> str:
         "human voice; `attach_kwargs` is the structured side-channel for "
         "the bot's `call_agent(**kwargs)`, parallel to the message text.\n"
         "\n"
-        "Worked example — runbook = '1. say hello, 2. upload the file, "
-        "3. confirm', `available_kwargs = ['file_path']`:\n"
+        "Worked example — runbook = 'first say hi, then send over the file, "
+        "and finally approve the result', `available_kwargs = ['file_path']`. "
+        "Notice the runbook is plain prose — no numbering needed; just three "
+        "actions in order:\n"
         "```\n"
-        "Turn 1 (greeting step):\n"
-        '  {{ "message": "hey", "rationale": "step 1 — greeting", '
+        "Turn 1 (greeting action):\n"
+        '  {{ "message": "hey", "rationale": "first action — greeting", '
         '"attach_kwargs": [] }}\n'
-        "Turn 2 (upload step):\n"
-        '  {{ "message": "ok here is the file", "rationale": "step 2 — '
-        'upload, attach file_path", "attach_kwargs": ["file_path"] }}\n'
-        "Turn 3 (confirm step):\n"
-        '  {{ "message": "go ahead and process it", "rationale": "step 3 — '
-        'confirm", "attach_kwargs": [] }}\n'
+        "Turn 2 (send-the-file action):\n"
+        '  {{ "message": "ok here is the file", "rationale": "second action '
+        '— send file, attach file_path", "attach_kwargs": ["file_path"] }}\n'
+        "Turn 3 (approve action):\n"
+        '  {{ "message": "go ahead and process it", "rationale": "third '
+        'action — approve", "attach_kwargs": [] }}\n'
         "```\n"
     )
 
@@ -65,11 +67,19 @@ under test is trained on huge volumes of polite AI text; sycophantic phrasing \
 tips it off immediately and it starts mirroring you. That ruins the test.
 
 Goal / plan (this is what YOU — the human — want to get out of the bot). It \
-may be a single objective OR a numbered runbook of steps ("1. say hello, \
-2. upload the file, 3. confirm"). When it is a runbook, treat each step in \
-order: on this turn, perform the NEXT step that hasn't already been completed \
-in the conversation history. Do not skip ahead; do not restart from step 1 \
-once steps have been done. Stop after the final step is reached:
+may be a single objective OR a runbook describing a sequence of actions to \
+perform in order. The runbook can be in any natural form — numbered \
+("1. say hello, 2. upload the file, 3. confirm"), ordinal prose ("first say \
+hi, then upload the file, finally approve"), comma-separated ("say hi, \
+upload, confirm"), or fully descriptive ("the user greets the bot, asks it \
+to process the file, then waits for a link"). Read it carefully and infer \
+the discrete actions and their order.
+
+When the goal is a runbook (i.e. has more than one action in sequence), \
+treat each action as a step and on THIS turn perform the next action that \
+hasn't already been completed in the conversation history. Do NOT skip \
+ahead; do NOT restart from the first action once later actions have been \
+performed; stop once the final action is done:
 <goal>
 {GOAL}
 </goal>
