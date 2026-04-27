@@ -175,6 +175,42 @@ class TestMultiTurn:
         assert [s.scenario for s in single_only] == ["single shot"]
 
 
+class TestEffectiveKwargsPool:
+    def test_empty_when_nothing_declared(self):
+        scenario = Scenario(scenario="x")
+        assert scenario.effective_kwargs_pool() == {}
+
+    def test_file_path_auto_merged(self):
+        scenario = Scenario(scenario="x", file_path="some-path")
+        assert scenario.effective_kwargs_pool() == {"file_path": "some-path"}
+
+    def test_available_kwargs_merged(self):
+        scenario = Scenario(
+            scenario="x",
+            available_kwargs={"approval_token": "abc"},
+        )
+        assert scenario.effective_kwargs_pool() == {"approval_token": "abc"}
+
+    def test_explicit_kwarg_wins_over_top_level_file_path(self):
+        scenario = Scenario(
+            scenario="x",
+            file_path="from-top-level",
+            available_kwargs={"file_path": "from-explicit"},
+        )
+        assert scenario.effective_kwargs_pool() == {"file_path": "from-explicit"}
+
+    def test_both_keys_present(self):
+        scenario = Scenario(
+            scenario="x",
+            file_path="p",
+            available_kwargs={"approval_token": "tok"},
+        )
+        assert scenario.effective_kwargs_pool() == {
+            "file_path": "p",
+            "approval_token": "tok",
+        }
+
+
 class TestAuthType:
     @pytest.mark.parametrize(
         "auth_type, auth_credentials, expected_header",

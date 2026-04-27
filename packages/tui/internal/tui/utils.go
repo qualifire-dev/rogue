@@ -718,6 +718,8 @@ func (m *Model) StartEvaluation(
 			ExpectedOutcome: s.ExpectedOutcome,
 			MultiTurn:       s.MultiTurn,
 			MaxTurns:        maxTurns,
+			AvailableKwargs: s.AvailableKwargs,
+			FilePath:        s.FilePath,
 		})
 	}
 

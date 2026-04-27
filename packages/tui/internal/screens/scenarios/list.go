@@ -111,6 +111,15 @@ func (e ScenarioEditor) handleListMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 			e.expectedOutcomeTextArea.SetValue(outVal)
 			e.expectedOutcomeTextArea.Blur()
 		}
+		if e.kwargsTextArea != nil {
+			e.kwargsTextArea.SetValue(formatKwargsJSON(e.editing.AvailableKwargs))
+			e.kwargsTextArea.Blur()
+		}
+		if e.editing.FilePath != nil {
+			e.filePathBuffer = *e.editing.FilePath
+		} else {
+			e.filePathBuffer = ""
+		}
 		return e, nil
 
 	case "n", "a":
@@ -131,6 +140,11 @@ func (e ScenarioEditor) handleListMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 			e.expectedOutcomeTextArea.SetValue("")
 			e.expectedOutcomeTextArea.Blur()
 		}
+		if e.kwargsTextArea != nil {
+			e.kwargsTextArea.SetValue("")
+			e.kwargsTextArea.Blur()
+		}
+		e.filePathBuffer = ""
 		return e, nil
 
 	case "d", "delete":

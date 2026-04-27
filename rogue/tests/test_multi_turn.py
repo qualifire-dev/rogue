@@ -69,6 +69,9 @@ class TestPromptTemplates:
         assert "support desk" in rendered
         assert '"role":"user"' in rendered.replace(" ", "")
         assert "out of 10" in rendered
+        # Static forwarding: prompt no longer mentions kwargs at all.
+        assert "available_kwargs" not in rendered
+        assert "attach_kwargs" not in rendered
 
     def test_goal_check_prompt_formats(self):
         rendered = GOAL_CHECK_PROMPT.format(

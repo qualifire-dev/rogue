@@ -245,11 +245,13 @@ func loadScenariosWithContextFromWorkdir() ScenariosWithContext {
 			var v struct {
 				BusinessContext *string `json:"business_context"`
 				Scenarios       []struct {
-					Scenario        string `json:"scenario"`
-					ScenarioType    string `json:"scenario_type"`
-					ExpectedOutcome string `json:"expected_outcome"`
-					MultiTurn       *bool  `json:"multi_turn"`
-					MaxTurns        *int   `json:"max_turns"`
+					Scenario        string         `json:"scenario"`
+					ScenarioType    string         `json:"scenario_type"`
+					ExpectedOutcome string         `json:"expected_outcome"`
+					MultiTurn       *bool          `json:"multi_turn"`
+					MaxTurns        *int           `json:"max_turns"`
+					AvailableKwargs map[string]any `json:"available_kwargs"`
+					FilePath        *string        `json:"file_path"`
 				} `json:"scenarios"`
 			}
 			if json.Unmarshal(b, &v) == nil {
@@ -271,6 +273,8 @@ func loadScenariosWithContextFromWorkdir() ScenariosWithContext {
 							ExpectedOutcome: s.ExpectedOutcome,
 							MultiTurn:       multiTurn,
 							MaxTurns:        maxTurns,
+							AvailableKwargs: s.AvailableKwargs,
+							FilePath:        s.FilePath,
 						})
 					}
 				}

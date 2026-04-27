@@ -380,6 +380,34 @@ class Scenario(BaseModel):
         le=100,
         description="Maximum rogue-agent turns before stopping a multi-turn run.",
     )
+    available_kwargs: Dict[str, Any] = Field(
+        default_factory=dict,
+        description=(
+            "Pool of kwargs the multi-turn driver may attach to a turn when the "
+            "target uses the PYTHON protocol. Author-provided keys/values; the "
+            "driver picks which keys to attach per turn. Ignored by non-Python "
+            "protocols."
+        ),
+    )
+    file_path: Optional[str] = Field(
+        default=None,
+        description=(
+            "Convenience top-level path for scenarios that need to surface a "
+            "local file to the target (uploads, attachments). When set, the "
+            "multi-turn driver always sees ``file_path`` as an available kwarg "
+            "with this value. An explicit ``file_path`` entry in "
+            "``available_kwargs`` takes precedence."
+        ),
+    )
+
+    def effective_kwargs_pool(self) -> Dict[str, Any]:
+        """Merge top-level conveniences (e.g. ``file_path``) into the kwargs
+        pool the driver sees. Explicit ``available_kwargs`` entries always win.
+        """
+        pool: Dict[str, Any] = dict(self.available_kwargs)
+        if self.file_path is not None:
+            pool.setdefault("file_path", self.file_path)
+        return pool
 
     @model_validator(mode="after")
     def validate_dataset_for_type(self) -> "Scenario":

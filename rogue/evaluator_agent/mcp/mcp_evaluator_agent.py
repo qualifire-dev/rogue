@@ -79,6 +79,7 @@ class MCPEvaluatorAgent(BaseEvaluatorAgent):
         self,
         context_id: str,
         message: str,
+        kwargs: Optional[dict] = None,
     ) -> dict[str, str]:
         """
         Sends a message to the evaluated agent and returns the agent's response.
@@ -90,6 +91,11 @@ class MCPEvaluatorAgent(BaseEvaluatorAgent):
             - "response": the response string. If there is no response
                 from the other agent, the string is empty.
         """
+        if kwargs:
+            logger.debug(
+                "kwargs ignored on MCP protocol",
+                extra={"keys": list(kwargs.keys()), "context_id": context_id},
+            )
         logger.info(
             "🔗 Making MCP call to evaluated agent",
             extra={

@@ -157,6 +157,17 @@ async def _drive_one_conversation(
         },
     )
 
+    kwargs_pool = scenario.effective_kwargs_pool()
+    logger.info(
+        "🧰 effective kwargs pool for conversation",
+        extra={
+            "context_id": context_id,
+            "pool_keys": list(kwargs_pool.keys()),
+            "scenario_file_path": scenario.file_path,
+            "scenario_available_kwargs_keys": list(scenario.available_kwargs.keys()),
+        },
+    )
+
     for turn in range(1, max_turns + 1):
         history = evaluator_agent._context_id_to_chat_history.get(
             context_id,
@@ -172,6 +183,11 @@ async def _drive_one_conversation(
             **llm_kwargs,
         )
 
+        # Static forwarding: every turn carries the full pool. The Python
+        # entrypoint decides per-turn what to do with it. Avoids relying on
+        # the driver LLM to opt-in via attach_kwargs.
+        resolved_kwargs: dict = dict(kwargs_pool)
+
         history_len_before = len(
             evaluator_agent._context_id_to_chat_history.get(
                 context_id,
@@ -183,6 +199,7 @@ async def _drive_one_conversation(
             send_result = await evaluator_agent._send_message_to_evaluated_agent(
                 context_id=context_id,
                 message=driver_result.message,
+                kwargs=resolved_kwargs,
             )
         except Exception:
             logger.exception(

@@ -113,6 +113,7 @@ class A2AEvaluatorAgent(BaseEvaluatorAgent):
         self,
         context_id: str,
         message: str,
+        kwargs: Optional[dict] = None,
     ) -> dict[str, str]:
         """
         Sends a message to the evaluated agent.
@@ -124,6 +125,11 @@ class A2AEvaluatorAgent(BaseEvaluatorAgent):
             - "response": the response string. If there is no response
                 from the other agent, the string is empty.
         """
+        if kwargs:
+            logger.debug(
+                "kwargs ignored on A2A protocol",
+                extra={"keys": list(kwargs.keys()), "context_id": context_id},
+            )
         try:
             logger.info(
                 "🔗 Making A2A call to evaluated agent",
