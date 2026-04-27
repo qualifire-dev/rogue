@@ -14,6 +14,11 @@ from loguru import logger
 
 from .context import get_all_context_vars
 from .intercept_handler import InterceptHandler
+from .safe_format import install as _install_safe_format
+
+# Apply the safe-brace-format patch on import so it's active before any sink
+# is configured. Idempotent — safe to import multiple times.
+_install_safe_format()
 
 
 def _add_context_vars_filter(record: Dict[str, Any]) -> bool:
