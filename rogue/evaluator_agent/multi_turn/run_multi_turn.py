@@ -157,16 +157,18 @@ async def _drive_one_conversation(
         },
     )
 
-    kwargs_pool = scenario.effective_kwargs_pool()
-    logger.info(
-        "🧰 effective kwargs pool for conversation",
-        extra={
-            "context_id": context_id,
-            "pool_keys": list(kwargs_pool.keys()),
-            "scenario_file_path": scenario.file_path,
-            "scenario_available_kwargs_keys": list(scenario.available_kwargs.keys()),
-        },
-    )
+    # Optional scenario-level fallback (legacy: file_path / available_kwargs
+    # set via JSON). Used to seed kwargs only when the driver LLM didn't
+    # extract anything — explicit LLM extraction always wins.
+    scenario_fallback_kwargs = scenario.effective_kwargs_pool()
+    if scenario_fallback_kwargs:
+        logger.debug(
+            "scenario carries fallback kwargs (legacy file_path / available_kwargs)",
+            extra={
+                "context_id": context_id,
+                "fallback_keys": list(scenario_fallback_kwargs.keys()),
+            },
+        )
 
     for turn in range(1, max_turns + 1):
         history = evaluator_agent._context_id_to_chat_history.get(
@@ -180,47 +182,23 @@ async def _drive_one_conversation(
             conversation=history,
             turn=turn,
             max_turns=max_turns,
-            available_kwargs=list(kwargs_pool.keys()),
             **llm_kwargs,
         )
 
-        # Per-turn LLM-driven attach: the driver picks which keys (if any) the
-        # current runbook step needs. Runtime resolves names → values from the
-        # scenario's pool and forwards them into the target's call_agent.
-        resolved_kwargs: dict = {}
+        # The driver LLM extracts both key and value directly from the runbook
+        # text on the turn whose step needs them. Forward as-is. (Scenario-
+        # level fallback fields seed any keys the LLM didn't extract — useful
+        # when a customer set file_path via raw JSON.)
+        resolved_kwargs: dict = dict(scenario_fallback_kwargs)
         if driver_result.attach_kwargs:
-            unknown = []
-            for k in driver_result.attach_kwargs:
-                if k in kwargs_pool:
-                    resolved_kwargs[k] = kwargs_pool[k]
-                else:
-                    unknown.append(k)
-            if unknown:
-                logger.warning(
-                    "driver requested unknown attach_kwargs; dropping",
-                    extra={
-                        "unknown_keys": unknown,
-                        "available": list(kwargs_pool.keys()),
-                        "context_id": context_id,
-                        "turn": turn,
-                    },
-                )
+            resolved_kwargs.update(driver_result.attach_kwargs)
         if resolved_kwargs:
             logger.info(
                 "📎 driver attached kwargs to this turn",
                 extra={
                     "context_id": context_id,
                     "turn": turn,
-                    "keys": list(resolved_kwargs.keys()),
-                },
-            )
-        elif kwargs_pool:
-            logger.debug(
-                "driver attached no kwargs this turn",
-                extra={
-                    "context_id": context_id,
-                    "turn": turn,
-                    "available": list(kwargs_pool.keys()),
+                    "kwargs": resolved_kwargs,
                 },
             )
 

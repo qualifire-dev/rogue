@@ -655,11 +655,11 @@ func (t *TextArea) View() string {
 	var content string
 
 	if len(t.value) == 0 || (len(t.value) == 1 && len(t.value[0]) == 0) {
-		if t.Placeholder != "" {
-			content = t.placeholderView()
-		} else {
-			content = ""
-		}
+		// Even when no placeholder is set, render the empty view so the
+		// textarea pads to its full height and shows a cursor on the first
+		// line when focused. (Otherwise an empty focused textarea collapses
+		// to zero height and gives no visual indicator that you can type.)
+		content = t.placeholderView()
 	} else {
 		// Use viewport for scrolling if available
 		if t.viewport != nil {

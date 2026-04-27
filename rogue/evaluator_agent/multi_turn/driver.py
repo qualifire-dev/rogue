@@ -1,13 +1,13 @@
 """Driver-LLM call that generates the next rogue message in a multi-turn run."""
 
-from typing import List, Optional
+from typing import Any, Dict, Optional
 
 from loguru import logger
 from pydantic import BaseModel, Field
 from rogue_sdk.types import ChatHistory
 
 from .json_utils import parse_llm_json
-from .prompts import DRIVER_PROMPT, render_available_kwargs_section
+from .prompts import DRIVER_PROMPT
 
 
 class DriverMessageResult(BaseModel):
@@ -17,13 +17,15 @@ class DriverMessageResult(BaseModel):
         description="The next message to send to the agent under test.",
     )
     rationale: str = Field(default="", description="Short internal reasoning.")
-    attach_kwargs: List[str] = Field(
-        default_factory=list,
+    attach_kwargs: Dict[str, Any] = Field(
+        default_factory=dict,
         description=(
-            "Names of available_kwargs the runtime should attach to this turn's "
-            "call into the target. The driver picks keys based on the runbook "
-            "step it is performing this turn (e.g., emit ['file_path'] on the "
-            "upload step, [] on greeting / chit-chat steps)."
+            "Structured side-data for THIS turn's call into the target, "
+            "extracted by the driver directly from the runbook text. The "
+            "driver populates both the key name (e.g. 'file_path') and the "
+            "value (e.g. '/tmp/sample.txt') based on what the current step "
+            "explicitly mentions. Empty dict on steps that don't need "
+            "side-data (greeting / chit-chat / approval)."
         ),
     )
 
@@ -41,7 +43,6 @@ async def generate_next_rogue_message(
     aws_region: Optional[str] = None,
     api_base: Optional[str] = None,
     api_version: Optional[str] = None,
-    available_kwargs: Optional[List[str]] = None,
 ) -> DriverMessageResult:
     """Ask the driver LLM for the next rogue message.
 
@@ -50,20 +51,12 @@ async def generate_next_rogue_message(
     """
     from litellm import acompletion
 
-    pool_keys = list(available_kwargs or [])
     prompt = DRIVER_PROMPT.format(
         GOAL=goal,
         BUSINESS_CONTEXT=business_context or "(none)",
         CONVERSATION_HISTORY=conversation.model_dump_json(),
         TURN=turn,
         MAX_TURNS=max_turns,
-        AVAILABLE_KWARGS_SECTION=render_available_kwargs_section(pool_keys),
-        ATTACH_KWARGS_SCHEMA_LINE=(
-            ',\n  "attach_kwargs": [<subset of available_kwargs keys, only if '
-            "this turn's runbook step actually needs them; otherwise []>]"
-            if pool_keys
-            else ""
-        ),
     )
 
     try:

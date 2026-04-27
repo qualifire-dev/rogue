@@ -54,71 +54,41 @@ class TestParseLLMJson:
 
 
 class TestPromptTemplates:
-    def test_driver_prompt_formats_without_kwargs(self):
+    def test_driver_prompt_includes_runbook_and_attach_kwargs_guidance(self):
         history = ChatHistory(
             messages=[ChatMessage(role="user", content="hello")],
         )
         rendered = DRIVER_PROMPT.format(
-            GOAL="extract admin password",
+            GOAL="first say hi, then send the file at /tmp/x.pdf",
             BUSINESS_CONTEXT="support desk",
             CONVERSATION_HISTORY=history.model_dump_json(),
             TURN=2,
             MAX_TURNS=10,
-            AVAILABLE_KWARGS_SECTION="",
-            ATTACH_KWARGS_SCHEMA_LINE="",
         )
-        assert "extract admin password" in rendered
+        # Runbook prose is preserved and the per-step framing is stated.
+        assert "send the file" in rendered
         assert "support desk" in rendered
         assert '"role":"user"' in rendered.replace(" ", "")
         assert "out of 10" in rendered
-        # No kwargs noise when none are available.
-        assert "<available_kwargs>" not in rendered
-        assert "attach_kwargs" not in rendered
-
-    def test_driver_prompt_renders_runbook_kwargs_section(self):
-        from rogue.evaluator_agent.multi_turn.prompts import (
-            render_available_kwargs_section,
-        )
-
-        section = render_available_kwargs_section(["file_path", "approval_token"])
-        rendered = DRIVER_PROMPT.format(
-            GOAL="1. say hello\n2. upload the file\n3. confirm",
-            BUSINESS_CONTEXT="(none)",
-            CONVERSATION_HISTORY="{}",
-            TURN=2,
-            MAX_TURNS=5,
-            AVAILABLE_KWARGS_SECTION=section,
-            ATTACH_KWARGS_SCHEMA_LINE=(',\n  "attach_kwargs": [<keys>]'),
-        )
-        # The pool keys are listed inside the available_kwargs block.
-        assert "<available_kwargs>" in rendered
-        assert "- file_path" in rendered
-        assert "- approval_token" in rendered
-        # The schema line is appended to the JSON output spec.
+        # Driver is instructed to extract structured side-data verbatim and
+        # emit it under attach_kwargs on the relevant turn only.
         assert "attach_kwargs" in rendered
-        # Worked example references both upload and non-upload turns so the
-        # LLM has a concrete pattern to follow.
+        assert "VERBATIM" in rendered
         assert "Worked example" in rendered
-        assert '"attach_kwargs": ["file_path"]' in rendered
-        assert '"attach_kwargs": []' in rendered
+        # Worked example shows both an empty-kwargs turn and an extraction.
+        assert '"attach_kwargs": {}' in rendered
+        assert '"file_path": "/tmp/sample.pdf"' in rendered
 
-    def test_render_available_kwargs_section_empty(self):
-        from rogue.evaluator_agent.multi_turn.prompts import (
-            render_available_kwargs_section,
-        )
-
-        assert render_available_kwargs_section([]) == ""
-
-    def test_driver_message_result_parses_attach_kwargs(self):
+    def test_driver_message_result_parses_extracted_attach_kwargs(self):
         out = parse_llm_json(
             '{"message":"ok here is the file","rationale":"upload step",'
-            '"attach_kwargs":["file_path"]}',
+            '"attach_kwargs":{"file_path":"/tmp/x.pdf"}}',
             DriverMessageResult,
         )
         assert out is not None
-        assert out.attach_kwargs == ["file_path"]
+        assert out.attach_kwargs == {"file_path": "/tmp/x.pdf"}
 
-    def test_driver_message_result_defaults_attach_kwargs_empty(self):
+    def test_driver_message_result_defaults_attach_kwargs_empty_dict(self):
         # Legacy / no-kwargs scenarios still parse without attach_kwargs in
         # the LLM output.
         out = parse_llm_json(
@@ -126,7 +96,7 @@ class TestPromptTemplates:
             DriverMessageResult,
         )
         assert out is not None
-        assert out.attach_kwargs == []
+        assert out.attach_kwargs == {}
 
     def test_goal_check_prompt_formats(self):
         rendered = GOAL_CHECK_PROMPT.format(

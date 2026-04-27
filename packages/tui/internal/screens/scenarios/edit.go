@@ -1,7 +1,6 @@
 package scenarios
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -17,11 +16,9 @@ import (
 const (
 	editFieldScenario        = 0
 	editFieldExpectedOutcome = 1
-	editFieldFilePath        = 2
-	editFieldKwargs          = 3
-	editFieldMultiTurnToggle = 4
-	editFieldMaxTurns        = 5
-	editFieldSave            = 6
+	editFieldMultiTurnToggle = 2
+	editFieldMaxTurns        = 3
+	editFieldSave            = 4
 )
 
 // handleEditMode handles keyboard input in edit/add mode
@@ -38,9 +35,6 @@ func (e ScenarioEditor) handleEditMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 		}
 		if e.expectedOutcomeTextArea != nil {
 			e.expectedOutcomeTextArea.Blur()
-		}
-		if e.kwargsTextArea != nil {
-			e.kwargsTextArea.Blur()
 		}
 		return e, nil
 
@@ -68,10 +62,6 @@ func (e ScenarioEditor) handleEditMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 			if e.expectedOutcomeTextArea != nil {
 				e.expectedOutcomeTextArea.SetValue("")
 			}
-		case editFieldKwargs:
-			if e.kwargsTextArea != nil {
-				e.kwargsTextArea.SetValue("")
-			}
 		}
 		return e, nil
 
@@ -97,9 +87,6 @@ func (e ScenarioEditor) handleEditMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 		if e.expectedOutcomeTextArea != nil {
 			e.expectedOutcomeTextArea.Blur()
 		}
-		if e.kwargsTextArea != nil {
-			e.kwargsTextArea.Blur()
-		}
 		return e, func() tea.Msg { return ScenarioEditorMsg{Action: "saved"} }
 
 	default:
@@ -115,25 +102,6 @@ func (e ScenarioEditor) handleEditMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 			if e.expectedOutcomeTextArea != nil {
 				updatedTextArea, taCmd := e.expectedOutcomeTextArea.Update(msg)
 				*e.expectedOutcomeTextArea = *updatedTextArea
-				return e, taCmd
-			}
-		case editFieldFilePath:
-			s := msg.String()
-			switch s {
-			case "backspace":
-				if len(e.filePathBuffer) > 0 {
-					e.filePathBuffer = e.filePathBuffer[:len(e.filePathBuffer)-1]
-				}
-			default:
-				if len(s) == 1 {
-					e.filePathBuffer += s
-				}
-			}
-			return e, nil
-		case editFieldKwargs:
-			if e.kwargsTextArea != nil {
-				updatedTextArea, taCmd := e.kwargsTextArea.Update(msg)
-				*e.kwargsTextArea = *updatedTextArea
 				return e, taCmd
 			}
 		case editFieldMultiTurnToggle:
@@ -182,9 +150,6 @@ func (e ScenarioEditor) handleEditMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 				if e.expectedOutcomeTextArea != nil {
 					e.expectedOutcomeTextArea.Blur()
 				}
-				if e.kwargsTextArea != nil {
-					e.kwargsTextArea.Blur()
-				}
 				return e, func() tea.Msg { return ScenarioEditorMsg{Action: "saved"} }
 			}
 		}
@@ -218,9 +183,9 @@ func (e *ScenarioEditor) nextField(cur, step int) int {
 
 func (e *ScenarioEditor) numFields() int {
 	if e.multiTurnOnEdit() {
-		return 7
+		return 5
 	}
-	return 6
+	return 4
 }
 
 // updateTextAreaFocus manages focus between TextAreas based on currentField
@@ -237,13 +202,6 @@ func (e *ScenarioEditor) updateTextAreaFocus() {
 			e.expectedOutcomeTextArea.Focus()
 		} else {
 			e.expectedOutcomeTextArea.Blur()
-		}
-	}
-	if e.kwargsTextArea != nil {
-		if e.currentField == editFieldKwargs {
-			e.kwargsTextArea.Focus()
-		} else {
-			e.kwargsTextArea.Blur()
 		}
 	}
 }
@@ -274,28 +232,6 @@ func (e *ScenarioEditor) validateEditing() error {
 	// Ensure dataset fields are cleared
 	e.editing.Dataset = nil
 	e.editing.DatasetSampleSize = nil
-
-	// File path single-line buffer. Empty -> nil pointer (omitted from JSON).
-	trimmedFilePath := strings.TrimSpace(e.filePathBuffer)
-	if trimmedFilePath == "" {
-		e.editing.FilePath = nil
-	} else {
-		e.editing.FilePath = &trimmedFilePath
-	}
-
-	// Parse the kwargs JSON textarea. Empty string -> nil map.
-	if e.kwargsTextArea != nil {
-		raw := strings.TrimSpace(e.kwargsTextArea.GetValue())
-		if raw == "" {
-			e.editing.AvailableKwargs = nil
-		} else {
-			var parsed map[string]any
-			if err := json.Unmarshal([]byte(raw), &parsed); err != nil {
-				return fmt.Errorf("available kwargs must be valid JSON object: %v", err)
-			}
-			e.editing.AvailableKwargs = parsed
-		}
-	}
 
 	// Apply multi-turn + max_turns defaults and bounds.
 	mt := e.multiTurnOnEdit()
@@ -344,9 +280,6 @@ func (e ScenarioEditor) renderEditView(t theme.Theme) string {
 	usedHeight += 2 // title (1 line) + blank line
 	usedHeight += 2 // scenario label + blank
 	usedHeight += 2 // expected outcome label + blank
-	usedHeight += 2 // file path line + blank
-	usedHeight += 2 // kwargs label + blank
-	usedHeight += 5 // kwargs textarea (fixed-height)
 	usedHeight += 2 // multi-turn + blank
 	if multiTurnOn {
 		usedHeight += 2 // max-turns line + blank
@@ -390,35 +323,7 @@ func (e ScenarioEditor) renderEditView(t theme.Theme) string {
 		outText = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Text()).Render("TextArea not available")
 	}
 
-	// Field 2: file path (PYTHON protocol convenience — auto-merged into kwargs pool)
-	filePathLabelText := "File Path (PYTHON only, default 'file_path' kwarg)"
-	filePathBuf := e.filePathBuffer
-	if filePathBuf == "" {
-		filePathBuf = "_"
-	}
-	filePathRaw := fmt.Sprintf("%s:  [ %s ]", filePathLabelText, filePathBuf)
-	var filePathLine string
-	if e.currentField == editFieldFilePath {
-		filePathLine = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Primary()).Bold(true).Render("▶ " + filePathRaw)
-	} else {
-		filePathLine = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Text()).Render("  " + filePathRaw)
-	}
-
-	// Field 3: available kwargs (JSON, PYTHON protocol only)
-	kwargsLabel := "Available Kwargs (PYTHON only, JSON object)"
-	if e.currentField == editFieldKwargs {
-		kwargsLabel = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Primary()).Bold(true).Render("▶ Available Kwargs (PYTHON only, JSON object)")
-	}
-
-	var kwargsText string
-	if e.kwargsTextArea != nil {
-		e.kwargsTextArea.SetSize(e.width-4, 5)
-		kwargsText = e.kwargsTextArea.View()
-	} else {
-		kwargsText = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Text()).Render("TextArea not available")
-	}
-
-	// Field 3: multi-turn toggle
+	// Field 2: multi-turn toggle
 	multiTurnCheckbox := "[ ]"
 	if multiTurnOn {
 		multiTurnCheckbox = "[x]"
@@ -462,10 +367,6 @@ func (e ScenarioEditor) renderEditView(t theme.Theme) string {
 	parts = append(parts, scenLabel, scenText)
 	parts = append(parts, "")
 	parts = append(parts, outLabel, outText)
-	parts = append(parts, "")
-	parts = append(parts, filePathLine)
-	parts = append(parts, "")
-	parts = append(parts, kwargsLabel, kwargsText)
 	parts = append(parts, "")
 	parts = append(parts, multiTurnLine)
 	if multiTurnOn {
