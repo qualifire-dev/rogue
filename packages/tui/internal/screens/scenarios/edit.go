@@ -332,6 +332,15 @@ func (e ScenarioEditor) renderEditView(t theme.Theme) string {
 	if textAreaHeight < 4 {
 		textAreaHeight = 4
 	}
+	// Cap the per-textarea height so a tall terminal doesn't blow up the
+	// box to 25+ lines for a one-line scenario. 10 lines is plenty for
+	// typical "say hi, then upload, then approve" runbooks while still
+	// leaving room for both fields plus the toggle / max-turns / save
+	// rows below.
+	const maxTextAreaHeight = 10
+	if textAreaHeight > maxTextAreaHeight {
+		textAreaHeight = maxTextAreaHeight
+	}
 
 	// Field 0: scenario TextArea
 	scenLabel := "Scenario (free-text goal or stepped plan)"
