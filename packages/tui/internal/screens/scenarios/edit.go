@@ -54,9 +54,11 @@ func (e ScenarioEditor) handleEditMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 		e.updateTextAreaFocus()
 		return e, nil
 
-	case "ctrl+l":
+	case "ctrl+x":
 		// Clear the entire content of the focused text area. Only acts on
 		// multi-line textareas — toggles / single-line buffers ignore it.
+		// (Ctrl+L is the global model selector, Ctrl+U / Ctrl+K are the
+		// textarea's delete-before/after-cursor.)
 		switch e.currentField {
 		case editFieldScenario:
 			if e.scenarioTextArea != nil {
@@ -449,7 +451,7 @@ func (e ScenarioEditor) renderEditView(t theme.Theme) string {
 		saveLabel = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Primary()).Bold(true).Render("▶ Save")
 	}
 
-	help := lipgloss.NewStyle().Background(t.Background()).Foreground(t.TextMuted()).Render("Tab/Shift+Tab switch fields  ↑↓ move cursor in text  Ctrl+L clear field  Space toggle  Ctrl+S save  Esc cancel")
+	help := lipgloss.NewStyle().Background(t.Background()).Foreground(t.TextMuted()).Render("Tab/Shift+Tab switch fields  ↑↓ move cursor in text  Ctrl+X clear field  Space toggle  Ctrl+S save  Esc cancel")
 	errorLine := ""
 	if e.errorMsg != "" {
 		errorLine = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Error()).Render("⚠ " + e.errorMsg)

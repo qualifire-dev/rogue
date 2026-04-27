@@ -35,8 +35,9 @@ func (e ScenarioEditor) handleBusinessContextMode(msg tea.KeyMsg) (ScenarioEdito
 		e.bizContextSelected = true // Keep business context selected when exiting edit mode
 		return e, nil
 
-	case "ctrl+l":
-		// Clear the entire business context text area.
+	case "ctrl+x":
+		// Clear the entire business context text area. (Ctrl+L is the
+		// global model selector, so we use Ctrl+X for "erase".)
 		if e.bizTextArea != nil {
 			e.bizTextArea.SetValue("")
 		}
@@ -57,7 +58,7 @@ func (e ScenarioEditor) handleBusinessContextMode(msg tea.KeyMsg) (ScenarioEdito
 func (e ScenarioEditor) renderBusinessContextView(t theme.Theme) string {
 	title := lipgloss.NewStyle().Background(t.Background()).Foreground(t.Primary()).Bold(true).Render("\nEdit Business Context")
 
-	help := lipgloss.NewStyle().Background(t.Background()).Foreground(t.TextMuted()).Render("Esc save and exit  Ctrl+L clear  ↑↓ move cursor  Standard text editing keys")
+	help := lipgloss.NewStyle().Background(t.Background()).Foreground(t.TextMuted()).Render("Esc save and exit  Ctrl+X clear  ↑↓ move cursor  Standard text editing keys")
 	errorLine := ""
 	if e.errorMsg != "" {
 		errorLine = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Error()).Render("⚠ " + e.errorMsg)
