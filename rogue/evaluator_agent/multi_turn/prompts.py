@@ -60,19 +60,20 @@ the parallel structured side-channel.
 
 Worked example — runbook = "first say hi, then send over the file at \
 /tmp/sample.pdf, and finally approve the result". The runbook is plain \
-prose, three actions in order:
-```
-Turn 1 (greeting action):
-  {{ "message": "hey", "rationale": "first action — greeting",
-     "attach_kwargs": {{}} }}
-Turn 2 (send-the-file action):
-  {{ "message": "ok here is the file", "rationale": "second action — send
-     file, extract file_path from runbook",
-     "attach_kwargs": {{ "file_path": "/tmp/sample.pdf" }} }}
-Turn 3 (approve action):
-  {{ "message": "go ahead and process it", "rationale": "third action —
-     approve", "attach_kwargs": {{}} }}
-```
+prose, three actions in order. Each turn outputs ONE JSON object:
+
+<example>
+Turn 1 (greeting):
+{{"message": "hey", "rationale": "step 1 greet", "attach_kwargs": {{}}}}
+
+Turn 2 (send-the-file):
+{{"message": "ok here is the file", "rationale": "step 2 extract file_path",
+  "attach_kwargs": {{"file_path": "/tmp/sample.pdf"}}}}
+
+Turn 3 (approve):
+{{"message": "go ahead and process it", "rationale": "step 3 approve",
+  "attach_kwargs": {{}}}}
+</example>
 
 ## How a real person talks (DO)
 - Write the way a busy, slightly impatient customer actually types: short, \

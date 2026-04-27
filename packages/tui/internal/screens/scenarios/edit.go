@@ -48,6 +48,25 @@ func (e ScenarioEditor) handleEditMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 		e.updateTextAreaFocus()
 		return e, nil
 
+	case "down":
+		// On non-textarea fields (toggle, max-turns, save), arrows act as
+		// field navigation. Inside textareas, the arrow is forwarded to
+		// the textarea component for cursor movement.
+		if !isTextAreaField(e.currentField) {
+			e.currentField = e.nextField(e.currentField, +1)
+			e.updateTextAreaFocus()
+			return e, nil
+		}
+		return e.forwardToFocusedTextArea(msg)
+
+	case "up":
+		if !isTextAreaField(e.currentField) {
+			e.currentField = e.nextField(e.currentField, -1)
+			e.updateTextAreaFocus()
+			return e, nil
+		}
+		return e.forwardToFocusedTextArea(msg)
+
 	case "ctrl+x":
 		// Clear the entire content of the focused text area. Only acts on
 		// multi-line textareas — toggles / single-line buffers ignore it.
@@ -92,18 +111,8 @@ func (e ScenarioEditor) handleEditMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 	default:
 		// Route by current field.
 		switch e.currentField {
-		case editFieldScenario:
-			if e.scenarioTextArea != nil {
-				updatedTextArea, taCmd := e.scenarioTextArea.Update(msg)
-				*e.scenarioTextArea = *updatedTextArea
-				return e, taCmd
-			}
-		case editFieldExpectedOutcome:
-			if e.expectedOutcomeTextArea != nil {
-				updatedTextArea, taCmd := e.expectedOutcomeTextArea.Update(msg)
-				*e.expectedOutcomeTextArea = *updatedTextArea
-				return e, taCmd
-			}
+		case editFieldScenario, editFieldExpectedOutcome:
+			return e.forwardToFocusedTextArea(msg)
 		case editFieldMultiTurnToggle:
 			switch msg.String() {
 			case " ", "space", "enter", "x", "X":
@@ -155,6 +164,35 @@ func (e ScenarioEditor) handleEditMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 		}
 		return e, nil
 	}
+}
+
+// isTextAreaField reports whether the field at index `f` is rendered as a
+// multi-line textarea (where arrow keys must move the cursor inside the
+// text, not switch fields).
+func isTextAreaField(f int) bool {
+	return f == editFieldScenario || f == editFieldExpectedOutcome
+}
+
+// forwardToFocusedTextArea sends the given key message to whichever
+// textarea owns the currently-focused field. Used to plumb arrow keys
+// (and similar) through to the textarea component without re-entering
+// the editor's outer keyboard switch.
+func (e ScenarioEditor) forwardToFocusedTextArea(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd) {
+	switch e.currentField {
+	case editFieldScenario:
+		if e.scenarioTextArea != nil {
+			updatedTextArea, taCmd := e.scenarioTextArea.Update(msg)
+			*e.scenarioTextArea = *updatedTextArea
+			return e, taCmd
+		}
+	case editFieldExpectedOutcome:
+		if e.expectedOutcomeTextArea != nil {
+			updatedTextArea, taCmd := e.expectedOutcomeTextArea.Update(msg)
+			*e.expectedOutcomeTextArea = *updatedTextArea
+			return e, taCmd
+		}
+	}
+	return e, nil
 }
 
 // multiTurnOnEdit reports whether the currently-editing scenario has multi-turn on

@@ -35,9 +35,15 @@ def test_curly_braced_value_with_extras_does_not_crash(captured_sink):
 
 
 def test_double_braced_value_with_extras_does_not_crash(captured_sink):
+    # Loguru natively understands `{{` and `}}` as escapes for literal `{`
+    # and `}`, so input "Use {{var}} carefully" surfaces as "Use {var}
+    # carefully" in the rendered message — this is loguru's documented
+    # format-style behavior and the patch does not interfere with it (it
+    # only kicks in when format() actually raises). Crash-free is the
+    # contract; verbatim preservation of doubled braces is not.
     val = "Use {{var}} carefully"
     _logger.info(f"context: {val}", extra={"k": "v"})
-    assert any("Use {{var}} carefully" in line for line in captured_sink)
+    assert any("Use {var} carefully" in line for line in captured_sink)
 
 
 def test_bare_braces_with_extras_does_not_crash(captured_sink):
@@ -94,3 +100,31 @@ def test_bind_clones_inherit_safe_methods(captured_sink):
     bound = _logger.bind(component="test")
     bound.info("clone msg with {customer}", extra={"k": "v"})
     assert any("with {customer}" in line for line in captured_sink)
+
+
+def test_loguru_format_style_api_still_works(captured_sink):
+    """The patch must not break loguru's documented format-style API:
+    ``logger.info("user={user}", user="alice")`` should continue to render
+    as ``user=alice``. The try-format-first strategy preserves this — only
+    on format failure does it fall back to brace-escaping.
+    """
+    _logger.info("user={user} action={action}", user="alice", action="login")
+    assert any("user=alice action=login" in line for line in captured_sink)
+
+
+def test_log_method_also_patched(captured_sink):
+    """Generic Logger.log(level, message, ...) is also wrapped so the same
+    KeyError is suppressed."""
+    _logger.log("INFO", "context: Hello {customer_name}", extra={"k": "v"})
+    assert any("Hello {customer_name}" in line for line in captured_sink)
+
+
+def test_install_marks_class_as_patched():
+    """Pin the install side-effect — if a future refactor accidentally drops
+    the install() call from rogue.common.logging.config, this assertion
+    catches it."""
+    from loguru._logger import Logger
+
+    from rogue.common.logging.safe_format import _PATCHED_FLAG
+
+    assert getattr(Logger, _PATCHED_FLAG, False) is True

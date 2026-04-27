@@ -124,6 +124,62 @@ class TestGoalCheckerOnEmptyConversation:
         assert "empty" in result.reason.lower()
 
 
+class TestResolvePerTurnKwargs:
+    """Per-turn precedence between driver LLM extraction and the legacy
+    scenario-level fallback (`file_path` / `available_kwargs` set via raw
+    JSON). When the LLM extracted anything for this turn, the fallback is
+    suppressed — preventing legacy keys from leaking into chit-chat /
+    approval turns. When the LLM extracted nothing, the fallback fills in.
+    """
+
+    def _resolve(self):
+        from rogue.evaluator_agent.multi_turn.run_multi_turn import (
+            _resolve_per_turn_kwargs,
+        )
+
+        return _resolve_per_turn_kwargs
+
+    def test_no_extract_no_fallback_returns_empty(self):
+        out = self._resolve()(driver_attach_kwargs={}, scenario_fallback_kwargs={})
+        assert out == {}
+
+    def test_no_extract_uses_fallback(self):
+        out = self._resolve()(
+            driver_attach_kwargs={},
+            scenario_fallback_kwargs={"file_path": "/legacy.pdf"},
+        )
+        assert out == {"file_path": "/legacy.pdf"}
+
+    def test_extract_overrides_fallback_completely(self):
+        # Per-turn precedence: LLM extraction is the only source on its turn.
+        # Legacy keys must NOT leak through.
+        out = self._resolve()(
+            driver_attach_kwargs={"approval_token": "abc"},
+            scenario_fallback_kwargs={"file_path": "/legacy.pdf"},
+        )
+        assert out == {"approval_token": "abc"}
+        assert "file_path" not in out
+
+    def test_extract_only_when_no_fallback(self):
+        out = self._resolve()(
+            driver_attach_kwargs={"file_path": "/from-llm.pdf"},
+            scenario_fallback_kwargs={},
+        )
+        assert out == {"file_path": "/from-llm.pdf"}
+
+    def test_returns_fresh_dict_no_aliasing(self):
+        # Caller should be able to mutate the result without affecting inputs.
+        fb = {"file_path": "/legacy.pdf"}
+        out = self._resolve()(driver_attach_kwargs={}, scenario_fallback_kwargs=fb)
+        out["new"] = "x"
+        assert "new" not in fb
+
+        ek = {"file_path": "/from-llm.pdf"}
+        out2 = self._resolve()(driver_attach_kwargs=ek, scenario_fallback_kwargs={})
+        out2["new"] = "x"
+        assert "new" not in ek
+
+
 class TestAssistantReplyGuard:
     """Goal-check guard — only run when the target actually replied this turn."""
 
