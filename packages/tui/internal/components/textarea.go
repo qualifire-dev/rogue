@@ -651,7 +651,7 @@ func (t *TextArea) Update(msg tea.Msg) (*TextArea, tea.Cmd) {
 }
 
 // View renders the textarea into a string. Output is always exactly
-// ``t.Height`` lines tall so consumers can rely on consistent layout
+// “t.Height“ lines tall so consumers can rely on consistent layout
 // regardless of focus state or content length.
 func (t *TextArea) View() string {
 	var content string
