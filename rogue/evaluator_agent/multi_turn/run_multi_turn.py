@@ -7,7 +7,6 @@ policy judgment (``_log_evaluation`` → ``evaluate_policy``).
 """
 
 import asyncio
-import re
 from asyncio import Queue
 from typing import Any, AsyncGenerator, Optional
 from uuid import uuid4
@@ -27,11 +26,6 @@ from .driver import generate_next_rogue_message
 from .goal_checker import evaluate_goal_achieved
 
 _SENTINEL_DONE = object()
-
-# Conservative path-mention detector: an absolute POSIX-ish path that ends
-# with a dot-extension. The (?<![:/]) lookbehind rejects URI scheme forms
-# like ``file://...`` so we don't false-warn there.
-_PATH_MENTION_RE = re.compile(r"(?<![:/])(/[\w./\-]+\.[A-Za-z0-9]{1,10})\b")
 
 
 async def arun_multi_turn_evaluator(
@@ -173,21 +167,6 @@ async def _drive_one_conversation(
             "scenario_available_kwargs_keys": list(scenario.available_kwargs.keys()),
         },
     )
-    if not kwargs_pool:
-        path_mentions = _PATH_MENTION_RE.findall(goal)
-        if path_mentions:
-            logger.warning(
-                "⚠️ scenario text mentions file path(s) but file_path / "
-                "available_kwargs are empty — paths in the description are NOT "
-                "auto-extracted; fill the File Path field on the scenario "
-                "(or add an entry to available_kwargs) so the runtime can "
-                "forward it into call_agent",
-                extra={
-                    "context_id": context_id,
-                    "detected_paths": path_mentions[:5],
-                    "scenario_preview": goal[:120],
-                },
-            )
 
     for turn in range(1, max_turns + 1):
         history = evaluator_agent._context_id_to_chat_history.get(

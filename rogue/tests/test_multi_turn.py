@@ -154,46 +154,6 @@ class TestGoalCheckerOnEmptyConversation:
         assert "empty" in result.reason.lower()
 
 
-class TestPathMentionDetector:
-    """Heuristic that warns when a scenario mentions a path but the kwargs
-    pool is empty (the customer's ``file_path`` field wasn't filled in)."""
-
-    def _re(self):
-        from rogue.evaluator_agent.multi_turn.run_multi_turn import (
-            _PATH_MENTION_RE,
-        )
-
-        return _PATH_MENTION_RE
-
-    def test_matches_quoted_absolute_path_with_extension(self):
-        rx = self._re()
-        text = 'User will send a file at "/Users/yanay/a.pdf"'
-        assert rx.findall(text) == ["/Users/yanay/a.pdf"]
-
-    def test_matches_unquoted_path(self):
-        rx = self._re()
-        assert rx.findall("upload /tmp/sample.txt please") == ["/tmp/sample.txt"]
-
-    def test_does_not_match_simple_uri_scheme_paths(self):
-        rx = self._re()
-        # ``file://`` and similar URI schemes start with ``:/`` which the
-        # lookbehind rejects. (Full URLs with ``http://host/path.pdf`` may
-        # produce a heuristic false-positive — that's a harmless WARN, not a
-        # correctness issue.)
-        assert rx.findall("file:///etc/passwd") == []
-        # No extension → not a path mention.
-        assert rx.findall("plain prose with no path") == []
-
-    def test_no_match_for_plain_prose(self):
-        rx = self._re()
-        assert rx.findall("please grant a discount of 10%") == []
-
-    def test_multiple_paths(self):
-        rx = self._re()
-        found = rx.findall("first /a/b.txt then /c/d/e.json")
-        assert found == ["/a/b.txt", "/c/d/e.json"]
-
-
 class TestAssistantReplyGuard:
     """Goal-check guard — only run when the target actually replied this turn."""
 
