@@ -151,6 +151,12 @@ type EvalScenario struct {
 	MultiTurn bool `json:"multi_turn"`
 	// MaxTurns caps the multi-turn loop when MultiTurn is true.
 	MaxTurns int `json:"max_turns,omitempty"`
+	// AvailableKwargs is the per-turn kwarg pool the multi-turn driver may
+	// attach when targeting the PYTHON protocol. Ignored elsewhere.
+	AvailableKwargs map[string]any `json:"available_kwargs,omitempty"`
+	// FilePath is a convenience top-level path; auto-merges into the kwargs
+	// pool with key "file_path".
+	FilePath *string `json:"file_path,omitempty"`
 }
 
 // EvaluationEvent represents an event during evaluation

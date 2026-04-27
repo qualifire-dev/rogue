@@ -1,6 +1,22 @@
 package scenarios
 
-import "strings"
+import (
+	"encoding/json"
+	"strings"
+)
+
+// formatKwargsJSON pretty-prints a kwargs map for the editor textarea.
+// Returns "" when the map is empty so the field renders blank.
+func formatKwargsJSON(m map[string]any) string {
+	if len(m) == 0 {
+		return ""
+	}
+	b, err := json.MarshalIndent(m, "", "  ")
+	if err != nil {
+		return ""
+	}
+	return string(b)
+}
 
 // wrapText wraps text to the specified width
 func wrapText(text string, width int) string {

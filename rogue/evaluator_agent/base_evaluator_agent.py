@@ -471,6 +471,7 @@ class BaseEvaluatorAgent(ABC):
         self,
         context_id: str,
         message: str,
+        kwargs: Optional[dict[str, Any]] = None,
     ) -> dict[str, str]:
         """
         Sends a message to the evaluated agent.
@@ -480,6 +481,9 @@ class BaseEvaluatorAgent(ABC):
         :param context_id: The context ID of the conversation.
             Each conversation has a unique context_id. All messages in the conversation
             have the same context_id.
+        :param kwargs: Optional structured side-data the multi-turn driver
+            chose to attach to this turn. Forwarded into the target only by
+            the PYTHON protocol; other protocols accept and ignore.
         :return: A dictionary containing the response from the evaluated agent.
             - "response": the response string. If there is no response
                 from the other agent, the string is empty.

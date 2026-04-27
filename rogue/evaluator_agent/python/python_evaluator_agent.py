@@ -170,6 +170,7 @@ class PythonEvaluatorAgent(BaseEvaluatorAgent):
         self,
         context_id: str,
         message: str,
+        kwargs: Optional[dict[str, Any]] = None,
     ) -> dict[str, str]:
         """
         Sends a message to the evaluated agent by calling the Python function.
@@ -178,6 +179,9 @@ class PythonEvaluatorAgent(BaseEvaluatorAgent):
         :param context_id: The context ID of the conversation.
             Each conversation has a unique context_id. All messages in the conversation
             have the same context_id.
+        :param kwargs: Optional structured side-data forwarded into the target's
+            ``call_agent`` as keyword arguments. Only forwarded when the target
+            function accepts ``**kwargs``; otherwise dropped with a warning.
         :return: A dictionary containing the response from the evaluated agent.
             - "response": the response string. If there is no response
                 from the agent, the string is empty.
@@ -212,7 +216,11 @@ class PythonEvaluatorAgent(BaseEvaluatorAgent):
             )
 
             # Call the user's function with context_id for session tracking
-            response = await self._invoke_call_agent(messages, context_id)
+            response = await self._invoke_call_agent(
+                messages,
+                context_id,
+                forwarded_kwargs=kwargs or {},
+            )
 
             # Add the assistant response to chat history
             self._add_message_to_chat_history(context_id, "assistant", response)
@@ -247,12 +255,17 @@ class PythonEvaluatorAgent(BaseEvaluatorAgent):
         self,
         messages: list[dict[str, Any]],
         context_id: str,
+        forwarded_kwargs: Optional[dict[str, Any]] = None,
     ) -> str:
         """
         Invoke the call_agent function, handling both sync and async versions.
 
         :param messages: List of message dicts with 'role' and 'content' keys.
         :param context_id: Unique conversation ID for session tracking.
+        :param forwarded_kwargs: Optional per-turn kwargs from the multi-turn
+            driver. Forwarded only when the target function declares
+            ``**kwargs``; otherwise dropped with a warning so older entrypoints
+            stay compatible.
         :return: The agent's response as a string.
         """
         if self._call_agent_fn is None:
@@ -264,17 +277,33 @@ class PythonEvaluatorAgent(BaseEvaluatorAgent):
 
         sig = inspect.signature(self._call_agent_fn)
         params = list(sig.parameters.keys())
+        accepts_var_kw = any(
+            p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()
+        )
+
+        forwarded = forwarded_kwargs or {}
+        if forwarded and not accepts_var_kw:
+            logger.warning(
+                "call_agent does not accept **kwargs; dropping forwarded kwargs",
+                extra={
+                    "dropped_keys": list(forwarded.keys()),
+                    "python_file": str(self._python_file_path),
+                },
+            )
+            forwarded = {}
 
         # Check if function accepts context_id parameter
-        if len(params) >= 2 or any(
-            p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()
-        ):
+        if len(params) >= 2 or accepts_var_kw:
             # Function accepts context_id (or **kwargs)
             try:
-                result = self._call_agent_fn(messages, context_id=context_id)
+                result = self._call_agent_fn(
+                    messages,
+                    context_id=context_id,
+                    **forwarded,
+                )
             except TypeError:
                 # Fallback if the second param has a different name
-                result = self._call_agent_fn(messages)
+                result = self._call_agent_fn(messages, **forwarded)
         else:
             # Function only accepts messages (backward compatible)
             result = self._call_agent_fn(messages)

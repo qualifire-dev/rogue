@@ -12,6 +12,14 @@ type ScenarioData struct {
 	// to apply defaults (multi_turn=true, max_turns=10).
 	MultiTurn *bool `json:"multi_turn,omitempty"`
 	MaxTurns  *int  `json:"max_turns,omitempty"`
+	// AvailableKwargs is the pool of side-data keys/values the multi-turn driver
+	// may attach per turn. Forwarded only to PYTHON-protocol targets; ignored
+	// elsewhere. Empty/nil means no kwargs available.
+	AvailableKwargs map[string]any `json:"available_kwargs,omitempty"`
+	// FilePath is a convenience top-level path (e.g. an artifact to upload).
+	// When set, the driver always sees ``file_path`` as an available kwarg.
+	// An explicit ``file_path`` entry in AvailableKwargs takes precedence.
+	FilePath *string `json:"file_path,omitempty"`
 }
 
 // MultiTurnDefault is the default for new / legacy scenarios (multi-turn on).

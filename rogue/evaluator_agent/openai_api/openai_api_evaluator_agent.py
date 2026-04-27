@@ -72,6 +72,7 @@ class OpenAIAPIEvaluatorAgent(BaseEvaluatorAgent):
         self,
         context_id: str,
         message: str,
+        kwargs: Optional[dict] = None,
     ) -> dict[str, str]:
         """
         Sends a message to the evaluated agent using OpenAI chat completions API.
@@ -84,6 +85,11 @@ class OpenAIAPIEvaluatorAgent(BaseEvaluatorAgent):
             - "response": the response string. If there is no response
                 from the other agent, the string is empty.
         """
+        if kwargs:
+            logger.debug(
+                "kwargs ignored on OpenAI API protocol",
+                extra={"keys": list(kwargs.keys()), "context_id": context_id},
+            )
         logger.info(
             "🔗 Making OpenAI API call to evaluated agent",
             extra={

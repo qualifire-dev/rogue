@@ -20,6 +20,7 @@ from typing import Any, Optional
 def call_agent(
     messages: list[dict[str, Any]],
     context_id: Optional[str] = None,
+    **kwargs: Any,
 ) -> str:
     """
     Process conversation messages and return a response.
@@ -31,25 +32,22 @@ def call_agent(
     Args:
         messages: List of message dicts with 'role' and 'content' keys.
             The role is either 'user' or 'assistant'.
-            Example:
-                [
-                    {"role": "user", "content": "Hello, how are you?"},
-                    {"role": "assistant", "content": "I'm doing well, thanks!"},
-                    {"role": "user", "content": "What can you help me with?"}
-                ]
         context_id: Optional unique conversation ID provided by Rogue.
             Use this for session tracking in stateful agents.
-            Each conversation gets a unique context_id that persists
-            across all messages in that conversation.
+        **kwargs: Per-turn side-data forwarded by the multi-turn driver
+            (only when the scenario declares `available_kwargs` and the
+            driver chose to attach a key to this turn). Example: a
+            scenario can declare `available_kwargs={"file_path": "..."}`
+            and `kwargs.get("file_path")` will be set on the turn the
+            driver picks the upload step. Empty dict on other turns.
 
     Returns:
         The agent's response as a string.
 
     Note:
-        - This function can be sync or async (Rogue handles both)
-        - Raise exceptions to indicate errors (Rogue will catch and log them)
-        - The messages list grows with each turn of conversation
-        - context_id is optional for backward compatibility
+        - This function can be sync or async (Rogue handles both).
+        - Raise exceptions to indicate errors.
+        - The messages list grows with each turn of conversation.
     """
     # Extract the latest user message
     latest_message = messages[-1]["content"] if messages else ""
@@ -87,6 +85,18 @@ def call_agent(
     #     prompt = "\n".join(f"{m['role']}: {m['content']}" for m in messages)
     #     return pipe(prompt)[0]["generated_text"]
 
+    # Demonstrate per-turn kwargs: if the driver attached `file_path` this
+    # turn, read the file and reflect the size back so a scenario can
+    # exercise the upload step end-to-end.
+    file_path = kwargs.get("file_path")
+    if file_path:
+        try:
+            with open(file_path, "rb") as f:
+                size = len(f.read())
+            return f"Echo: {latest_message} (uploaded {file_path}, {size} bytes)"
+        except OSError as e:
+            return f"Echo: {latest_message} (file read error: {e})"
+
     # Default echo implementation for testing
     return f"Echo: {latest_message}"
 
@@ -96,6 +106,7 @@ def call_agent(
 async def call_agent_async(
     messages: list[dict[str, Any]],
     context_id: Optional[str] = None,
+    **kwargs: Any,
 ) -> str:
     """
     Async version of call_agent.

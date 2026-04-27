@@ -41,9 +41,13 @@ type ScenarioEditor struct {
 	// Scenario editing
 	scenarioTextArea        *components.TextArea
 	expectedOutcomeTextArea *components.TextArea
+	kwargsTextArea          *components.TextArea
 
 	// Multi-turn editing state (reflected into editing.{MultiTurn,MaxTurns} on save)
 	maxTurnsBuffer string
+
+	// File path single-line input (reflected into editing.FilePath on save)
+	filePathBuffer string
 
 	// Interview mode
 	interviewMode               bool                 // true when in interview mode
@@ -96,6 +100,10 @@ func NewScenarioEditor() ScenarioEditor {
 	outTA := components.NewTextArea(9996, 80, 8, theme.CurrentTheme()) // Expected outcome text area
 	outTA.ApplyTheme(theme.CurrentTheme())
 	editor.expectedOutcomeTextArea = &outTA
+
+	kwargsTA := components.NewTextArea(9995, 80, 5, theme.CurrentTheme()) // Available kwargs JSON
+	kwargsTA.ApplyTheme(theme.CurrentTheme())
+	editor.kwargsTextArea = &kwargsTA
 
 	// Interview chat view will be initialized when entering interview mode
 	// (lazy initialization to have proper dimensions)
@@ -150,6 +158,9 @@ func (e *ScenarioEditor) SetSize(width, height int) {
 	}
 	if e.expectedOutcomeTextArea != nil {
 		e.expectedOutcomeTextArea.SetSize(width-4, 8) // Height will be set dynamically in renderEditView
+	}
+	if e.kwargsTextArea != nil {
+		e.kwargsTextArea.SetSize(width-4, 5)
 	}
 
 	// Update interview chat view size
@@ -247,13 +258,17 @@ func (e ScenarioEditor) Update(msg tea.Msg) (ScenarioEditor, tea.Cmd) {
 		case EditMode, AddMode:
 			// Forward to the currently focused TextArea
 			var cmd tea.Cmd
-			if e.currentField == 0 && e.scenarioTextArea != nil {
+			if e.currentField == editFieldScenario && e.scenarioTextArea != nil {
 				updatedTextArea, taCmd := e.scenarioTextArea.Update(msg)
 				*e.scenarioTextArea = *updatedTextArea
 				cmd = taCmd
-			} else if e.currentField == 1 && e.expectedOutcomeTextArea != nil {
+			} else if e.currentField == editFieldExpectedOutcome && e.expectedOutcomeTextArea != nil {
 				updatedTextArea, taCmd := e.expectedOutcomeTextArea.Update(msg)
 				*e.expectedOutcomeTextArea = *updatedTextArea
+				cmd = taCmd
+			} else if e.currentField == editFieldKwargs && e.kwargsTextArea != nil {
+				updatedTextArea, taCmd := e.kwargsTextArea.Update(msg)
+				*e.kwargsTextArea = *updatedTextArea
 				cmd = taCmd
 			}
 			return e, cmd
