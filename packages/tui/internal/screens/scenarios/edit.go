@@ -44,14 +44,33 @@ func (e ScenarioEditor) handleEditMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 		}
 		return e, nil
 
-	case "tab", "down":
+	case "tab":
 		e.currentField = e.nextField(e.currentField, +1)
 		e.updateTextAreaFocus()
 		return e, nil
 
-	case "shift+tab", "up":
+	case "shift+tab":
 		e.currentField = e.nextField(e.currentField, -1)
 		e.updateTextAreaFocus()
+		return e, nil
+
+	case "ctrl+l":
+		// Clear the entire content of the focused text area. Only acts on
+		// multi-line textareas — toggles / single-line buffers ignore it.
+		switch e.currentField {
+		case editFieldScenario:
+			if e.scenarioTextArea != nil {
+				e.scenarioTextArea.SetValue("")
+			}
+		case editFieldExpectedOutcome:
+			if e.expectedOutcomeTextArea != nil {
+				e.expectedOutcomeTextArea.SetValue("")
+			}
+		case editFieldKwargs:
+			if e.kwargsTextArea != nil {
+				e.kwargsTextArea.SetValue("")
+			}
+		}
 		return e, nil
 
 	case "ctrl+s":
@@ -430,7 +449,7 @@ func (e ScenarioEditor) renderEditView(t theme.Theme) string {
 		saveLabel = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Primary()).Bold(true).Render("▶ Save")
 	}
 
-	help := lipgloss.NewStyle().Background(t.Background()).Foreground(t.TextMuted()).Render("Tab/↑↓ switch fields  Space toggle  Ctrl+S save  Esc cancel")
+	help := lipgloss.NewStyle().Background(t.Background()).Foreground(t.TextMuted()).Render("Tab/Shift+Tab switch fields  ↑↓ move cursor in text  Ctrl+L clear field  Space toggle  Ctrl+S save  Esc cancel")
 	errorLine := ""
 	if e.errorMsg != "" {
 		errorLine = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Error()).Render("⚠ " + e.errorMsg)
