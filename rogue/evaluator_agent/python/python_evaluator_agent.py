@@ -13,6 +13,7 @@ from types import ModuleType, TracebackType
 from typing import Any, Callable, Optional, Self, Type
 
 from loguru import logger
+
 from rogue_sdk.types import Protocol, Scenarios
 
 from ..base_evaluator_agent import BaseEvaluatorAgent
@@ -158,7 +159,6 @@ class PythonEvaluatorAgent(BaseEvaluatorAgent):
         await super().__aexit__(exc_type, exc_value, traceback)
         # Clean up sys.path if we added to it
         if self._added_sys_path:
-
             try:
                 sys.path.remove(self._added_sys_path)
                 logger.debug(f"Removed {self._added_sys_path} from sys.path")

@@ -1,5 +1,5 @@
 import asyncio
-import subprocess  # nosec: B404
+import subprocess  # noqa: S404
 import sys
 import time
 from argparse import ArgumentParser, Namespace
@@ -178,7 +178,7 @@ def start_example_agent(
         return None
 
     try:
-        process = subprocess.Popen(  # nosec: B603
+        process = subprocess.Popen(  # noqa: S603
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

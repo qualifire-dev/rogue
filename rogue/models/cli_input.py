@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from pydantic import BaseModel, Field, HttpUrl, SecretStr, model_validator
+
 from rogue_sdk.types import AuthType, EvaluationMode, Protocol, Scenarios, Transport
 
 

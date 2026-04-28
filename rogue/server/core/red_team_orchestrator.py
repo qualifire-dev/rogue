@@ -134,12 +134,15 @@ class RedTeamOrchestrator:
             },
         )
 
-        yield "status", (
-            f"🔴 Starting red team scan\n"
-            f"  Scan Type: {self.red_team_config.scan_type}\n"
-            f"  Vulnerabilities: {len(self.red_team_config.vulnerabilities)}\n"
-            f"  Attacks: {len(self.red_team_config.attacks)}\n"
-            f"  Target: {self.evaluated_agent_url}"
+        yield (
+            "status",
+            (
+                f"🔴 Starting red team scan\n"
+                f"  Scan Type: {self.red_team_config.scan_type}\n"
+                f"  Vulnerabilities: {len(self.red_team_config.vulnerabilities)}\n"
+                f"  Attacks: {len(self.red_team_config.attacks)}\n"
+                f"  Target: {self.evaluated_agent_url}"
+            ),
         )
 
         try:
@@ -160,7 +163,10 @@ class RedTeamOrchestrator:
                         self.logger.info(
                             f"Vulnerability result: {update.vulnerability_id}",
                         )
-                        yield "status", f"✓ Completed testing: {update.vulnerability_id}"  # noqa: E501
+                        yield (
+                            "status",
+                            f"✓ Completed testing: {update.vulnerability_id}",
+                        )  # noqa: E501
                     elif isinstance(update, ResultsUpdate):
                         self.logger.info("✅ Red team scan completed")
                         yield "results", update.results

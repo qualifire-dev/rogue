@@ -234,9 +234,7 @@ def _generate_llm_summary(
         c
         for c in conversations
         if c.get("evaluation", {}).get("vulnerability_detected", False)
-    ][
-        :3
-    ]  # Limit to 3 examples
+    ][:3]  # Limit to 3 examples
 
     if not successful_convs:
         return _generate_structured_summary(vulnerability, conversations)

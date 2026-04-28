@@ -2,7 +2,6 @@
 
 import pytest
 from pydantic import BaseModel
-from rogue_sdk.types import ChatHistory, ChatMessage
 
 from rogue.evaluator_agent.multi_turn.driver import DriverMessageResult
 from rogue.evaluator_agent.multi_turn.goal_checker import GoalCheckResult
@@ -11,6 +10,7 @@ from rogue.evaluator_agent.multi_turn.prompts import (
     DRIVER_PROMPT,
     GOAL_CHECK_PROMPT,
 )
+from rogue_sdk.types import ChatHistory, ChatMessage
 
 
 class _Sample(BaseModel):

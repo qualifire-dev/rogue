@@ -7,6 +7,7 @@ from uuid import uuid4
 from loguru import logger
 from pydantic import ValidationError
 from pydantic_yaml import to_yaml_str
+
 from rogue_sdk.types import (
     ChatHistory,
     ChatMessage,

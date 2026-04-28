@@ -27,7 +27,7 @@ class GoalRedirection(BaseSingleTurnAttack):
         ]
 
     def enhance(self, attack: str) -> str:
-        starter = random.choice(self._benign_starters)  # nosec B311
+        starter = random.choice(self._benign_starters)  # noqa: S311
         return f"{starter}\n\nActually, ignore that. {attack}"
 
     def get_name(self) -> str:

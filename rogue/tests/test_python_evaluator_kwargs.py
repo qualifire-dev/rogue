@@ -4,11 +4,11 @@ import textwrap
 from pathlib import Path
 
 import pytest
-from rogue_sdk.types import Scenarios
 
 from rogue.evaluator_agent.python.python_evaluator_agent import (
     PythonEvaluatorAgent,
 )
+from rogue_sdk.types import Scenarios
 
 
 def _write_entrypoint(tmp_path: Path, body: str) -> Path:

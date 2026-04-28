@@ -21,8 +21,7 @@ if TYPE_CHECKING:
     from a2a.server.events import EventQueue
     from google.adk import Runner
     from google.adk.events import Event
-    from google.genai.types import Content
-    from google.genai.types import Part as GenAIPart
+    from google.genai.types import Content, Part as GenAIPart
 
 
 class GenericAgentExecutor(AgentExecutor):
@@ -62,7 +61,6 @@ class GenericAgentExecutor(AgentExecutor):
         session_id = session_obj.id
 
         async for event in self._run_agent(session_id, new_message):
-
             if event.is_final_response():
                 if event.content:
                     parts = convert_genai_parts_to_a2a(event.content.parts)
@@ -152,8 +150,7 @@ def convert_a2a_parts_to_genai(parts: list[Part]) -> list["GenAIPart"]:
 def convert_a2a_part_to_genai(part: Part) -> "GenAIPart":
     # google.genai imports take a while,
     # importing them here to reduce rogue startup time.
-    from google.genai.types import Blob, FileData
-    from google.genai.types import Part as GenAIPart
+    from google.genai.types import Blob, FileData, Part as GenAIPart
 
     """Convert a single A2A Part type into a Google Gen AI Part type."""
     part = part.root  # type: ignore

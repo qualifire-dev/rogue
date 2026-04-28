@@ -11,6 +11,7 @@ from types import TracebackType
 from typing import Any, AsyncGenerator, Dict, Optional, Self, Type
 
 from loguru import logger
+
 from rogue_sdk.types import AuthType, Protocol, Transport
 
 from ...server.red_teaming.models import RedTeamConfig

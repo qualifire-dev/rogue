@@ -27,7 +27,7 @@ class ContextPoisoning(BaseSingleTurnAttack):
         ]
 
     def enhance(self, attack: str) -> str:
-        prefix = random.choice(self._prefixes)  # nosec B311
+        prefix = random.choice(self._prefixes)  # noqa: S311
         return f"{prefix}\n\n{attack}"
 
     def get_name(self) -> str:

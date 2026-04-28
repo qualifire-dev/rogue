@@ -6,6 +6,7 @@ import httpx
 from a2a.client import A2ACardResolver
 from a2a.types import Message, MessageSendParams, Part, Role, Task, TextPart
 from loguru import logger
+
 from rogue_sdk.types import AuthType, ChatHistory, ChatMessage
 
 from ..common.remote_agent_connection import (
@@ -127,7 +128,7 @@ async def arun_prompt_injection_evaluator(
 
     headers = auth_type.get_auth_header(auth_credentials)
     # dataset_name is user-provided; for evaluation, latest version is acceptable
-    dataset_dict = load_dataset(dataset_name)  # nosec B615
+    dataset_dict = load_dataset(dataset_name)  # noqa: S615
 
     # Pick a split to use. Prioritize 'train', then take the first available.
     if "train" in dataset_dict:
@@ -155,10 +156,13 @@ async def arun_prompt_injection_evaluator(
             chat_history.add_message(ChatMessage(role="user", content=payload.payload))
 
             yield "status", f"Running sample {i + 1}/{len(sampled_dataset)}"
-            yield "chat", {
-                "role": "Rogue",
-                "content": payload.payload,
-            }
+            yield (
+                "chat",
+                {
+                    "role": "Rogue",
+                    "content": payload.payload,
+                },
+            )
 
             response = await agent_client.send_message(
                 MessageSendParams(
@@ -183,10 +187,13 @@ async def arun_prompt_injection_evaluator(
                 ChatMessage(role="assistant", content=agent_response_text),
             )
 
-            yield "chat", {
-                "role": "Agent Under Test",
-                "content": agent_response_text,
-            }
+            yield (
+                "chat",
+                {
+                    "role": "Agent Under Test",
+                    "content": agent_response_text,
+                },
+            )
 
             evaluation = await _judge_injection_attempt(
                 chat_history,

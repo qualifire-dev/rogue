@@ -22,6 +22,7 @@ from typing import Generic, Type, TypeVar
 
 from loguru import logger
 from pydantic import BaseModel
+
 from rogue_sdk.types import EvaluationStatus
 
 T = TypeVar("T", bound=BaseModel)
@@ -64,8 +65,7 @@ class JobStore(Generic[T]):
             out[job_id] = job
         if out:
             logger.info(
-                f"job_store[{self._bucket}]: loaded {len(out)} jobs "
-                f"from {self._dir}",
+                f"job_store[{self._bucket}]: loaded {len(out)} jobs from {self._dir}",
             )
         return out
 

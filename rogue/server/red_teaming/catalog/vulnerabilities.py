@@ -57,7 +57,7 @@ class VulnerabilityId(str, Enum):
     PROMPT_OVERRIDE = "prompt-override"
     INDIRECT_INJECTION = "indirect-injection"
     ASCII_SMUGGLING = "ascii-smuggling"
-    SPECIAL_TOKEN_INJECTION = "special-token-injection"  # nosec: B105
+    SPECIAL_TOKEN_INJECTION = "special-token-injection"  # noqa: S105
     PLINY_INJECTIONS = "pliny-injections"
     CONTEXT_COMPLIANCE = "context-compliance"
 

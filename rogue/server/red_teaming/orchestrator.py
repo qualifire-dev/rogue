@@ -124,7 +124,7 @@ class RedTeamOrchestrator:
 
         # Initialize random generator for reproducibility
         seed = config.random_seed if config.random_seed else int(time.time())
-        self.random_generator = random.Random(seed)  # nosec B311
+        self.random_generator = random.Random(seed)  # noqa: S311
         self._actual_seed = seed
 
         # Initialize Deckard client for premium attacks

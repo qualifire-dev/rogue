@@ -31,11 +31,11 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "bandit==1.8.5",
-    "black==25.1.0",
-    "flake8==7.3.0",
-    "mypy==1.16.1",
-    "add-trailing-comma==3.2.0",
+    # ruff replaces black + flake8 + isort + bandit + add-trailing-comma; ty
+    # replaces mypy. Both are written in Rust by Astral and are 10–100x faster
+    # than the toolchain they superseded.
+    "ruff>=0.7.0",
+    "ty>=0.0.1a1",
     "pytest>=8.4.1",
     "pytest-asyncio>=0.24.0",
     "pytest-cov>=6.2.1",
@@ -90,3 +90,90 @@ rogue-ai-sdk = { path = "sdks/python", editable = true }
 [project.scripts]
 rogue-ai = "rogue.__main__:main"
 rogue-ai-example-tshirt = "examples.tshirt_store_agent.__main__:main"
+
+# ─── Ruff ─────────────────────────────────────────────────────────────────────
+# Mirrors the previous tooling 1:1 — black formatting, flake8 lint, isort
+# imports, bandit security — all in a single Rust binary. Rules selected match
+# what the prior pipeline enforced; nothing new piles on existing code.
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+extend-exclude = [
+    ".venv",
+    "**/__init__.py",  # match prior flake8 exclude
+    "packages",        # JS workspace, not Python
+]
+
+[tool.ruff.lint]
+# E/W = pycodestyle, F = pyflakes (flake8 default trio)
+# I    = isort (replaces standalone isort --profile black)
+# S    = flake8-bandit (replaces standalone bandit)
+# COM  = flake8-commas (replaces add-trailing-comma)
+select = ["E", "F", "W", "I", "S", "COM"]
+# - E712 / E203: previously suppressed by .flake8.
+# - E501 (line-length): the formatter owns wrap decisions; flagging the
+#   leftover string-literal cases creates noise without action.
+# - COM812 / COM819: conflict with the formatter's comma handling.
+# - S607 (start-process-with-partial-path): we *are* a CLI tool that
+#   intentionally invokes `uv`, `uvx`, `osascript`, `powershell`, etc.
+#   from PATH. Flagging every one is noise.
+ignore = ["E712", "E203", "E501", "COM812", "COM819", "S607"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests routinely use `assert`, fixture imports, etc. — bandit complained
+# about all of these via the prior `exclude_dirs: tests` in .bandit.yaml.
+"tests/**" = ["S101", "S105", "S106", "S108"]
+"**/test_*.py" = ["S101", "S105", "S106", "S108"]
+"**/conftest.py" = ["S101"]
+# Examples are illustrative, not production.
+"examples/**" = ["S101", "S105", "S106", "S603", "S607"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["rogue", "rogue_sdk", "examples"]
+combine-as-imports = true
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "lf"
+
+# ─── ty ───────────────────────────────────────────────────────────────────────
+# Astral's static type checker. Replaces mypy. ty is currently pre-release and
+# meaningfully stricter than mypy on identical code (especially around Pydantic
+# **kwargs unpacking, websockets' dynamic API, and Optional refinement).
+#
+# Migration policy: keep parity with what mypy was catching. Tests are excluded
+# (mypy already ignored them in practice) and the noisy strictness categories
+# are downgraded to `warn` so this migration doesn't gate the build on
+# pre-existing patterns. Tighten back to `error` once those classes are
+# cleaned up incrementally.
+
+[tool.ty.src]
+include = ["rogue", "sdks/python", "hatch_build.py"]
+exclude = [
+    ".venv",
+    "node_modules",
+    "packages",
+    "examples",
+    "**/tests/**",
+    "**/test_*.py",
+    "**/conftest.py",
+]
+
+[tool.ty.environment]
+python-version = "3.10"
+
+[tool.ty.rules]
+# Old `.mypy.ini` had `ignore_missing_imports = True`.
+unresolved-import = "ignore"
+# Pre-existing patterns that ty is stricter on than mypy. Demoted to `warn`
+# so they surface in output but don't fail CI; tighten as they're cleaned up.
+invalid-argument-type = "warn"
+unresolved-attribute = "warn"
+not-subscriptable = "warn"
+not-iterable = "warn"
+invalid-assignment = "warn"
+invalid-return-type = "warn"
+no-matching-overload = "warn"

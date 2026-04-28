@@ -261,11 +261,10 @@ class ComplianceReportGenerator:
             ),
             # Technical
             "sql-injection": (
-                "Use parameterized queries. " "Never pass user input directly to SQL."
+                "Use parameterized queries. Never pass user input directly to SQL."
             ),
             "shell-injection": (
-                "Disable command execution capabilities. "
-                "Whitelist allowed operations."
+                "Disable command execution capabilities. Whitelist allowed operations."
             ),
             # Content safety
             "hate-speech": (
@@ -273,7 +272,7 @@ class ComplianceReportGenerator:
                 "Implement output moderation."
             ),
             "explicit-content": (
-                "Add NSFW content filtering. " "Implement strict output moderation."
+                "Add NSFW content filtering. Implement strict output moderation."
             ),
             # Excessive agency
             "excessive-agency": (
@@ -820,9 +819,7 @@ def generate_summary_for_tui(results: RedTeamResults) -> Dict[str, Any]:
             }
             for r in results.vulnerability_results
             if not r.passed
-        ][
-            :5
-        ],  # Top 5 failures
+        ][:5],  # Top 5 failures
         "framework_scores": {
             fid: fc.compliance_score for fid, fc in results.framework_compliance.items()
         },

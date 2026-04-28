@@ -26,7 +26,7 @@ class AuthType(str, Enum):
 
     NO_AUTH = "no_auth"
     API_KEY = "api_key"
-    BEARER_TOKEN = "bearer_token"  # nosec B105
+    BEARER_TOKEN = "bearer_token"  # noqa: S105
     BASIC_AUTH = "basic"
 
     def get_auth_header(
@@ -178,7 +178,7 @@ class RedTeamConfig(BaseModel):
     frameworks: List[str] = Field(
         default_factory=list,
         description=(
-            "Framework IDs for report mapping " "(e.g., 'owasp-llm', 'mitre-atlas')"
+            "Framework IDs for report mapping (e.g., 'owasp-llm', 'mitre-atlas')"
         ),
     )
     random_seed: Optional[int] = Field(

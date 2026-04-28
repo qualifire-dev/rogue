@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 from loguru import logger
+
 from rogue_sdk.types import AgentConfig, Scenarios
 
 

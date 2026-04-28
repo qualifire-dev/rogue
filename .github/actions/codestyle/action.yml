@@ -1,5 +1,5 @@
 name: "codestyle"
-description: "Runs python code style checklist (black, flake8, mypy and bandit)"
+description: "Runs Python code style checks via ruff (format + lint) and ty (type-check)"
 inputs:
   workdir:
     description: "working directory"
@@ -16,15 +16,14 @@ runs:
       run: |
         cd ${{ inputs.workdir }}
         uv sync
-    - name: "Bandit"
+    - name: "Ruff format (check)"
       shell: bash
-      run: uv run bandit -c .bandit.yaml -r ${{ inputs.workdir }}
-    - name: "Mypy"
+      run: uv run ruff format --check ${{ inputs.workdir }}
+    - name: "Ruff lint"
       shell: bash
-      run: uv run mypy --config-file .mypy.ini ${{ inputs.workdir }}
-    - name: "Black"
+      run: uv run ruff check ${{ inputs.workdir }}
+    - name: "ty (type check)"
       shell: bash
-      run: uv run black --exclude ".venv" --check ${{ inputs.workdir }}
-    - name: "Flake8"
-      shell: bash
-      run: uv run flake8 ${{ inputs.workdir }}
+      # ty does whole-project inference; the explicit roots match
+      # `[tool.ty.src]` in pyproject.toml.
+      run: uv run ty check rogue sdks/python hatch_build.py

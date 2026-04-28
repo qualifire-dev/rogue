@@ -4,6 +4,7 @@ from typing import Optional
 
 from loguru import logger
 from pydantic import BaseModel, Field
+
 from rogue_sdk.types import ChatHistory
 
 from .json_utils import parse_llm_json

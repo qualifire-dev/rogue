@@ -1,5 +1,5 @@
 import shutil
-import subprocess  # nosec: B404
+import subprocess  # noqa: S404
 
 from loguru import logger
 
@@ -16,7 +16,7 @@ def run_rogue_tui() -> int:
             return 1
 
         # Run the rogue-tui with proper stdin/stdout handling
-        result = subprocess.run([tui_path])  # nosec: B603
+        result = subprocess.run([tui_path])  # noqa: S603
         return result.returncode
 
     except Exception:

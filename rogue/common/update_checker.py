@@ -7,7 +7,7 @@ versions and allow users to update immediately.
 
 import json
 import shutil
-import subprocess  # nosec: B404
+import subprocess  # noqa: S404
 import sys
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
@@ -208,7 +208,7 @@ def run_update_command() -> bool:
         with console.status("[yellow]Updating rogue-ai...[/yellow]", spinner="dots"):
             # First, try to upgrade using uv tool
             # (for users who installed with uv tool install)
-            result = subprocess.run(  # nosec: B607 B603
+            result = subprocess.run(  # noqa: S607
                 ["uv", "tool", "install", "-U", "rogue-ai"],
                 capture_output=True,
                 text=True,
@@ -218,7 +218,7 @@ def run_update_command() -> bool:
             # If that fails because it's not installed as a tool, try uvx method
             if result.returncode != 0 and "is not installed" in result.stderr:
                 # For uvx installations, we need to reinstall
-                result = subprocess.run(  # nosec: B607 B603
+                result = subprocess.run(  # noqa: S607
                     ["uvx", "--refresh", "rogue-ai", "--version"],
                     capture_output=True,
                     text=True,

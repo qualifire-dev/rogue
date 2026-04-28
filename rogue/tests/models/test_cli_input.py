@@ -3,9 +3,9 @@ from typing import Any
 import pytest
 from pydantic import HttpUrl, SecretStr, ValidationError
 from pytest_mock import MockerFixture
-from rogue_sdk.types import Protocol, Transport
 
 from rogue.models.cli_input import AuthType, CLIInput
+from rogue_sdk.types import Protocol, Transport
 
 
 class TestCLIInput:

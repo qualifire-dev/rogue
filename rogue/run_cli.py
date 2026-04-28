@@ -10,6 +10,7 @@ from loguru import logger
 from pydantic import SecretStr, ValidationError
 from rich.console import Console
 from rich.markdown import Markdown
+
 from rogue_sdk import RogueClientConfig, RogueSDK
 from rogue_sdk.types import (
     PROTOCOL_TO_TRANSPORTS,
@@ -119,8 +120,7 @@ def set_cli_args(parser: ArgumentParser) -> None:
         "--attacks-per-category",
         type=int,
         default=5,
-        help="Number of attack scenarios to generate per OWASP category "
-        "(default: 5)",
+        help="Number of attack scenarios to generate per OWASP category (default: 5)",
     )
     parser.add_argument(
         "--min-tests-per-attack",

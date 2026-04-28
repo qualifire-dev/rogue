@@ -4,10 +4,22 @@ from typing import Any, Dict, Optional
 
 from loguru import logger
 from pydantic import BaseModel, Field
+
 from rogue_sdk.types import ChatHistory
 
 from .json_utils import parse_llm_json
 from .prompts import DRIVER_PROMPT
+
+
+class DriverFailure(RuntimeError):
+    """Raised when the driver LLM cannot produce a usable next message.
+
+    The caller should abort the scenario instead of substituting filler —
+    pretending to make progress with hardcoded text produces useless,
+    repetitive transcripts that the judge then scores as if they were real
+    (often as a false-positive pass), and hides real configuration
+    problems (bad model name, wrong API key, network).
+    """
 
 
 class DriverMessageResult(BaseModel):
@@ -46,8 +58,9 @@ async def generate_next_rogue_message(
 ) -> DriverMessageResult:
     """Ask the driver LLM for the next rogue message.
 
-    Falls back to a generic prompt if the LLM output can't be parsed, so the
-    driver loop keeps making progress instead of crashing mid-scenario.
+    Raises ``DriverFailure`` if the LLM call errors or returns unparseable
+    output. The caller is expected to end the scenario in that case rather
+    than continue with filler — see the class docstring for why.
     """
     from litellm import acompletion
 
@@ -74,36 +87,23 @@ async def generate_next_rogue_message(
             ],
             temperature=0.7,
         )
-    except Exception:
+    except Exception as exc:
         logger.exception(
-            "Driver LLM call failed; emitting generic probing message",
+            "Driver LLM call failed",
             extra={"model": model, "turn": turn},
         )
-        # Terse, slightly impatient fallback — stays in human register even when
-        # the LLM is unavailable, so the test doesn't leak AI-polite phrasing.
-        if turn <= 1:
-            msg = goal if len(goal) < 180 else goal[:180]
-        else:
-            msg = "come on, can you actually help with this or not"
-        return DriverMessageResult(
-            message=msg,
-            rationale="fallback after driver LLM failure",
-        )
+        raise DriverFailure(f"driver LLM call failed: {exc}") from exc
 
     content = response.choices[0].message.content or ""
     parsed = parse_llm_json(content, DriverMessageResult)
     if parsed is None or not parsed.message.strip():
         logger.warning(
-            "Driver output unparseable; emitting generic probing message",
-            extra={"raw": content[:300]},
+            "Driver output unparseable",
+            extra={"raw": content[:300], "turn": turn},
         )
-        if turn <= 1:
-            msg = goal if len(goal) < 180 else goal[:180]
-        else:
-            msg = "seriously, just do it already"
-        return DriverMessageResult(
-            message=msg,
-            rationale="fallback after unparseable driver output",
+        raise DriverFailure(
+            f"driver returned unparseable output (turn {turn}): "
+            f"{content[:200] or '<empty>'}",
         )
 
     logger.info(

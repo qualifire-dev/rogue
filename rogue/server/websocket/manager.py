@@ -3,8 +3,9 @@ from functools import lru_cache
 from typing import Dict, List
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from rogue_sdk.types import EvaluationJob, WebSocketEventType, WebSocketMessage
 from starlette.websockets import WebSocketState
+
+from rogue_sdk.types import EvaluationJob, WebSocketEventType, WebSocketMessage
 
 from ...common.logging.config import get_logger
 

@@ -330,9 +330,7 @@ function ReportTab({
   // generated summary in hand.
   if (jobLoading) return <StateCard message="Loading evaluation…" />;
   if (jobError)
-    return (
-      <StateCard tone="danger" message={`Failed to load evaluation: ${jobError.message}`} />
-    );
+    return <StateCard tone="danger" message={`Failed to load evaluation: ${jobError.message}`} />;
   if (!isTerminal)
     return (
       <StateCard
@@ -363,10 +361,7 @@ function ReportTab({
     if (summaryPending) return <StateCard message="Generating summary…" />;
     if (summaryError)
       return (
-        <StateCard
-          tone="danger"
-          message={`Failed to generate summary: ${summaryError.message}`}
-        />
+        <StateCard tone="danger" message={`Failed to generate summary: ${summaryError.message}`} />
       );
     return <StateCard message="Waiting for results…" />;
   }
@@ -374,9 +369,7 @@ function ReportTab({
   return (
     <div className="space-y-4">
       <SummaryCard text={summary.overall_summary} />
-      {summary.key_findings.length > 0 && (
-        <KeyFindingsCard items={summary.key_findings} />
-      )}
+      {summary.key_findings.length > 0 && <KeyFindingsCard items={summary.key_findings} />}
       {summary.recommendations.length > 0 && (
         <RecommendationsCard items={summary.recommendations} />
       )}
@@ -384,13 +377,7 @@ function ReportTab({
   );
 }
 
-function StateCard({
-  message,
-  tone = "muted",
-}: {
-  message: string;
-  tone?: "muted" | "danger";
-}) {
+function StateCard({ message, tone = "muted" }: { message: string; tone?: "muted" | "danger" }) {
   return (
     <Card>
       <CardContent className="py-8 text-center">
@@ -455,11 +442,7 @@ function SummaryCard({ text }: { text: string }) {
 function KeyFindingsCard({ items }: { items: string[] }) {
   return (
     <Card>
-      <SectionHeader
-        title="Key findings"
-        tone="warn"
-        icon={<IconBulb className="h-4 w-4" />}
-      />
+      <SectionHeader title="Key findings" tone="warn" icon={<IconBulb className="h-4 w-4" />} />
       <CardContent className="p-4">
         <ul className="space-y-2.5 text-sm">
           {items.map((f, i) => (

@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import os
 import shutil
-import subprocess  # nosec B404
+import subprocess  # noqa: S404
 import sys
 from pathlib import Path
 from typing import Any
@@ -57,12 +57,12 @@ class WebBuildHook(BuildHookInterface):
 
         self.app.display_info("Building web SPA via pnpm...")
         try:
-            subprocess.run(  # nosec B603
+            subprocess.run(  # noqa: S603
                 [pnpm, "install", "--frozen-lockfile"],
                 cwd=str(web_dir),
                 check=True,
             )
-            subprocess.run(  # nosec B603
+            subprocess.run(  # noqa: S603
                 [pnpm, "run", "build"],
                 cwd=str(web_dir),
                 check=True,

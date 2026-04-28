@@ -8,6 +8,9 @@ import os
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
+
+from rogue.server.api.evaluation import get_evaluation_service
+from rogue.server.services.evaluation_service import EvaluationService
 from rogue_sdk.types import (
     EvaluationResults,
     ReportSummaryRequest,
@@ -17,9 +20,6 @@ from rogue_sdk.types import (
     StructuredSummary,
     SummaryGenerationRequest,
 )
-
-from rogue.server.api.evaluation import get_evaluation_service
-from rogue.server.services.evaluation_service import EvaluationService
 
 from ...common.logging import get_logger
 from ..models.api_format import ServerSummaryGenerationResponse

@@ -2,6 +2,7 @@ from types import TracebackType
 from typing import TYPE_CHECKING, Callable, Optional, Self, Type
 
 from loguru import logger
+
 from rogue_sdk.types import Protocol, Scenarios, Transport
 
 from ..base_evaluator_agent import BaseEvaluatorAgent

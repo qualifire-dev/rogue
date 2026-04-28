@@ -30,8 +30,8 @@ def get_version(package_name: str = "rogue-ai") -> str:
             version_file = parent / "VERSION"
             if version_file.exists():
                 return version_file.read_text().strip()
-    except Exception:
-        pass  # nosec B110
+    except Exception:  # noqa: S110 - VERSION lookup is best-effort
+        pass
 
     try:
         # Fall back to installed package metadata

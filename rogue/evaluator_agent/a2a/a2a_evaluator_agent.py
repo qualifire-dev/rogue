@@ -7,6 +7,7 @@ from a2a.client import A2ACardResolver
 from a2a.types import Message, MessageSendParams, Part, Role, Task, TextPart
 from httpx import AsyncClient
 from loguru import logger
+
 from rogue_sdk.types import Protocol, Scenarios, Transport
 
 from ...common.remote_agent_connection import (

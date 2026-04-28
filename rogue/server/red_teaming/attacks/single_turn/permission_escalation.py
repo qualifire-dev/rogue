@@ -26,7 +26,7 @@ class PermissionEscalation(BaseSingleTurnAttack):
         ]
 
     def enhance(self, attack: str) -> str:
-        return random.choice(self._templates).format(  # nosec B311
+        return random.choice(self._templates).format(  # noqa: S311
             attack=attack,
         )
 

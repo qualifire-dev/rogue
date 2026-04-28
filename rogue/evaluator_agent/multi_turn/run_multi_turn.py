@@ -12,6 +12,7 @@ from typing import Any, AsyncGenerator, Optional
 from uuid import uuid4
 
 from loguru import logger
+
 from rogue_sdk.types import (
     AuthType,
     ChatHistory,
@@ -22,7 +23,7 @@ from rogue_sdk.types import (
 )
 
 from ..evaluator_agent_factory import get_evaluator_agent
-from .driver import generate_next_rogue_message
+from .driver import DriverFailure, generate_next_rogue_message
 from .goal_checker import evaluate_goal_achieved
 
 _SENTINEL_DONE = object()
@@ -183,14 +184,53 @@ async def _drive_one_conversation(
             ChatHistory(),
         )
 
-        driver_result = await generate_next_rogue_message(
-            goal=goal,
-            business_context=business_context,
-            conversation=history,
-            turn=turn,
-            max_turns=max_turns,
-            **llm_kwargs,
-        )
+        try:
+            driver_result = await generate_next_rogue_message(
+                goal=goal,
+                business_context=business_context,
+                conversation=history,
+                turn=turn,
+                max_turns=max_turns,
+                **llm_kwargs,
+            )
+        except DriverFailure as driver_err:
+            # The rogue/driver LLM (which uses the configured judge model)
+            # couldn't produce a real next message. Continuing with hardcoded
+            # filler would just repeat the same prompt every turn — a useless
+            # transcript that the judge then often false-passes. Abort and
+            # surface the failure clearly.
+            logger.error(
+                "💥 rogue driver could not produce a message; aborting scenario",
+                extra={
+                    "context_id": context_id,
+                    "turn": turn,
+                    "error": str(driver_err),
+                },
+            )
+            agent_failure_reason = (
+                f"Rogue driver LLM ({llm_kwargs.get('model')}) failed on turn "
+                f"{turn}: {driver_err}"
+            )
+            break
+
+        # Defence-in-depth: if the driver returns the exact same message it
+        # just sent (model degenerating, prompt-window collapse), we'd loop
+        # forever. Treat back-to-back identical user turns as a stuck driver
+        # and abort instead of wasting target-LLM tokens on filler.
+        if _driver_repeating(history, driver_result.message):
+            logger.warning(
+                "🟡 rogue driver repeating itself; aborting scenario",
+                extra={
+                    "context_id": context_id,
+                    "turn": turn,
+                    "message_preview": driver_result.message[:120],
+                },
+            )
+            agent_failure_reason = (
+                f"Rogue driver looped on turn {turn} — repeated the same "
+                "message back-to-back. Check the configured judge model."
+            )
+            break
 
         resolved_kwargs = _resolve_per_turn_kwargs(
             driver_attach_kwargs=driver_result.attach_kwargs,
@@ -337,6 +377,22 @@ def _resolve_per_turn_kwargs(
     if driver_attach_kwargs:
         return dict(driver_attach_kwargs)
     return dict(scenario_fallback_kwargs)
+
+
+def _driver_repeating(history: ChatHistory, candidate: str) -> bool:
+    """True iff ``candidate`` matches the most recent rogue (user) message.
+
+    A back-to-back duplicate means the driver is stuck — model degenerating,
+    bad config, or prompt collapse. Compared case-folded and stripped so a
+    trivial whitespace/casing tweak between turns doesn't mask the loop.
+    """
+    if not candidate or not candidate.strip():
+        return False
+    messages = history.messages if history else []
+    for msg in reversed(messages):
+        if msg.role == "user":
+            return msg.content.strip().casefold() == candidate.strip().casefold()
+    return False
 
 
 def _assistant_reply_added(history: ChatHistory, previous_length: int) -> bool:

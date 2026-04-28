@@ -39,9 +39,9 @@ def is_pid_listening_on_port(pid: int, port: int, host: str = "127.0.0.1") -> bo
                 conn.status == psutil.CONN_LISTEN
                 and conn.laddr.port == port
                 and (
-                    host == "0.0.0.0"  # nosec B104
+                    host == "0.0.0.0"  # noqa: S104
                     or conn.laddr.ip == host
-                    or conn.laddr.ip == "0.0.0.0"  # nosec B104
+                    or conn.laddr.ip == "0.0.0.0"  # noqa: S104
                 )
             ):
                 return True
@@ -96,7 +96,7 @@ def wait_until_server_ready(
             try:
                 # Normalize host for HTTP requests (handle 0.0.0.0/:: and IPv6)
                 http_host = host
-                if host in ("0.0.0.0", "::"):  # nosec B104
+                if host in ("0.0.0.0", "::"):  # noqa: S104
                     http_host = "127.0.0.1"
                 else:
                     try:
@@ -108,7 +108,7 @@ def wait_until_server_ready(
                 response = requests.get(
                     f"http://{http_host}:{port}/api/v1/health",
                     timeout=1.0,
-                )  # nosec B113
+                )  # noqa: S113
                 if response.status_code == 200:
                     return True
             except requests.RequestException:

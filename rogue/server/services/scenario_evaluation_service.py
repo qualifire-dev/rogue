@@ -9,6 +9,7 @@ red_teaming module.
 from typing import Any, AsyncGenerator
 
 from loguru import logger
+
 from rogue_sdk.types import (
     AuthType,
     EvaluationMode,

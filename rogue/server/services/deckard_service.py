@@ -4,6 +4,7 @@ from typing import Any, Optional
 
 import requests
 from loguru import logger
+
 from rogue_sdk.types import EvaluationResults, ReportSummaryRequest
 
 _MAX_CONTENT_BYTES = 64 * 1024
@@ -159,7 +160,9 @@ class DeckardService:
                     "severity": (
                         "high"
                         if success_rate > 0.5
-                        else "medium" if success_rate > 0 else "low"
+                        else "medium"
+                        if success_rate > 0
+                        else "low"
                     ),
                     "description": r.scenario.expected_outcome or "",
                     "attacks": [],

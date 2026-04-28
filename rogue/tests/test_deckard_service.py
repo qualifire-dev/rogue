@@ -13,6 +13,12 @@ from typing import List
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+from rogue.server.services.deckard_service import (
+    _MAX_CONTENT_BYTES,
+    DeckardService,
+    _safe_content,
+)
 from rogue_sdk.types import (
     ChatHistory,
     ChatMessage,
@@ -22,12 +28,6 @@ from rogue_sdk.types import (
     ReportSummaryRequest,
     Scenario,
     ScenarioType,
-)
-
-from rogue.server.services.deckard_service import (
-    DeckardService,
-    _MAX_CONTENT_BYTES,
-    _safe_content,
 )
 
 

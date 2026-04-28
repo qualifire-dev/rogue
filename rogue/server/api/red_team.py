@@ -8,6 +8,7 @@ from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, Field
+
 from rogue_sdk.types import (
     EvaluationStatus,
     RedTeamJob,
@@ -249,10 +250,7 @@ async def generate_red_team_summary(
                 f"Overall Score: {overall_score:.1f}%"
             ),
             key_findings=[
-                (
-                    f"Found {job.results.total_vulnerabilities_found} "
-                    f"vulnerabilities"
-                ),
+                (f"Found {job.results.total_vulnerabilities_found} vulnerabilities"),
                 f"Overall security score: {overall_score:.1f}%",
                 *(
                     [

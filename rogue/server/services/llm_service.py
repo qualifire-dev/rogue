@@ -2,6 +2,7 @@ import json
 from typing import Optional
 
 from loguru import logger
+
 from rogue_sdk.types import (
     EvaluationResults,
     Scenario,

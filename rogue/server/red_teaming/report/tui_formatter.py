@@ -258,7 +258,9 @@ def format_report_as_markdown(report: RedTeamReport) -> str:
             icon = (
                 "✅"
                 if card.status == "excellent"
-                else "⚠️" if card.status == "good" else "❌"
+                else "⚠️"
+                if card.status == "good"
+                else "❌"
             )
 
             lines.append(f"### {icon} {card.framework_name}")
