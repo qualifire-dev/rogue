@@ -32,7 +32,21 @@ export default [
     rules: {
       ...tseslint.configs.recommended.rules,
       ...reactHooks.configs.recommended.rules,
-      "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
+      "react-refresh/only-export-components": [
+        "warn",
+        {
+          allowConstantExport: true,
+          // shadcn / context-provider co-exports — fast-refresh handles
+          // these fine even though they aren't components.
+          allowExportNames: [
+            "useTheme",
+            "useSidebar",
+            "badgeVariants",
+            "buttonVariants",
+            "tabsListVariants",
+          ],
+        },
+      ],
       "@typescript-eslint/no-unused-vars": [
         "error",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },

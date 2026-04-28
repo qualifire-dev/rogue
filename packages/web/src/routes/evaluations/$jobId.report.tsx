@@ -38,7 +38,11 @@ function EvaluationReportPage() {
   const isTerminal = status === "completed" || status === "failed" || status === "cancelled";
 
   const evaluationResults = job.data?.evaluation_results ?? null;
-  const scenarioResults: ScenarioResult[] = evaluationResults?.results ?? [];
+  // Stable identity so downstream useMemo deps don't change every render.
+  const scenarioResults = useMemo<ScenarioResult[]>(
+    () => evaluationResults?.results ?? [],
+    [evaluationResults],
+  );
 
   // Server persists the summary on the job after the first /llm/summary call,
   // so prefer the cached value over the in-component mutation result.
