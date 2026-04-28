@@ -939,7 +939,7 @@ class RedTeamOrchestrator:
                 self._update_attack_stats(
                     attack_id,
                     vulnerability_id,
-                    evaluation.get("vulnerability_detected", False),
+                    bool(evaluation.get("vulnerability_detected", False)),
                 )
 
                 # Log conversation
@@ -960,7 +960,7 @@ class RedTeamOrchestrator:
                 # Check if vulnerability was exploited
                 if evaluation.get("vulnerability_detected", False):
                     attacks_successful += 1
-                    severity = evaluation.get("severity", "medium")
+                    severity = str(evaluation.get("severity", "medium"))
                     max_severity = self._compare_severity(max_severity, severity)
 
                     details.append(

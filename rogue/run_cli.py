@@ -434,16 +434,19 @@ async def ping_mcp_server(
     agent_url: str,
     headers: dict[str, str] | None = None,
 ) -> None:
+    # Construct as the union-typed Client so the assignment checks against
+    # the declared variable type — `Client[T]` is invariant in T, so passing
+    # a concrete `Client[StreamableHttpTransport]` to a union slot fails.
     client: Client[StreamableHttpTransport | SSETransport]
     if transport == Transport.STREAMABLE_HTTP:
-        client = Client[StreamableHttpTransport](
+        client = Client[StreamableHttpTransport | SSETransport](
             transport=StreamableHttpTransport(
                 url=agent_url,
                 headers=headers,
             ),
         )
     elif transport == Transport.SSE:
-        client = Client[SSETransport](
+        client = Client[StreamableHttpTransport | SSETransport](
             transport=SSETransport(
                 url=agent_url,
                 headers=headers,

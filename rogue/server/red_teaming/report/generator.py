@@ -9,7 +9,7 @@ import csv
 import io
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Any, Dict, List, Optional, Tuple
 
 from loguru import logger
 
@@ -679,7 +679,7 @@ class ComplianceReportGenerator:
                 vulnerability_id=vuln.vulnerability_id,
                 vulnerability_name=vuln.vulnerability_name,
                 severity=vuln.severity if not vuln.passed else None,
-                attacks_used=cast(List[str], attacks_used),
+                attacks_used=attacks_used,
                 attacks_attempted=vuln.attacks_attempted,
                 attacks_successful=vuln.attacks_successful,
                 success_rate=success_rate,

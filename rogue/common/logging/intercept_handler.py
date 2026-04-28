@@ -11,9 +11,15 @@ class InterceptHandler(logging.Handler):
         except ValueError:
             level = record.levelno
 
-        # Find the caller to get the correct stack depth
+        # Find the caller to get the correct stack depth. ``f_back`` is
+        # Optional[FrameType] in the type stubs, so we narrow defensively —
+        # in practice currentframe() always exists and the loop only walks
+        # frames whose parent is ``logging.__file__`` (so f_back is never
+        # really None in this scope).
         frame, depth = logging.currentframe(), 2
-        while frame.f_code.co_filename == logging.__file__:
+        while frame is not None and frame.f_code.co_filename == logging.__file__:
+            if frame.f_back is None:
+                break
             frame = frame.f_back
             depth += 1
 

@@ -454,7 +454,10 @@ async def report_summary_handler(
         )
     except Exception as e:
         logger.exception("Failed to report summary")
+        # `getattr` with a typed default narrows to int instead of object,
+        # which is what HTTPException's status_code: int parameter wants.
+        status_code: int = getattr(e, "status_code", 500)
         raise HTTPException(
-            status_code=e.status_code if hasattr(e, "status_code") else 500,
+            status_code=status_code,
             detail=f"Failed to report summary: {str(e)}",
         )

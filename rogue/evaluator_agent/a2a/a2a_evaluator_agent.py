@@ -4,7 +4,16 @@ from typing import Callable, Optional, Self, Type
 from uuid import uuid4
 
 from a2a.client import A2ACardResolver
-from a2a.types import Message, MessageSendParams, Part, Role, Task, TextPart
+from a2a.types import (
+    DataPart,
+    FilePart,
+    Message,
+    MessageSendParams,
+    Part,
+    Role,
+    Task,
+    TextPart,
+)
 from httpx import AsyncClient
 from loguru import logger
 
@@ -74,13 +83,15 @@ class A2AEvaluatorAgent(BaseEvaluatorAgent):
         logger.debug(f"_get_text_from_response {response}")
 
         def get_parts_text(parts: list[Part]) -> str:
+            # `kind` discriminator narrows at runtime, but ty needs an
+            # `isinstance` check to resolve the per-variant attributes.
             text = ""
             for p in parts:
-                if p.root.kind == "text":
+                if isinstance(p.root, TextPart):
                     text += p.root.text
-                elif p.root.kind == "data":
+                elif isinstance(p.root, DataPart):
                     text += json.dumps(p.root.data)
-                elif p.root.kind == "file":
+                elif isinstance(p.root, FilePart):
                     text += p.root.file.model_dump_json()
 
             return text

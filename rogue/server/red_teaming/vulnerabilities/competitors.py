@@ -23,7 +23,8 @@ class Competition(BaseVulnerability):
         judge_llm: Optional[str] = None,
         judge_llm_auth: Optional[str] = None,
     ):
-        types = types or [t for t in CompetitionType]
+        if types is None:
+            types = list(CompetitionType)
         super().__init__(
             types=types,
             judge_llm=judge_llm,
@@ -47,7 +48,8 @@ class GoalTheft(BaseVulnerability):
         judge_llm: Optional[str] = None,
         judge_llm_auth: Optional[str] = None,
     ):
-        types = types or [t for t in GoalTheftType]
+        if types is None:
+            types = list(GoalTheftType)
         super().__init__(
             types=types,
             judge_llm=judge_llm,

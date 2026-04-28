@@ -26,7 +26,8 @@ class SQLInjection(BaseVulnerability):
         judge_llm: Optional[str] = None,
         judge_llm_auth: Optional[str] = None,
     ):
-        types = types or [t for t in SQLInjectionType]
+        if types is None:
+            types = list(SQLInjectionType)
         super().__init__(
             types=types,
             judge_llm=judge_llm,
@@ -49,7 +50,8 @@ class ShellInjection(BaseVulnerability):
         judge_llm: Optional[str] = None,
         judge_llm_auth: Optional[str] = None,
     ):
-        types = types or [t for t in ShellInjectionType]
+        if types is None:
+            types = list(ShellInjectionType)
         super().__init__(
             types=types,
             judge_llm=judge_llm,
@@ -74,7 +76,8 @@ class SSRF(BaseVulnerability):
         judge_llm: Optional[str] = None,
         judge_llm_auth: Optional[str] = None,
     ):
-        types = types or [t for t in SSRFType]
+        if types is None:
+            types = list(SSRFType)
         super().__init__(
             types=types,
             judge_llm=judge_llm,
@@ -97,7 +100,8 @@ class DebugAccess(BaseVulnerability):
         judge_llm: Optional[str] = None,
         judge_llm_auth: Optional[str] = None,
     ):
-        types = types or [t for t in DebugAccessType]
+        if types is None:
+            types = list(DebugAccessType)
         super().__init__(
             types=types,
             judge_llm=judge_llm,

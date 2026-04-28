@@ -39,17 +39,21 @@ def create_mcp_client(
     from fastmcp import Client
     from fastmcp.client import SSETransport, StreamableHttpTransport
 
+    # Construct as the union-typed Client so the return type matches the
+    # signature; without the explicit generic parameter, ty infers the
+    # concrete `Client[SSETransport]` / `Client[StreamableHttpTransport]`
+    # which doesn't unify with the declared union return.
     if transport == Transport.SSE:
         sse_transport: SSETransport = (
             SSETransport(url=url, headers=headers) if headers else SSETransport(url=url)
         )
-        return Client[SSETransport](transport=sse_transport)
+        return Client[SSETransport | StreamableHttpTransport](transport=sse_transport)
     elif transport == Transport.STREAMABLE_HTTP:
         http_transport: StreamableHttpTransport = (
             StreamableHttpTransport(url=url, headers=headers)
             if headers
             else StreamableHttpTransport(url=url)
         )
-        return Client[StreamableHttpTransport](transport=http_transport)
+        return Client[SSETransport | StreamableHttpTransport](transport=http_transport)
     else:
         raise ValueError(f"Unsupported transport for MCP: {transport}")

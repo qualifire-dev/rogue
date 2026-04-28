@@ -138,9 +138,13 @@ class MCPEvaluatorAgent(BaseEvaluatorAgent):
                 },
             )
 
+            from mcp.types import TextContent
+
             text_response = ""
             for part in tool_result.content:
-                if part.type != "text":
+                # `part.type == "text"` narrows at runtime but ty needs an
+                # explicit isinstance to resolve `.text` on the union variant.
+                if not isinstance(part, TextContent):
                     logger.warning(
                         "Received non-text part in tool result",
                         extra={"type": part.type},

@@ -1,5 +1,5 @@
 import base64
-from typing import TYPE_CHECKING, AsyncGenerator
+from typing import TYPE_CHECKING, Any, AsyncGenerator
 
 from a2a.server.agent_execution import AgentExecutor
 from a2a.server.tasks import TaskUpdater
@@ -31,7 +31,7 @@ class GenericAgentExecutor(AgentExecutor):
         self.runner = runner
         self._card = card
 
-        self._running_sessions = {}  # type: ignore
+        self._running_sessions: dict[str, Any] = {}
 
     def _run_agent(
         self,

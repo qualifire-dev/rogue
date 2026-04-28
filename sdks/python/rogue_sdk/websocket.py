@@ -52,9 +52,9 @@ class RogueWebSocketClient:
         ws_url = f"{self.base_url}/api/v1/ws/{self.job_id}"
 
         try:
-            self.websocket = await websockets.connect(
+            self.websocket = await websockets.connect(  # ty: ignore[invalid-assignment]
                 ws_url,
-            )  # type: ignore[assignment]
+            )
             self.is_connected = True
             self.reconnect_attempts = 0
             self._emit(WebSocketEventType.CONNECTED, {"url": ws_url})
@@ -79,7 +79,10 @@ class RogueWebSocketClient:
                 pass
 
         if self.websocket:
-            await self.websocket.close()  # type: ignore[attr-defined]
+            # websockets.connect returns a ClientConnection whose `close`/`recv`
+            # are dynamically attached on the protocol mixin — neither mypy nor
+            # ty resolves them statically.
+            await self.websocket.close()  # ty: ignore[unresolved-attribute]
             self.websocket = None
 
         self._emit(WebSocketEventType.DISCONNECTED, {})
@@ -111,7 +114,7 @@ class RogueWebSocketClient:
             while not self._stop_event.is_set() and self.websocket:
                 try:
                     message_data = await asyncio.wait_for(
-                        self.websocket.recv(),  # type: ignore[attr-defined]
+                        self.websocket.recv(),  # ty: ignore[unresolved-attribute]
                         timeout=1.0,
                     )
 

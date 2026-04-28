@@ -78,22 +78,24 @@ class JobStore(Generic[T]):
         if value not in ("pending", "running"):
             return
         # Mutate the job in place — Pydantic models are mutable by default.
+        # Use setattr so ty doesn't try to resolve attributes it can't see on
+        # the bare BaseModel parameter (the concrete subclasses do define them).
         try:
-            job.status = EvaluationStatus.FAILED  # type: ignore[attr-defined]
+            setattr(job, "status", EvaluationStatus.FAILED)
         except Exception:
             return
         # Best-effort field updates — different job models may not share
         # every attribute, so silently skip when assignment fails.
         if hasattr(job, "error_message"):
             with contextlib.suppress(Exception):
-                job.error_message = (  # type: ignore[attr-defined]
-                    "Server restarted while the job was in progress."
+                setattr(
+                    job,
+                    "error_message",
+                    "Server restarted while the job was in progress.",
                 )
         if hasattr(job, "completed_at"):
             with contextlib.suppress(Exception):
-                job.completed_at = datetime.now(  # type: ignore[attr-defined]
-                    timezone.utc,
-                )
+                setattr(job, "completed_at", datetime.now(timezone.utc))
 
     def save(self, job: T) -> None:
         job_id = getattr(job, "job_id", None)

@@ -8,9 +8,15 @@ and structured logging using the extra= pattern.
 import logging
 import sys
 from pathlib import Path
-from typing import Any, Dict
+from typing import TYPE_CHECKING
 
 from loguru import logger
+
+if TYPE_CHECKING:
+    # loguru's `filter` callback receives a Record TypedDict, not a plain
+    # `dict[str, Any]`. Type-check time only — at runtime loguru passes a
+    # dict-like, and the function reads/writes by key either way.
+    from loguru import Record
 
 from .context import get_all_context_vars
 from .intercept_handler import InterceptHandler
@@ -21,7 +27,7 @@ from .safe_format import install as _install_safe_format
 _install_safe_format()
 
 
-def _add_context_vars_filter(record: Dict[str, Any]) -> bool:
+def _add_context_vars_filter(record: "Record") -> bool:
     """
     Filter to add context variables to log records.
 
@@ -84,7 +90,7 @@ def configure_logger(
             backtrace=debug,
             rotation="10 MB",
             colorize=False,
-            filter=_add_context_vars_filter,  # type: ignore[arg-type]
+            filter=_add_context_vars_filter,
         )
 
         # Because we also want to log errors to stdout,
@@ -101,7 +107,7 @@ def configure_logger(
         "<level>{message}</level> - {extra}",
         backtrace=debug,
         colorize=True,
-        filter=_add_context_vars_filter,  # type: ignore[arg-type]
+        filter=_add_context_vars_filter,
     )
     intercept_uvicorn_logging(debug)
 

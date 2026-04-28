@@ -68,7 +68,9 @@ def install() -> None:
                     new_args[msg_idx] = _escape_braces(new_args[msg_idx])
                     return orig(self, *new_args, **kwargs)
 
-            wrapper.__wrapped__ = orig
+            # Standard functools-style wrapper attributes; ty doesn't model
+            # these as known attrs of plain functions, so set via setattr.
+            setattr(wrapper, "__wrapped__", orig)
             wrapper.__name__ = level_name
             wrapper.__doc__ = orig.__doc__
             return wrapper

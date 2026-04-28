@@ -202,7 +202,7 @@ async def generate_red_team_summary(
         from ..red_teaming.report import ComplianceReportGenerator
 
         report_gen = ComplianceReportGenerator(
-            results=job.results,  # type: ignore[arg-type]
+            results=job.results,  # ty: ignore[invalid-argument-type]
             frameworks=(
                 list(job.results.framework_compliance.keys())
                 if job.results.framework_compliance
@@ -391,7 +391,7 @@ async def report_red_team_to_rogue_security(
         from ..red_teaming.report import ComplianceReportGenerator
 
         report_gen = ComplianceReportGenerator(
-            results=job.results,  # type: ignore[arg-type]
+            results=job.results,  # ty: ignore[invalid-argument-type]
             frameworks=(
                 list(job.results.framework_compliance.keys())
                 if job.results.framework_compliance
@@ -478,7 +478,7 @@ async def get_red_team_report(
         from ..red_teaming.report.tui_formatter import format_for_tui
 
         report_gen = ComplianceReportGenerator(
-            results=job.results,  # type: ignore[arg-type]
+            results=job.results,  # ty: ignore[invalid-argument-type]
             frameworks=(
                 list(job.results.framework_compliance.keys())
                 if job.results.framework_compliance
