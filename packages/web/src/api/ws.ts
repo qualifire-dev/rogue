@@ -2,9 +2,24 @@ import { useEffect, useReducer, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { wsUrlFor } from "./client";
 import { qk } from "./queries";
-import type { ChatUpdate, EvaluationJob, JobUpdate, WebSocketMessage } from "./types";
+import type {
+  ChatUpdate,
+  EvaluationJob,
+  JobUpdate,
+  RedTeamJob,
+  WebSocketMessage,
+} from "./types";
 
 export type ConnectionState = "connecting" | "open" | "closed" | "polling";
+
+/**
+ * Which TanStack Query cache key the live stream's WS updates should patch.
+ * The hook is shared between the evaluation and red-team detail pages, but
+ * the two have separate query keys (`qk.evaluation` vs `qk.redTeam`); writing
+ * to the wrong one leaves the other page reading stale cached state and
+ * misses the auto-redirect to /report on terminal status.
+ */
+export type JobStreamKind = "evaluation" | "red-team";
 
 export type TimelineEvent =
   | { kind: "status"; at: string; update: JobUpdate }
@@ -71,7 +86,7 @@ function reducer(state: State, action: Action): State {
 
 const BACKOFF_MS = [200, 500, 1000, 2000, 5000];
 
-export function useJobStream(jobId: string | undefined) {
+export function useJobStream(jobId: string | undefined, kind: JobStreamKind = "evaluation") {
   const qc = useQueryClient();
   const [state, dispatch] = useReducer(reducer, {
     connection: "closed",
@@ -87,23 +102,42 @@ export function useJobStream(jobId: string | undefined) {
     if (!jobId) return;
     let cancelled = false;
 
+    // Resolve the cache key once per (jobId, kind). The two job-detail pages
+    // store their job under separate keys; writing to the wrong one leaves the
+    // calling page reading stale data and breaks the auto-redirect on
+    // terminal status.
+    const queryKey =
+      kind === "red-team" ? qk.redTeam(jobId) : qk.evaluation(jobId);
+
     const patchCache = (update: JobUpdate) => {
-      qc.setQueryData<EvaluationJob | undefined>(qk.evaluation(jobId), (prev) =>
-        prev
-          ? { ...prev, ...update }
-          : ({
-              job_id: jobId,
-              created_at: new Date().toISOString(),
-              ...update,
-            } as EvaluationJob),
-      );
+      if (kind === "red-team") {
+        qc.setQueryData<RedTeamJob | undefined>(queryKey, (prev) =>
+          prev
+            ? { ...prev, ...update }
+            : ({
+                job_id: jobId,
+                created_at: new Date().toISOString(),
+                ...update,
+              } as RedTeamJob),
+        );
+      } else {
+        qc.setQueryData<EvaluationJob | undefined>(queryKey, (prev) =>
+          prev
+            ? { ...prev, ...update }
+            : ({
+                job_id: jobId,
+                created_at: new Date().toISOString(),
+                ...update,
+              } as EvaluationJob),
+        );
+      }
     };
 
     const startPolling = () => {
       dispatch({ type: "polling" });
       const tick = async () => {
         if (cancelled) return;
-        await qc.invalidateQueries({ queryKey: qk.evaluation(jobId) });
+        await qc.invalidateQueries({ queryKey });
         pollTimeoutRef.current = window.setTimeout(tick, 2000);
       };
       tick();
@@ -137,14 +171,17 @@ export function useJobStream(jobId: string | undefined) {
               dispatch({ type: "status", update });
               patchCache(update);
               // Terminal status: pull the full job from the server so the
-              // cached entry includes `evaluation_results` (which the WS
-              // payload doesn't carry). Otherwise /report sees stale data.
+              // cached entry includes terminal-only payload (evaluation
+              // `evaluation_results` / red-team `results` + `conversations`)
+              // that the WS update doesn't carry. Without this, /report sees
+              // stale data AND the live page's `isTerminal` redirect never
+              // fires until the user manually reloads.
               if (
                 update.status === "completed" ||
                 update.status === "failed" ||
                 update.status === "cancelled"
               ) {
-                qc.invalidateQueries({ queryKey: qk.evaluation(jobId) });
+                qc.invalidateQueries({ queryKey });
               }
             } else if (msg.type === "chat_update" && msg.data) {
               const chat = msg.data as ChatUpdate;

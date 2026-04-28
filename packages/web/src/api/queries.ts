@@ -7,6 +7,7 @@ import type {
   JobListResponse,
   RedTeamJob,
   RedTeamJobListResponse,
+  RedTeamReport,
   RedTeamRequest,
   SendMessageResponse,
   StartInterviewResponse,
@@ -87,6 +88,19 @@ export function useRedTeamJob(jobId: string | undefined) {
     queryKey: qk.redTeam(jobId ?? ""),
     queryFn: () => api<RedTeamJob>(`/api/v1/red-team/${jobId}`),
     enabled: !!jobId,
+    // Mirror useEvaluation: WS patches don't carry results / conversations,
+    // so always refetch on mount to surface the post-completion data.
+    staleTime: 0,
+    refetchOnMount: "always",
+  });
+}
+
+export function useRedTeamReport(jobId: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: qk.redTeamReport(jobId ?? ""),
+    queryFn: () => api<RedTeamReport>(`/api/v1/red-team/${jobId}/report`),
+    enabled: !!jobId && enabled,
+    staleTime: 30_000,
   });
 }
 

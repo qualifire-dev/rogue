@@ -188,42 +188,89 @@ class RedTeamConfig(BaseModel):
 
 
 class VulnerabilityResult(BaseModel):
-    """Result of testing a single vulnerability."""
+    """Result of testing a single vulnerability.
+
+    Permissive superset of the historical SDK shape and the server's actual
+    output (``rogue.server.red_teaming.models.VulnerabilityResult``). Both
+    representations round-trip through this schema so jobs persisted to disk
+    by either path reload cleanly.
+    """
 
     vulnerability_id: str = Field(description="ID of the vulnerability tested")
     vulnerability_name: str = Field(description="Display name of the vulnerability")
-    category: VulnerabilityCategory = Field(description="Vulnerability category")
     passed: bool = Field(description="Whether the test passed (no vulnerability found)")
-    attack_results: List[Dict[str, Any]] = Field(
-        default_factory=list,
-        description="Results from each attack attempt",
+    # Optional — older SDK callers populated this; the server doesn't.
+    category: Optional[VulnerabilityCategory] = Field(
+        default=None,
+        description="Vulnerability category (legacy SDK field)",
     )
     severity: Optional[Severity] = Field(
         default=None,
         description="Severity if vulnerability found",
     )
+    # Server-side fields — the orchestrator populates these instead of
+    # `attack_results`/`evidence`/`recommendations`.
+    attacks_attempted: int = Field(
+        default=0,
+        description="Number of attacks attempted against this vulnerability",
+    )
+    attacks_successful: int = Field(
+        default=0,
+        description="Number of attacks that found vulnerabilities",
+    )
+    cvss_score: Optional[float] = Field(
+        default=None,
+        description="CVSS-like risk score (0-10)",
+    )
+    risk_level: Optional[str] = Field(
+        default=None,
+        description="Risk classification: critical, high, medium, low",
+    )
+    risk_components: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Detailed risk score components (impact, exploitability, ...)",
+    )
+    details: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Per-attack detailed result records",
+    )
+    # Legacy SDK fields kept for back-compat with old persisted JSON.
+    attack_results: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Legacy: results from each attack attempt",
+    )
     evidence: Optional[List[str]] = Field(
         default=None,
-        description="Evidence/logs supporting the finding",
+        description="Legacy: evidence/logs supporting the finding",
     )
     recommendations: Optional[List[str]] = Field(
         default=None,
-        description="Remediation recommendations",
+        description="Legacy: remediation recommendations",
     )
 
 
 class FrameworkCompliance(BaseModel):
-    """Compliance status for a framework."""
+    """Compliance status for a framework.
+
+    Permissive superset of the SDK and server (``rogue.server.red_teaming.
+    models.FrameworkCompliance``) shapes — the server uses
+    `vulnerabilities_tested/passed`, the SDK historically used
+    `categories_tested/passed`. Both are accepted on load.
+    """
 
     framework_id: str = Field(description="Framework ID (e.g., 'owasp-llm')")
     framework_name: str = Field(description="Display name of the framework")
     compliance_score: float = Field(
+        default=0.0,
         description="Compliance score 0-100",
         ge=0,
         le=100,
     )
-    categories_tested: int = Field(description="Number of categories tested")
-    categories_passed: int = Field(description="Number of categories that passed")
+    # Either naming may show up in persisted JSON depending on producer.
+    categories_tested: int = Field(default=0, description="Categories tested")
+    categories_passed: int = Field(default=0, description="Categories passed")
+    vulnerabilities_tested: int = Field(default=0, description="Vulns tested")
+    vulnerabilities_passed: int = Field(default=0, description="Vulns passed")
     vulnerability_breakdown: List[Dict[str, Any]] = Field(
         default_factory=list,
         description="Per-vulnerability compliance status",
@@ -235,12 +282,20 @@ class FrameworkCompliance(BaseModel):
 
 
 class AttackStats(BaseModel):
-    """Statistics for a single attack type."""
+    """Statistics for a single attack type.
+
+    Permissive: server uses ``success_count`` while older SDK callers used
+    ``successful_count``. Both fields exist; producers populate either.
+    """
 
     attack_id: str = Field(description="ID of the attack")
     attack_name: str = Field(description="Display name of the attack")
     times_used: int = Field(default=0, description="Total times the attack was used")
     successful_count: int = Field(
+        default=0,
+        description="Legacy alias of success_count",
+    )
+    success_count: int = Field(
         default=0,
         description="Times the attack found a vulnerability",
     )
@@ -252,10 +307,21 @@ class AttackStats(BaseModel):
         default=None,
         description="Average metric score across uses",
     )
+    vulnerabilities_tested: List[str] = Field(
+        default_factory=list,
+        description="Vulnerability IDs this attack ran against",
+    )
 
 
 class RedTeamResults(BaseModel):
-    """Results from red team evaluation."""
+    """Results from red team evaluation.
+
+    Permissive superset of the SDK and server (``rogue.server.red_teaming.
+    models.RedTeamResults``) shapes — server emits ``overall_score`` (0-100,
+    higher = safer) while older SDK callers used ``overall_risk_score``
+    (0-10, higher = riskier). Both are accepted; the server-side shape is
+    what the API and persisted JSON actually carry.
+    """
 
     vulnerability_results: List[VulnerabilityResult] = Field(
         default_factory=list,
@@ -283,9 +349,17 @@ class RedTeamResults(BaseModel):
     )
     overall_risk_score: Optional[float] = Field(
         default=None,
-        description="Overall risk score 0-10",
+        description="Legacy: overall risk score 0-10 (higher = riskier)",
         ge=0.0,
         le=10.0,
+    )
+    overall_score: float = Field(
+        default=100.0,
+        description="Overall security score 0-100 (higher = safer)",
+    )
+    conversations: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Captured conversation logs for export / report rendering",
     )
 
 
@@ -947,6 +1021,13 @@ class RedTeamJob(BaseModel):
     results: Optional["RedTeamResults"] = None
     error_message: Optional[str] = None
     progress: float = 0.0
+    # Captured chat-update events from the orchestrator. Persisted on each
+    # WS broadcast so the web UI's report → Conversations tab has data
+    # even after a server restart.
+    conversations: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Chat-update events captured during the scan",
+    )
 
 
 class RedTeamResponse(BaseModel):

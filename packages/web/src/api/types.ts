@@ -114,6 +114,12 @@ export interface RedTeamRequest {
   timeout_seconds?: number;
 }
 
+export interface RedTeamConversationMessage {
+  role: string;
+  content: string;
+  [k: string]: unknown;
+}
+
 export interface RedTeamJob {
   job_id: string;
   status: EvaluationStatus;
@@ -124,6 +130,76 @@ export interface RedTeamJob {
   progress: number;
   request?: RedTeamRequest;
   results?: unknown;
+  // Captured chat-update events from the orchestrator (server appends each
+  // one as the scan runs so the report's Conversations tab has data even
+  // after a server restart).
+  conversations?: RedTeamConversationMessage[];
+}
+
+// Shape of GET /api/v1/red-team/{id}/report (server's tui_formatter.format_for_tui).
+export interface RedTeamReportSeverityCounts {
+  critical_count: number;
+  high_count: number;
+  medium_count: number;
+  low_count: number;
+  total_vulnerabilities_tested: number;
+  total_vulnerabilities_found: number;
+  overall_score: number;
+  severity_colors?: Record<string, string>;
+}
+
+export interface RedTeamReportKeyFinding {
+  vulnerability_id: string;
+  vulnerability_name: string;
+  cvss_score: number;
+  severity: string | null;
+  summary: string;
+  attack_ids: string[];
+  success_rate: number;
+  color?: string;
+}
+
+export interface RedTeamReportVulnerabilityRow {
+  vulnerability_id: string;
+  vulnerability_name: string;
+  severity: string | null;
+  attacks_used: string[];
+  attacks_attempted: number;
+  attacks_successful: number;
+  success_rate: number;
+  passed: boolean;
+  color?: string;
+  status_icon?: string;
+}
+
+export interface RedTeamReportFrameworkCard {
+  framework_id: string;
+  framework_name: string;
+  compliance_score: number;
+  tested_count: number;
+  total_count: number;
+  passed_count: number;
+  status: string;
+  color?: string;
+  icon?: string;
+}
+
+export interface RedTeamReport {
+  metadata: {
+    scan_date?: string | null;
+    scan_type?: string | null;
+    frameworks_tested?: string[];
+    attacks_used?: string[];
+    random_seed?: number | null;
+  };
+  highlights: RedTeamReportSeverityCounts;
+  key_findings: RedTeamReportKeyFinding[];
+  vulnerability_table: RedTeamReportVulnerabilityRow[];
+  framework_coverage: RedTeamReportFrameworkCard[];
+  export_paths?: {
+    conversations_csv?: string | null;
+    summary_csv?: string | null;
+  };
 }
 
 export interface RedTeamJobListResponse {

@@ -5,17 +5,15 @@ import { toast } from "sonner";
 import { ModelPickerButton } from "@/components/model-picker/dialog";
 import { CatalogPane } from "@/components/red-team/catalog-pane";
 import { FrameworksDialog } from "@/components/red-team/frameworks-dialog";
+import {
+  DEFAULT_TARGET_AGENT_VALUE,
+  TargetAgentForm,
+  type TargetAgentValue,
+} from "@/components/target-agent-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useStartRedTeam } from "@/api/queries";
 import {
   ATTACK_CATALOG,
@@ -27,23 +25,11 @@ import {
   totalAttacks,
   totalVulns,
 } from "@/lib/red-team-catalog";
-import {
-  authNeedsCredentials,
-  getTransportsForProtocol,
-  protocolNeedsAgentUrl,
-} from "@/lib/protocols";
+import { authNeedsCredentials, protocolNeedsAgentUrl } from "@/lib/protocols";
 import { useConfig } from "@/stores/config";
 import { useRedTeamConfig } from "@/stores/red-team";
 import { cn } from "@/lib/utils";
-import {
-  AUTH_TYPE_LABELS,
-  PROTOCOL_LABELS,
-  TRANSPORT_LABELS,
-  type AuthType,
-  type Protocol,
-  type ScanType,
-  type Transport,
-} from "@/api/types";
+import { AUTH_TYPE_LABELS, type ScanType } from "@/api/types";
 
 export const Route = createFileRoute("/red-team/configure")({
   component: RedTeamConfigurePage,
@@ -67,45 +53,16 @@ const SCAN_TYPES: { id: ScanType; label: string; description: string }[] = [
   },
 ];
 
-const PROTOCOLS: Protocol[] = ["a2a", "mcp", "python", "openai_api"];
-const AUTH_TYPES: AuthType[] = ["no_auth", "api_key", "bearer_token", "basic"];
-
-function credentialsPlaceholder(auth: AuthType): string {
-  switch (auth) {
-    case "api_key":
-      return "API key sent as X-API-Key";
-    case "bearer_token":
-      return "Bearer token";
-    case "basic":
-      return "user:password (or pre-encoded base64)";
-    default:
-      return "";
-  }
-}
-
 function RedTeamConfigurePage() {
   const cfg = useConfig();
   const navigate = useNavigate();
   const start = useStartRedTeam();
   const rt = useRedTeamConfig();
 
-  const [protocol, setProtocol] = useState<Protocol>("a2a");
-  const [transport, setTransport] = useState<Transport | "">("http");
-  const [agentUrl, setAgentUrl] = useState("http://localhost:10001");
-  const [pythonFile, setPythonFile] = useState("");
-  const [authType, setAuthType] = useState<AuthType>("no_auth");
-  const [credentials, setCredentials] = useState("");
+  const [agent, setAgent] = useState<TargetAgentValue>(DEFAULT_TARGET_AGENT_VALUE);
 
-  const transports = useMemo(() => getTransportsForProtocol(protocol), [protocol]);
-  const needsAgentUrl = protocolNeedsAgentUrl(protocol);
-  const isPython = protocol === "python";
-
-  const onProtocolChange = (next: Protocol) => {
-    setProtocol(next);
-    const opts = getTransportsForProtocol(next);
-    setTransport(opts[0] ?? "");
-    if (next === "python") setAuthType("no_auth");
-  };
+  const isPython = agent.protocol === "python";
+  const needsAgentUrl = protocolNeedsAgentUrl(agent.protocol);
 
   const onScanTypeChange = (next: ScanType) => {
     rt.setScanType(next);
@@ -140,12 +97,12 @@ function RedTeamConfigurePage() {
       toast.error("Select at least one attack");
       return;
     }
-    if (isPython && !pythonFile.trim()) {
+    if (isPython && !agent.pythonFile.trim()) {
       toast.error("A Python entrypoint file is required for the python protocol.");
       return;
     }
-    if (authNeedsCredentials(authType) && !credentials.trim()) {
-      toast.error(`${AUTH_TYPE_LABELS[authType]} requires credentials.`);
+    if (authNeedsCredentials(agent.authType) && !agent.credentials.trim()) {
+      toast.error(`${AUTH_TYPE_LABELS[agent.authType]} requires credentials.`);
       return;
     }
     try {
@@ -157,14 +114,14 @@ function RedTeamConfigurePage() {
           attacks_per_vulnerability: rt.attacksPerVulnerability,
           frameworks: rt.frameworks,
         },
-        evaluated_agent_url: needsAgentUrl ? agentUrl : undefined,
-        evaluated_agent_protocol: protocol,
-        evaluated_agent_transport: transport || undefined,
-        evaluated_agent_auth_type: authType,
-        evaluated_agent_auth_credentials: authNeedsCredentials(authType)
-          ? credentials.trim()
+        evaluated_agent_url: needsAgentUrl ? agent.agentUrl : undefined,
+        evaluated_agent_protocol: agent.protocol,
+        evaluated_agent_transport: agent.transport || undefined,
+        evaluated_agent_auth_type: agent.authType,
+        evaluated_agent_auth_credentials: authNeedsCredentials(agent.authType)
+          ? agent.credentials.trim()
           : undefined,
-        python_entrypoint_file: isPython ? pythonFile.trim() : undefined,
+        python_entrypoint_file: isPython ? agent.pythonFile.trim() : undefined,
         judge_llm: cfg.judgeModel,
         judge_llm_api_key: cfg.apiKeys[cfg.judgeProvider],
         judge_llm_api_base: cfg.judgeApiBase,
@@ -210,6 +167,12 @@ function RedTeamConfigurePage() {
         </div>
       </div>
 
+      <TargetAgentForm
+        value={agent}
+        onChange={setAgent}
+        description="How to reach the agent under scan."
+      />
+
       <Card>
         <CardHeader>
           <CardTitle>Scan type</CardTitle>
@@ -236,96 +199,6 @@ function RedTeamConfigurePage() {
               </button>
             ))}
           </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Target agent</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Protocol</Label>
-              <Select value={protocol} onValueChange={(v) => onProtocolChange(v as Protocol)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PROTOCOLS.map((p) => (
-                    <SelectItem key={p} value={p}>
-                      {PROTOCOL_LABELS[p]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {transports.length > 0 && (
-              <div className="space-y-1.5">
-                <Label>Transport</Label>
-                <Select value={transport} onValueChange={(v) => setTransport(v as Transport)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {transports.map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {TRANSPORT_LABELS[t]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </div>
-          {isPython ? (
-            <div className="space-y-1.5">
-              <Label>Python entrypoint file</Label>
-              <Input
-                value={pythonFile}
-                onChange={(e) => setPythonFile(e.target.value)}
-                placeholder="/path/to/agent.py"
-                className="font-mono text-xs"
-              />
-            </div>
-          ) : (
-            <div className="space-y-1.5">
-              <Label>Agent URL</Label>
-              <Input value={agentUrl} onChange={(e) => setAgentUrl(e.target.value)} />
-            </div>
-          )}
-          {!isPython && (
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Auth type</Label>
-                <Select value={authType} onValueChange={(v) => setAuthType(v as AuthType)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {AUTH_TYPES.map((a) => (
-                      <SelectItem key={a} value={a}>
-                        {AUTH_TYPE_LABELS[a]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {authNeedsCredentials(authType) && (
-                <div className="space-y-1.5">
-                  <Label>
-                    {authType === "basic" ? "user:password" : AUTH_TYPE_LABELS[authType]}
-                  </Label>
-                  <Input
-                    type="password"
-                    value={credentials}
-                    onChange={(e) => setCredentials(e.target.value)}
-                    placeholder={credentialsPlaceholder(authType)}
-                  />
-                </div>
-              )}
-            </div>
-          )}
         </CardContent>
       </Card>
 

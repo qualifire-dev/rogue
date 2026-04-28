@@ -173,6 +173,10 @@ class RedTeamService:
                         f"📨 Red team chat update received for job {job_id}",
                         extra={"data": data},
                     )
+                    # Capture on the job so the report's Conversations tab
+                    # has data without depending on the live WS stream.
+                    if isinstance(data, dict):
+                        job.conversations.append(data)
                     self._send_websocket(
                         job_id,
                         WebSocketEventType.CHAT_UPDATE,

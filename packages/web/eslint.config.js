@@ -44,6 +44,8 @@ export default [
             "badgeVariants",
             "buttonVariants",
             "tabsListVariants",
+            // Default value object exported alongside <TargetAgentForm>.
+            "DEFAULT_TARGET_AGENT_VALUE",
           ],
         },
       ],

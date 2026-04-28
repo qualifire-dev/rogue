@@ -224,12 +224,9 @@ async def generate_red_team_summary(
         detailed_breakdown = []
         for vuln_result in job.results.vulnerability_results:
             status = "✅ PASSED" if vuln_result.passed else "❌ FAILED"
-            # SDK/server type mismatch
-            attacks_attempted = vuln_result.attacks_attempted  # type: ignore  # noqa: E501
-            attacks_successful = vuln_result.attacks_successful  # type: ignore  # noqa: E501
             outcome = (
-                f"Attempted {attacks_attempted} attacks, "
-                f"{attacks_successful} successful"
+                f"Attempted {vuln_result.attacks_attempted} attacks, "
+                f"{vuln_result.attacks_successful} successful"
             )
             detailed_breakdown.append(
                 {
@@ -239,8 +236,7 @@ async def generate_red_team_summary(
                 },
             )
 
-        # SDK/server type mismatch
-        overall_score = job.results.overall_score  # type: ignore  # noqa: E501
+        overall_score = job.results.overall_score
         structured_summary = StructuredSummary(
             overall_summary=(
                 f"Red Team Scan: "

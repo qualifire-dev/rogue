@@ -1,57 +1,25 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { IconArrowRight, IconAlertTriangle, IconFolderOpen } from "@tabler/icons-react";
-import { useMemo, useState } from "react";
+import { IconArrowRight, IconAlertTriangle } from "@tabler/icons-react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { ModelPickerButton } from "@/components/model-picker/dialog";
-import { api } from "@/api/client";
+import {
+  DEFAULT_TARGET_AGENT_VALUE,
+  TargetAgentForm,
+  type TargetAgentValue,
+} from "@/components/target-agent-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useStartEvaluation } from "@/api/queries";
-import {
-  authNeedsCredentials,
-  getTransportsForProtocol,
-  protocolNeedsAgentUrl,
-} from "@/lib/protocols";
+import { authNeedsCredentials, protocolNeedsAgentUrl } from "@/lib/protocols";
 import { useConfig } from "@/stores/config";
 import { useScenariosStore } from "@/stores/scenarios";
-import {
-  AUTH_TYPE_LABELS,
-  PROTOCOL_LABELS,
-  TRANSPORT_LABELS,
-  type AuthType,
-  type Protocol,
-  type Transport,
-} from "@/api/types";
+import { AUTH_TYPE_LABELS } from "@/api/types";
 
 export const Route = createFileRoute("/evaluations/new")({
   component: NewEvaluationPage,
 });
-
-const PROTOCOLS: Protocol[] = ["a2a", "mcp", "python", "openai_api"];
-const AUTH_TYPES: AuthType[] = ["no_auth", "api_key", "bearer_token", "basic"];
-
-function credentialsPlaceholder(auth: AuthType): string {
-  switch (auth) {
-    case "api_key":
-      return "API key sent as X-API-Key";
-    case "bearer_token":
-      return "Bearer token";
-    case "basic":
-      return "user:password (or pre-encoded base64)";
-    default:
-      return "";
-  }
-}
 
 function NewEvaluationPage() {
   const navigate = useNavigate();
@@ -59,56 +27,22 @@ function NewEvaluationPage() {
   const start = useStartEvaluation();
   const scenarios = useScenariosStore((s) => s.scenarios);
 
-  const [protocol, setProtocol] = useState<Protocol>("a2a");
-  const [transport, setTransport] = useState<Transport | "">("http");
-  const [agentUrl, setAgentUrl] = useState("http://localhost:10001");
-  const [pythonFile, setPythonFile] = useState("");
-  const [pickingPython, setPickingPython] = useState(false);
-  const [authType, setAuthType] = useState<AuthType>("no_auth");
-  const [credentials, setCredentials] = useState("");
+  const [agent, setAgent] = useState<TargetAgentValue>(DEFAULT_TARGET_AGENT_VALUE);
 
-  const pickPythonEntrypoint = async () => {
-    setPickingPython(true);
-    try {
-      // The local server opens a native OS file dialog and returns the
-      // absolute path. Browsers themselves never expose the real path from
-      // <input type="file">, so we go through the local server instead.
-      const res = await api<{ path: string | null }>("/api/v1/fs/pick-file", {
-        body: {
-          extensions: ["py"],
-          prompt: "Select Python entrypoint",
-        },
-      });
-      if (res.path) setPythonFile(res.path);
-    } catch (e) {
-      toast.error(`Couldn't open file dialog: ${(e as Error).message}`);
-    } finally {
-      setPickingPython(false);
-    }
-  };
-
-  const transports = useMemo(() => getTransportsForProtocol(protocol), [protocol]);
-  const needsAgentUrl = protocolNeedsAgentUrl(protocol);
-  const isPython = protocol === "python";
-
-  const onProtocolChange = (next: Protocol) => {
-    setProtocol(next);
-    const opts = getTransportsForProtocol(next);
-    setTransport(opts[0] ?? "");
-    if (next === "python") setAuthType("no_auth");
-  };
+  const isPython = agent.protocol === "python";
+  const needsAgentUrl = protocolNeedsAgentUrl(agent.protocol);
 
   const submit = async () => {
     if (scenarios.length === 0) {
       toast.error("Add at least one scenario before running an evaluation.");
       return;
     }
-    if (isPython && !pythonFile.trim()) {
+    if (isPython && !agent.pythonFile.trim()) {
       toast.error("A Python entrypoint file is required for the python protocol.");
       return;
     }
-    if (authNeedsCredentials(authType) && !credentials.trim()) {
-      toast.error(`${AUTH_TYPE_LABELS[authType]} requires credentials.`);
+    if (authNeedsCredentials(agent.authType) && !agent.credentials.trim()) {
+      toast.error(`${AUTH_TYPE_LABELS[agent.authType]} requires credentials.`);
       return;
     }
     try {
@@ -116,13 +50,13 @@ function NewEvaluationPage() {
         agent_config: {
           // AgentConfig's fields are unprefixed for protocol/transport (the
           // `evaluated_agent_` prefix only exists on the red-team schema).
-          protocol,
-          transport: transport || undefined,
-          evaluated_agent_url: needsAgentUrl ? agentUrl : undefined,
-          python_entrypoint_file: isPython ? pythonFile.trim() : undefined,
-          evaluated_agent_auth_type: authType,
-          evaluated_agent_credentials: authNeedsCredentials(authType)
-            ? credentials.trim()
+          protocol: agent.protocol,
+          transport: agent.transport || undefined,
+          evaluated_agent_url: needsAgentUrl ? agent.agentUrl : undefined,
+          python_entrypoint_file: isPython ? agent.pythonFile.trim() : undefined,
+          evaluated_agent_auth_type: agent.authType,
+          evaluated_agent_credentials: authNeedsCredentials(agent.authType)
+            ? agent.credentials.trim()
             : undefined,
           judge_llm: cfg.judgeModel,
           judge_llm_api_key: cfg.apiKeys[cfg.judgeProvider],
@@ -148,120 +82,11 @@ function NewEvaluationPage() {
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Target agent</CardTitle>
-          <CardDescription>How to reach the agent under evaluation.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Protocol</Label>
-              <Select value={protocol} onValueChange={(v) => onProtocolChange(v as Protocol)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PROTOCOLS.map((p) => (
-                    <SelectItem key={p} value={p}>
-                      {PROTOCOL_LABELS[p]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {transports.length > 0 && (
-              <div className="space-y-1.5">
-                <Label>Transport</Label>
-                <Select value={transport} onValueChange={(v) => setTransport(v as Transport)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {transports.map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {TRANSPORT_LABELS[t]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </div>
-          {needsAgentUrl && (
-            <div className="space-y-1.5">
-              <Label htmlFor="agent-url">Agent URL</Label>
-              <Input
-                id="agent-url"
-                value={agentUrl}
-                onChange={(e) => setAgentUrl(e.target.value)}
-                placeholder="http://localhost:10001"
-              />
-            </div>
-          )}
-          {isPython && (
-            <div className="space-y-1.5">
-              <Label htmlFor="python-file">Python entrypoint file</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="python-file"
-                  value={pythonFile}
-                  onChange={(e) => setPythonFile(e.target.value)}
-                  placeholder="/path/to/agent.py"
-                  className="font-mono text-xs"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="shrink-0"
-                  onClick={pickPythonEntrypoint}
-                  disabled={pickingPython}
-                >
-                  <IconFolderOpen className="mr-1.5 h-4 w-4" />
-                  {pickingPython ? "Opening…" : "Browse…"}
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Absolute path to a Python file that exports a{" "}
-                <code className="rounded bg-muted px-1 py-0.5">call_agent</code> function.
-              </p>
-            </div>
-          )}
-          {!isPython && (
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Auth type</Label>
-                <Select value={authType} onValueChange={(v) => setAuthType(v as AuthType)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {AUTH_TYPES.map((a) => (
-                      <SelectItem key={a} value={a}>
-                        {AUTH_TYPE_LABELS[a]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {authNeedsCredentials(authType) && (
-                <div className="space-y-1.5">
-                  <Label htmlFor="creds">
-                    {authType === "basic" ? "user:password" : AUTH_TYPE_LABELS[authType]}
-                  </Label>
-                  <Input
-                    id="creds"
-                    type="password"
-                    value={credentials}
-                    onChange={(e) => setCredentials(e.target.value)}
-                    placeholder={credentialsPlaceholder(authType)}
-                  />
-                </div>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <TargetAgentForm
+        value={agent}
+        onChange={setAgent}
+        description="How to reach the agent under evaluation."
+      />
 
       <Card>
         <CardHeader>
