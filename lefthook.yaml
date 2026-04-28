@@ -65,3 +65,20 @@ pre-commit:
     - name: go vet
       glob: "*.go"
       run: (cd packages/tui && go vet ./...)
+
+    # Web (TypeScript / React)
+    # `root:` rebases {staged_files} so they're relative to packages/web,
+    # which is what prettier/eslint expect when their config lives there.
+    - name: prettier-web
+      root: "packages/web/"
+      glob: "*.{ts,tsx,js,jsx,json,css,md}"
+      run: pnpm exec prettier --write {staged_files}
+
+    - name: eslint-web
+      root: "packages/web/"
+      glob: "*.{ts,tsx,js,jsx}"
+      run: pnpm exec eslint --fix {staged_files}
+
+    - name: tsc-web
+      glob: "packages/web/**/*.{ts,tsx}"
+      run: (cd packages/web && pnpm exec tsc --noEmit)

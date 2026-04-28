@@ -14,6 +14,7 @@ from rogue_sdk.types import (
 from ...common.logging import get_logger, set_job_context
 from ..core.red_team_orchestrator import RedTeamOrchestrator
 from ..websocket.manager import get_websocket_manager
+from .job_store import JobStore
 
 logger = get_logger(__name__)
 
@@ -22,15 +23,19 @@ class RedTeamService:
     """Service for managing red team scan jobs."""
 
     def __init__(self) -> None:
-        self.jobs: Dict[str, RedTeamJob] = {}
         self.logger = get_logger(__name__)
         self.websocket_manager = get_websocket_manager()
         self._lock = asyncio.Lock()
+        self._store: JobStore[RedTeamJob] = JobStore("red_team", RedTeamJob)
+        self.jobs: Dict[str, RedTeamJob] = self._store.load_all()
+        for job in self.jobs.values():
+            self._store.save(job)
 
     async def add_job(self, job: RedTeamJob):
         """Add a new red team job."""
         async with self._lock:
             self.jobs[job.job_id] = job
+        self._store.save(job)
 
     async def get_job(self, job_id: str) -> Optional[RedTeamJob]:
         """Get a red team job by ID."""
@@ -214,6 +219,8 @@ class RedTeamService:
 
     def _notify_job_update(self, job: RedTeamJob):
         """Notify websocket clients about job status update."""
+        # Persist on every state change so scans survive restarts.
+        self._store.save(job)
         message = WebSocketMessage(
             type=WebSocketEventType.JOB_UPDATE,
             job_id=job.job_id,

@@ -455,6 +455,59 @@ class BaseEvaluatorAgent(ABC):
 
         self._evaluation_results.add_result(evaluation_result)
 
+    def _log_evaluation_failure(
+        self,
+        scenario: dict[str, Any],
+        context_id: str,
+        reason: str,
+    ) -> None:
+        """Log a failed evaluation directly, bypassing the judge LLM.
+
+        Used when the conversation could not proceed at all (e.g. the target
+        agent was unreachable / returned an error / never produced a reply),
+        so there is nothing for the judge to evaluate against the
+        ``expected_outcome``. Without this path the judge would see an empty
+        history and frequently default to ``passed=True``, masking the fact
+        that the agent was simply down.
+        """
+        if not isinstance(scenario, dict):
+            logger.error(
+                "❌ _log_evaluation_failure: scenario is not a dict; skipping",
+                extra={"scenario_type": type(scenario).__name__},
+            )
+            return
+
+        try:
+            scenario_parsed = Scenario.model_validate(scenario)
+        except ValidationError as e:
+            logger.warning(
+                "⚠️ _log_evaluation_failure: scenario validation failed",
+                extra={"scenario": scenario, "error": str(e)},
+            )
+            return
+
+        conversation_history = self._context_id_to_chat_history.get(
+            context_id,
+            ChatHistory(),
+        )
+
+        evaluation_result = EvaluationResult(
+            scenario=scenario_parsed,
+            conversations=[
+                ConversationEvaluation(
+                    messages=conversation_history,
+                    passed=False,
+                    reason=reason,
+                ),
+            ],
+            passed=False,
+        )
+        self._evaluation_results.add_result(evaluation_result)
+        logger.warning(
+            "📕 logged scenario as FAILED without judge",
+            extra={"reason": reason, "context_id": context_id},
+        )
+
     def get_evaluation_results(self) -> EvaluationResults:
         results = self._evaluation_results
 

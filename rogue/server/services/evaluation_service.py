@@ -14,20 +14,26 @@ from rogue_sdk.types import (
 from ...common.logging import get_logger, set_job_context
 from ..core.evaluation_orchestrator import EvaluationOrchestrator
 from ..websocket.manager import get_websocket_manager
+from .job_store import JobStore
 
 logger = get_logger(__name__)
 
 
 class EvaluationService:
     def __init__(self) -> None:
-        self.jobs: Dict[str, EvaluationJob] = {}
         self.logger = get_logger(__name__)
         self.websocket_manager = get_websocket_manager()
         self._lock = asyncio.Lock()
+        self._store: JobStore[EvaluationJob] = JobStore("evaluations", EvaluationJob)
+        self.jobs: Dict[str, EvaluationJob] = self._store.load_all()
+        # Persist any in-flight → failed flips that load_all may have applied.
+        for job in self.jobs.values():
+            self._store.save(job)
 
     async def add_job(self, job: EvaluationJob):
         async with self._lock:
             self.jobs[job.job_id] = job
+        self._store.save(job)
 
     async def get_job(self, job_id: str) -> Optional[EvaluationJob]:
         async with self._lock:
@@ -280,6 +286,8 @@ class EvaluationService:
             self._notify_job_update(job)
 
     def _notify_job_update(self, job: EvaluationJob):
+        # Persist on every state change so the run survives a crash / restart.
+        self._store.save(job)
         asyncio.create_task(self.websocket_manager.broadcast_job_update(job))
 
     def _notify_chat_update(self, job_id: str, chat_data: Any):

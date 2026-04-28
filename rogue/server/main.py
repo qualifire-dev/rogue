@@ -19,12 +19,14 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import uvicorn
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from ..common.logging import configure_logger, get_logger
+from .api.config import router as config_router
 from .api.evaluation import router as evaluation_router
 from .api.health import router as health_router
 from .api.interview import router as interview_router
@@ -81,9 +83,66 @@ def create_app() -> FastAPI:
     app.include_router(red_team_router, prefix="/api/v1")
     app.include_router(llm_router, prefix="/api/v1")
     app.include_router(interview_router, prefix="/api/v1")
+    app.include_router(config_router, prefix="/api/v1")
     app.include_router(websocket_router, prefix="/api/v1")
 
+    _mount_web_ui(app)
+
     return app
+
+
+def _resolve_web_dist() -> Path | None:
+    """Locate the bundled SPA — installed wheel layout, or source-tree fallback."""
+    bundled = Path(__file__).resolve().parent.parent / "web_dist"
+    if (bundled / "index.html").is_file():
+        return bundled
+    for parent in Path(__file__).resolve().parents:
+        candidate = parent / "packages" / "web" / "dist"
+        if (candidate / "index.html").is_file():
+            return candidate
+    return None
+
+
+def _mount_web_ui(app: FastAPI) -> None:
+    """Serve the bundled SPA when present.
+
+    The SPA is bundled into ``rogue/web_dist/`` by the wheel build (Hatch
+    force-include of ``packages/web/dist``). When absent (e.g. dev install
+    without ``pnpm build``), this is a no-op and the API still works.
+
+    Hashed assets are mounted at ``/assets``; every other non-API GET returns
+    ``index.html`` so client-side routes deep-link cleanly.
+    """
+    web_dist = _resolve_web_dist()
+    if web_dist is None:
+        return
+    index_html = web_dist / "index.html"
+
+    assets_dir = web_dist / "assets"
+    if assets_dir.is_dir():
+        app.mount(
+            "/assets",
+            StaticFiles(directory=str(assets_dir)),
+            name="web-assets",
+        )
+
+    # Top-level static files (favicon, rogue_logo.svg, robots.txt, ...)
+    @app.get("/{filename:path}", include_in_schema=False)
+    async def spa_fallback(filename: str):
+        # Never shadow API routes or WebSocket endpoints.
+        if (
+            filename.startswith("api/")
+            or filename.startswith("ws/")
+            or filename == "docs"
+            or filename == "redoc"
+            or filename == "openapi.json"
+        ):
+            raise HTTPException(status_code=404)
+        # Serve a known static file if it exists, otherwise hand back the SPA.
+        candidate = web_dist / filename
+        if filename and candidate.is_file():
+            return FileResponse(str(candidate))
+        return FileResponse(str(index_html))
 
 
 def start_server(

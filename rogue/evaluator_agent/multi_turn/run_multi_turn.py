@@ -171,6 +171,12 @@ async def _drive_one_conversation(
             },
         )
 
+    # When the target agent is unreachable / errors out / never replies, the
+    # conversation cannot be judged meaningfully — record a failure directly
+    # instead of asking the judge to score an empty history (which often
+    # yields a false-positive pass). See _log_evaluation_failure for details.
+    agent_failure_reason: Optional[str] = None
+
     for turn in range(1, max_turns + 1):
         history = evaluator_agent._context_id_to_chat_history.get(
             context_id,
@@ -213,22 +219,27 @@ async def _drive_one_conversation(
                 message=driver_result.message,
                 kwargs=resolved_kwargs,
             )
-        except Exception:
+        except Exception as send_err:
             logger.exception(
                 "target agent send failed; ending conversation early",
                 extra={"context_id": context_id, "turn": turn},
             )
+            agent_failure_reason = (
+                f"Target agent unreachable on turn {turn}: {send_err}"
+            )
             break
 
         if isinstance(send_result, dict) and send_result.get("error"):
+            err = send_result.get("error")
             logger.warning(
                 "target agent returned error; ending conversation early",
                 extra={
                     "context_id": context_id,
                     "turn": turn,
-                    "error": send_result.get("error"),
+                    "error": err,
                 },
             )
+            agent_failure_reason = f"Target agent returned error on turn {turn}: {err}"
             break
 
         updated_history = evaluator_agent._context_id_to_chat_history.get(
@@ -258,6 +269,12 @@ async def _drive_one_conversation(
                     "response_preview": response_preview,
                 },
             )
+            # Only flag as a failure if no assistant reply has been seen at
+            # all during this conversation — if earlier turns produced
+            # replies and the target only stopped engaging mid-way, the
+            # judge should still get a shot at the partial transcript.
+            if turn == 1:
+                agent_failure_reason = "Target agent produced no reply on turn 1"
             break
 
         goal_result = await evaluate_goal_achieved(
@@ -272,19 +289,32 @@ async def _drive_one_conversation(
             )
             break
 
-    # Always log the evaluation so the judge LLM can assess pass/fail against
-    # ``expected_outcome``. The bool / reason args are overridden by the judge.
-    await asyncio.to_thread(
-        evaluator_agent._log_evaluation,
-        {
-            "scenario": scenario.scenario,
-            "scenario_type": scenario.scenario_type.value,
-            "expected_outcome": scenario.expected_outcome or "",
-        },
-        context_id,
-        False,
-        "multi-turn run complete; awaiting judge",
-    )
+    scenario_dict = {
+        "scenario": scenario.scenario,
+        "scenario_type": scenario.scenario_type.value,
+        "expected_outcome": scenario.expected_outcome or "",
+    }
+
+    if agent_failure_reason is not None:
+        # Target agent never participated — skip the judge entirely so a
+        # connection error / 5xx can't be silently scored as "passed".
+        await asyncio.to_thread(
+            evaluator_agent._log_evaluation_failure,
+            scenario_dict,
+            context_id,
+            agent_failure_reason,
+        )
+    else:
+        # Always log the evaluation so the judge LLM can assess pass/fail
+        # against ``expected_outcome``. The bool / reason args are
+        # overridden by the judge.
+        await asyncio.to_thread(
+            evaluator_agent._log_evaluation,
+            scenario_dict,
+            context_id,
+            False,
+            "multi-turn run complete; awaiting judge",
+        )
 
 
 def _resolve_per_turn_kwargs(

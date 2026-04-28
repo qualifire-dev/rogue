@@ -861,6 +861,14 @@ class EvaluationJob(BaseModel):
     error_message: Optional[str] = None
     progress: float = 0.0
     judge_model: Optional[str] = None
+    summary: Optional["StructuredSummary"] = Field(
+        default=None,
+        description=(
+            "Cached LLM-generated summary. Populated by the first call to "
+            "POST /api/v1/llm/summary so the web UI doesn't regenerate it "
+            "on every navigation."
+        ),
+    )
 
 
 class EvaluationResponse(BaseModel):
@@ -1085,3 +1093,8 @@ class ReportSummaryResponse(BaseModel):
     """Response to report a summary."""
 
     success: bool
+
+
+# Resolve forward references — EvaluationJob.summary points to
+# StructuredSummary, which is defined further down in this module.
+EvaluationJob.model_rebuild()

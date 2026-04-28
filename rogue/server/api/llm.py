@@ -97,6 +97,18 @@ async def generate_summary(
             try:
                 job = await evaluation_service.get_job(request.job_id)
                 if job:
+                    # Cache hit: a previous request already generated and
+                    # persisted the summary on the job. Return immediately so
+                    # the web UI doesn't burn tokens on every navigation.
+                    if job.summary is not None:
+                        logger.info(
+                            "Returning cached summary",
+                            extra={"job_id": request.job_id},
+                        )
+                        return ServerSummaryGenerationResponse(
+                            summary=job.summary,
+                            message="Returned cached evaluation summary",
+                        )
                     # Use full evaluation_results from job if available
                     if job.evaluation_results:
                         evaluation_results = job.evaluation_results
@@ -367,6 +379,19 @@ async def generate_summary(
                 logger.warning(
                     "Failed to report summary to Rogue Security (non-fatal)",
                     extra={"error": str(report_err)},
+                )
+
+        # Persist the freshly generated summary onto the job record so the
+        # next /summary call (or page reload) returns it from cache instead
+        # of re-running the LLM.
+        if request.job_id and job is not None:
+            try:
+                job.summary = summary
+                evaluation_service._store.save(job)
+            except Exception as save_err:  # noqa: BLE001
+                logger.warning(
+                    "Failed to persist summary on job (non-fatal)",
+                    extra={"job_id": request.job_id, "error": str(save_err)},
                 )
 
         return ServerSummaryGenerationResponse(
