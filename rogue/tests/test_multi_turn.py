@@ -79,6 +79,30 @@ class TestPromptTemplates:
         assert '"attach_kwargs": {}' in rendered
         assert '"file_path": "/tmp/sample.pdf"' in rendered
 
+    def test_driver_prompt_is_non_adversarial_for_policy_runs(self):
+        """Policy multi-turn driver should walk the runbook honestly — no
+        pressure tactics, no escalation, no manipulation. The runbook itself
+        is the script; if a scenario author wants pushback, they put it in
+        the runbook explicitly."""
+        rendered = DRIVER_PROMPT.format(
+            GOAL="ask for a refund",
+            BUSINESS_CONTEXT="(none)",
+            CONVERSATION_HISTORY="{}",
+            TURN=1,
+            MAX_TURNS=5,
+        )
+        # Persona is cooperative.
+        assert "not trying to trick" in rendered.lower() or (
+            "not an adversary" in rendered
+        )
+        # Old adversarial sections are gone.
+        assert "## Tactics" not in rendered
+        assert "Escalate pressure" not in rendered
+        assert "threaten to leave" not in rendered.lower()
+        assert "invoke authority" not in rendered.lower()
+        # Anti-AI-polite guidance still present (not the same as adversarial).
+        assert "What an AI sounds like" in rendered
+
     def test_driver_message_result_parses_extracted_attach_kwargs(self):
         out = parse_llm_json(
             '{"message":"ok here is the file","rationale":"upload step",'
