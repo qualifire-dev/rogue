@@ -18,9 +18,11 @@ export interface Scenario {
 }
 
 export interface AgentConfig {
+  // Server's AgentConfig uses unprefixed `protocol` / `transport`; only the
+  // red-team request schema uses the `evaluated_agent_*` prefix.
+  protocol: Protocol;
+  transport?: Transport;
   evaluated_agent_url?: string;
-  evaluated_agent_protocol: Protocol;
-  evaluated_agent_transport?: Transport;
   evaluated_agent_auth_type?: AuthType;
   evaluated_agent_credentials?: string;
   python_entrypoint_file?: string;

@@ -1,18 +1,20 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { Link, Navigate, createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { motion } from "framer-motion";
 import {
   IconAlertTriangle,
+  IconBulb,
   IconCheck,
+  IconChecklist,
   IconCircleCheck,
   IconCircleX,
+  IconClipboardText,
   IconMessages,
   IconShieldCheck,
 } from "@tabler/icons-react";
 
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -84,6 +86,16 @@ function EvaluationReportPage() {
 
   const stats = useMemo(() => computeStats(scenarioResults), [scenarioResults]);
 
+  // The report belongs to a finished evaluation. While the job is still
+  // pending or running, send the user to the live console — they shouldn't
+  // be staring at a partially-built report mid-run.
+  if (job.isLoading && !job.data) {
+    return <ReportLoadingShell />;
+  }
+  if (status && !isTerminal) {
+    return <Navigate to="/evaluations/$jobId" params={{ jobId }} replace />;
+  }
+
   return (
     <div className="space-y-4">
       <Hero
@@ -132,14 +144,16 @@ function EvaluationReportPage() {
           <ConversationsTab scenarioResults={scenarioResults} />
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
 
-      <div className="flex justify-end">
-        <Button asChild variant="outline" size="sm">
-          <Link to="/evaluations/$jobId" params={{ jobId }}>
-            Back to live view
-          </Link>
-        </Button>
-      </div>
+function ReportLoadingShell() {
+  return (
+    <div className="space-y-4">
+      <div className="h-32 animate-pulse rounded-xl bg-muted/40" />
+      <div className="h-9 w-72 animate-pulse rounded-md bg-muted/40" />
+      <div className="h-64 animate-pulse rounded-xl bg-muted/40" />
     </div>
   );
 }
@@ -311,31 +325,29 @@ function ReportTab({
   summaryError: Error | null;
   summary: StructuredSummary | null;
 }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-sm">Summary</CardTitle>
-      </CardHeader>
-      <CardContent className="prose prose-invert max-w-none">
-        {jobLoading ? (
-          <p className="not-prose text-sm text-muted-foreground">Loading evaluation…</p>
-        ) : jobError ? (
-          <p className="not-prose text-sm text-destructive">
-            Failed to load evaluation: {jobError.message}
-          </p>
-        ) : !isTerminal ? (
-          <p className="not-prose text-sm text-muted-foreground">
-            The evaluation is still {status ?? "running"}. The summary will be generated once it
-            finishes.
-          </p>
-        ) : !hasResults ? (
-          <p className="not-prose text-sm text-muted-foreground">
-            No results were produced for this run, so a summary can't be generated.
-          </p>
-        ) : summary ? (
-          <SummaryBody summary={summary} />
-        ) : judgeKeyMissing ? (
-          <div className="not-prose space-y-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+  // Pre-summary states (loading / missing key / error / etc.) collapse to a
+  // single status card; the three-card layout only renders once we have a
+  // generated summary in hand.
+  if (jobLoading) return <StateCard message="Loading evaluation…" />;
+  if (jobError)
+    return (
+      <StateCard tone="danger" message={`Failed to load evaluation: ${jobError.message}`} />
+    );
+  if (!isTerminal)
+    return (
+      <StateCard
+        message={`The evaluation is still ${status ?? "running"}. The summary will be generated once it finishes.`}
+      />
+    );
+  if (!hasResults)
+    return (
+      <StateCard message="No results were produced for this run, so a summary can't be generated." />
+    );
+  if (!summary) {
+    if (judgeKeyMissing) {
+      return (
+        <Card className="border-destructive/40 bg-destructive/5">
+          <CardContent className="space-y-2 p-4 text-sm text-destructive">
             <p className="font-medium">Judge API key required to generate the summary.</p>
             <p>
               Add a key for the configured judge provider in{" "}
@@ -344,46 +356,145 @@ function ReportTab({
               </Link>
               , then refresh this page.
             </p>
-          </div>
-        ) : summaryPending ? (
-          <p className="not-prose text-sm text-muted-foreground">Generating summary…</p>
-        ) : summaryError ? (
-          <p className="not-prose text-sm text-destructive">
-            Failed to generate summary: {summaryError.message}
-          </p>
-        ) : (
-          <p className="not-prose text-sm text-muted-foreground">Waiting for results…</p>
-        )}
+          </CardContent>
+        </Card>
+      );
+    }
+    if (summaryPending) return <StateCard message="Generating summary…" />;
+    if (summaryError)
+      return (
+        <StateCard
+          tone="danger"
+          message={`Failed to generate summary: ${summaryError.message}`}
+        />
+      );
+    return <StateCard message="Waiting for results…" />;
+  }
+
+  return (
+    <div className="space-y-4">
+      <SummaryCard text={summary.overall_summary} />
+      {summary.key_findings.length > 0 && (
+        <KeyFindingsCard items={summary.key_findings} />
+      )}
+      {summary.recommendations.length > 0 && (
+        <RecommendationsCard items={summary.recommendations} />
+      )}
+    </div>
+  );
+}
+
+function StateCard({
+  message,
+  tone = "muted",
+}: {
+  message: string;
+  tone?: "muted" | "danger";
+}) {
+  return (
+    <Card>
+      <CardContent className="py-8 text-center">
+        <p
+          className={cn(
+            "text-sm",
+            tone === "danger" ? "text-destructive" : "text-muted-foreground",
+          )}
+        >
+          {message}
+        </p>
       </CardContent>
     </Card>
   );
 }
 
-function SummaryBody({ summary }: { summary: StructuredSummary }) {
+function SectionHeader({
+  title,
+  icon,
+  tone,
+}: {
+  title: string;
+  icon: ReactNode;
+  tone: "primary" | "warn" | "success";
+}) {
+  const palette =
+    tone === "primary"
+      ? "border-primary/40 bg-primary/10 text-primary"
+      : tone === "warn"
+        ? "border-[var(--chart-3)]/40 bg-[var(--chart-3)]/10 text-[var(--chart-3)]"
+        : "border-[var(--chart-2)]/40 bg-[var(--chart-2)]/10 text-[var(--chart-2)]";
   return (
-    <>
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{summary.overall_summary}</ReactMarkdown>
-      {summary.key_findings.length > 0 && (
-        <>
-          <h3>Key findings</h3>
-          <ul>
-            {summary.key_findings.map((f, i) => (
-              <li key={i}>{f}</li>
-            ))}
-          </ul>
-        </>
-      )}
-      {summary.recommendations.length > 0 && (
-        <>
-          <h3>Recommendations</h3>
-          <ul>
-            {summary.recommendations.map((r, i) => (
-              <li key={i}>{r}</li>
-            ))}
-          </ul>
-        </>
-      )}
-    </>
+    <CardHeader className="flex flex-row items-center gap-2.5 border-b border-border/60 py-3">
+      <span
+        className={cn(
+          "flex h-7 w-7 shrink-0 items-center justify-center rounded-md border",
+          palette,
+        )}
+      >
+        {icon}
+      </span>
+      <CardTitle className="text-sm">{title}</CardTitle>
+    </CardHeader>
+  );
+}
+
+function SummaryCard({ text }: { text: string }) {
+  return (
+    <Card>
+      <SectionHeader
+        title="Summary"
+        tone="primary"
+        icon={<IconClipboardText className="h-4 w-4" />}
+      />
+      <CardContent className="prose prose-invert max-w-none p-4 text-sm">
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
+      </CardContent>
+    </Card>
+  );
+}
+
+function KeyFindingsCard({ items }: { items: string[] }) {
+  return (
+    <Card>
+      <SectionHeader
+        title="Key findings"
+        tone="warn"
+        icon={<IconBulb className="h-4 w-4" />}
+      />
+      <CardContent className="p-4">
+        <ul className="space-y-2.5 text-sm">
+          {items.map((f, i) => (
+            <li key={i} className="flex items-start gap-2.5">
+              <span className="mt-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--chart-3)]" />
+              <span className="text-foreground/90">{f}</span>
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
+  );
+}
+
+function RecommendationsCard({ items }: { items: string[] }) {
+  return (
+    <Card>
+      <SectionHeader
+        title="Recommendations"
+        tone="success"
+        icon={<IconChecklist className="h-4 w-4" />}
+      />
+      <CardContent className="p-4">
+        <ol className="space-y-3 text-sm">
+          {items.map((r, i) => (
+            <li key={i} className="flex items-start gap-3">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--chart-2)]/15 text-[10px] font-semibold tabular-nums text-[var(--chart-2)]">
+                {i + 1}
+              </span>
+              <span className="text-foreground/90">{r}</span>
+            </li>
+          ))}
+        </ol>
+      </CardContent>
+    </Card>
   );
 }
 

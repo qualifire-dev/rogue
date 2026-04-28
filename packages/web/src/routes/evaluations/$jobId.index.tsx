@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { Navigate, createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { motion } from "framer-motion";
 
@@ -22,6 +22,19 @@ function EvaluationDetailPage() {
   const stream = useJobStream(jobId);
   const cancel = useCancelEvaluation();
 
+  const status = job.data?.status;
+  const isTerminal = status === "completed" || status === "failed" || status === "cancelled";
+
+  // The live view is only meaningful while the job is in flight. Once it
+  // finishes we redirect to /report so a finished evaluation never opens
+  // its live console (especially for runs from days/weeks ago).
+  if (job.isLoading && !job.data) {
+    return <LoadingShell />;
+  }
+  if (isTerminal) {
+    return <Navigate to="/evaluations/$jobId/report" params={{ jobId }} replace />;
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -37,11 +50,6 @@ function EvaluationDetailPage() {
         </div>
         <div className="flex items-center gap-2">
           <ConnectionPill state={stream.connection} />
-          <Button asChild variant="outline" size="sm">
-            <Link to="/evaluations/$jobId/report" params={{ jobId }}>
-              Report
-            </Link>
-          </Button>
           {job.data?.status === "running" && (
             <Button
               variant="destructive"
@@ -69,6 +77,19 @@ function EvaluationDetailPage() {
           eventCount={stream.events.length}
           chatCount={stream.events.filter((e) => e.kind === "chat").length}
         />
+      </div>
+    </div>
+  );
+}
+
+function LoadingShell() {
+  return (
+    <div className="space-y-4">
+      <div className="h-6 w-48 animate-pulse rounded-md bg-muted/60" />
+      <div className="h-1 w-full animate-pulse rounded-full bg-muted/60" />
+      <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
+        <div className="h-[28rem] animate-pulse rounded-xl bg-muted/40" />
+        <div className="h-[28rem] animate-pulse rounded-xl bg-muted/40" />
       </div>
     </div>
   );

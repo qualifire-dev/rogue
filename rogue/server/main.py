@@ -28,6 +28,7 @@ from fastapi.staticfiles import StaticFiles
 from ..common.logging import configure_logger, get_logger
 from .api.config import router as config_router
 from .api.evaluation import router as evaluation_router
+from .api.fs import router as fs_router
 from .api.health import router as health_router
 from .api.interview import router as interview_router
 from .api.llm import router as llm_router
@@ -84,6 +85,7 @@ def create_app() -> FastAPI:
     app.include_router(llm_router, prefix="/api/v1")
     app.include_router(interview_router, prefix="/api/v1")
     app.include_router(config_router, prefix="/api/v1")
+    app.include_router(fs_router, prefix="/api/v1")
     app.include_router(websocket_router, prefix="/api/v1")
 
     _mount_web_ui(app)

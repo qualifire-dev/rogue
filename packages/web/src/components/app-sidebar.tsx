@@ -26,18 +26,20 @@ const NAV_MAIN: NavMainItem[] = [
   { title: "Dashboard", url: "/", icon: IconHome },
   {
     title: "Evaluations",
-    url: "/evaluations",
     icon: IconActivity,
     items: [
+      { title: "Past runs", url: "/evaluations" },
       { title: "New evaluation", url: "/evaluations/new" },
       { title: "Scenarios", url: "/scenarios" },
     ],
   },
   {
     title: "Red Team",
-    url: "/red-team",
     icon: IconShieldHalf,
-    items: [{ title: "Configure", url: "/red-team/configure" }],
+    items: [
+      { title: "Past runs", url: "/red-team" },
+      { title: "New scan", url: "/red-team/configure" },
+    ],
   },
 ];
 

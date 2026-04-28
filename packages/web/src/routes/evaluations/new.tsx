@@ -1,9 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { IconArrowRight, IconAlertTriangle } from "@tabler/icons-react";
+import { IconArrowRight, IconAlertTriangle, IconFolderOpen } from "@tabler/icons-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { ModelPickerButton } from "@/components/model-picker/dialog";
+import { api } from "@/api/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -62,8 +63,29 @@ function NewEvaluationPage() {
   const [transport, setTransport] = useState<Transport | "">("http");
   const [agentUrl, setAgentUrl] = useState("http://localhost:10001");
   const [pythonFile, setPythonFile] = useState("");
+  const [pickingPython, setPickingPython] = useState(false);
   const [authType, setAuthType] = useState<AuthType>("no_auth");
   const [credentials, setCredentials] = useState("");
+
+  const pickPythonEntrypoint = async () => {
+    setPickingPython(true);
+    try {
+      // The local server opens a native OS file dialog and returns the
+      // absolute path. Browsers themselves never expose the real path from
+      // <input type="file">, so we go through the local server instead.
+      const res = await api<{ path: string | null }>("/api/v1/fs/pick-file", {
+        body: {
+          extensions: ["py"],
+          prompt: "Select Python entrypoint",
+        },
+      });
+      if (res.path) setPythonFile(res.path);
+    } catch (e) {
+      toast.error(`Couldn't open file dialog: ${(e as Error).message}`);
+    } finally {
+      setPickingPython(false);
+    }
+  };
 
   const transports = useMemo(() => getTransportsForProtocol(protocol), [protocol]);
   const needsAgentUrl = protocolNeedsAgentUrl(protocol);
@@ -92,8 +114,10 @@ function NewEvaluationPage() {
     try {
       const res = await start.mutateAsync({
         agent_config: {
-          evaluated_agent_protocol: protocol,
-          evaluated_agent_transport: transport || undefined,
+          // AgentConfig's fields are unprefixed for protocol/transport (the
+          // `evaluated_agent_` prefix only exists on the red-team schema).
+          protocol,
+          transport: transport || undefined,
           evaluated_agent_url: needsAgentUrl ? agentUrl : undefined,
           python_entrypoint_file: isPython ? pythonFile.trim() : undefined,
           evaluated_agent_auth_type: authType,
@@ -178,13 +202,25 @@ function NewEvaluationPage() {
           {isPython && (
             <div className="space-y-1.5">
               <Label htmlFor="python-file">Python entrypoint file</Label>
-              <Input
-                id="python-file"
-                value={pythonFile}
-                onChange={(e) => setPythonFile(e.target.value)}
-                placeholder="/path/to/agent.py"
-                className="font-mono text-xs"
-              />
+              <div className="flex gap-2">
+                <Input
+                  id="python-file"
+                  value={pythonFile}
+                  onChange={(e) => setPythonFile(e.target.value)}
+                  placeholder="/path/to/agent.py"
+                  className="font-mono text-xs"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="shrink-0"
+                  onClick={pickPythonEntrypoint}
+                  disabled={pickingPython}
+                >
+                  <IconFolderOpen className="mr-1.5 h-4 w-4" />
+                  {pickingPython ? "Opening…" : "Browse…"}
+                </Button>
+              </div>
               <p className="text-xs text-muted-foreground">
                 Absolute path to a Python file that exports a{" "}
                 <code className="rounded bg-muted px-1 py-0.5">call_agent</code> function.
