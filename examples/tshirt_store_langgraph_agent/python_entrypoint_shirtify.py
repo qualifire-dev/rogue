@@ -22,9 +22,6 @@ def call_agent(
     context_id: Optional[str] = None,
     **kwargs: Any,
 ) -> str:
-    if kwargs:
-        raise ValueError(f">>>>>>>>>>>>> kwargs: {kwargs}")
-
     """
     Process conversation messages and return a response from the Shirtify agent.
 
