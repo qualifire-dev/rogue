@@ -383,26 +383,34 @@ class Scenario(BaseModel):
     available_kwargs: Dict[str, Any] = Field(
         default_factory=dict,
         description=(
-            "Pool of kwargs the multi-turn driver may attach to a turn when the "
-            "target uses the PYTHON protocol. Author-provided keys/values; the "
-            "driver picks which keys to attach per turn. Ignored by non-Python "
-            "protocols."
+            "LEGACY fallback only. As of v0.6.2 the multi-turn driver LLM "
+            "extracts side-data (key + value) directly from the runbook text "
+            "on the relevant step and emits it via ``DriverMessageResult."
+            "attach_kwargs``; this field is consulted ONLY on turns where "
+            "the LLM did not extract anything, to keep older JSON-edited "
+            "scenarios.json files working. Prefer describing the side-data "
+            "in the scenario text itself."
         ),
     )
     file_path: Optional[str] = Field(
         default=None,
         description=(
-            "Convenience top-level path for scenarios that need to surface a "
-            "local file to the target (uploads, attachments). When set, the "
-            "multi-turn driver always sees ``file_path`` as an available kwarg "
-            "with this value. An explicit ``file_path`` entry in "
-            "``available_kwargs`` takes precedence."
+            "LEGACY fallback only. As of v0.6.2 the driver LLM pulls the "
+            "path verbatim from the scenario text on the upload step and "
+            "forwards it as ``attach_kwargs={'file_path': ...}``; this "
+            "field is consulted ONLY on turns where the LLM did not "
+            "extract anything. Prefer mentioning the path in the scenario "
+            "text itself."
         ),
     )
 
     def effective_kwargs_pool(self) -> Dict[str, Any]:
-        """Merge top-level conveniences (e.g. ``file_path``) into the kwargs
-        pool the driver sees. Explicit ``available_kwargs`` entries always win.
+        """Merge legacy top-level ``file_path`` into the legacy fallback pool.
+
+        This is consulted by the multi-turn runtime only on turns where the
+        driver LLM did not extract any side-data — see
+        ``_resolve_per_turn_kwargs``. Explicit ``available_kwargs`` entries
+        win over the ``file_path`` shortcut on key collisions.
         """
         pool: Dict[str, Any] = dict(self.available_kwargs)
         if self.file_path is not None:

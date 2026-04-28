@@ -157,16 +157,19 @@ async def _drive_one_conversation(
         },
     )
 
-    kwargs_pool = scenario.effective_kwargs_pool()
-    logger.info(
-        "🧰 effective kwargs pool for conversation",
-        extra={
-            "context_id": context_id,
-            "pool_keys": list(kwargs_pool.keys()),
-            "scenario_file_path": scenario.file_path,
-            "scenario_available_kwargs_keys": list(scenario.available_kwargs.keys()),
-        },
-    )
+    # Legacy scenario-level fallback: file_path / available_kwargs that were
+    # set via raw JSON edits to scenarios.json. These are used ONLY on turns
+    # where the driver LLM did not extract any side-data — i.e. they're a
+    # safety net for back-compat, not a per-key supplement to LLM extraction.
+    scenario_fallback_kwargs = scenario.effective_kwargs_pool()
+    if scenario_fallback_kwargs:
+        logger.debug(
+            "scenario carries fallback kwargs (legacy file_path / available_kwargs)",
+            extra={
+                "context_id": context_id,
+                "fallback_keys": list(scenario_fallback_kwargs.keys()),
+            },
+        )
 
     for turn in range(1, max_turns + 1):
         history = evaluator_agent._context_id_to_chat_history.get(
@@ -183,10 +186,19 @@ async def _drive_one_conversation(
             **llm_kwargs,
         )
 
-        # Static forwarding: every turn carries the full pool. The Python
-        # entrypoint decides per-turn what to do with it. Avoids relying on
-        # the driver LLM to opt-in via attach_kwargs.
-        resolved_kwargs: dict = dict(kwargs_pool)
+        resolved_kwargs = _resolve_per_turn_kwargs(
+            driver_attach_kwargs=driver_result.attach_kwargs,
+            scenario_fallback_kwargs=scenario_fallback_kwargs,
+        )
+        if resolved_kwargs:
+            logger.info(
+                "📎 driver attached kwargs to this turn",
+                extra={
+                    "context_id": context_id,
+                    "turn": turn,
+                    "kwargs": resolved_kwargs,
+                },
+            )
 
         history_len_before = len(
             evaluator_agent._context_id_to_chat_history.get(
@@ -273,6 +285,28 @@ async def _drive_one_conversation(
         False,
         "multi-turn run complete; awaiting judge",
     )
+
+
+def _resolve_per_turn_kwargs(
+    driver_attach_kwargs: dict,
+    scenario_fallback_kwargs: dict,
+) -> dict:
+    """Pick the kwargs the runtime forwards into the target this turn.
+
+    Per-turn precedence: when the driver LLM extracted side-data for this
+    turn (``driver_attach_kwargs`` non-empty) it is the sole source of
+    truth — the legacy fallback is suppressed for the turn so chit-chat /
+    approval steps don't leak unrelated legacy keys. When the driver did
+    not extract anything, the legacy ``scenario.file_path`` /
+    ``scenario.available_kwargs`` (if any) act as the fallback so existing
+    JSON-edited scenarios keep working unchanged.
+
+    Returns a fresh dict — caller may mutate it without aliasing either
+    input.
+    """
+    if driver_attach_kwargs:
+        return dict(driver_attach_kwargs)
+    return dict(scenario_fallback_kwargs)
 
 
 def _assistant_reply_added(history: ChatHistory, previous_length: int) -> bool:

@@ -1,6 +1,6 @@
 """Driver-LLM call that generates the next rogue message in a multi-turn run."""
 
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from loguru import logger
 from pydantic import BaseModel, Field
@@ -17,6 +17,17 @@ class DriverMessageResult(BaseModel):
         description="The next message to send to the agent under test.",
     )
     rationale: str = Field(default="", description="Short internal reasoning.")
+    attach_kwargs: Dict[str, Any] = Field(
+        default_factory=dict,
+        description=(
+            "Structured side-data for THIS turn's call into the target, "
+            "extracted by the driver directly from the runbook text. The "
+            "driver populates both the key name (e.g. 'file_path') and the "
+            "value (e.g. '/tmp/sample.txt') based on what the current step "
+            "explicitly mentions. Empty dict on steps that don't need "
+            "side-data (greeting / chit-chat / approval)."
+        ),
+    )
 
 
 async def generate_next_rogue_message(

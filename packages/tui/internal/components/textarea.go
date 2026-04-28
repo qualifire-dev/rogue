@@ -650,16 +650,18 @@ func (t *TextArea) Update(msg tea.Msg) (*TextArea, tea.Cmd) {
 	return t, nil
 }
 
-// View renders the textarea into a string
+// View renders the textarea into a string. Output is always exactly
+// “t.Height“ lines tall so consumers can rely on consistent layout
+// regardless of focus state or content length.
 func (t *TextArea) View() string {
 	var content string
 
 	if len(t.value) == 0 || (len(t.value) == 1 && len(t.value[0]) == 0) {
-		if t.Placeholder != "" {
-			content = t.placeholderView()
-		} else {
-			content = ""
-		}
+		// Empty textarea: render the placeholder view (which pads to height
+		// and shows a cursor on line 1 when focused). We always render the
+		// box — even when unfocused without a placeholder — so the layout
+		// is stable and the user can see where to click/tab to type.
+		content = t.placeholderView()
 	} else {
 		// Use viewport for scrolling if available
 		if t.viewport != nil {
@@ -677,9 +679,17 @@ func (t *TextArea) View() string {
 		}
 	}
 
-	// Apply panel styling (background and padding)
-	// Don't set Height here - let it size naturally based on content + padding
-	return t.Style.Panel.Width(t.Width).Render(content)
+	// Pin the rendered block to t.Height so empty/full/focused/unfocused
+	// textareas always occupy the same vertical space. Without an explicit
+	// .Height(), lipgloss sizes the block to fit content + padding, which
+	// produced a 2-line discrepancy between the placeholderView and viewport
+	// paths (and a much larger one when content lines wrapped or the
+	// content was much shorter than t.Height).
+	height := t.Height
+	if height < 1 {
+		height = 1
+	}
+	return t.Style.Panel.Width(t.Width).Height(height).Render(content)
 }
 
 // renderLineWithCursor renders a line with the cursor positioned correctly
