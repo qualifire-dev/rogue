@@ -70,16 +70,26 @@ def _read_config() -> dict[str, Any]:
 
 
 def _write_config(data: dict[str, Any]) -> None:
+    import tempfile
+
     path = _config_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(".toml.tmp")
+    # Unique tmp filename per write so concurrent PUTs can't truncate each
+    # other's in-flight tempfile. ``os.replace`` is per-file atomic, so the
+    # final file is always one or the other writer's content (last wins),
+    # never a torn mix.
+    tmp_fd, tmp_path_str = tempfile.mkstemp(
+        prefix=".toml.",
+        suffix=".tmp",
+        dir=str(path.parent),
+    )
+    tmp = Path(tmp_path_str)
     try:
-        with tmp.open("wb") as fp:
+        with os.fdopen(tmp_fd, "wb") as fp:
             tomli_w.dump(data, fp)
         os.replace(tmp, path)
     except Exception as exc:
         logger.error(f"config: failed to write {path}: {exc}")
-        # tmp may already be gone after a partial write; ignore.
         with contextlib.suppress(Exception):
             tmp.unlink(missing_ok=True)
         raise

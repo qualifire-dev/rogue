@@ -2,13 +2,7 @@ import { useEffect, useReducer, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { wsUrlFor } from "./client";
 import { qk } from "./queries";
-import type {
-  ChatUpdate,
-  EvaluationJob,
-  JobUpdate,
-  RedTeamJob,
-  WebSocketMessage,
-} from "./types";
+import type { ChatUpdate, EvaluationJob, JobUpdate, RedTeamJob, WebSocketMessage } from "./types";
 
 export type ConnectionState = "connecting" | "open" | "closed" | "polling";
 
@@ -97,38 +91,38 @@ export function useJobStream(jobId: string | undefined, kind: JobStreamKind = "e
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<number | null>(null);
   const pollTimeoutRef = useRef<number | null>(null);
+  // `state.attempts` from the reducer is captured by closure on the first
+  // effect run and never updates, so reading it inside `ws.onclose` always
+  // sees zero — the backoff stays at 200 ms forever, hammering the server
+  // on flapping connections. Track attempts in a ref instead.
+  const attemptsRef = useRef(0);
 
   useEffect(() => {
     if (!jobId) return;
     let cancelled = false;
+    // Reset attempts when (jobId, kind) changes — otherwise stale counts
+    // from the previous job inflate the backoff for the new one.
+    attemptsRef.current = 0;
 
     // Resolve the cache key once per (jobId, kind). The two job-detail pages
     // store their job under separate keys; writing to the wrong one leaves the
     // calling page reading stale data and breaks the auto-redirect on
     // terminal status.
-    const queryKey =
-      kind === "red-team" ? qk.redTeam(jobId) : qk.evaluation(jobId);
+    const queryKey = kind === "red-team" ? qk.redTeam(jobId) : qk.evaluation(jobId);
 
     const patchCache = (update: JobUpdate) => {
+      // If the GET hasn't seeded the cache yet, drop the WS update — the
+      // imminent fetch will produce a complete job object. Constructing a
+      // fake stub here would set required fields (`request`, `progress`)
+      // to undefined and crash any downstream code that dereferences them
+      // (e.g. `job.request.red_team_config?.scan_type`).
       if (kind === "red-team") {
         qc.setQueryData<RedTeamJob | undefined>(queryKey, (prev) =>
-          prev
-            ? { ...prev, ...update }
-            : ({
-                job_id: jobId,
-                created_at: new Date().toISOString(),
-                ...update,
-              } as RedTeamJob),
+          prev ? { ...prev, ...update } : prev,
         );
       } else {
         qc.setQueryData<EvaluationJob | undefined>(queryKey, (prev) =>
-          prev
-            ? { ...prev, ...update }
-            : ({
-                job_id: jobId,
-                created_at: new Date().toISOString(),
-                ...update,
-              } as EvaluationJob),
+          prev ? { ...prev, ...update } : prev,
         );
       }
     };
@@ -159,6 +153,10 @@ export function useJobStream(jobId: string | undefined, kind: JobStreamKind = "e
 
         ws.onopen = () => {
           opened = true;
+          // Successful connect → next disconnect starts from the smallest
+          // backoff. Without this reset, repeated drops keep escalating
+          // even after stretches of stable connectivity.
+          attemptsRef.current = 0;
           window.clearTimeout(failOver);
           dispatch({ type: "open" });
         };
@@ -173,15 +171,23 @@ export function useJobStream(jobId: string | undefined, kind: JobStreamKind = "e
               // Terminal status: pull the full job from the server so the
               // cached entry includes terminal-only payload (evaluation
               // `evaluation_results` / red-team `results` + `conversations`)
-              // that the WS update doesn't carry. Without this, /report sees
-              // stale data AND the live page's `isTerminal` redirect never
-              // fires until the user manually reloads.
+              // that the WS update doesn't carry. Skip the invalidate when
+              // the cached job was *already* terminal — a tab that
+              // re-mounts on a long-finished job hits this WS-replay path
+              // and would otherwise refetch on every visit.
               if (
                 update.status === "completed" ||
                 update.status === "failed" ||
                 update.status === "cancelled"
               ) {
-                qc.invalidateQueries({ queryKey });
+                const cached = qc.getQueryData<{ status?: string } | undefined>(queryKey);
+                const wasTerminal =
+                  cached?.status === "completed" ||
+                  cached?.status === "failed" ||
+                  cached?.status === "cancelled";
+                if (!wasTerminal) {
+                  qc.invalidateQueries({ queryKey });
+                }
               }
             } else if (msg.type === "chat_update" && msg.data) {
               const chat = msg.data as ChatUpdate;
@@ -197,7 +203,9 @@ export function useJobStream(jobId: string | undefined, kind: JobStreamKind = "e
           window.clearTimeout(failOver);
           dispatch({ type: "close" });
           if (!cancelled) {
-            const delay = BACKOFF_MS[Math.min(state.attempts, BACKOFF_MS.length - 1)];
+            const idx = Math.min(attemptsRef.current, BACKOFF_MS.length - 1);
+            const delay = BACKOFF_MS[idx] ?? BACKOFF_MS[BACKOFF_MS.length - 1] ?? 5000;
+            attemptsRef.current += 1;
             reconnectTimeoutRef.current = window.setTimeout(connect, delay);
           }
         };

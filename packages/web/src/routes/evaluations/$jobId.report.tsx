@@ -34,7 +34,10 @@ function EvaluationReportPage() {
   const job = useEvaluation(jobId);
   const cfg = useConfig();
   const summaryMutation = useGenerateSummary();
-  const triggeredRef = useRef(false);
+  // Tracks the (judgeKey, judgeModel) tuple last used to fire the summary
+  // mutation; resetting on tuple change lets the effect fire again after a
+  // settings edit. False = "never fired".
+  const triggeredRef = useRef<string | false>(false);
 
   const status = job.data?.status;
   const isTerminal = status === "completed" || status === "failed" || status === "cancelled";
@@ -55,12 +58,21 @@ function EvaluationReportPage() {
   const judgeKeyMissing = !judgeKey;
   const needsGeneration = isTerminal && !!evaluationResults && !summary && !judgeKeyMissing;
 
+  // The "fired this mount" lock keys on (judgeKey, judgeModel) so that if
+  // the user fixes a missing key (e.g. by saving one in another tab and
+  // letting config-sync push it back), the effect will fire again instead
+  // of staying permanently stuck after its first early-return.
+  const lockKey = `${judgeKey ?? ""}::${cfg.judgeModel}`;
+  if (triggeredRef.current && triggeredRef.current !== lockKey) {
+    triggeredRef.current = false;
+  }
+
   useEffect(() => {
     if (triggeredRef.current) return;
     if (!needsGeneration) return;
     if (summaryMutation.isPending) return;
 
-    triggeredRef.current = true;
+    triggeredRef.current = lockKey;
     summaryMutation.mutate({
       job_id: jobId,
       results: evaluationResults,
@@ -78,6 +90,7 @@ function EvaluationReportPage() {
     cfg.judgeModel,
     cfg.judgeApiBase,
     judgeKey,
+    lockKey,
     cfg.rogueSecurityEnabled,
     cfg.rogueSecurityApiKey,
     cfg.rogueSecurityBaseUrl,

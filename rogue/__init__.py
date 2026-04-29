@@ -22,20 +22,12 @@ warnings.filterwarnings(
     message="remove second argument of ws_handler",
 )
 
-# Tell litellm to silently drop provider-specific params it can't honour
-# (e.g. `temperature` on the gpt-5 family, which only accepts the default
-# of 1, or other model-specific kwargs other providers reject). Set once
-# here at package import so every `from litellm import (a)completion`
-# downstream inherits it — avoids per-call sprinkling and per-model branching.
-# Wrapped in try/except because litellm is heavy and a few import paths
-# (e.g. tooling that just touches `rogue.common.version`) shouldn't pay for
-# importing it.
-try:
-    import litellm
-
-    litellm.drop_params = True
-except Exception:  # noqa: BLE001 - litellm is optional for some import paths
-    pass
+# NOTE: `litellm.drop_params = True` used to be set here, but flipping a
+# library-global flag during package import is a hostile side effect for
+# anyone embedding rogue in a wider stack. The flag is now set inside the
+# specific entry points that need it (``rogue.run_web``, ``rogue.run_server``),
+# which is the only place we control whether litellm should mask
+# provider-incompatible kwargs.
 
 # Import submodules for backward compatibility
 from . import (

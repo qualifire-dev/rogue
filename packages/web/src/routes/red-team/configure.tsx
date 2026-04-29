@@ -2,9 +2,11 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { BusinessContextCard } from "@/components/business-context-card";
 import { ModelPickerButton } from "@/components/model-picker/dialog";
 import { CatalogPane } from "@/components/red-team/catalog-pane";
 import { FrameworksDialog } from "@/components/red-team/frameworks-dialog";
+import { RogueSecuritySuggestion } from "@/components/rogue-security-suggestion";
 import {
   DEFAULT_TARGET_AGENT_VALUE,
   TargetAgentForm,
@@ -128,6 +130,7 @@ function RedTeamConfigurePage() {
         attacker_llm: cfg.attackerModel,
         attacker_llm_api_key: cfg.apiKeys[cfg.attackerProvider],
         attacker_llm_api_base: cfg.attackerApiBase,
+        business_context: cfg.businessContext.trim() || undefined,
         rogue_security_api_key: cfg.rogueSecurityEnabled ? cfg.rogueSecurityApiKey : undefined,
         rogue_security_base_url: cfg.rogueSecurityEnabled ? cfg.rogueSecurityBaseUrl : undefined,
         max_retries: 3,
@@ -167,11 +170,15 @@ function RedTeamConfigurePage() {
         </div>
       </div>
 
+      <RogueSecuritySuggestion />
+
       <TargetAgentForm
         value={agent}
         onChange={setAgent}
         description="How to reach the agent under scan."
       />
+
+      <BusinessContextCard />
 
       <Card>
         <CardHeader>

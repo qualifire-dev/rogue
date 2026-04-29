@@ -9,6 +9,8 @@ import type {
   RedTeamJobListResponse,
   RedTeamReport,
   RedTeamRequest,
+  ScenarioGenerationRequest,
+  ScenarioGenerationResponse,
   SendMessageResponse,
   StartInterviewResponse,
   SummaryGenerationResponse,
@@ -134,6 +136,13 @@ export function useGenerateSummary() {
     // Server now persists the summary on the job, so refresh that cache
     // entry — future report visits will read it without re-mutating.
     onSuccess: (_data, vars) => qc.invalidateQueries({ queryKey: qk.evaluation(vars.job_id) }),
+  });
+}
+
+export function useGenerateScenarios() {
+  return useMutation({
+    mutationFn: (body: ScenarioGenerationRequest) =>
+      api<ScenarioGenerationResponse>("/api/v1/llm/scenarios", { body }),
   });
 }
 

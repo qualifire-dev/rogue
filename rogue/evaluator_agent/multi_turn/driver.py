@@ -73,6 +73,11 @@ async def generate_next_rogue_message(
     )
 
     try:
+        # litellm has its own backoff + retry for transient (429 / 5xx /
+        # connection) failures. Letting the SDK retry inside the call keeps
+        # one network blip from killing the whole scenario, which the
+        # earlier no-retry policy did. ``num_retries`` is best-effort — it
+        # silently no-ops on providers that already retry internally.
         response = await acompletion(
             model=model,
             api_key=api_key,
@@ -86,6 +91,7 @@ async def generate_next_rogue_message(
                 {"role": "user", "content": "next message"},
             ],
             temperature=0.7,
+            num_retries=3,
         )
     except Exception as exc:
         logger.exception(

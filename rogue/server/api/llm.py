@@ -97,13 +97,21 @@ async def generate_summary(
             try:
                 job = await evaluation_service.get_job(request.job_id)
                 if job:
-                    # Cache hit: a previous request already generated and
-                    # persisted the summary on the job. Return immediately so
-                    # the web UI doesn't burn tokens on every navigation.
-                    if job.summary is not None:
+                    # Cache hit. Honour it only when the requesting model
+                    # matches the one persisted on the job (``judge_model``)
+                    # — switching provider/model in Settings should produce
+                    # a fresh summary rather than returning the prior one.
+                    cached_model = job.judge_model
+                    if job.summary is not None and (
+                        not cached_model or cached_model == request.model
+                    ):
                         logger.info(
                             "Returning cached summary",
-                            extra={"job_id": request.job_id},
+                            extra={
+                                "job_id": request.job_id,
+                                "model": request.model,
+                                "cached_model": cached_model,
+                            },
                         )
                         return ServerSummaryGenerationResponse(
                             summary=job.summary,

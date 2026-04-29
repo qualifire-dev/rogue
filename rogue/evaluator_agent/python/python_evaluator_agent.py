@@ -86,6 +86,11 @@ class PythonEvaluatorAgent(BaseEvaluatorAgent):
                 f"Python entrypoint path is not a file: {self._python_file_path}",
             )
 
+        if self._python_file_path.suffix.lower() != ".py":
+            raise ValueError(
+                f"Python entrypoint must end in .py: {self._python_file_path}",
+            )
+
         # Prevent accidentally loading the evaluator's own file
         resolved_path = self._python_file_path.resolve()
         this_file = Path(__file__).resolve()

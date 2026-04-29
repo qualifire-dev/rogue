@@ -29,6 +29,7 @@ export interface AgentConfig {
   judge_llm: string;
   judge_llm_api_key?: string;
   judge_llm_api_base?: string;
+  business_context?: string;
 }
 
 export interface EvaluationRequest {
@@ -120,6 +121,45 @@ export interface RedTeamConversationMessage {
   [k: string]: unknown;
 }
 
+/** Judge verdict on a single attack attempt. */
+export interface RedTeamAttackEvaluation {
+  vulnerability_detected: boolean;
+  severity?: string | null;
+  /** Free-text reasoning from the judge / metric — what we render under each
+   * conversation, mirroring `ConversationEvaluation.reason` on the eval side. */
+  reason?: string | null;
+  [k: string]: unknown;
+}
+
+/** One round-trip of attack → response → judge verdict from the orchestrator. */
+export interface RedTeamConversationRecord {
+  vulnerability_id: string;
+  attack_id: string;
+  attempt: number;
+  session_id?: string | null;
+  is_multi_turn?: boolean;
+  is_premium?: boolean;
+  turn?: number;
+  message: string;
+  response: string;
+  evaluation: RedTeamAttackEvaluation;
+}
+
+/** Subset of the server's RedTeamResults that the SPA reads. */
+export interface RedTeamResultsPayload {
+  total_vulnerabilities_tested?: number;
+  total_vulnerabilities_found?: number;
+  overall_score?: number;
+  conversations?: RedTeamConversationRecord[];
+  vulnerability_results?: Array<{
+    vulnerability_id: string;
+    vulnerability_name: string;
+    passed: boolean;
+    severity?: string | null;
+  }>;
+  [k: string]: unknown;
+}
+
 export interface RedTeamJob {
   job_id: string;
   status: EvaluationStatus;
@@ -129,10 +169,11 @@ export interface RedTeamJob {
   error_message?: string | null;
   progress: number;
   request?: RedTeamRequest;
-  results?: unknown;
+  results?: RedTeamResultsPayload | null;
   // Captured chat-update events from the orchestrator (server appends each
   // one as the scan runs so the report's Conversations tab has data even
-  // after a server restart).
+  // after a server restart). Used for the LIVE view; the structured
+  // `results.conversations` is what the report renders post-completion.
   conversations?: RedTeamConversationMessage[];
 }
 
@@ -210,6 +251,19 @@ export interface RedTeamJobListResponse {
 export interface InterviewMessage {
   role: "user" | "assistant" | "system";
   content: string;
+}
+
+export interface ScenarioGenerationRequest {
+  business_context: string;
+  model: string;
+  api_key?: string;
+  api_base?: string;
+  count?: number;
+}
+
+export interface ScenarioGenerationResponse {
+  scenarios: { scenarios: Scenario[] };
+  message: string;
 }
 
 export interface StartInterviewResponse {

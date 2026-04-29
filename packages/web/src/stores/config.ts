@@ -43,6 +43,14 @@ export interface ConfigState {
   selectedProvider: Provider;
   selectedModel: string;
 
+  /**
+   * Free-text description of what the agent does, who its users are, and the
+   * policy boundaries. Threaded through to eval/red-team `business_context`
+   * on submit and pre-fed into the scenario generator. Persisted so users
+   * don't have to retype it on every run.
+   */
+  businessContext: string;
+
   rogueSecurityEnabled: boolean;
   rogueSecurityApiKey?: string;
   rogueSecurityBaseUrl?: string;
@@ -69,6 +77,7 @@ export interface ConfigState {
   setScenarioGenModel: (m: string) => void;
   setScenarioGenApiBase: (b: string | undefined) => void;
 
+  setBusinessContext: (ctx: string) => void;
   setRogueSecurity: (enabled: boolean, apiKey?: string, baseUrl?: string) => void;
   reset: () => void;
 }
@@ -96,6 +105,8 @@ const DEFAULTS = {
 
   selectedProvider: "openai" as Provider,
   selectedModel: "openai/gpt-4o",
+
+  businessContext: "",
 
   rogueSecurityEnabled: false,
   rogueSecurityApiKey: undefined as string | undefined,
@@ -129,6 +140,7 @@ export const useConfig = create<ConfigState>()(
       setScenarioGenModel: (scenarioGenModel) => set({ scenarioGenModel }),
       setScenarioGenApiBase: (scenarioGenApiBase) => set({ scenarioGenApiBase }),
 
+      setBusinessContext: (businessContext) => set({ businessContext }),
       setRogueSecurity: (rogueSecurityEnabled, rogueSecurityApiKey, rogueSecurityBaseUrl) =>
         set({ rogueSecurityEnabled, rogueSecurityApiKey, rogueSecurityBaseUrl }),
       reset: () => set(DEFAULTS),

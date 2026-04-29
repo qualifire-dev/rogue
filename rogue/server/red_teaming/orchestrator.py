@@ -935,6 +935,32 @@ class RedTeamOrchestrator:
                     )
                     evaluation = {"vulnerability_detected": False, "severity": "low"}
 
+                # Coerce the evaluator's return into a dict so the rest of
+                # the loop can use ``.get(...)`` safely. Some metric
+                # implementations return a Pydantic model or None on a soft
+                # failure rather than the documented dict shape.
+                if not isinstance(evaluation, dict):
+                    if evaluation is None:
+                        evaluation = {
+                            "vulnerability_detected": False,
+                            "severity": "low",
+                        }
+                    elif hasattr(evaluation, "model_dump"):
+                        evaluation = evaluation.model_dump()
+                    else:
+                        logger.warning(
+                            "Unexpected evaluator return type %s; treating as resisted",
+                            type(evaluation).__name__,
+                            extra={
+                                "vulnerability_id": vulnerability_id,
+                                "attack_id": attack_id,
+                            },
+                        )
+                        evaluation = {
+                            "vulnerability_detected": False,
+                            "severity": "low",
+                        }
+
                 # Track attack statistics
                 self._update_attack_stats(
                     attack_id,

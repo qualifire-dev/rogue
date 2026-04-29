@@ -101,7 +101,6 @@ line-length = 88
 target-version = "py310"
 extend-exclude = [
     ".venv",
-    "**/__init__.py",  # match prior flake8 exclude — re-export files are noisy
     "packages",        # JS workspace, not Python
 ]
 # Apply the exclude list even when files are passed explicitly (e.g. by
@@ -132,6 +131,13 @@ ignore = ["E712", "E203", "E501", "COM812", "COM819", "S607"]
 "**/conftest.py" = ["S101"]
 # Examples are illustrative, not production.
 "examples/**" = ["S101", "S105", "S106", "S603", "S607"]
+# Re-export-only `__init__.py` files trip `F401` (unused import) and
+# `E402` (re-imports below module-level filterwarnings calls). Drop those
+# but keep the rest of the rule set.
+"**/__init__.py" = ["F401", "E402"]
+# The SDK package's `__init__.py` re-exports via star — that's the
+# documented pattern for the public type module. Drop F403/F405 for it.
+"sdks/python/rogue_sdk/__init__.py" = ["F401", "E402", "F403", "F405"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["rogue", "rogue_sdk", "examples"]

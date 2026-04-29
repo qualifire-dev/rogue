@@ -380,19 +380,30 @@ def _resolve_per_turn_kwargs(
 
 
 def _driver_repeating(history: ChatHistory, candidate: str) -> bool:
-    """True iff ``candidate`` matches the most recent rogue (user) message.
+    """True iff ``candidate`` is a back-to-back repeat of the previous turn.
 
-    A back-to-back duplicate means the driver is stuck — model degenerating,
-    bad config, or prompt collapse. Compared case-folded and stripped so a
-    trivial whitespace/casing tweak between turns doesn't mask the loop.
+    A genuine driver-stuck loop produces the same prompt *immediately* after
+    sending it and seeing a reply. We check ONLY the last user message —
+    walking the whole history would false-trip on legitimate one-word
+    repeats (`"yes"`, `"ok"`, `"continue"`) that happen N turns apart in
+    multi-step approval scenarios.
+
+    A short-text guard also skips the check for messages under 8 chars,
+    since one-word answers ("yes", "ok") are common and never represent
+    the degenerate-LLM symptom this guard exists to catch.
     """
-    if not candidate or not candidate.strip():
+    if not candidate:
+        return False
+    needle = candidate.strip()
+    if len(needle) < 8:
         return False
     messages = history.messages if history else []
-    for msg in reversed(messages):
-        if msg.role == "user":
-            return msg.content.strip().casefold() == candidate.strip().casefold()
-    return False
+    # Find the *most recent* user message — the one immediately before this
+    # turn's intended send. Older user messages are deliberately ignored.
+    last_user = next((m for m in reversed(messages) if m.role == "user"), None)
+    if last_user is None:
+        return False
+    return last_user.content.strip().casefold() == needle.casefold()
 
 
 def _assistant_reply_added(history: ChatHistory, previous_length: int) -> bool:

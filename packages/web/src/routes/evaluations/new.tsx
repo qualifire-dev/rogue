@@ -3,7 +3,9 @@ import { IconArrowRight, IconAlertTriangle } from "@tabler/icons-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { BusinessContextCard } from "@/components/business-context-card";
 import { ModelPickerButton } from "@/components/model-picker/dialog";
+import { RogueSecuritySuggestion } from "@/components/rogue-security-suggestion";
 import {
   DEFAULT_TARGET_AGENT_VALUE,
   TargetAgentForm,
@@ -61,6 +63,7 @@ function NewEvaluationPage() {
           judge_llm: cfg.judgeModel,
           judge_llm_api_key: cfg.apiKeys[cfg.judgeProvider],
           judge_llm_api_base: cfg.judgeApiBase,
+          business_context: cfg.businessContext.trim() || undefined,
         },
         scenarios,
         max_retries: 3,
@@ -82,11 +85,15 @@ function NewEvaluationPage() {
         </p>
       </div>
 
+      <RogueSecuritySuggestion />
+
       <TargetAgentForm
         value={agent}
         onChange={setAgent}
         description="How to reach the agent under evaluation."
       />
+
+      <BusinessContextCard showInterviewLink />
 
       <Card>
         <CardHeader>

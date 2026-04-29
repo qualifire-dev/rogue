@@ -1,30 +1,20 @@
 """Native OS file picker proxy for the local web UI.
 
-Browsers refuse to expose absolute filesystem paths from ``<input type="file">``
-or the File System Access API — that's a hard security boundary. But ``rogue-ai
-web`` runs on the user's own machine, so the server process *can* open a native
-file dialog (Finder / GNOME Files / Windows Explorer) on the user's display and
-hand the absolute path back to the SPA. The picker UX feels native because it
-*is* native; only the trigger is a small HTTP call.
+Browsers can't expose absolute filesystem paths from ``<input type="file">``,
+but ``rogue-ai web`` runs on the user's own machine — so the server process
+opens the native file dialog (Finder / GNOME Files / Windows Explorer) and
+hands the absolute path back to the SPA.
 
-Caveats:
-- The dialog appears on the server process's display. That's the user's own
-  display when the server is launched locally (the only supported deployment),
-  but if you ever expose this server remotely the dialog would pop on the
-  server side — useless and surprising. Default bind is 127.0.0.1.
-- Each platform shells out to its native helper. If the helper isn't on PATH
-  (e.g. headless Linux without zenity) we return 503 so the SPA can fall back
-  to manual path entry.
-- The HTTP request blocks until the user picks or cancels — sometimes minutes.
-  We declare the route as a sync `def` so FastAPI dispatches it on a worker
-  thread instead of blocking the event loop.
+All helpers are spawned argv-style (no shell). The two helpers that build
+script literals — AppleScript on macOS, PowerShell on Windows — escape ``\\``
+and ``"`` in ``prompt`` so a stray quote doesn't break the literal.
 """
 
 from __future__ import annotations
 
+import asyncio
 import platform
-import subprocess  # noqa: S404
-from typing import List, Optional
+from typing import List, Optional, Sequence
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -34,9 +24,7 @@ from ...common.logging import get_logger
 router = APIRouter(prefix="/fs", tags=["fs"])
 logger = get_logger(__name__)
 
-# A user pondering their choice in a Finder dialog can take a while. Bigger
-# than the typical HTTP idle timeout but bounded so the worker thread frees up
-# eventually if the dialog is forgotten.
+# Bounded so a forgotten dialog doesn't hold resources forever.
 _PICK_TIMEOUT_SECONDS = 600
 
 
@@ -51,121 +39,144 @@ class PickedFile(BaseModel):
     path: Optional[str] = None
 
 
-def _normalise_extensions(extensions: Optional[List[str]]) -> List[str]:
-    if not extensions:
+def _escape_for_script_literal(raw: str) -> str:
+    """Escape ``\\`` and ``"`` so the prompt is a valid AppleScript / PowerShell
+    double-quoted literal. Both languages use the same escape rules."""
+    return raw.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def _normalise_extensions(raw: Optional[Sequence[str]]) -> List[str]:
+    """Strip leading dots / whitespace; drop empties. No format restriction."""
+    if not raw:
         return []
-    return [e.lstrip(".").strip() for e in extensions if e and e.strip()]
+    out: List[str] = []
+    for e in raw:
+        if not isinstance(e, str):
+            continue
+        cleaned = e.strip().lstrip(".")
+        if cleaned:
+            out.append(cleaned)
+    return out
 
 
-def _pick_macos(prompt: str, extensions: List[str]) -> Optional[str]:
-    """AppleScript ``choose file``. Cancellation → returncode 1 (-128)."""
-    if extensions:
-        type_clause = " of type {" + ", ".join(f'"{e}"' for e in extensions) + "}"
-    else:
-        type_clause = ""
-    # Hardcoded shape — only `prompt` and `type_clause` interpolate, both are
-    # tightly controlled (prompt is wrapped in quotes, ext list is alnum-only
-    # in practice). osascript receives `-e <script>` argv-style, no shell.
-    safe_prompt = prompt.replace('"', '\\"')
-    script = f'POSIX path of (choose file with prompt "{safe_prompt}"{type_clause})'
-    proc = subprocess.run(  # noqa: S603
-        ["osascript", "-e", script],
-        capture_output=True,
-        text=True,
-        timeout=_PICK_TIMEOUT_SECONDS,
+async def _spawn(
+    argv: Sequence[str],
+    timeout: int = _PICK_TIMEOUT_SECONDS,
+) -> tuple[int, str, str]:
+    """Run ``argv`` argv-style (no shell). Returns ``(rc, stdout, stderr)``."""
+    proc = await asyncio.create_subprocess_exec(
+        *argv,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
     )
-    if proc.returncode != 0:
-        # Cancellation prints `User canceled. (-128)` to stderr — treat as None.
-        if "-128" in proc.stderr or "canceled" in proc.stderr.lower():
+    try:
+        out_b, err_b = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+    except asyncio.TimeoutError as e:
+        proc.kill()
+        await proc.wait()
+        raise asyncio.TimeoutError("picker dialog timed out") from e
+    return (
+        proc.returncode or 0,
+        out_b.decode("utf-8", errors="replace"),
+        err_b.decode("utf-8", errors="replace"),
+    )
+
+
+async def _pick_macos(prompt: str, extensions: List[str]) -> Optional[str]:
+    """AppleScript ``choose file``. Cancellation → returncode 1."""
+    safe_prompt = _escape_for_script_literal(prompt)
+    type_clause = (
+        " of type {"
+        + ", ".join(f'"{_escape_for_script_literal(e)}"' for e in extensions)
+        + "}"
+        if extensions
+        else ""
+    )
+    script = f'POSIX path of (choose file with prompt "{safe_prompt}"{type_clause})'
+    rc, out, err = await _spawn(["osascript", "-e", script])
+    if rc != 0:
+        # AppleScript exits with code 1 (`-128`) on user cancel, locale
+        # independent. Use the numeric exit code rather than scraping stderr.
+        if rc == 1:
             return None
         raise HTTPException(
             status_code=500,
-            detail=f"osascript failed: {proc.stderr.strip() or proc.stdout.strip()}",
+            detail=f"osascript failed: {err.strip() or out.strip()}",
         )
-    path = proc.stdout.strip()
-    return path or None
+    return out.strip() or None
 
 
-def _pick_linux(prompt: str, extensions: List[str]) -> Optional[str]:
+async def _pick_linux(prompt: str, extensions: List[str]) -> Optional[str]:
     """Try zenity first, then kdialog. Either may not be installed."""
-    args: List[str]
     helper = "zenity"
-    args = ["zenity", "--file-selection", "--title", prompt]
+    args: List[str] = ["zenity", "--file-selection", "--title", prompt]
     if extensions:
+        # Zenity expects a *named* filter ("Name | pat1 pat2") otherwise the
+        # dropdown shows a blank label.
         pattern = " ".join(f"*.{e}" for e in extensions)
-        args.extend(["--file-filter", pattern])
+        label = "/".join(f".{e}" for e in extensions)
+        args.extend(["--file-filter", f"{label} | {pattern}"])
     try:
-        proc = subprocess.run(  # noqa: S603
-            args,
-            capture_output=True,
-            text=True,
-            timeout=_PICK_TIMEOUT_SECONDS,
-        )
+        rc, out, err = await _spawn(args)
     except FileNotFoundError:
         helper = "kdialog"
-        args = ["kdialog", "--getopenfilename", "."]
+        args = ["kdialog", "--title", prompt, "--getopenfilename", "."]
         if extensions:
             args.append(" ".join(f"*.{e}" for e in extensions))
         try:
-            proc = subprocess.run(  # noqa: S603
-                args,
-                capture_output=True,
-                text=True,
-                timeout=_PICK_TIMEOUT_SECONDS,
-            )
+            rc, out, err = await _spawn(args)
         except FileNotFoundError as exc:
             raise HTTPException(
                 status_code=503,
                 detail="No native picker available (install zenity or kdialog).",
             ) from exc
-    if proc.returncode != 0:
-        # Both helpers exit non-zero on cancel.
-        if not proc.stderr.strip():
+    if rc != 0:
+        # Both zenity and kdialog use exit code 1 for "user cancelled"
+        # (signal-killed children would be 128+N). Treating the numeric
+        # exit code is more reliable than scraping stderr — empty stderr
+        # could be a SIGSEGV under Wayland that the user shouldn't see as
+        # "you cancelled".
+        if rc == 1:
             return None
         raise HTTPException(
             status_code=500,
-            detail=f"{helper} failed: {proc.stderr.strip()}",
+            detail=f"{helper} failed (rc={rc}): {err.strip() or '(no stderr)'}",
         )
-    path = proc.stdout.strip()
-    return path or None
+    return out.strip() or None
 
 
-def _pick_windows(prompt: str, extensions: List[str]) -> Optional[str]:
+async def _pick_windows(prompt: str, extensions: List[str]) -> Optional[str]:
     """PowerShell + WinForms OpenFileDialog."""
+    safe_prompt = _escape_for_script_literal(prompt)
     if extensions:
-        # "Python files (*.py)|*.py|All files (*.*)|*.*"
         pat = ";".join(f"*.{e}" for e in extensions)
         kind = "/".join(f".{e}" for e in extensions)
-        ps_filter = f"Allowed ({kind})|{pat}|All files (*.*)|*.*"
+        ps_filter = _escape_for_script_literal(
+            f"Allowed ({kind})|{pat}|All files (*.*)|*.*",
+        )
     else:
         ps_filter = "All files (*.*)|*.*"
-    safe_prompt = prompt.replace('"', '`"')
-    safe_filter = ps_filter.replace('"', '`"')
     script = (
         "Add-Type -AssemblyName System.Windows.Forms; "
         "$d = New-Object System.Windows.Forms.OpenFileDialog; "
         f'$d.Title = "{safe_prompt}"; '
-        f'$d.Filter = "{safe_filter}"; '
+        f'$d.Filter = "{ps_filter}"; '
         "if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) "
         "{ Write-Output $d.FileName }"
     )
-    proc = subprocess.run(  # noqa: S603
+    rc, out, err = await _spawn(
         ["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
-        capture_output=True,
-        text=True,
-        timeout=_PICK_TIMEOUT_SECONDS,
     )
-    if proc.returncode != 0:
+    if rc != 0:
         raise HTTPException(
             status_code=500,
-            detail=f"powershell failed: {proc.stderr.strip()}",
+            detail=f"powershell failed: {err.strip()}",
         )
-    path = proc.stdout.strip()
-    return path or None
+    return out.strip() or None
 
 
 @router.post("/pick-file", response_model=PickedFile)
-def pick_file(request: PickFileRequest) -> PickedFile:
+async def pick_file(request: PickFileRequest) -> PickedFile:
     """Open the OS-native file dialog on the server's display and return the
     absolute path the user selected.
 
@@ -175,28 +186,26 @@ def pick_file(request: PickFileRequest) -> PickedFile:
     """
     system = platform.system()
     extensions = _normalise_extensions(request.extensions)
-    prompt = (request.prompt or "Select a file").strip() or "Select a file"
+    prompt = request.prompt or "Select a file"
 
     try:
         if system == "Darwin":
-            path = _pick_macos(prompt, extensions)
+            path = await _pick_macos(prompt, extensions)
         elif system == "Linux":
-            path = _pick_linux(prompt, extensions)
+            path = await _pick_linux(prompt, extensions)
         elif system == "Windows":
-            path = _pick_windows(prompt, extensions)
+            path = await _pick_windows(prompt, extensions)
         else:
             raise HTTPException(
                 status_code=501,
                 detail=f"Native file picker not implemented for {system}",
             )
     except FileNotFoundError as exc:
-        # macOS / Windows helpers are guaranteed-present on their OS, but be
-        # defensive: report the missing binary clearly.
         raise HTTPException(
             status_code=503,
             detail=f"Native picker helper missing: {exc.filename or exc}",
         ) from exc
-    except subprocess.TimeoutExpired:
+    except asyncio.TimeoutError:
         return PickedFile(path=None)
 
     return PickedFile(path=path)

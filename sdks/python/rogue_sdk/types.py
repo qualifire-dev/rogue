@@ -280,6 +280,24 @@ class FrameworkCompliance(BaseModel):
         description="Framework-specific recommendations",
     )
 
+    @model_validator(mode="after")
+    def _mirror_count_aliases(self) -> "FrameworkCompliance":
+        """Mirror ``categories_*`` ↔ ``vulnerabilities_*`` so consumers reading
+        either form always see a populated value. The server populates the
+        ``vulnerabilities_*`` pair; older SDK callers populated
+        ``categories_*``. The alias that's still zero gets filled from the
+        non-zero one — never the other way.
+        """
+        if self.vulnerabilities_tested and not self.categories_tested:
+            self.categories_tested = self.vulnerabilities_tested
+        elif self.categories_tested and not self.vulnerabilities_tested:
+            self.vulnerabilities_tested = self.categories_tested
+        if self.vulnerabilities_passed and not self.categories_passed:
+            self.categories_passed = self.vulnerabilities_passed
+        elif self.categories_passed and not self.vulnerabilities_passed:
+            self.vulnerabilities_passed = self.categories_passed
+        return self
+
 
 class AttackStats(BaseModel):
     """Statistics for a single attack type.
@@ -311,6 +329,15 @@ class AttackStats(BaseModel):
         default_factory=list,
         description="Vulnerability IDs this attack ran against",
     )
+
+    @model_validator(mode="after")
+    def _mirror_success_aliases(self) -> "AttackStats":
+        """Mirror ``successful_count`` ↔ ``success_count``."""
+        if self.success_count and not self.successful_count:
+            self.successful_count = self.success_count
+        elif self.successful_count and not self.success_count:
+            self.success_count = self.successful_count
+        return self
 
 
 class RedTeamResults(BaseModel):
@@ -361,6 +388,27 @@ class RedTeamResults(BaseModel):
         default_factory=list,
         description="Captured conversation logs for export / report rendering",
     )
+
+    @model_validator(mode="after")
+    def _mirror_score_axes(self) -> "RedTeamResults":
+        """Mirror ``overall_score`` (0-100) ↔ ``overall_risk_score`` (0-10).
+
+        The two axes are inverted: ``overall_score = 100 - overall_risk_score * 10``
+        and vice versa. We fill whichever side a producer left at its default
+        from the populated side so external SDK consumers reading either
+        form always get a meaningful number.
+        """
+        if self.overall_risk_score is None and self.overall_score != 100.0:
+            # security score 0-100 → risk score 0-10 (clamped)
+            self.overall_risk_score = max(
+                0.0, min(10.0, (100.0 - self.overall_score) / 10.0)
+            )
+        elif self.overall_risk_score is not None and self.overall_score == 100.0:
+            # risk score 0-10 → security score 0-100 (clamped)
+            self.overall_score = max(
+                0.0, min(100.0, 100.0 - self.overall_risk_score * 10.0)
+            )
+        return self
 
 
 class AgentConfig(BaseModel):
@@ -1176,6 +1224,8 @@ class ReportSummaryResponse(BaseModel):
     success: bool
 
 
-# Resolve forward references — EvaluationJob.summary points to
-# StructuredSummary, which is defined further down in this module.
-EvaluationJob.model_rebuild()
+# Resolve forward references for every model that carries one. Listed
+# explicitly rather than relying on a single class so a new model with a
+# forward ref doesn't silently start mis-validating.
+for _cls in (EvaluationJob, RedTeamJob):
+    _cls.model_rebuild()

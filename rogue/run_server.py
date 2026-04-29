@@ -10,6 +10,7 @@ import psutil
 import requests
 from loguru import logger
 
+from .common.litellm_config import configure_for_server
 from .server.main import start_server
 
 
@@ -126,6 +127,11 @@ def run_server(
     background_wait_for_ready: bool = True,
     log_file: Path | None = None,
 ) -> multiprocessing.Process | None:
+    # Make litellm tolerant of provider-incompatible kwargs (gpt-5
+    # rejecting custom temperature, etc.) for server-side flows. Scoped
+    # here so library consumers of `rogue` don't pick up the side effect.
+    configure_for_server()
+
     # The host/port are missing when running `rogue-ai` without any args.
     # They are only included in the `args` object when running `rogue-ai server`
     try:

@@ -6,12 +6,42 @@ with different transport types (SSE or Streamable HTTP).
 """
 
 from typing import TYPE_CHECKING, Optional
+from urllib.parse import urlparse, urlunparse
 
 from rogue_sdk.types import Transport
 
 if TYPE_CHECKING:
     from fastmcp import Client
     from fastmcp.client import SSETransport, StreamableHttpTransport
+
+
+# FastMCP's default mount paths for the two supported transports — these
+# come from ``fastmcp.settings`` (``streamable_http_path = "/mcp"``,
+# ``sse_path = "/sse"``). Users routinely paste the bare server URL
+# (``http://localhost:10002``), so we append the default path on their
+# behalf when no explicit path is provided. Anyone running a non-FastMCP
+# server with a custom mount can override by pasting the full path.
+_DEFAULT_TRANSPORT_PATHS: dict[Transport, str] = {
+    Transport.STREAMABLE_HTTP: "/mcp",
+    Transport.SSE: "/sse",
+}
+
+
+def _normalize_mcp_url(url: str, transport: Transport) -> str:
+    """Append the FastMCP default mount path when the URL has none.
+
+    Preserves any user-supplied path (``/api/mcp``, ``/sse``, etc.) so the
+    auto-append only kicks in for the common ``http://host:port`` /
+    ``http://host:port/`` case where the connect would otherwise hit the
+    wrong endpoint and the server would reply with ``Session terminated``.
+    """
+    parsed = urlparse(url)
+    if parsed.path and parsed.path != "/":
+        return url
+    default_path = _DEFAULT_TRANSPORT_PATHS.get(transport)
+    if not default_path:
+        return url
+    return urlunparse(parsed._replace(path=default_path))
 
 
 def create_mcp_client(
@@ -38,6 +68,8 @@ def create_mcp_client(
     """
     from fastmcp import Client
     from fastmcp.client import SSETransport, StreamableHttpTransport
+
+    url = _normalize_mcp_url(url, transport)
 
     # Construct as the union-typed Client so the return type matches the
     # signature; without the explicit generic parameter, ty infers the

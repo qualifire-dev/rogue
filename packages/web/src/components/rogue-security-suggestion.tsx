@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { useConfig } from "@/stores/config";
 import { cn } from "@/lib/utils";
 
-const DISMISS_KEY = "rogue:rs-suggestion-dismissed";
+const DISMISS_SESSION_KEY = "rogue:rs-suggestion-dismissed";
+const DISMISS_FOREVER_KEY = "rogue:rs-suggestion-dismissed-forever";
 
 interface Props {
   className?: string;
@@ -23,13 +24,26 @@ interface Props {
 export function RogueSecuritySuggestion({ className, variant = "card" }: Props) {
   const enabled = useConfig((s) => s.rogueSecurityEnabled);
   const apiKey = useConfig((s) => s.rogueSecurityApiKey);
-  const [dismissed, setDismissed] = useState(() => sessionStorage.getItem(DISMISS_KEY) === "1");
+  const [dismissed, setDismissed] = useState(
+    () =>
+      sessionStorage.getItem(DISMISS_SESSION_KEY) === "1" ||
+      localStorage.getItem(DISMISS_FOREVER_KEY) === "1",
+  );
 
   // Considered "configured" only when both the toggle is on AND a key is set.
   if ((enabled && apiKey) || dismissed) return null;
 
+  // Click X = dismiss for the rest of this tab session. Click "don't show
+  // again" = persist forever in localStorage. Re-enables only by editing
+  // localStorage manually or deliberately re-enabling Rogue Security in
+  // Settings — both are intentional opt-ins back.
   const handleDismiss = () => {
-    sessionStorage.setItem(DISMISS_KEY, "1");
+    sessionStorage.setItem(DISMISS_SESSION_KEY, "1");
+    setDismissed(true);
+  };
+
+  const handleDismissForever = () => {
+    localStorage.setItem(DISMISS_FOREVER_KEY, "1");
     setDismissed(true);
   };
 
@@ -71,17 +85,26 @@ export function RogueSecuritySuggestion({ className, variant = "card" }: Props) 
           dashboard — share findings with your team and track posture over time.
         </p>
       </div>
-      <div className="flex items-center gap-2">
-        <Button asChild size="sm" variant="outline" className="h-8">
-          <Link to="/settings">Configure</Link>
-        </Button>
+      <div className="flex flex-col items-end gap-1">
+        <div className="flex items-center gap-2">
+          <Button asChild size="sm" variant="outline" className="h-8">
+            <Link to="/settings">Configure</Link>
+          </Button>
+          <button
+            type="button"
+            aria-label="Dismiss for this session"
+            onClick={handleDismiss}
+            className="text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <IconX className="h-4 w-4" />
+          </button>
+        </div>
         <button
           type="button"
-          aria-label="Dismiss"
-          onClick={handleDismiss}
-          className="text-muted-foreground transition-colors hover:text-foreground"
+          onClick={handleDismissForever}
+          className="text-[10px] text-muted-foreground/70 underline-offset-2 hover:text-muted-foreground hover:underline"
         >
-          <IconX className="h-4 w-4" />
+          don&apos;t show again
         </button>
       </div>
     </div>

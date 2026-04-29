@@ -1,6 +1,7 @@
 """Red Team Service - Manages red team scan jobs."""
 
 import asyncio
+import os
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -17,6 +18,23 @@ from ..websocket.manager import get_websocket_manager
 from .job_store import JobStore
 
 logger = get_logger(__name__)
+
+
+def _ws_wait_seconds() -> float:
+    """Window we'll wait for a WebSocket client before starting a scan.
+
+    Defaults to 5 s for the web UI happy path. Set
+    ``ROGUE_RED_TEAM_WS_WAIT_SECONDS=0`` (or any non-positive value) to
+    skip the wait — useful for SDK / CLI consumers that never connect a
+    WebSocket and don't care about real-time chat updates.
+    """
+    raw = os.environ.get("ROGUE_RED_TEAM_WS_WAIT_SECONDS", "").strip()
+    if not raw:
+        return 5.0
+    try:
+        return max(0.0, float(raw))
+    except ValueError:
+        return 5.0
 
 
 class RedTeamService:
@@ -109,24 +127,27 @@ class RedTeamService:
             job.started_at = datetime.now(timezone.utc)
             self._notify_job_update(job)
 
-            # Wait for WebSocket client to connect before sending updates
-            # This ensures chat messages aren't lost
-            max_wait = 5.0  # seconds
-            wait_interval = 0.1
-            waited = 0.0
-            while waited < max_wait:
-                if self.websocket_manager.has_connections(job_id):
-                    logger.info(
-                        f"WebSocket client connected for job {job_id}, starting scan",
+            # Wait for a WebSocket client to attach before scanning so the
+            # initial chat updates aren't dropped. Tunable via
+            # ``ROGUE_RED_TEAM_WS_WAIT_SECONDS`` — set to 0 to skip entirely
+            # (useful for SDK / CLI consumers that never open a WS).
+            max_wait = _ws_wait_seconds()
+            if max_wait > 0:
+                wait_interval = 0.1
+                waited = 0.0
+                while waited < max_wait:
+                    if self.websocket_manager.has_connections(job_id):
+                        logger.info(
+                            f"WebSocket client connected for job {job_id}, starting scan",
+                        )
+                        break
+                    await asyncio.sleep(wait_interval)
+                    waited += wait_interval
+                else:
+                    logger.warning(
+                        f"No WebSocket client connected after {max_wait}s, "
+                        f"proceeding anyway for job {job_id}",
                     )
-                    break
-                await asyncio.sleep(wait_interval)
-                waited += wait_interval
-            else:
-                logger.warning(
-                    f"No WebSocket client connected after {max_wait}s, "
-                    f"proceeding anyway for job {job_id}",
-                )
 
             # Create and run orchestrator
             orchestrator = RedTeamOrchestrator(

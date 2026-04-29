@@ -92,6 +92,9 @@ function toZustand(server: Record<string, unknown>): Partial<ConfigState> {
     draft.scenarioGenModel = asString(server.scenario_gen_model) ?? "openai/gpt-4o";
   draft.scenarioGenApiBase = asString(server.scenario_gen_api_base);
 
+  const businessContext = asString(server.business_context);
+  if (businessContext !== undefined) draft.businessContext = businessContext;
+
   draft.rogueSecurityEnabled = asBool(server.rogue_security_enabled, false);
   draft.rogueSecurityApiKey = asString(server.rogue_security_api_key);
   draft.rogueSecurityBaseUrl = asString(server.rogue_security_base_url);
@@ -119,6 +122,7 @@ function toToml(state: ConfigState): Record<string, unknown> {
     scenario_gen_provider: state.scenarioGenProvider,
     scenario_gen_model: state.scenarioGenModel,
     scenario_gen_api_base: state.scenarioGenApiBase ?? "",
+    business_context: state.businessContext ?? "",
     rogue_security_enabled: state.rogueSecurityEnabled,
     rogue_security_api_key: state.rogueSecurityApiKey ?? "",
     rogue_security_base_url: state.rogueSecurityBaseUrl ?? "",
@@ -128,6 +132,17 @@ function toToml(state: ConfigState): Record<string, unknown> {
 let started = false;
 let pendingSaveTimer: number | null = null;
 let suppressNextSave = false;
+// Push gating: ``toToml`` always serialises the WHOLE state, including
+// fields the user hasn't touched (their DEFAULTS). If we let pushes fire
+// before the initial pull completes, we'd race with the server: the user
+// changes one field, the debounced PUT sends DEFAULTS for every *other*
+// field, and the server's previously-persisted values (from a TUI run or
+// a prior session) get clobbered with the SPA's hard-coded defaults. The
+// pull then resolves with the now-corrupted values and the UI snaps to
+// them — looking exactly like the settings "didn't persist". Block all
+// outbound pushes until pull has resolved (success OR failure) so the
+// store is up-to-date with the authoritative server state first.
+let initialPullSettled = false;
 
 async function pullFromServer(): Promise<void> {
   try {
@@ -144,6 +159,17 @@ async function pullFromServer(): Promise<void> {
       }
     } else {
       console.warn("config-sync: pull failed", e);
+    }
+  } finally {
+    initialPullSettled = true;
+    // If the user managed to change something while we were fetching, the
+    // subscriber tucked that intent into the debounce timer (or dropped
+    // it). Either way we now flush eagerly: any pending edit reflects the
+    // post-pull state (since the pull just finished) and is safe to push.
+    if (pendingSaveTimer !== null) {
+      window.clearTimeout(pendingSaveTimer);
+      pendingSaveTimer = null;
+      pushToServer();
     }
   }
 }
@@ -171,7 +197,26 @@ export function startConfigSync(): void {
     if (pendingSaveTimer !== null) window.clearTimeout(pendingSaveTimer);
     pendingSaveTimer = window.setTimeout(() => {
       pendingSaveTimer = null;
+      // Wait for the initial pull. If the user beat the network, defer
+      // — pullFromServer's ``finally`` block will flush this push once
+      // it has the authoritative state to merge against.
+      if (!initialPullSettled) return;
       pushToServer();
     }, 500);
+  });
+
+  // Flush pending edits if the tab is being unloaded, so a quick
+  // change-then-close doesn't lose the last value to the debounce timer.
+  // ``pagehide`` fires for both navigation and bfcache; ``visibilitychange``
+  // covers the mobile-Safari case where ``beforeunload`` is unreliable.
+  const flushIfPending = () => {
+    if (pendingSaveTimer === null) return;
+    window.clearTimeout(pendingSaveTimer);
+    pendingSaveTimer = null;
+    if (initialPullSettled) pushToServer();
+  };
+  window.addEventListener("pagehide", flushIfPending);
+  window.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") flushIfPending();
   });
 }
