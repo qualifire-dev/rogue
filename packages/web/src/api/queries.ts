@@ -24,7 +24,36 @@ export const qk = {
   redTeam: (jobId: string) => ["red-team", jobId] as const,
   redTeamReport: (jobId: string) => ["red-team", jobId, "report"] as const,
   interviewConversation: (sessionId: string) => ["interview", sessionId, "conversation"] as const,
+  serverEnv: () => ["server-env"] as const,
 };
+
+export interface ServerEnvDefaults {
+  /** Effective fallback for the Rogue Security platform URL: the server's
+   * ``ROGUE_SECURITY_URL`` env var if set, else null. */
+  rogue_security_base_url: string | null;
+}
+
+interface ServerConfigResponse {
+  config: Record<string, unknown>;
+  path: string;
+  environment: ServerEnvDefaults;
+}
+
+/** Fetch the env-derived defaults that the server will fall back to when
+ * the user hasn't supplied an explicit value. Surfaced in the Rogue
+ * Security settings so an env override (e.g. ``ROGUE_SECURITY_URL``) is
+ * never silently invisible. */
+export function useServerEnvDefaults() {
+  return useQuery({
+    queryKey: qk.serverEnv(),
+    queryFn: async () => {
+      const res = await api<ServerConfigResponse>("/api/v1/config");
+      return res.environment;
+    },
+    staleTime: 60_000,
+    refetchOnWindowFocus: true,
+  });
+}
 
 export function useHealth() {
   return useQuery({

@@ -91,21 +91,23 @@ interface Props {
   flavour?: LiveConversationFlavour;
   emptyMessage?: string;
   title?: string;
-  /** Override the inner scroll viewport height (default 32rem). */
-  heightClassName?: string;
 }
 
 /**
  * Shared chat-style live transcript. Used by both the live-evaluation and
  * live-red-team pages — they only differ in copy (scenario vs attack) and
  * the title noun.
+ *
+ * Layout: fills the parent flex cell. Wrap the consuming page in
+ * ``<div className="flex h-full min-h-0 flex-1 flex-col">`` (with the
+ * surrounding grid row also marked ``min-h-0 flex-1``) so the inner
+ * scroll viewport can absorb all available vertical space.
  */
 export function LiveConversation({
   events,
   flavour = "evaluation",
   emptyMessage,
   title = "Conversation",
-  heightClassName = "h-[32rem]",
 }: Props) {
   const display = useMemo(() => buildDisplayEvents(events, flavour), [events, flavour]);
   const ref = useRef<HTMLDivElement | null>(null);
@@ -117,15 +119,12 @@ export function LiveConversation({
   }, [display.length]);
 
   return (
-    <Card className="flex flex-col overflow-hidden">
+    <Card className="flex h-full min-h-0 flex-col overflow-hidden">
       <CardHeader className="border-b border-border/60 py-3">
         <CardTitle className="text-sm">{title}</CardTitle>
       </CardHeader>
-      <CardContent className="p-0">
-        <div
-          ref={ref}
-          className={cn("overflow-y-auto bg-background/40 px-4 py-4", heightClassName)}
-        >
+      <CardContent className="flex min-h-0 flex-1 flex-col p-0">
+        <div ref={ref} className="min-h-0 flex-1 overflow-y-auto bg-background/40 px-4 py-4">
           {display.length === 0 ? (
             <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
               {emptyMessage ??

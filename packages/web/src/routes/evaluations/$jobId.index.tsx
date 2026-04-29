@@ -36,7 +36,11 @@ function EvaluationDetailPage() {
   }
 
   return (
-    <div className="space-y-4">
+    // Flex column that fills the parent's flex-1 region (see __root.tsx).
+    // ``min-h-0`` is critical so the inner ``flex-1`` grid row is actually
+    // allowed to shrink/grow inside the column instead of pushing the page
+    // taller than the viewport.
+    <div className="flex h-full min-h-0 flex-1 flex-col gap-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">
@@ -67,7 +71,7 @@ function EvaluationDetailPage() {
 
       <ProgressBar value={stream.latest?.progress ?? job.data?.progress ?? 0} />
 
-      <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
+      <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[2fr_1fr]">
         <ConversationView events={stream.events} />
         <ProgressRail
           status={(stream.latest?.status ?? job.data?.status) as string | undefined}
@@ -211,12 +215,14 @@ function ConversationView({ events }: { events: TimelineEvent[] }) {
   }, [display.length]);
 
   return (
-    <Card className="flex flex-col overflow-hidden">
+    // ``h-full`` makes the card occupy its grid cell; ``min-h-0`` so the
+    // CardContent's flex-1 child can scroll instead of expanding the card.
+    <Card className="flex h-full min-h-0 flex-col overflow-hidden">
       <CardHeader className="border-b border-border/60 py-3">
         <CardTitle className="text-sm">Conversation</CardTitle>
       </CardHeader>
-      <CardContent className="p-0">
-        <div ref={ref} className="h-[32rem] overflow-y-auto bg-background/40 px-4 py-4">
+      <CardContent className="flex min-h-0 flex-1 flex-col p-0">
+        <div ref={ref} className="min-h-0 flex-1 overflow-y-auto bg-background/40 px-4 py-4">
           {display.length === 0 ? (
             <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
               Waiting for the agent under test to respond…
@@ -350,11 +356,11 @@ function ProgressRail({
   chatCount: number;
 }) {
   return (
-    <Card>
+    <Card className="flex h-full min-h-0 flex-col">
       <CardHeader>
         <CardTitle className="text-sm">Status</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4 text-sm">
+      <CardContent className="min-h-0 flex-1 space-y-4 overflow-y-auto text-sm">
         <Row label="State">
           {status ? <StatusBadge status={status} /> : <Badge variant="outline">unknown</Badge>}
         </Row>

@@ -38,7 +38,10 @@ function RedTeamDetailPage() {
   }
 
   return (
-    <div className="space-y-4">
+    // Flex column that fills the parent's flex-1 region (see __root.tsx),
+    // so the live transcript reaches the bottom of the viewport instead of
+    // capping at a hard ``h-[32rem]`` and leaving a dead zone below.
+    <div className="flex h-full min-h-0 flex-1 flex-col gap-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">
@@ -59,7 +62,7 @@ function RedTeamDetailPage() {
 
       <ProgressBar value={stream.latest?.progress ?? job.data?.progress ?? 0} />
 
-      <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
+      <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[2fr_1fr]">
         <LiveConversation events={stream.events} flavour="red-team" />
         <ProgressRail
           status={(stream.latest?.status ?? job.data?.status) as string | undefined}
@@ -138,11 +141,11 @@ function ProgressRail({
   chatCount: number;
 }) {
   return (
-    <Card>
+    <Card className="flex h-full min-h-0 flex-col">
       <CardHeader>
         <CardTitle className="text-sm">Status</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4 text-sm">
+      <CardContent className="min-h-0 flex-1 space-y-4 overflow-y-auto text-sm">
         <Row label="State">
           {status ? <StatusBadge status={status} /> : <Badge variant="outline">unknown</Badge>}
         </Row>

@@ -1,16 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { IconArrowRight, IconAlertTriangle } from "@tabler/icons-react";
-import { useState } from "react";
 import { toast } from "sonner";
 
 import { BusinessContextCard } from "@/components/business-context-card";
 import { ModelPickerButton } from "@/components/model-picker/dialog";
 import { RogueSecuritySuggestion } from "@/components/rogue-security-suggestion";
-import {
-  DEFAULT_TARGET_AGENT_VALUE,
-  TargetAgentForm,
-  type TargetAgentValue,
-} from "@/components/target-agent-form";
+import { TargetAgentForm } from "@/components/target-agent-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useStartEvaluation } from "@/api/queries";
@@ -29,12 +24,13 @@ function NewEvaluationPage() {
   const start = useStartEvaluation();
   const scenarios = useScenariosStore((s) => s.scenarios);
 
-  // Initialise from the persisted last-used config so the user doesn't have
-  // to re-enter the URL / protocol / auth on every reload. Reads from the
-  // store once on mount; subsequent edits are local until the next submit.
-  const [agent, setAgent] = useState<TargetAgentValue>(
-    () => cfg.lastEvaluationAgent ?? DEFAULT_TARGET_AGENT_VALUE,
-  );
+  // Bind the form directly to the persisted slot so every keystroke is
+  // saved — survives page navigation, reload, AND server restart. Local
+  // ``useState`` would lose the draft on every page change, which is
+  // exactly the complaint we'd otherwise be fixing only for successful
+  // submits. Config-sync's 500ms debounce throttles the resulting PUTs.
+  const agent = cfg.lastEvaluationAgent;
+  const setAgent = cfg.setLastEvaluationAgent;
 
   const isPython = agent.protocol === "python";
   const needsAgentUrl = protocolNeedsAgentUrl(agent.protocol);
@@ -74,8 +70,6 @@ function NewEvaluationPage() {
         max_retries: 3,
         timeout_seconds: 600,
       });
-      // Remember this exact target so the next visit prefills it.
-      cfg.setLastEvaluationAgent(agent);
       toast.success("Evaluation started");
       navigate({ to: "/evaluations/$jobId", params: { jobId: res.job_id } });
     } catch (e) {

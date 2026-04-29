@@ -23,7 +23,7 @@ import contextlib
 import os
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import tomli_w
 from fastapi import APIRouter, HTTPException
@@ -106,14 +106,40 @@ def _deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]
     return out
 
 
+class EnvironmentDefaults(BaseModel):
+    """Server-side env-var-derived fallback defaults the SPA needs to display.
+
+    These don't live in the user's TOML — they come from the *server
+    process's* environment (e.g. ``ROGUE_SECURITY_URL``). Without
+    surfacing them, the user can't tell from the UI when an env var is
+    silently overriding their intended endpoint, only that "the report
+    didn't show up where I expected".
+    """
+
+    rogue_security_base_url: Optional[str] = None
+    """Effective fallback for the Rogue Security platform URL: the value
+    of ``ROGUE_SECURITY_URL`` if set, else ``None`` (in which case the
+    server falls back to the hardcoded production URL)."""
+
+
 class ConfigResponse(BaseModel):
     config: dict[str, Any]
     path: str
+    environment: EnvironmentDefaults
+
+
+def _environment_defaults() -> EnvironmentDefaults:
+    raw = os.environ.get("ROGUE_SECURITY_URL", "").strip()
+    return EnvironmentDefaults(rogue_security_base_url=raw or None)
 
 
 @router.get("", response_model=ConfigResponse)
 async def get_config() -> ConfigResponse:
-    return ConfigResponse(config=_read_config(), path=str(_config_path()))
+    return ConfigResponse(
+        config=_read_config(),
+        path=str(_config_path()),
+        environment=_environment_defaults(),
+    )
 
 
 @router.put("", response_model=ConfigResponse)
@@ -132,4 +158,8 @@ async def put_config(payload: dict[str, Any]) -> ConfigResponse:
             status_code=500,
             detail=f"Failed to write config: {exc}",
         )
-    return ConfigResponse(config=merged, path=str(_config_path()))
+    return ConfigResponse(
+        config=merged,
+        path=str(_config_path()),
+        environment=_environment_defaults(),
+    )

@@ -4,8 +4,16 @@
  *
  * - On hydration, GET /api/v1/config and merge into the store. localStorage
  *   acts as the offline cache; the server is authoritative when reachable.
- * - On every store change, debounce 500 ms and PUT the snake_case payload
- *   back to the server so the TUI sees the same values on next launch.
+ * - On every store change, PUT the snake_case payload back to the server
+ *   immediately (no debounce — each keystroke writes to disk). A
+ *   single-in-flight queue coalesces fast bursts so concurrent PUTs can't
+ *   land in the wrong order on the local server.
+ * - The server's ``last_evaluation_agent`` / ``last_red_team_agent``
+ *   overlay is applied ONLY when the local store still matches
+ *   ``DEFAULT_TARGET_AGENT_VALUE`` — i.e. a true cold-start. After the
+ *   user has typed anything, localStorage is authoritative for those
+ *   fields, so a stale GET response from a race with an in-flight PUT
+ *   can't clobber fresh edits.
  *
  * The server merges the payload into the existing TOML (keys not sent are
  * preserved), so we only need to send the fields we own.
@@ -98,6 +106,20 @@ function targetAgentToToml(v: TargetAgentValue): Record<string, unknown> {
   };
 }
 
+/** True iff every field still matches the hard-coded default — used to
+ * detect "this browser hasn't touched the target agent yet" so we know
+ * it's safe to overlay the server's last value without clobbering edits. */
+function targetAgentMatchesDefault(v: TargetAgentValue): boolean {
+  return (
+    v.protocol === DEFAULT_TARGET_AGENT_VALUE.protocol &&
+    v.transport === DEFAULT_TARGET_AGENT_VALUE.transport &&
+    v.agentUrl === DEFAULT_TARGET_AGENT_VALUE.agentUrl &&
+    v.pythonFile === DEFAULT_TARGET_AGENT_VALUE.pythonFile &&
+    v.authType === DEFAULT_TARGET_AGENT_VALUE.authType &&
+    v.credentials === DEFAULT_TARGET_AGENT_VALUE.credentials
+  );
+}
+
 /** Map TOML (snake_case) → Zustand (camelCase). */
 function toZustand(server: Record<string, unknown>): Partial<ConfigState> {
   const draft: Partial<ConfigState> = {};
@@ -183,27 +205,46 @@ function toToml(state: ConfigState): Record<string, unknown> {
 }
 
 let started = false;
-let pendingSaveTimer: number | null = null;
 let suppressNextSave = false;
 // Push gating: ``toToml`` always serialises the WHOLE state, including
 // fields the user hasn't touched (their DEFAULTS). If we let pushes fire
 // before the initial pull completes, we'd race with the server: the user
-// changes one field, the debounced PUT sends DEFAULTS for every *other*
-// field, and the server's previously-persisted values (from a TUI run or
-// a prior session) get clobbered with the SPA's hard-coded defaults. The
-// pull then resolves with the now-corrupted values and the UI snaps to
-// them — looking exactly like the settings "didn't persist". Block all
-// outbound pushes until pull has resolved (success OR failure) so the
-// store is up-to-date with the authoritative server state first.
+// changes one field, the PUT sends DEFAULTS for every *other* field, and
+// the server's previously-persisted values get clobbered with the SPA's
+// hard-coded defaults. Block all outbound pushes until pull has resolved
+// so the store is up-to-date with the authoritative server state first.
 let initialPullSettled = false;
+let pendingSaveAfterPull = false;
+
+// Single-in-flight queue. Without this, fast typing fires a fresh PUT per
+// keystroke; on a local server they (rarely) reorder. We instead keep one
+// PUT in flight at a time and re-snapshot ``useConfig.getState()`` for the
+// next round, so the latest typed value always wins regardless of timing.
+let putInFlight = false;
+let dirty = false;
 
 async function pullFromServer(): Promise<void> {
   try {
     const res = await api<ServerConfig>("/api/v1/config", { method: "GET" });
     const overlay = toZustand(res.config);
-    if (Object.keys(overlay).length === 0) return;
-    suppressNextSave = true;
-    useConfig.setState(overlay);
+
+    // Cold-start guard for the per-page target-agent slots. After the user
+    // has typed anything, localStorage is authoritative — applying a stale
+    // GET response (which raced with the previous in-flight PUT) would
+    // clobber fresh edits. Apply the server overlay only when the local
+    // copy is still pristine defaults.
+    const current = useConfig.getState();
+    if (overlay.lastEvaluationAgent && !targetAgentMatchesDefault(current.lastEvaluationAgent)) {
+      delete overlay.lastEvaluationAgent;
+    }
+    if (overlay.lastRedTeamAgent && !targetAgentMatchesDefault(current.lastRedTeamAgent)) {
+      delete overlay.lastRedTeamAgent;
+    }
+
+    if (Object.keys(overlay).length > 0) {
+      suppressNextSave = true;
+      useConfig.setState(overlay);
+    }
   } catch (e) {
     if (e instanceof ApiError) {
       // Older server without the /config route — nothing to sync.
@@ -215,24 +256,36 @@ async function pullFromServer(): Promise<void> {
     }
   } finally {
     initialPullSettled = true;
-    // If the user managed to change something while we were fetching, the
-    // subscriber tucked that intent into the debounce timer (or dropped
-    // it). Either way we now flush eagerly: any pending edit reflects the
-    // post-pull state (since the pull just finished) and is safe to push.
-    if (pendingSaveTimer !== null) {
-      window.clearTimeout(pendingSaveTimer);
-      pendingSaveTimer = null;
+    if (pendingSaveAfterPull) {
+      pendingSaveAfterPull = false;
       pushToServer();
     }
   }
 }
 
+async function flushLoop(): Promise<void> {
+  if (putInFlight) return;
+  putInFlight = true;
+  try {
+    while (dirty) {
+      dirty = false;
+      const payload = toToml(useConfig.getState());
+      try {
+        await api("/api/v1/config", { method: "PUT", body: payload });
+      } catch (e) {
+        // Best effort — local store stays valid even if the server
+        // is briefly unreachable. Logging once per failure is enough.
+        console.warn("config-sync: push failed", e);
+      }
+    }
+  } finally {
+    putInFlight = false;
+  }
+}
+
 function pushToServer(): void {
-  const payload = toToml(useConfig.getState());
-  // Best effort — failure is non-fatal, the local store stays valid.
-  void api("/api/v1/config", { method: "PUT", body: payload }).catch((e) => {
-    console.warn("config-sync: push failed", e);
-  });
+  dirty = true;
+  void flushLoop();
 }
 
 export function startConfigSync(): void {
@@ -247,29 +300,12 @@ export function startConfigSync(): void {
       suppressNextSave = false;
       return;
     }
-    if (pendingSaveTimer !== null) window.clearTimeout(pendingSaveTimer);
-    pendingSaveTimer = window.setTimeout(() => {
-      pendingSaveTimer = null;
-      // Wait for the initial pull. If the user beat the network, defer
-      // — pullFromServer's ``finally`` block will flush this push once
-      // it has the authoritative state to merge against.
-      if (!initialPullSettled) return;
-      pushToServer();
-    }, 500);
-  });
-
-  // Flush pending edits if the tab is being unloaded, so a quick
-  // change-then-close doesn't lose the last value to the debounce timer.
-  // ``pagehide`` fires for both navigation and bfcache; ``visibilitychange``
-  // covers the mobile-Safari case where ``beforeunload`` is unreliable.
-  const flushIfPending = () => {
-    if (pendingSaveTimer === null) return;
-    window.clearTimeout(pendingSaveTimer);
-    pendingSaveTimer = null;
-    if (initialPullSettled) pushToServer();
-  };
-  window.addEventListener("pagehide", flushIfPending);
-  window.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") flushIfPending();
+    if (!initialPullSettled) {
+      // Defer: pullFromServer's ``finally`` block flushes once the
+      // authoritative server state has been merged in.
+      pendingSaveAfterPull = true;
+      return;
+    }
+    pushToServer();
   });
 }
