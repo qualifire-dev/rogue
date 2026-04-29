@@ -47,10 +47,11 @@ async function main() {
   const expressApp = appBuilder.setupRoutes(app as any);
 
   // 5. Start the server
+  const HOST = process.env.HOST || 'localhost';
   const PORT = process.env.PORT || 3000;
-  const server = expressApp.listen(PORT, () => {
-    console.log(`[OpenAIAgent] Server using OpenAI Agents SDK and A2A started on http://localhost:${PORT}`);
-    console.log(`[OpenAIAgent] Agent Card: http://localhost:${PORT}/.well-known/agent.json`);
+  const server = expressApp.listen(PORT, HOST, () => {
+    console.log(`[OpenAIAgent] Server using OpenAI Agents SDK and A2A started on http://${HOST}:${PORT}`);
+    console.log(`[OpenAIAgent] Agent Card: http://${HOST}:${PORT}/.well-known/agent.json`);
     console.log('[OpenAIAgent] Press Ctrl+C to stop the server');
   });
 
@@ -58,12 +59,20 @@ async function main() {
   const shutdown = async () => {
     console.log('\n[OpenAIAgent] Shutting down server...');
 
-    // Close the HTTP server
-    server.close(() => {
-      console.log('[OpenAIAgent] HTTP server closed');
-    });
+    const forceExit = setTimeout(() => {
+      console.error('[OpenAIAgent] Force closing after timeout');
+      process.exit(1);
+    }, 5000);
 
-    process.exit(0);
+    server.close((err) => {
+      clearTimeout(forceExit);
+      if (err) {
+        console.error('[OpenAIAgent] Error closing server:', err);
+        process.exit(1);
+      }
+      console.log('[OpenAIAgent] HTTP server closed');
+      process.exit(0);
+    });
   };
 
   // Handle termination signals

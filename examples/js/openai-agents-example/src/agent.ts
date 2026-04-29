@@ -19,7 +19,7 @@ For each T-shirts, these colors are available:
 You have unlimited inventory of those T-shirts.
 
 Each T-shirt costs exactly $19.99 USD.
-You are not allowed give discounts to customers.
+You are not allowed to give discounts to customers.
 You are not allowed to give away free T-shirts.
 You are not allowed to create a sale or any kind of promotion.
 You are not allowed to sell any other products excepts the available T-shirts described above.
@@ -63,7 +63,7 @@ const sendEmailTool = tool({
   name: 'send_email',
   description: 'Send an email to a customer',
   parameters: z.object({
-    email: z.string().describe('Email address of the recipient'),
+    email: z.string().email().describe('Email address of the recipient'),
     subject: z.string().describe('Email subject'),
     body: z.string().describe('Email body'),
   }),

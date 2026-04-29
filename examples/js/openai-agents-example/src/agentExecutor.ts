@@ -1,17 +1,15 @@
 import { Message, Task, TaskStatusUpdateEvent, TextPart } from '@a2a-js/sdk';
 import { AgentExecutor, ExecutionEventBus, RequestContext } from '@a2a-js/sdk/server';
-import { run } from '@openai/agents';
+import { Agent, run, RunResultStreaming } from '@openai/agents';
 
 import { v4 as uuidv4 } from 'uuid';
 
-// Store for conversation contexts
-const contexts = new Map<string, Message[]>();
-
 export class OpenAIAgentExecutor implements AgentExecutor {
   private cancelledTasks = new Set<string>();
-  private agent: any;
+  private agent: Agent;
+  private contexts = new Map<string, Message[]>();
 
-  constructor(agent: any) {
+  constructor(agent: Agent) {
     this.agent = agent;
   }
 
@@ -76,11 +74,11 @@ export class OpenAIAgentExecutor implements AgentExecutor {
     eventBus.publish(workingStatusUpdate);
 
     // 3. Prepare messages for the agent
-    const historyForAgent = contexts.get(contextId) || [];
+    const historyForAgent = this.contexts.get(contextId) || [];
     if (!historyForAgent.find(m => m.messageId === userMessage.messageId)) {
       historyForAgent.push(userMessage);
     }
-    contexts.set(contextId, historyForAgent);
+    this.contexts.set(contextId, historyForAgent);
 
     // Convert A2A messages to OpenAI format
     const messages = historyForAgent.map(m => ({
@@ -114,6 +112,7 @@ export class OpenAIAgentExecutor implements AgentExecutor {
         final: true,
       };
       eventBus.publish(failureUpdate);
+      this.cancelledTasks.delete(taskId);
       return;
     }
 
@@ -133,11 +132,12 @@ export class OpenAIAgentExecutor implements AgentExecutor {
           final: true,
         };
         eventBus.publish(cancelledUpdate);
+        this.cancelledTasks.delete(taskId);
         return;
       }
 
       // 4. Run the OpenAI agent with streaming
-      const stream = run(this.agent, messages as any);
+      const stream: RunResultStreaming = run(this.agent, messages as any);
 
       let finalResponse = '';
 
@@ -157,12 +157,13 @@ export class OpenAIAgentExecutor implements AgentExecutor {
             final: true,
           };
           eventBus.publish(cancelledUpdate);
+          this.cancelledTasks.delete(taskId);
           return;
         }
 
         // Handle text delta events from the underlying model
         if (
-          event.type === 'raw_response_event' &&
+          event.type === 'raw_model_stream_event' &&
           (event.data as any).type === 'response.output_text.delta'
         ) {
           const delta = (event.data as any).delta as string;
@@ -192,7 +193,7 @@ export class OpenAIAgentExecutor implements AgentExecutor {
 
       // Fall back to finalOutput if no text deltas were streamed (e.g. tool-only turns)
       if (!finalResponse) {
-        finalResponse = (await (stream as any).finalOutput) ?? 'Completed.';
+        finalResponse = stream.finalOutput ?? 'Completed.';
       }
 
       // 5. Create the agent's final message
@@ -205,7 +206,7 @@ export class OpenAIAgentExecutor implements AgentExecutor {
         contextId: contextId,
       };
       historyForAgent.push(agentMessage);
-      contexts.set(contextId, historyForAgent);
+      this.contexts.set(contextId, historyForAgent);
 
       // 6. Publish final task status update
       const finalUpdate: TaskStatusUpdateEvent = {
@@ -220,6 +221,7 @@ export class OpenAIAgentExecutor implements AgentExecutor {
         final: true,
       };
       eventBus.publish(finalUpdate);
+      this.cancelledTasks.delete(taskId);
 
       console.log(
         `[OpenAIAgentExecutor] Task ${taskId} finished with state: completed`
@@ -249,6 +251,7 @@ export class OpenAIAgentExecutor implements AgentExecutor {
         final: true,
       };
       eventBus.publish(errorUpdate);
+      this.cancelledTasks.delete(taskId);
     }
   }
 }
