@@ -1,6 +1,11 @@
 import { Message, Task, TaskStatusUpdateEvent, TextPart } from '@a2a-js/sdk';
 import { AgentExecutor, ExecutionEventBus, RequestContext } from '@a2a-js/sdk/server';
-import { Agent, AgentInputItem, run, RunResultStreaming } from '@openai/agents';
+import {
+  Agent,
+  AgentInputItem,
+  isOpenAIResponsesRawModelStreamEvent,
+  run,
+} from '@openai/agents';
 
 import { v4 as uuidv4 } from 'uuid';
 
@@ -185,7 +190,10 @@ export class OpenAIAgentExecutor implements AgentExecutor {
 
       // 4. Run the OpenAI agent with streaming
       const controller = new AbortController();
-      const stream: RunResultStreaming = run(this.agent, messages, { signal: controller.signal });
+      const stream = await run(this.agent, messages, {
+        stream: true,
+        signal: controller.signal,
+      });
 
       let finalResponse = '';
 
@@ -213,10 +221,11 @@ export class OpenAIAgentExecutor implements AgentExecutor {
 
         // Handle text delta events from the underlying model
         if (
-          event.type === 'raw_model_stream_event' &&
-          (event.data as any).type === 'response.output_text.delta'
+          isOpenAIResponsesRawModelStreamEvent(event) &&
+          event.data.type === 'model' &&
+          event.data.event.type === 'response.output_text.delta'
         ) {
-          const delta = (event.data as any).delta as string;
+          const delta = event.data.event.delta;
           finalResponse += delta;
 
           const intermediateUpdate: TaskStatusUpdateEvent = {
@@ -242,6 +251,7 @@ export class OpenAIAgentExecutor implements AgentExecutor {
       }
 
       // Fall back to finalOutput if no text deltas were streamed (e.g. tool-only turns)
+      await stream.completed;
       if (!finalResponse) {
         finalResponse = stream.finalOutput ?? 'Completed.';
       }
