@@ -29,7 +29,12 @@ function NewEvaluationPage() {
   const start = useStartEvaluation();
   const scenarios = useScenariosStore((s) => s.scenarios);
 
-  const [agent, setAgent] = useState<TargetAgentValue>(DEFAULT_TARGET_AGENT_VALUE);
+  // Initialise from the persisted last-used config so the user doesn't have
+  // to re-enter the URL / protocol / auth on every reload. Reads from the
+  // store once on mount; subsequent edits are local until the next submit.
+  const [agent, setAgent] = useState<TargetAgentValue>(
+    () => cfg.lastEvaluationAgent ?? DEFAULT_TARGET_AGENT_VALUE,
+  );
 
   const isPython = agent.protocol === "python";
   const needsAgentUrl = protocolNeedsAgentUrl(agent.protocol);
@@ -69,6 +74,8 @@ function NewEvaluationPage() {
         max_retries: 3,
         timeout_seconds: 600,
       });
+      // Remember this exact target so the next visit prefills it.
+      cfg.setLastEvaluationAgent(agent);
       toast.success("Evaluation started");
       navigate({ to: "/evaluations/$jobId", params: { jobId: res.job_id } });
     } catch (e) {

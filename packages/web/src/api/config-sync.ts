@@ -12,6 +12,8 @@
  */
 
 import { api, ApiError } from "@/api/client";
+import { DEFAULT_TARGET_AGENT_VALUE, type TargetAgentValue } from "@/components/target-agent-form";
+import { type AuthType, type Protocol, type Transport } from "@/api/types";
 import { useConfig, type ConfigState, type Provider } from "@/stores/config";
 
 interface ServerConfig {
@@ -28,6 +30,10 @@ const PROVIDERS: Provider[] = [
   "openrouter",
   "litellm",
 ];
+
+const PROTOCOLS_VALID: Protocol[] = ["a2a", "mcp", "python", "openai_api"];
+const TRANSPORTS_VALID: Transport[] = ["http", "sse", "streamable_http", "chat_completions"];
+const AUTH_TYPES_VALID: AuthType[] = ["no_auth", "api_key", "bearer_token", "basic"];
 
 function asProvider(value: unknown, fallback: Provider): Provider {
   return PROVIDERS.includes(value as Provider) ? (value as Provider) : fallback;
@@ -50,6 +56,46 @@ function asStringMap(value: unknown): Partial<Record<Provider, string>> {
     }
   }
   return out;
+}
+
+/** Parse a TOML sub-table into a TargetAgentValue, falling back per-field. */
+function asTargetAgent(value: unknown): TargetAgentValue | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const v = value as Record<string, unknown>;
+  const protocol: Protocol = PROTOCOLS_VALID.includes(v.protocol as Protocol)
+    ? (v.protocol as Protocol)
+    : DEFAULT_TARGET_AGENT_VALUE.protocol;
+  const transportRaw = v.transport;
+  const transport: Transport | "" =
+    transportRaw === "" || transportRaw === undefined
+      ? ""
+      : TRANSPORTS_VALID.includes(transportRaw as Transport)
+        ? (transportRaw as Transport)
+        : DEFAULT_TARGET_AGENT_VALUE.transport;
+  const authType: AuthType = AUTH_TYPES_VALID.includes(v.auth_type as AuthType)
+    ? (v.auth_type as AuthType)
+    : DEFAULT_TARGET_AGENT_VALUE.authType;
+  return {
+    protocol,
+    transport,
+    agentUrl: typeof v.agent_url === "string" ? v.agent_url : DEFAULT_TARGET_AGENT_VALUE.agentUrl,
+    pythonFile:
+      typeof v.python_file === "string" ? v.python_file : DEFAULT_TARGET_AGENT_VALUE.pythonFile,
+    authType,
+    credentials: typeof v.credentials === "string" ? v.credentials : "",
+  };
+}
+
+/** Serialize a TargetAgentValue to a TOML-compatible (snake_case) sub-table. */
+function targetAgentToToml(v: TargetAgentValue): Record<string, unknown> {
+  return {
+    protocol: v.protocol,
+    transport: v.transport,
+    agent_url: v.agentUrl,
+    python_file: v.pythonFile,
+    auth_type: v.authType,
+    credentials: v.credentials,
+  };
 }
 
 /** Map TOML (snake_case) → Zustand (camelCase). */
@@ -99,6 +145,11 @@ function toZustand(server: Record<string, unknown>): Partial<ConfigState> {
   draft.rogueSecurityApiKey = asString(server.rogue_security_api_key);
   draft.rogueSecurityBaseUrl = asString(server.rogue_security_base_url);
 
+  const lastEval = asTargetAgent(server.last_evaluation_agent);
+  if (lastEval) draft.lastEvaluationAgent = lastEval;
+  const lastRedTeam = asTargetAgent(server.last_red_team_agent);
+  if (lastRedTeam) draft.lastRedTeamAgent = lastRedTeam;
+
   return draft;
 }
 
@@ -126,6 +177,8 @@ function toToml(state: ConfigState): Record<string, unknown> {
     rogue_security_enabled: state.rogueSecurityEnabled,
     rogue_security_api_key: state.rogueSecurityApiKey ?? "",
     rogue_security_base_url: state.rogueSecurityBaseUrl ?? "",
+    last_evaluation_agent: targetAgentToToml(state.lastEvaluationAgent),
+    last_red_team_agent: targetAgentToToml(state.lastRedTeamAgent),
   };
 }
 

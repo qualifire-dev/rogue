@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+import { DEFAULT_TARGET_AGENT_VALUE, type TargetAgentValue } from "@/components/target-agent-form";
+
 export type Provider =
   | "openai"
   | "anthropic"
@@ -55,6 +57,15 @@ export interface ConfigState {
   rogueSecurityApiKey?: string;
   rogueSecurityBaseUrl?: string;
 
+  /**
+   * Last-used target agent config per page. Persisted so the user doesn't
+   * have to re-enter the URL / protocol / auth on every reload — see
+   * ``setLastEvaluationAgent`` / ``setLastRedTeamAgent`` (called on
+   * successful submit).
+   */
+  lastEvaluationAgent: TargetAgentValue;
+  lastRedTeamAgent: TargetAgentValue;
+
   setServerUrl: (url: string) => void;
   setApiKey: (provider: Provider, key: string) => void;
   setApiBase: (provider: Provider, base: string) => void;
@@ -79,6 +90,10 @@ export interface ConfigState {
 
   setBusinessContext: (ctx: string) => void;
   setRogueSecurity: (enabled: boolean, apiKey?: string, baseUrl?: string) => void;
+
+  setLastEvaluationAgent: (v: TargetAgentValue) => void;
+  setLastRedTeamAgent: (v: TargetAgentValue) => void;
+
   reset: () => void;
 }
 
@@ -111,6 +126,9 @@ const DEFAULTS = {
   rogueSecurityEnabled: false,
   rogueSecurityApiKey: undefined as string | undefined,
   rogueSecurityBaseUrl: undefined as string | undefined,
+
+  lastEvaluationAgent: { ...DEFAULT_TARGET_AGENT_VALUE },
+  lastRedTeamAgent: { ...DEFAULT_TARGET_AGENT_VALUE },
 };
 
 export const useConfig = create<ConfigState>()(
@@ -143,6 +161,10 @@ export const useConfig = create<ConfigState>()(
       setBusinessContext: (businessContext) => set({ businessContext }),
       setRogueSecurity: (rogueSecurityEnabled, rogueSecurityApiKey, rogueSecurityBaseUrl) =>
         set({ rogueSecurityEnabled, rogueSecurityApiKey, rogueSecurityBaseUrl }),
+
+      setLastEvaluationAgent: (lastEvaluationAgent) => set({ lastEvaluationAgent }),
+      setLastRedTeamAgent: (lastRedTeamAgent) => set({ lastRedTeamAgent }),
+
       reset: () => set(DEFAULTS),
     }),
     { name: "rogue:config:v1" },

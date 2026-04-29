@@ -125,17 +125,17 @@ function InterviewPage() {
   // Treat the user's own replies as the canonical business-context source —
   // they describe their agent in their own words, which generates better
   // scenarios than including the assistant's clarifying questions.
+  //
+  // Replace, don't append. Any prior ``cfg.businessContext`` already seeded
+  // the interviewer's first question in ``beginSession``, so its essence is
+  // already reflected in the user's replies — re-prepending would just
+  // compound stale text every time someone re-runs the interview.
   const buildBusinessContext = (): string => {
-    const userReplies = messages
+    return messages
       .filter((m) => m.role === "user")
       .map((m) => m.content.trim())
-      .filter(Boolean);
-    if (userReplies.length === 0) return cfg.businessContext;
-    // Prepend any existing context the user had already typed in the
-    // BusinessContextCard so we don't lose it.
-    const prior = cfg.businessContext.trim();
-    const interview = userReplies.join("\n\n");
-    return prior ? `${prior}\n\n${interview}` : interview;
+      .filter(Boolean)
+      .join("\n\n");
   };
 
   const finish = async () => {

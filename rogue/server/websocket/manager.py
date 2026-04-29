@@ -1,15 +1,27 @@
 import asyncio
 from functools import lru_cache
-from typing import Dict, List
+from typing import Dict, List, Tuple, Type
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
+from websockets.exceptions import ConnectionClosed
 
 from rogue_sdk.types import EvaluationJob, WebSocketEventType, WebSocketMessage
 
 from ...common.logging.config import get_logger
 
 logger = get_logger(__name__)
+
+# Exceptions that mean "the peer is gone" rather than a real server bug.
+# Logged as INFO without a traceback to keep server logs readable when a UI
+# tab is closed/refreshed/network-blipped mid-evaluation.
+_PEER_GONE_EXC: Tuple[Type[BaseException], ...]
+try:
+    from uvicorn.protocols.utils import ClientDisconnected
+
+    _PEER_GONE_EXC = (WebSocketDisconnect, ConnectionClosed, ClientDisconnected)
+except ImportError:  # uvicorn missing or older version without ClientDisconnected
+    _PEER_GONE_EXC = (WebSocketDisconnect, ConnectionClosed)
 
 websocket_router = APIRouter(prefix="/ws", tags=["ws"])
 
@@ -117,21 +129,44 @@ class _WebSocketManager:
         )
 
     async def send_message(self, websocket: WebSocket, message: WebSocketMessage):
+        if websocket.client_state != WebSocketState.CONNECTED:
+            return
         try:
             await websocket.send_text(message.model_dump_json())
+        except _PEER_GONE_EXC as e:
+            logger.info(
+                "WebSocket peer disconnected during send; dropping message",
+                extra={"ws_id": id(websocket), "error": str(e)},
+            )
         except Exception:
-            logger.exception("Error sending WebSocket message")
+            logger.exception("Unexpected error sending WebSocket message")
 
     async def broadcast_to_job(self, job_id: str, message: WebSocketMessage):
         if job_id not in self.active_connections:
             return
 
+        payload = message.model_dump_json()
         disconnected = []
         for websocket in self.active_connections[job_id]:
+            # Skip sockets that have already transitioned away from CONNECTED so
+            # that concurrent broadcasts don't all log the same disconnect.
+            if websocket.client_state != WebSocketState.CONNECTED:
+                disconnected.append(websocket)
+                continue
             try:
-                await websocket.send_text(message.model_dump_json())
+                await websocket.send_text(payload)
+            except _PEER_GONE_EXC as e:
+                logger.info(
+                    "WebSocket peer disconnected during broadcast; dropping",
+                    extra={
+                        "job_id": job_id,
+                        "ws_id": id(websocket),
+                        "error": str(e),
+                    },
+                )
+                disconnected.append(websocket)
             except Exception:
-                logger.exception(f"Error broadcasting to job {job_id}")
+                logger.exception(f"Unexpected error broadcasting to job {job_id}")
                 disconnected.append(websocket)
 
         # Clean up disconnected websockets
