@@ -3,6 +3,7 @@ import subprocess  # nosec: B404
 import sys
 import time
 from argparse import ArgumentParser, Namespace
+from ipaddress import ip_address
 from pathlib import Path
 
 import platformdirs
@@ -100,6 +101,13 @@ def parse_args() -> Namespace:
         help="Run in non-interactive CLI mode",
         parents=[common_parser()],
     )
+    cli_parser.add_argument(
+        "--with-server",
+        action="store_true",
+        default=False,
+        help="Start the rogue server alongside the CLI",
+    )
+    set_server_args(cli_parser)
     set_cli_args(cli_parser)
 
     # TUI mode
@@ -117,6 +125,20 @@ def parse_args() -> Namespace:
     set_server_args(tui_parser)
 
     return parser.parse_args()
+
+
+def build_local_server_url(host: str, port: int) -> str:
+    """Build an HTTP URL for a server bound to host:port, normalizing wildcards."""
+    http_host = host
+    if http_host in ("0.0.0.0", "::"):  # nosec B104
+        http_host = "127.0.0.1"
+    else:
+        try:
+            if ip_address(http_host).version == 6:
+                http_host = f"[{http_host}]"
+        except ValueError:
+            pass  # hostname, leave as-is
+    return f"http://{http_host}:{port}"
 
 
 def start_example_agent(
@@ -279,7 +301,32 @@ def main() -> None:
         if args.mode == "server":
             run_server(args, background=False)
         elif args.mode == "cli":
-            exit_code = asyncio.run(run_cli(args))
+            server_process = None
+            if args.with_server:
+                server_process = run_server(
+                    args,
+                    background=True,
+                    log_file=log_file_path,
+                )
+                if not server_process:
+                    logger.error("Failed to start rogue server. Exiting.")
+                    sys.exit(1)
+                # Point the CLI at the embedded server.
+                args.rogue_server_url = build_local_server_url(
+                    args.host,
+                    args.port,
+                )
+                logger.info(
+                    "Rogue server started for CLI",
+                    extra={"rogue_server_url": args.rogue_server_url},
+                )
+
+            try:
+                exit_code = asyncio.run(run_cli(args))
+            finally:
+                if server_process:
+                    server_process.terminate()
+                    server_process.join()
             sys.exit(exit_code)
         elif args.mode == "tui":
             if not RogueTuiInstaller().install_rogue_tui():
