@@ -4,13 +4,57 @@ import { Agent, run, RunResultStreaming } from '@openai/agents';
 
 import { v4 as uuidv4 } from 'uuid';
 
+const MAX_CONTEXTS = 500;
+const MAX_MESSAGES_PER_CONTEXT = 100;
+const CONTEXT_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
 export class OpenAIAgentExecutor implements AgentExecutor {
   private cancelledTasks = new Set<string>();
   private agent: Agent;
   private contexts = new Map<string, Message[]>();
+  private contextLastAccess = new Map<string, number>();
+  private cleanupTimer: ReturnType<typeof setInterval>;
 
   constructor(agent: Agent) {
     this.agent = agent;
+    this.cleanupTimer = setInterval(() => this.evictExpiredContexts(), 5 * 60 * 1000);
+    this.cleanupTimer.unref();
+  }
+
+  private evictExpiredContexts(): void {
+    const now = Date.now();
+    for (const [contextId, lastAccess] of this.contextLastAccess) {
+      if (now - lastAccess > CONTEXT_TTL_MS) {
+        this.contexts.delete(contextId);
+        this.contextLastAccess.delete(contextId);
+      }
+    }
+  }
+
+  private touchContext(contextId: string, history: Message[]): void {
+    // Trim to keep only the most recent messages
+    if (history.length > MAX_MESSAGES_PER_CONTEXT) {
+      history.splice(0, history.length - MAX_MESSAGES_PER_CONTEXT);
+    }
+
+    // Evict the oldest entry when at capacity
+    if (!this.contexts.has(contextId) && this.contexts.size >= MAX_CONTEXTS) {
+      let oldestId: string | null = null;
+      let oldestTime = Infinity;
+      for (const [id, time] of this.contextLastAccess) {
+        if (time < oldestTime) {
+          oldestTime = time;
+          oldestId = id;
+        }
+      }
+      if (oldestId) {
+        this.contexts.delete(oldestId);
+        this.contextLastAccess.delete(oldestId);
+      }
+    }
+
+    this.contexts.set(contextId, history);
+    this.contextLastAccess.set(contextId, Date.now());
   }
 
   public cancelTask = async (
@@ -75,19 +119,22 @@ export class OpenAIAgentExecutor implements AgentExecutor {
 
     // 3. Prepare messages for the agent
     const historyForAgent = this.contexts.get(contextId) || [];
+    this.contextLastAccess.set(contextId, Date.now());
     if (!historyForAgent.find(m => m.messageId === userMessage.messageId)) {
       historyForAgent.push(userMessage);
     }
-    this.contexts.set(contextId, historyForAgent);
+    this.touchContext(contextId, historyForAgent);
 
-    // Convert A2A messages to OpenAI format
-    const messages = historyForAgent.map(m => ({
-      role: m.role === 'agent' ? 'assistant' : 'user',
-      content: m.parts
-        .filter((p): p is TextPart => p.kind === 'text' && !!(p as TextPart).text)
-        .map(p => (p as TextPart).text)
-        .join('\n')
-    }));
+    // Convert A2A messages to OpenAI format, dropping entries with no usable text
+    const messages = historyForAgent
+      .map(m => ({
+        role: m.role === 'agent' ? 'assistant' : 'user',
+        content: m.parts
+          .filter((p): p is TextPart => p.kind === 'text' && !!(p as TextPart).text)
+          .map(p => (p as TextPart).text)
+          .join('\n'),
+      }))
+      .filter(m => m.content.trim().length > 0);
 
     if (messages.length === 0) {
       console.warn(
@@ -206,7 +253,7 @@ export class OpenAIAgentExecutor implements AgentExecutor {
         contextId: contextId,
       };
       historyForAgent.push(agentMessage);
-      this.contexts.set(contextId, historyForAgent);
+      this.touchContext(contextId, historyForAgent);
 
       // 6. Publish final task status update
       const finalUpdate: TaskStatusUpdateEvent = {
