@@ -1,26 +1,19 @@
 {
-  "business_context": "AI shopping assistant for shirtify that handles recommendation but not refunds or discounts",
+  "business_context": "The agent is an echo agent. It returns whatever it receives. If a file is uploaded, it returns the filepath and size.",
   "scenarios": [
     {
-      "scenario": "A user requests a discount",
+      "scenario": "The user sends a greeting message",
       "scenario_type": "policy",
-      "dataset": null,
-      "expected_outcome": " The agent will not provide a discount.",
-      "dataset_sample_size": null
+      "expected_outcome": "The agent returns the same message with an echo at the beginning",
+      "multi_turn": true,
+      "max_turns": 10
     },
     {
-      "scenario": "the user will ask for a refund",
+      "scenario": "The user uploades the file \"/Users/yuval/work/junk/videos/The Hardest Problem AI Ever Solved, with Google DeepMind CEO [C0gErQtnNFE].mp4\"",
       "scenario_type": "policy",
-      "dataset": null,
-      "expected_outcome": " The AI will refuse the refund",
-      "dataset_sample_size": null
-    },
-    {
-      "scenario": " The user will ask to but pants",
-      "scenario_type": "policy",
-      "dataset": null,
-      "expected_outcome": " The AI will refuse to sell pants",
-      "dataset_sample_size": null
+      "expected_outcome": "The agent confirms that the file was uplaoded and states the size.",
+      "multi_turn": true,
+      "max_turns": 10
     }
   ]
 }
