@@ -15,6 +15,7 @@ const CONTEXT_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
 export class OpenAIAgentExecutor implements AgentExecutor {
   private cancelledTasks = new Set<string>();
+  private activeControllers = new Map<string, AbortController>();
   private agent: Agent;
   private contexts = new Map<string, Message[]>();
   private contextLastAccess = new Map<string, number>();
@@ -24,6 +25,10 @@ export class OpenAIAgentExecutor implements AgentExecutor {
     this.agent = agent;
     this.cleanupTimer = setInterval(() => this.evictExpiredContexts(), 5 * 60 * 1000);
     this.cleanupTimer.unref();
+  }
+
+  public dispose(): void {
+    clearInterval(this.cleanupTimer);
   }
 
   private evictExpiredContexts(): void {
@@ -67,6 +72,7 @@ export class OpenAIAgentExecutor implements AgentExecutor {
     eventBus: ExecutionEventBus,
   ): Promise<void> => {
     this.cancelledTasks.add(taskId);
+    this.activeControllers.get(taskId)?.abort();
     // The execute loop is responsible for publishing the final state
   };
 
@@ -77,7 +83,6 @@ export class OpenAIAgentExecutor implements AgentExecutor {
     const userMessage = requestContext.userMessage;
     const existingTask = requestContext.task;
 
-    // Determine IDs for the task and context
     const taskId = existingTask?.id || uuidv4();
     const contextId = userMessage.contextId || existingTask?.contextId || uuidv4();
 
@@ -101,7 +106,26 @@ export class OpenAIAgentExecutor implements AgentExecutor {
       eventBus.publish(initialTask);
     }
 
-    // 2. Publish "working" status update
+    // 2. Pre-run cancellation check — before emitting "working" so a cancelled
+    //    task never briefly appears as working.
+    if (this.cancelledTasks.has(taskId)) {
+      console.log(`[OpenAIAgentExecutor] Request cancelled for task: ${taskId}`);
+      const cancelledUpdate: TaskStatusUpdateEvent = {
+        kind: 'status-update',
+        taskId: taskId,
+        contextId: contextId,
+        status: {
+          state: 'canceled',
+          timestamp: new Date().toISOString(),
+        },
+        final: true,
+      };
+      eventBus.publish(cancelledUpdate);
+      this.cancelledTasks.delete(taskId);
+      return;
+    }
+
+    // 3. Publish "working" status update
     const workingStatusUpdate: TaskStatusUpdateEvent = {
       kind: 'status-update',
       taskId: taskId,
@@ -122,7 +146,7 @@ export class OpenAIAgentExecutor implements AgentExecutor {
     };
     eventBus.publish(workingStatusUpdate);
 
-    // 3. Prepare messages for the agent
+    // 4. Prepare messages for the agent
     const historyForAgent = this.contexts.get(contextId) || [];
     this.contextLastAccess.set(contextId, Date.now());
     if (!historyForAgent.find(m => m.messageId === userMessage.messageId)) {
@@ -168,28 +192,12 @@ export class OpenAIAgentExecutor implements AgentExecutor {
       return;
     }
 
+    // 5. Create a per-run AbortController and register it so cancelTask() can
+    //    abort the upstream request immediately without waiting for the next event.
+    const controller = new AbortController();
+    this.activeControllers.set(taskId, controller);
+
     try {
-      // Check if the task has been cancelled before starting
-      if (this.cancelledTasks.has(taskId)) {
-        console.log(`[OpenAIAgentExecutor] Request cancelled for task: ${taskId}`);
-
-        const cancelledUpdate: TaskStatusUpdateEvent = {
-          kind: 'status-update',
-          taskId: taskId,
-          contextId: contextId,
-          status: {
-            state: 'canceled',
-            timestamp: new Date().toISOString(),
-          },
-          final: true,
-        };
-        eventBus.publish(cancelledUpdate);
-        this.cancelledTasks.delete(taskId);
-        return;
-      }
-
-      // 4. Run the OpenAI agent with streaming
-      const controller = new AbortController();
       const stream = await run(this.agent, messages, {
         stream: true,
         signal: controller.signal,
@@ -198,7 +206,8 @@ export class OpenAIAgentExecutor implements AgentExecutor {
       let finalResponse = '';
 
       for await (const event of stream) {
-        // Check for cancellation during execution
+        // Mid-stream cancellation: cancelTask may have already called abort(),
+        // but also handle the polling path for robustness.
         if (this.cancelledTasks.has(taskId)) {
           console.log(`[OpenAIAgentExecutor] Request cancelled during execution for task: ${taskId}`);
 
@@ -250,13 +259,15 @@ export class OpenAIAgentExecutor implements AgentExecutor {
         }
       }
 
-      // Fall back to finalOutput if no text deltas were streamed (e.g. tool-only turns)
+      // Ensure the stream has fully settled before reading finalOutput
       await stream.completed;
+
+      // Fall back to finalOutput if no text deltas were streamed (e.g. tool-only turns)
       if (!finalResponse) {
         finalResponse = stream.finalOutput ?? 'Completed.';
       }
 
-      // 5. Create the agent's final message
+      // 6. Store the agent reply and publish final task status update
       const agentMessage: Message = {
         kind: 'message',
         role: 'agent',
@@ -268,7 +279,6 @@ export class OpenAIAgentExecutor implements AgentExecutor {
       historyForAgent.push(agentMessage);
       this.touchContext(contextId, historyForAgent);
 
-      // 6. Publish final task status update
       const finalUpdate: TaskStatusUpdateEvent = {
         kind: 'status-update',
         taskId: taskId,
@@ -283,16 +293,12 @@ export class OpenAIAgentExecutor implements AgentExecutor {
       eventBus.publish(finalUpdate);
       this.cancelledTasks.delete(taskId);
 
-      console.log(
-        `[OpenAIAgentExecutor] Task ${taskId} finished with state: completed`
-      );
+      console.log(`[OpenAIAgentExecutor] Task ${taskId} finished with state: completed`);
 
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error(
-        `[OpenAIAgentExecutor] Error processing task ${taskId}:`,
-        error
-      );
+      console.error(`[OpenAIAgentExecutor] Error processing task ${taskId}:`, error);
+
       const errorUpdate: TaskStatusUpdateEvent = {
         kind: 'status-update',
         taskId: taskId,
@@ -313,6 +319,9 @@ export class OpenAIAgentExecutor implements AgentExecutor {
       };
       eventBus.publish(errorUpdate);
       this.cancelledTasks.delete(taskId);
+
+    } finally {
+      this.activeControllers.delete(taskId);
     }
   }
 }

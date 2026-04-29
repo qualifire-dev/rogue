@@ -66,6 +66,7 @@ async function main() {
 
     server.close((err) => {
       clearTimeout(forceExit);
+      agentExecutor.dispose();
       if (err) {
         console.error('[OpenAIAgent] Error closing server:', err);
         process.exit(1);
