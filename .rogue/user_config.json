@@ -8,8 +8,8 @@
   "interview_mode": true,
   "judge_llm": "openai/gpt-4.1",
   "parallel_runs": 2,
-  "protocol": "python",
-  "python_entrypoint_file": "/Users/yuval/work/rogue-private/examples/python_entrypoint_stub.py",
-  "scan_type": "custom",
-  "service_llm": "openai/gpt-4.1"
+  "protocol": "a2a",
+  "scan_type": "basic",
+  "service_llm": "openai/gpt-4.1",
+  "transport": "http"
 }
