@@ -1,6 +1,6 @@
 import { Message, Task, TaskStatusUpdateEvent, TextPart } from '@a2a-js/sdk';
 import { AgentExecutor, ExecutionEventBus, RequestContext } from '@a2a-js/sdk/server';
-import { Agent, run, RunResultStreaming } from '@openai/agents';
+import { Agent, AgentInputItem, run, RunResultStreaming } from '@openai/agents';
 
 import { v4 as uuidv4 } from 'uuid';
 
@@ -126,9 +126,9 @@ export class OpenAIAgentExecutor implements AgentExecutor {
     this.touchContext(contextId, historyForAgent);
 
     // Convert A2A messages to OpenAI format, dropping entries with no usable text
-    const messages = historyForAgent
+    const messages: AgentInputItem[] = historyForAgent
       .map(m => ({
-        role: m.role === 'agent' ? 'assistant' : 'user',
+        role: (m.role === 'agent' ? 'assistant' : 'user') as 'assistant' | 'user',
         content: m.parts
           .filter((p): p is TextPart => p.kind === 'text' && !!(p as TextPart).text)
           .map(p => (p as TextPart).text)
@@ -184,7 +184,8 @@ export class OpenAIAgentExecutor implements AgentExecutor {
       }
 
       // 4. Run the OpenAI agent with streaming
-      const stream: RunResultStreaming = run(this.agent, messages as any);
+      const controller = new AbortController();
+      const stream: RunResultStreaming = run(this.agent, messages, { signal: controller.signal });
 
       let finalResponse = '';
 
@@ -192,6 +193,8 @@ export class OpenAIAgentExecutor implements AgentExecutor {
         // Check for cancellation during execution
         if (this.cancelledTasks.has(taskId)) {
           console.log(`[OpenAIAgentExecutor] Request cancelled during execution for task: ${taskId}`);
+
+          controller.abort();
 
           const cancelledUpdate: TaskStatusUpdateEvent = {
             kind: 'status-update',
@@ -274,7 +277,8 @@ export class OpenAIAgentExecutor implements AgentExecutor {
         `[OpenAIAgentExecutor] Task ${taskId} finished with state: completed`
       );
 
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       console.error(
         `[OpenAIAgentExecutor] Error processing task ${taskId}:`,
         error
@@ -289,7 +293,7 @@ export class OpenAIAgentExecutor implements AgentExecutor {
             kind: 'message',
             role: 'agent',
             messageId: uuidv4(),
-            parts: [{ kind: 'text', text: `Agent error: ${error.message}` }],
+            parts: [{ kind: 'text', text: `Agent error: ${errorMessage}` }],
             taskId: taskId,
             contextId: contextId,
           },
