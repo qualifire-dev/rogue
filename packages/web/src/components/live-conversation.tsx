@@ -29,6 +29,11 @@ function buildDisplayEvents(
   const out: DisplayEvent[] = [];
   let lastChatRole: "rogue" | "agent" | null = null;
   let probeIdx = 0;
+  // Track the (scenario_index, attempt_index) pair we last rendered a
+  // marker for, so a new attempt of the SAME scenario also gets its own
+  // divider — even if the underlying chat sequence happens to start with
+  // a Rogue message twice in a row (which the heuristic alone would miss).
+  let lastMarkerKey: string | null = null;
   const probeWord = flavour === "red-team" ? "attack" : "scenario";
   const noun = flavour === "red-team" ? "Scan" : "Evaluation";
 
@@ -37,9 +42,34 @@ function buildDisplayEvents(
       const raw = (e.chat.role || "").toLowerCase();
       const role: "rogue" | "agent" = raw.includes("agent") ? "agent" : "rogue";
 
-      // Heuristic: a Rogue message immediately following an Agent reply,
-      // or the very first Rogue message, marks a new probe / scenario.
-      if (role === "rogue" && lastChatRole !== "rogue") {
+      // Prefer the explicit (scenario_index, attempt_index, attempts_total)
+      // metadata the multi-turn driver attaches to each chat event. Falls
+      // back to the heuristic for older servers / the red-team flavour
+      // (which doesn't yet supply attempt metadata).
+      const sIdx = e.chat.scenario_index;
+      const aIdx = e.chat.attempt_index;
+      const aTotal = e.chat.attempts_total;
+      const hasMeta = typeof sIdx === "number" && typeof aIdx === "number";
+
+      if (hasMeta) {
+        const markerKey = `${sIdx}/${aIdx}`;
+        if (markerKey !== lastMarkerKey) {
+          const label =
+            (aTotal ?? 1) > 1
+              ? `Testing ${probeWord} ${sIdx + 1}, attempt ${aIdx + 1} of ${aTotal}`
+              : `Testing ${probeWord} ${sIdx + 1}`;
+          out.push({
+            key: `marker-${i}`,
+            at: e.at,
+            kind: "system",
+            systemTone: "info",
+            content: label,
+          });
+          lastMarkerKey = markerKey;
+        }
+      } else if (role === "rogue" && lastChatRole !== "rogue") {
+        // Heuristic fallback: Rogue → Agent → Rogue alternation marks
+        // a new probe boundary.
         probeIdx += 1;
         out.push({
           key: `marker-${i}`,

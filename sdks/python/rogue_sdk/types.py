@@ -525,6 +525,30 @@ class Scenario(BaseModel):
             "text itself."
         ),
     )
+    attempts: int = Field(
+        default=1,
+        ge=1,
+        le=20,
+        description=(
+            "Number of independent conversations to run for this scenario. "
+            "Variation between attempts comes from stochastic LLM sampling "
+            "in the multi-turn driver. The scenario as a whole passes only "
+            "if EVERY attempt passes (see ``EvaluationResults.add_result`` — "
+            "``passed`` is AND-aggregated across conversations)."
+        ),
+    )
+    temperature: Optional[float] = Field(
+        default=None,
+        ge=0.0,
+        le=2.0,
+        description=(
+            "Override the multi-turn driver's sampling temperature for this "
+            "scenario. ``None`` means use the driver default (``0.7``). "
+            "Models that don't accept custom temperature (gpt-5 family) "
+            "silently drop the kwarg via the global ``litellm.drop_params=True`` "
+            "set in ``rogue/common/litellm_config.py``."
+        ),
+    )
 
     def effective_kwargs_pool(self) -> Dict[str, Any]:
         """Merge legacy top-level ``file_path`` into the legacy fallback pool.
@@ -630,6 +654,17 @@ class ConversationEvaluation(BaseModel):
     messages: ChatHistory
     passed: bool
     reason: str
+    context_id: Optional[str] = Field(
+        default=None,
+        description=(
+            "Stable per-conversation UUID minted by the multi-turn driver "
+            "(see ``BaseEvaluatorAgent._get_conversation_context_id``). "
+            "Forwarded to Rogue Security as the row's ``conversation_id`` so "
+            "the platform can dedupe/identify this exact attempt across "
+            "re-reports. Optional for backward compat with results persisted "
+            "before this field existed."
+        ),
+    )
 
 
 class EvaluationResult(BaseModel):

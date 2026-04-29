@@ -178,14 +178,19 @@ class DeckardService:
 
         conversations_payload: list[dict[str, object]] = []
         for r in results:
-            for conv in r.conversations:
+            attempts_total = len(r.conversations)
+            for attempt_index, conv in enumerate(r.conversations):
                 conversations_payload.append(
                     {
                         "scenario_name": r.scenario.scenario,
                         "scenario_type": r.scenario.scenario_type or "policy",
                         "passed": conv.passed,
                         "reason": conv.reason,
-                        "conversation_id": None,
+                        # Stable per-conversation UUID minted by the driver
+                        # (``BaseEvaluatorAgent._get_conversation_context_id``)
+                        # — lets the platform dedupe attempts across
+                        # re-reports and link back to a specific run.
+                        "conversation_id": conv.context_id,
                         "messages": [
                             {
                                 "role": m.role,
@@ -196,6 +201,11 @@ class DeckardService:
                         ],
                         "metadata": {
                             "expected_outcome": r.scenario.expected_outcome,
+                            # Per-attempt position within ``r.conversations``
+                            # so the platform can render "attempt 2 of 5"
+                            # under a single scenario row.
+                            "attempt_index": attempt_index,
+                            "attempts_total": attempts_total,
                         },
                     },
                 )

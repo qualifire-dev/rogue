@@ -55,12 +55,21 @@ async def generate_next_rogue_message(
     aws_region: Optional[str] = None,
     api_base: Optional[str] = None,
     api_version: Optional[str] = None,
+    temperature: float = 0.7,
 ) -> DriverMessageResult:
     """Ask the driver LLM for the next rogue message.
 
     Raises ``DriverFailure`` if the LLM call errors or returns unparseable
     output. The caller is expected to end the scenario in that case rather
     than continue with filler — see the class docstring for why.
+
+    ``temperature`` defaults to ``0.7`` (the historical hardcoded value).
+    Per-scenario overrides flow in from ``Scenario.temperature`` via
+    ``run_multi_turn._drive_one_conversation`` so the same scenario can run
+    multiple ``attempts`` with stochastic variation between them. Models
+    that reject custom temperature (gpt-5 family) silently drop the kwarg
+    via the global ``litellm.drop_params=True`` set in
+    ``rogue/common/litellm_config.py``.
     """
     from litellm import acompletion
 
@@ -90,7 +99,7 @@ async def generate_next_rogue_message(
                 {"role": "system", "content": prompt},
                 {"role": "user", "content": "next message"},
             ],
-            temperature=0.7,
+            temperature=temperature,
             num_retries=3,
         )
     except Exception as exc:

@@ -148,15 +148,42 @@ function buildDisplayEvents(events: TimelineEvent[]): DisplayEvent[] {
   const out: DisplayEvent[] = [];
   let lastChatRole: "rogue" | "agent" | null = null;
   let scenarioIdx = 0;
+  // Track the last (scenario_index, attempt_index) pair we drew a marker
+  // for, so a new attempt of the same scenario also gets its own divider
+  // even when the heuristic alone would miss the boundary.
+  let lastMarkerKey: string | null = null;
 
   events.forEach((e, i) => {
     if (e.kind === "chat") {
       const raw = (e.chat.role || "").toLowerCase();
       const role: "rogue" | "agent" = raw.includes("agent") ? "agent" : "rogue";
 
-      // Heuristic: a Rogue message immediately following an Agent reply,
-      // or the very first Rogue message, marks the start of a new scenario.
-      if (role === "rogue" && lastChatRole !== "rogue") {
+      // Prefer the explicit (scenario_index, attempt_index, attempts_total)
+      // metadata the multi-turn driver attaches to each chat event. Falls
+      // back to the heuristic when the server didn't send it (older
+      // versions / non-multi-turn paths).
+      const sIdx = e.chat.scenario_index;
+      const aIdx = e.chat.attempt_index;
+      const aTotal = e.chat.attempts_total;
+      const hasMeta = typeof sIdx === "number" && typeof aIdx === "number";
+
+      if (hasMeta) {
+        const markerKey = `${sIdx}/${aIdx}`;
+        if (markerKey !== lastMarkerKey) {
+          const label =
+            (aTotal ?? 1) > 1
+              ? `Testing scenario ${sIdx + 1}, attempt ${aIdx + 1} of ${aTotal}`
+              : `Testing scenario ${sIdx + 1}`;
+          out.push({
+            key: `scenario-${i}`,
+            at: e.at,
+            kind: "system",
+            systemTone: "info",
+            content: label,
+          });
+          lastMarkerKey = markerKey;
+        }
+      } else if (role === "rogue" && lastChatRole !== "rogue") {
         scenarioIdx += 1;
         out.push({
           key: `scenario-${i}`,

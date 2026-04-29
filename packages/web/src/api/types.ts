@@ -15,6 +15,18 @@ export interface Scenario {
   expected_outcome?: string | null;
   multi_turn?: boolean;
   max_turns?: number;
+  /**
+   * How many independent conversations to run for this scenario. Variation
+   * comes from stochastic sampling in the multi-turn driver. The scenario
+   * passes only if ALL attempts pass. Defaults to 1; bounded 1..20.
+   */
+  attempts?: number;
+  /**
+   * Optional driver-LLM temperature override for this scenario. ``null`` /
+   * undefined → use the driver default (0.7). Models that reject custom
+   * temperature (gpt-5 family) silently drop the kwarg server-side.
+   */
+  temperature?: number | null;
 }
 
 export interface AgentConfig {
@@ -297,6 +309,17 @@ export interface JobUpdate {
 export interface ChatUpdate {
   role: string;
   content: string;
+  /**
+   * Optional driver metadata attached by ``run_multi_turn`` so the live
+   * viewer can render "Testing scenario 3, attempt 2 of 5" instead of
+   * guessing scenario boundaries from message ordering.
+   *
+   * Older servers (and the red-team driver, which doesn't support this
+   * yet) omit these — consumers must fall back to the heuristic.
+   */
+  scenario_index?: number;
+  attempt_index?: number;
+  attempts_total?: number;
 }
 
 export type WebSocketMessage =

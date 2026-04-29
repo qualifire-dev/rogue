@@ -97,6 +97,7 @@ func (e ScenarioEditor) handleListMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 		e.errorMsg = ""
 		e.infoMsg = ""
 		e.maxTurnsBuffer = fmt.Sprintf("%d", e.editing.MaxTurnsValue())
+		e.attemptsBuffer = fmt.Sprintf("%d", e.editing.AttemptsValue())
 
 		// Set up TextAreas with current values
 		if e.scenarioTextArea != nil {
@@ -121,6 +122,7 @@ func (e ScenarioEditor) handleListMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 		e.errorMsg = ""
 		e.infoMsg = ""
 		e.maxTurnsBuffer = fmt.Sprintf("%d", MaxTurnsDefault)
+		e.attemptsBuffer = fmt.Sprintf("%d", AttemptsDefault)
 
 		// Set up TextAreas for new scenario
 		if e.scenarioTextArea != nil {

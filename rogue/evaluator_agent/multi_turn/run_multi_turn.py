@@ -68,6 +68,29 @@ async def arun_multi_turn_evaluator(
     headers = auth_type.get_auth_header(auth_credentials)
     update_queue: Queue = Queue()
 
+    # Holder used by ``_enriched_chat_callback`` to tag each chat event with
+    # the (scenario_index, attempt_index, attempts_total) currently being
+    # driven. Driver loops are sequential so this single holder is safe;
+    # if we ever fan out to parallel scenarios the right move is a
+    # contextvars.ContextVar rather than a shared dict.
+    current_attempt_meta: dict[str, Any] = {
+        "scenario_index": 0,
+        "attempt_index": 0,
+        "attempts_total": 1,
+    }
+
+    def _enriched_chat_callback(message: dict) -> None:
+        """Tag each chat event with the currently-active scenario / attempt
+        index so the live viewer can render "Testing scenario 3, attempt 2 of
+        5" instead of guessing scenario boundaries from message ordering.
+        """
+        if isinstance(message, dict):
+            enriched = dict(message)
+        else:
+            enriched = {"raw": message}
+        enriched.update(current_attempt_meta)
+        update_queue.put_nowait(enriched)
+
     evaluator_agent = get_evaluator_agent(
         protocol=protocol,
         transport=transport,
@@ -83,7 +106,7 @@ async def arun_multi_turn_evaluator(
         judge_llm_api_base=judge_llm_api_base,
         judge_llm_api_version=judge_llm_api_version,
         debug=False,
-        chat_update_callback=update_queue.put_nowait,
+        chat_update_callback=_enriched_chat_callback,
         python_entrypoint_file=python_entrypoint_file,
     )
 
@@ -101,14 +124,36 @@ async def arun_multi_turn_evaluator(
 
         async def driver_task() -> None:
             try:
-                for scenario in scenarios.scenarios:
-                    await _drive_one_conversation(
-                        evaluator_agent=evaluator_agent,
-                        scenario=scenario,
-                        business_context=business_context,
-                        conversation_index=0,
-                        llm_kwargs=llm_kwargs,
-                    )
+                for scenario_index, scenario in enumerate(scenarios.scenarios):
+                    # Per-scenario knobs:
+                    # - ``attempts``: how many times to drive this scenario
+                    #   independently (variation comes from stochastic
+                    #   sampling in the driver). Pass requires ALL attempts
+                    #   to pass — already AND-aggregated in
+                    #   ``EvaluationResults.add_result``.
+                    # - ``temperature``: optional driver-LLM temperature
+                    #   override. None → keep the driver's signature default
+                    #   (0.7); a value flows via ``llm_kwargs`` and litellm
+                    #   drops it on models that reject the kwarg.
+                    attempts = max(1, scenario.attempts)
+                    # ``llm_kwargs`` is inferred as ``dict[str, str | None]``
+                    # by ty from its initial all-string literal, but we need
+                    # to mix in a float ``temperature``. The widened
+                    # annotation lets the override slot in.
+                    per_scenario_kwargs: dict[str, Any] = dict(llm_kwargs)
+                    if scenario.temperature is not None:
+                        per_scenario_kwargs["temperature"] = scenario.temperature
+                    for attempt_index in range(attempts):
+                        current_attempt_meta["scenario_index"] = scenario_index
+                        current_attempt_meta["attempt_index"] = attempt_index
+                        current_attempt_meta["attempts_total"] = attempts
+                        await _drive_one_conversation(
+                            evaluator_agent=evaluator_agent,
+                            scenario=scenario,
+                            business_context=business_context,
+                            conversation_index=attempt_index,
+                            llm_kwargs=per_scenario_kwargs,
+                        )
             except Exception:
                 logger.exception("💥 multi-turn driver task failed")
             finally:
@@ -317,10 +362,16 @@ async def _drive_one_conversation(
                 agent_failure_reason = "Target agent produced no reply on turn 1"
             break
 
+        # Per-scenario ``temperature`` is for the DRIVER only — we want the
+        # goal-checker judge to stay deterministic regardless of how
+        # stochastic the driver is configured to be, so a high-variance
+        # scenario doesn't also produce a flaky pass/fail signal. Strip
+        # the override here; the goal-checker keeps its own default.
+        goal_kwargs = {k: v for k, v in llm_kwargs.items() if k != "temperature"}
         goal_result = await evaluate_goal_achieved(
             goal=goal,
             conversation=updated_history,
-            **llm_kwargs,
+            **goal_kwargs,
         )
         if goal_result.achieved:
             logger.info(

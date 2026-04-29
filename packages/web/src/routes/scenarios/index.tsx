@@ -141,7 +141,13 @@ function ScenariosPage() {
                   <button onClick={() => setEditingIndex(i)} className="flex-1 text-left text-sm">
                     <div className="line-clamp-1 font-medium">{s.scenario}</div>
                     <div className="mt-0.5 text-xs text-muted-foreground">
-                      {s.multi_turn ? `multi-turn · max ${s.max_turns ?? 10}` : "single-turn"}
+                      {[
+                        s.multi_turn ? `multi-turn · max ${s.max_turns ?? 10}` : "single-turn",
+                        (s.attempts ?? 1) > 1 ? `${s.attempts}× attempts` : null,
+                        typeof s.temperature === "number" ? `temp ${s.temperature}` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </div>
                   </button>
                   <Button
@@ -234,6 +240,59 @@ function ScenarioForm({ value, onChange }: { value: Scenario; onChange: (s: Scen
           />
         </div>
       )}
+      <div className="space-y-1.5">
+        <Label htmlFor="scenario-attempts">Attempts ({value.attempts ?? 1})</Label>
+        <Input
+          id="scenario-attempts"
+          type="number"
+          min={1}
+          max={20}
+          step={1}
+          value={value.attempts ?? 1}
+          onChange={(e) => {
+            const raw = Number(e.target.value);
+            // Clamp + drop NaN / float input. The server enforces ge=1/le=20
+            // but we keep the UI sane too so users see the same number that
+            // gets persisted.
+            const next = Number.isFinite(raw) ? Math.max(1, Math.min(20, Math.round(raw))) : 1;
+            onChange({ ...value, attempts: next });
+          }}
+        />
+        <p className="text-xs text-muted-foreground">
+          Run this scenario N times to test robustness against sampling variation. The scenario
+          passes only if every attempt passes.
+        </p>
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="scenario-temperature">Temperature (optional)</Label>
+        <Input
+          id="scenario-temperature"
+          type="number"
+          min={0}
+          max={2}
+          step={0.1}
+          placeholder="0.7 (driver default)"
+          value={typeof value.temperature === "number" ? value.temperature : ""}
+          onChange={(e) => {
+            const raw = e.target.value;
+            // Empty string → fall back to driver default (null = unset).
+            // Anything else → clamp to 0..2 and round to 1 decimal so the
+            // saved value matches the input step.
+            if (raw === "") {
+              onChange({ ...value, temperature: null });
+              return;
+            }
+            const num = Number(raw);
+            if (!Number.isFinite(num)) return;
+            const clamped = Math.max(0, Math.min(2, num));
+            onChange({ ...value, temperature: Math.round(clamped * 10) / 10 });
+          }}
+        />
+        <p className="text-xs text-muted-foreground">
+          Override the multi-turn driver's sampling temperature for this scenario. Leave blank to
+          use the driver default (0.7). Higher values produce more variation between attempts.
+        </p>
+      </div>
     </div>
   );
 }

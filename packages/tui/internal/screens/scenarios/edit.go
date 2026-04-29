@@ -18,7 +18,8 @@ const (
 	editFieldExpectedOutcome = 1
 	editFieldMultiTurnToggle = 2
 	editFieldMaxTurns        = 3
-	editFieldSave            = 4
+	editFieldAttempts        = 4
+	editFieldSave            = 5
 )
 
 // handleEditMode handles keyboard input in edit/add mode
@@ -137,6 +138,20 @@ func (e ScenarioEditor) handleEditMode(msg tea.KeyMsg) (ScenarioEditor, tea.Cmd)
 				}
 			}
 			return e, nil
+		case editFieldAttempts:
+			s := msg.String()
+			switch s {
+			case "backspace":
+				if len(e.attemptsBuffer) > 0 {
+					e.attemptsBuffer = e.attemptsBuffer[:len(e.attemptsBuffer)-1]
+				}
+			default:
+				// Bounded to 2 digits since AttemptsMax is 20.
+				if len(s) == 1 && s >= "0" && s <= "9" && len(e.attemptsBuffer) < 2 {
+					e.attemptsBuffer += s
+				}
+			}
+			return e, nil
 		case editFieldSave:
 			if msg.String() == "enter" {
 				e.syncTextAreasToEditing()
@@ -220,10 +235,12 @@ func (e *ScenarioEditor) nextField(cur, step int) int {
 }
 
 func (e *ScenarioEditor) numFields() int {
+	// Scenario, expected outcome, multi-turn toggle, attempts, save are
+	// always reachable. Max-turns is only reachable when multi-turn is on.
 	if e.multiTurnOnEdit() {
-		return 5
+		return 6
 	}
-	return 4
+	return 5
 }
 
 // updateTextAreaFocus manages focus between TextAreas based on currentField
@@ -289,6 +306,24 @@ func (e *ScenarioEditor) validateEditing() error {
 	}
 	e.editing.MaxTurns = &resolved
 	e.maxTurnsBuffer = fmt.Sprintf("%d", resolved)
+
+	// Resolve attempts from the inline buffer; defaults to existing /
+	// AttemptsDefault. Empty buffer is treated as "use default" rather
+	// than an error so users who never tabbed into the field don't get
+	// punished.
+	attempts := e.editing.AttemptsValue()
+	if trimmed := strings.TrimSpace(e.attemptsBuffer); trimmed != "" {
+		n, err := strconv.Atoi(trimmed)
+		if err != nil {
+			return fmt.Errorf("attempts must be a number: %q", trimmed)
+		}
+		attempts = n
+	}
+	if attempts < AttemptsMin || attempts > AttemptsMax {
+		return fmt.Errorf("attempts must be between %d and %d", AttemptsMin, AttemptsMax)
+	}
+	e.editing.Attempts = &attempts
+	e.attemptsBuffer = fmt.Sprintf("%d", attempts)
 	return nil
 }
 
@@ -322,6 +357,7 @@ func (e ScenarioEditor) renderEditView(t theme.Theme) string {
 	if multiTurnOn {
 		usedHeight += 2 // max-turns line + blank
 	}
+	usedHeight += 1 // attempts line
 	usedHeight += 1 // save label
 	usedHeight += 2 // blank + help
 	usedHeight += 1 // error line (if present)
@@ -397,6 +433,20 @@ func (e ScenarioEditor) renderEditView(t theme.Theme) string {
 		}
 	}
 
+	// Field 4: attempts input — how many independent driver runs of this
+	// scenario. Pass requires every attempt to pass. Always visible.
+	attemptsBuf := e.attemptsBuffer
+	if attemptsBuf == "" {
+		attemptsBuf = "_"
+	}
+	attemptsRaw := fmt.Sprintf("Attempts:   [ %s ]  (%d-%d, defaults to %d — pass requires ALL attempts to pass)", attemptsBuf, AttemptsMin, AttemptsMax, AttemptsDefault)
+	var attemptsLine string
+	if e.currentField == editFieldAttempts {
+		attemptsLine = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Primary()).Bold(true).Render("▶ " + attemptsRaw)
+	} else {
+		attemptsLine = lipgloss.NewStyle().Background(t.Background()).Foreground(t.Text()).Render("  " + attemptsRaw)
+	}
+
 	// Save button hint
 	saveLabel := "Save"
 	if e.currentField == editFieldSave {
@@ -419,6 +469,7 @@ func (e ScenarioEditor) renderEditView(t theme.Theme) string {
 	if multiTurnOn {
 		parts = append(parts, maxTurnsLine)
 	}
+	parts = append(parts, attemptsLine)
 	parts = append(parts, "", saveLabel)
 	parts = append(parts, "", help, errorLine)
 
