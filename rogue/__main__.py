@@ -1,5 +1,5 @@
 import asyncio
-import subprocess  # nosec: B404
+import subprocess  # noqa: S404
 import sys
 import time
 from argparse import ArgumentParser, Namespace
@@ -27,6 +27,7 @@ from .common.update_checker import check_for_updates
 from .run_cli import run_cli, set_cli_args
 from .run_server import run_server, set_server_args
 from .run_tui import run_rogue_tui
+from .run_web import run_web, set_web_args
 
 load_dotenv()
 
@@ -124,13 +125,21 @@ def parse_args() -> Namespace:
     )
     set_server_args(tui_parser)
 
+    # Web mode
+    web_parser = subparsers.add_parser(
+        "web",
+        help="Run the web UI (served by the FastAPI server)",
+        parents=[common_parser()],
+    )
+    set_web_args(web_parser)
+
     return parser.parse_args()
 
 
 def build_local_server_url(host: str, port: int) -> str:
     """Build an HTTP URL for a server bound to host:port, normalizing wildcards."""
     http_host = host
-    if http_host in ("0.0.0.0", "::"):  # nosec B104
+    if http_host in ("0.0.0.0", "::"):  # noqa: S104
         http_host = "127.0.0.1"
     else:
         try:
@@ -191,7 +200,7 @@ def start_example_agent(
         return None
 
     try:
-        process = subprocess.Popen(  # nosec: B603
+        process = subprocess.Popen(  # noqa: S603
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -296,6 +305,14 @@ def main() -> None:
 
     # Handle regular modes (ui, cli, server, tui)
     args.workdir.mkdir(exist_ok=True, parents=True)
+    # Make the resolved workdir available to the FastAPI server (for the
+    # JSON-per-job persistence layer + config sync endpoints).
+    import os as _os
+
+    _os.environ.setdefault(
+        "ROGUE_WORKDIR",
+        str(args.workdir.resolve()),
+    )
 
     try:
         if args.mode == "server":
@@ -354,6 +371,8 @@ def main() -> None:
                     server_process.terminate()
                     server_process.join()
             sys.exit(exit_code)
+        elif args.mode == "web":
+            sys.exit(run_web(args))
         else:
             raise ValueError(f"Unknown mode: {args.mode}")
     finally:

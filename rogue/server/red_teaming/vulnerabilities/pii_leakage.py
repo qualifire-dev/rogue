@@ -31,7 +31,8 @@ class PIILeakage(BaseVulnerability):
         judge_llm: Optional[str] = None,
         judge_llm_auth: Optional[str] = None,
     ):
-        types = types or [t for t in PIILeakageType]
+        if types is None:
+            types = list(PIILeakageType)
         super().__init__(
             types=types,
             judge_llm=judge_llm,

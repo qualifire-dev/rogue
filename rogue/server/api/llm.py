@@ -8,6 +8,9 @@ import os
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
+
+from rogue.server.api.evaluation import get_evaluation_service
+from rogue.server.services.evaluation_service import EvaluationService
 from rogue_sdk.types import (
     EvaluationResults,
     ReportSummaryRequest,
@@ -17,9 +20,6 @@ from rogue_sdk.types import (
     StructuredSummary,
     SummaryGenerationRequest,
 )
-
-from rogue.server.api.evaluation import get_evaluation_service
-from rogue.server.services.evaluation_service import EvaluationService
 
 from ...common.logging import get_logger
 from ..models.api_format import ServerSummaryGenerationResponse
@@ -97,6 +97,26 @@ async def generate_summary(
             try:
                 job = await evaluation_service.get_job(request.job_id)
                 if job:
+                    # Cache hit. Honour it only when the requesting model
+                    # matches the one persisted on the job (``judge_model``)
+                    # — switching provider/model in Settings should produce
+                    # a fresh summary rather than returning the prior one.
+                    cached_model = job.judge_model
+                    if job.summary is not None and (
+                        not cached_model or cached_model == request.model
+                    ):
+                        logger.info(
+                            "Returning cached summary",
+                            extra={
+                                "job_id": request.job_id,
+                                "model": request.model,
+                                "cached_model": cached_model,
+                            },
+                        )
+                        return ServerSummaryGenerationResponse(
+                            summary=job.summary,
+                            message="Returned cached evaluation summary",
+                        )
                     # Use full evaluation_results from job if available
                     if job.evaluation_results:
                         evaluation_results = job.evaluation_results
@@ -369,6 +389,19 @@ async def generate_summary(
                     extra={"error": str(report_err)},
                 )
 
+        # Persist the freshly generated summary onto the job record so the
+        # next /summary call (or page reload) returns it from cache instead
+        # of re-running the LLM.
+        if request.job_id and job is not None:
+            try:
+                job.summary = summary
+                evaluation_service._store.save(job)
+            except Exception as save_err:  # noqa: BLE001
+                logger.warning(
+                    "Failed to persist summary on job (non-fatal)",
+                    extra={"job_id": request.job_id, "error": str(save_err)},
+                )
+
         return ServerSummaryGenerationResponse(
             summary=summary,
             message="Successfully generated evaluation summary",
@@ -429,7 +462,10 @@ async def report_summary_handler(
         )
     except Exception as e:
         logger.exception("Failed to report summary")
+        # `getattr` with a typed default narrows to int instead of object,
+        # which is what HTTPException's status_code: int parameter wants.
+        status_code: int = getattr(e, "status_code", 500)
         raise HTTPException(
-            status_code=e.status_code if hasattr(e, "status_code") else 500,
+            status_code=status_code,
             detail=f"Failed to report summary: {str(e)}",
         )

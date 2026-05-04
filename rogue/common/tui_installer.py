@@ -4,7 +4,7 @@ import os
 import platform
 import re
 import shutil
-import subprocess  # nosec: B404
+import subprocess  # noqa: S404
 import tempfile
 from functools import lru_cache
 from pathlib import Path
@@ -142,7 +142,7 @@ class RogueTuiInstaller:
                 tmp_path = tmp_file.name
 
         # Make it executable
-        os.chmod(tmp_path, 0o755)  # nosec: B103
+        os.chmod(tmp_path, 0o755)  # noqa: S103
 
         return tmp_path
 
@@ -187,7 +187,7 @@ class RogueTuiInstaller:
     def _get_installed_tui_version(self) -> Optional[str]:
         """Get the version of the installed rogue-tui binary."""
         try:
-            result = subprocess.run(  # nosec: B603 B607
+            result = subprocess.run(  # noqa: S603
                 ["rogue-tui", "--version"],
                 capture_output=True,
                 text=True,

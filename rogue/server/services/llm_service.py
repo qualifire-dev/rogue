@@ -1,13 +1,38 @@
 import json
-from typing import Optional
+from typing import List, Optional
 
 from loguru import logger
+from pydantic import BaseModel
+
 from rogue_sdk.types import (
     EvaluationResults,
     Scenario,
     Scenarios,
+    ScenarioType,
     StructuredSummary,
 )
+
+
+class _GeneratedScenario(BaseModel):
+    """Lean response shape used as ``response_format`` for the LLM call.
+
+    The SDK's full ``Scenario`` includes ``available_kwargs: Dict[str, Any]``
+    (a legacy multi-turn fallback dict) and ``file_path: Optional[str]``
+    that OpenAI's strict structured-output mode rejects — free-form
+    objects can't satisfy ``additionalProperties: false``. The LLM has no
+    business filling those in anyway: the driver LLM extracts per-turn
+    side-data from the scenario text at runtime. So we hand it just the
+    two fields the prompt actually asks for and re-materialise the full
+    ``Scenario`` around the parsed result.
+    """
+
+    scenario: str
+    expected_outcome: str
+
+
+class _GeneratedScenarios(BaseModel):
+    scenarios: List[_GeneratedScenario]
+
 
 SCENARIO_GENERATION_SYSTEM_PROMPT = """
 # Test Scenario Designer
@@ -204,7 +229,7 @@ class LLMService:
             response = completion(
                 model=model,
                 messages=messages,
-                response_format=Scenarios,
+                response_format=_GeneratedScenarios,
                 api_key=api_key,
                 aws_access_key_id=aws_access_key_id,
                 aws_secret_access_key=aws_secret_access_key,
@@ -218,7 +243,17 @@ class LLMService:
                 .message.content.replace("```json", "")
                 .replace("```", "")
             )
-            model_scenarios = Scenarios.model_validate_json(raw_data)
+            generated = _GeneratedScenarios.model_validate_json(raw_data)
+            model_scenarios = Scenarios(
+                scenarios=[
+                    Scenario(
+                        scenario=g.scenario,
+                        scenario_type=ScenarioType.POLICY,
+                        expected_outcome=g.expected_outcome,
+                    )
+                    for g in generated.scenarios
+                ],
+            )
 
             model_scenarios.scenarios.extend(STATIC_SCENARIOS)
 

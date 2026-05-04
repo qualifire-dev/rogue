@@ -3,6 +3,7 @@
 from typing import Optional, TypedDict
 
 from loguru import logger
+
 from rogue_sdk.types import AuthType, Protocol, RedTeamConfig, Transport
 
 from ...server.red_teaming.models import RedTeamConfig as InternalRedTeamConfig

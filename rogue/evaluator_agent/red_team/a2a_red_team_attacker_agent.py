@@ -103,15 +103,17 @@ class A2ARedTeamAttackerAgent(BaseRedTeamAttackerAgent):
                     for artifact in response.artifacts:
                         if artifact.parts:
                             for part in artifact.parts:
-                                if part.root and part.root.kind == "text":
-                                    if part.root.text:
-                                        response_text += str(part.root.text)
+                                # `kind == "text"` narrows at runtime but ty
+                                # doesn't track string discriminators yet —
+                                # use isinstance so .text resolves cleanly.
+                                if isinstance(part.root, TextPart) and part.root.text:
+                                    response_text += str(part.root.text)
 
             # If response is a Message, extract from parts
             elif isinstance(response, Message):
                 logger.debug("Response is a Message, extracting from parts")
                 for part in response.parts or []:
-                    if part.root and part.root.kind == "text" and part.root.text:
+                    if isinstance(part.root, TextPart) and part.root.text:
                         response_text += str(part.root.text)
 
             if not response_text:

@@ -67,7 +67,8 @@ class RBAC(BaseVulnerability):
         judge_llm: Optional[str] = None,
         judge_llm_auth: Optional[str] = None,
     ):
-        types = types or [t for t in RBACType]
+        if types is None:
+            types = list(RBACType)
         super().__init__(
             types=types,
             judge_llm=judge_llm,
@@ -90,7 +91,8 @@ class BOLA(BaseVulnerability):
         judge_llm: Optional[str] = None,
         judge_llm_auth: Optional[str] = None,
     ):
-        types = types or [t for t in BOLAType]
+        if types is None:
+            types = list(BOLAType)
         super().__init__(
             types=types,
             judge_llm=judge_llm,
@@ -113,7 +115,8 @@ class BFLA(BaseVulnerability):
         judge_llm: Optional[str] = None,
         judge_llm_auth: Optional[str] = None,
     ):
-        types = types or [t for t in BFLAType]
+        if types is None:
+            types = list(BFLAType)
         super().__init__(
             types=types,
             judge_llm=judge_llm,

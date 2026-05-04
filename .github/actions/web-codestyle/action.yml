@@ -1,0 +1,31 @@
+name: "web-codestyle"
+description: "Runs prettier --check, eslint, and tsc --noEmit on packages/web"
+runs:
+  using: "composite"
+  steps:
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 10
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: "20"
+        cache: "pnpm"
+        cache-dependency-path: packages/web/pnpm-lock.yaml
+    - name: Install dependencies
+      shell: bash
+      run: cd packages/web && pnpm install --frozen-lockfile
+    - name: Prettier
+      shell: bash
+      run: cd packages/web && pnpm exec prettier --check .
+    - name: ESLint
+      shell: bash
+      run: cd packages/web && pnpm exec eslint .
+    - name: TypeScript
+      shell: bash
+      # `pnpm typecheck` is `pnpm routes && tsc --noEmit`. The route-tree
+      # generator (`tsr generate`) is required because src/routeTree.gen.ts
+      # is gitignored — without it tsc can't resolve `./routeTree.gen` and
+      # every `createFileRoute(...)` call collapses to `(arg: undefined)`.
+      run: cd packages/web && pnpm typecheck

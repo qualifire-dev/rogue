@@ -5,7 +5,7 @@ Generates top critical vulnerability findings with LLM-powered summaries
 of what happened during the attack.
 """
 
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
@@ -82,10 +82,7 @@ def generate_key_findings(
             if d.get("success") and (attack_id := d.get("attack_id")) is not None
         ]
         # Deduplicate while preserving order
-        successful_attacks: List[str] = cast(
-            List[str],
-            list(dict.fromkeys(attack_ids_raw)),
-        )
+        successful_attacks: List[str] = list(dict.fromkeys(attack_ids_raw))
 
         # Calculate success rate
         success_rate = (
@@ -234,9 +231,7 @@ def _generate_llm_summary(
         c
         for c in conversations
         if c.get("evaluation", {}).get("vulnerability_detected", False)
-    ][
-        :3
-    ]  # Limit to 3 examples
+    ][:3]  # Limit to 3 examples
 
     if not successful_convs:
         return _generate_structured_summary(vulnerability, conversations)

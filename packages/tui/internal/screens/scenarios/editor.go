@@ -44,6 +44,10 @@ type ScenarioEditor struct {
 
 	// Multi-turn editing state (reflected into editing.{MultiTurn,MaxTurns} on save)
 	maxTurnsBuffer string
+	// Per-scenario attempts buffer (reflected into editing.Attempts on save).
+	// Each attempt runs the scenario as an independent driver conversation;
+	// pass requires every attempt to pass.
+	attemptsBuffer string
 
 	// Interview mode
 	interviewMode               bool                 // true when in interview mode

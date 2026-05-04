@@ -20,7 +20,7 @@ class UnboundedConsumptionType(Enum):
     EXCESSIVE_OUTPUT = "excessive_output"  # Agent produces extremely long outputs
     REPETITION_ATTACK = "repetition_attack"  # Agent repeats content endlessly
     ENUMERATION_ATTACK = "enumeration_attack"  # Agent generates long lists/sequences
-    TOKEN_EXHAUSTION = "token_exhaustion"  # nosec  # Agent consumes excessive tokens
+    TOKEN_EXHAUSTION = "token_exhaustion"  # noqa
 
 
 class UnboundedConsumption(BaseVulnerability):

@@ -2,6 +2,7 @@ from types import TracebackType
 from typing import TYPE_CHECKING, Callable, Optional, Self, Type
 
 from loguru import logger
+
 from rogue_sdk.types import Protocol, Scenarios, Transport
 
 from ..base_evaluator_agent import BaseEvaluatorAgent
@@ -137,9 +138,13 @@ class MCPEvaluatorAgent(BaseEvaluatorAgent):
                 },
             )
 
+            from mcp.types import TextContent
+
             text_response = ""
             for part in tool_result.content:
-                if part.type != "text":
+                # `part.type == "text"` narrows at runtime but ty needs an
+                # explicit isinstance to resolve `.text` on the union variant.
+                if not isinstance(part, TextContent):
                     logger.warning(
                         "Received non-text part in tool result",
                         extra={"type": part.type},

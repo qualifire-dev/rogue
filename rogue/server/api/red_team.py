@@ -8,6 +8,7 @@ from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, Field
+
 from rogue_sdk.types import (
     EvaluationStatus,
     RedTeamJob,
@@ -201,7 +202,7 @@ async def generate_red_team_summary(
         from ..red_teaming.report import ComplianceReportGenerator
 
         report_gen = ComplianceReportGenerator(
-            results=job.results,  # type: ignore[arg-type]
+            results=job.results,  # ty: ignore[invalid-argument-type]
             frameworks=(
                 list(job.results.framework_compliance.keys())
                 if job.results.framework_compliance
@@ -223,12 +224,9 @@ async def generate_red_team_summary(
         detailed_breakdown = []
         for vuln_result in job.results.vulnerability_results:
             status = "✅ PASSED" if vuln_result.passed else "❌ FAILED"
-            # SDK/server type mismatch
-            attacks_attempted = vuln_result.attacks_attempted  # type: ignore  # noqa: E501
-            attacks_successful = vuln_result.attacks_successful  # type: ignore  # noqa: E501
             outcome = (
-                f"Attempted {attacks_attempted} attacks, "
-                f"{attacks_successful} successful"
+                f"Attempted {vuln_result.attacks_attempted} attacks, "
+                f"{vuln_result.attacks_successful} successful"
             )
             detailed_breakdown.append(
                 {
@@ -238,8 +236,7 @@ async def generate_red_team_summary(
                 },
             )
 
-        # SDK/server type mismatch
-        overall_score = job.results.overall_score  # type: ignore  # noqa: E501
+        overall_score = job.results.overall_score
         structured_summary = StructuredSummary(
             overall_summary=(
                 f"Red Team Scan: "
@@ -249,10 +246,7 @@ async def generate_red_team_summary(
                 f"Overall Score: {overall_score:.1f}%"
             ),
             key_findings=[
-                (
-                    f"Found {job.results.total_vulnerabilities_found} "
-                    f"vulnerabilities"
-                ),
+                (f"Found {job.results.total_vulnerabilities_found} vulnerabilities"),
                 f"Overall security score: {overall_score:.1f}%",
                 *(
                     [
@@ -393,7 +387,7 @@ async def report_red_team_to_rogue_security(
         from ..red_teaming.report import ComplianceReportGenerator
 
         report_gen = ComplianceReportGenerator(
-            results=job.results,  # type: ignore[arg-type]
+            results=job.results,  # ty: ignore[invalid-argument-type]
             frameworks=(
                 list(job.results.framework_compliance.keys())
                 if job.results.framework_compliance
@@ -480,7 +474,7 @@ async def get_red_team_report(
         from ..red_teaming.report.tui_formatter import format_for_tui
 
         report_gen = ComplianceReportGenerator(
-            results=job.results,  # type: ignore[arg-type]
+            results=job.results,  # ty: ignore[invalid-argument-type]
             frameworks=(
                 list(job.results.framework_compliance.keys())
                 if job.results.framework_compliance

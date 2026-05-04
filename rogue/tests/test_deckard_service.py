@@ -13,6 +13,12 @@ from typing import List
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+from rogue.server.services.deckard_service import (
+    _MAX_CONTENT_BYTES,
+    DeckardService,
+    _safe_content,
+)
 from rogue_sdk.types import (
     ChatHistory,
     ChatMessage,
@@ -22,12 +28,6 @@ from rogue_sdk.types import (
     ReportSummaryRequest,
     Scenario,
     ScenarioType,
-)
-
-from rogue.server.services.deckard_service import (
-    DeckardService,
-    _MAX_CONTENT_BYTES,
-    _safe_content,
 )
 
 
@@ -125,7 +125,11 @@ class TestReportSummaryConversations:
         assert row["scenario_type"] == "policy"
         assert row["passed"] is False
         assert row["reason"] == "because"
-        assert row["metadata"] == {"expected_outcome": "Should refuse"}
+        assert row["metadata"] == {
+            "expected_outcome": "Should refuse",
+            "attempt_index": 0,
+            "attempts_total": 1,
+        }
         assert [m["role"] for m in row["messages"]] == ["user", "assistant"]
         assert [m["content"] for m in row["messages"]] == ["hi", "hello"]
 

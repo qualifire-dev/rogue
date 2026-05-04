@@ -23,31 +23,25 @@ pre-commit:
           python -c "import yaml; yaml.safe_load(open('$file'))" || exit 1
         done
 
-    # Python
-    - name: add-trailing-comma
-      glob: "*.py"
-      run: add-trailing-comma {staged_files}
-
-    - name: isort
-      glob: "*.py"
-      run: isort --profile black {staged_files}
-
-    - name: black
+    # Python — ruff replaces black + flake8 + isort + bandit + add-trailing-comma;
+    # ty replaces mypy. Both are Astral Rust binaries, an order of magnitude
+    # faster than the toolchain they superseded.
+    - name: ruff-format
       glob: "*.py"
       exclude: ".venv/"
-      run: black {staged_files}
+      run: uv run ruff format {staged_files}
 
-    - name: flake8
+    - name: ruff-check
       glob: "*.py"
-      run: flake8 {staged_files}
+      exclude: ".venv/"
+      run: uv run ruff check --fix {staged_files}
 
-    - name: mypy
+    - name: ty
       glob: "*.py"
-      run: mypy --config-file .mypy.ini {staged_files}
-
-    - name: bandit
-      glob: "*.py"
-      run: bandit -c .bandit.yaml -r {staged_files}
+      exclude: ".venv/"
+      # ty does whole-project inference; running on the full source roots is
+      # both faster and more accurate than a per-file invocation.
+      run: uv run ty check rogue sdks/python hatch_build.py
 
     - name: uv lock check
       glob: "pyproject.toml"
@@ -65,3 +59,20 @@ pre-commit:
     - name: go vet
       glob: "*.go"
       run: (cd packages/tui && go vet ./...)
+
+    # Web (TypeScript / React)
+    # `root:` rebases {staged_files} so they're relative to packages/web,
+    # which is what prettier/eslint expect when their config lives there.
+    - name: prettier-web
+      root: "packages/web/"
+      glob: "*.{ts,tsx,js,jsx,json,css,md}"
+      run: pnpm exec prettier --write {staged_files}
+
+    - name: eslint-web
+      root: "packages/web/"
+      glob: "*.{ts,tsx,js,jsx}"
+      run: pnpm exec eslint --fix {staged_files}
+
+    - name: tsc-web
+      glob: "packages/web/**/*.{ts,tsx}"
+      run: (cd packages/web && pnpm exec tsc --noEmit)

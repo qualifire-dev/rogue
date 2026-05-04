@@ -46,7 +46,7 @@ def print_json_response(response: Any, description: str) -> None:
     if hasattr(response, "root"):
         print(f"{response.root.model_dump_json(exclude_none=True)}\n")
     else:
-        print(f'{response.model_dump(mode="json", exclude_none=True)}\n')
+        print(f"{response.model_dump(mode='json', exclude_none=True)}\n")
 
 
 def build_message(

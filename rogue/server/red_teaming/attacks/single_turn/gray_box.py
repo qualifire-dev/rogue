@@ -27,8 +27,8 @@ class GrayBox(BaseSingleTurnAttack):
         ]
 
     def enhance(self, attack: str) -> str:
-        template = random.choice(self._templates)  # nosec B311
-        session_id = f"sess_{random.randint(10000, 99999)}"  # nosec B311
+        template = random.choice(self._templates)  # noqa: S311
+        session_id = f"sess_{random.randint(10000, 99999)}"  # noqa: S311
         return template.format(session_id=session_id, attack=attack)
 
     def get_name(self) -> str:

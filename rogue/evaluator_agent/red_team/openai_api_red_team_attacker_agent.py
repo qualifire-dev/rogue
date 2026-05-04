@@ -4,6 +4,7 @@ from types import TracebackType
 from typing import Optional, Self, Type
 
 from loguru import logger
+
 from rogue_sdk.types import AuthType
 
 from .base_red_team_attacker_agent import BaseRedTeamAttackerAgent

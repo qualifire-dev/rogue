@@ -22,6 +22,13 @@ warnings.filterwarnings(
     message="remove second argument of ws_handler",
 )
 
+# NOTE: `litellm.drop_params = True` used to be set here, but flipping a
+# library-global flag during package import is a hostile side effect for
+# anyone embedding rogue in a wider stack. The flag is now set inside the
+# specific entry points that need it (``rogue.run_web``, ``rogue.run_server``),
+# which is the only place we control whether litellm should mask
+# provider-incompatible kwargs.
+
 # Import submodules for backward compatibility
 from . import (
     common,

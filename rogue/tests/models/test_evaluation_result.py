@@ -1,6 +1,9 @@
 from datetime import datetime
 
 import pytest
+
+from rogue.server.models.api_format import ApiEvaluationResult, StructuredSummary
+from rogue.server.services.api_format_service import convert_to_api_format
 from rogue_sdk.types import (
     ChatHistory,
     ChatMessage,
@@ -9,9 +12,6 @@ from rogue_sdk.types import (
     EvaluationResults,
     Scenario,
 )
-
-from rogue.server.models.api_format import ApiEvaluationResult, StructuredSummary
-from rogue.server.services.api_format_service import convert_to_api_format
 
 
 class TestEvaluationResults:

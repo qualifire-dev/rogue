@@ -20,6 +20,19 @@ type ScenarioData struct {
 	// When set, the driver always sees ``file_path`` as an available kwarg.
 	// An explicit ``file_path`` entry in AvailableKwargs takes precedence.
 	FilePath *string `json:"file_path,omitempty"`
+	// Attempts is the number of independent conversations to run for this
+	// scenario. Variation between attempts comes from stochastic sampling
+	// in the multi-turn driver. The scenario passes only if EVERY attempt
+	// passes — see ``EvaluationResults.add_result`` on the server side.
+	// Nullable to distinguish "missing in old JSON" from "explicit 1";
+	// callers should use AttemptsValue().
+	Attempts *int `json:"attempts,omitempty"`
+	// Temperature is an optional driver-LLM sampling temperature override.
+	// nil (omitted) means use the driver default (0.7). The TUI editor
+	// doesn't expose this knob (no float-text widget) but the field
+	// roundtrips on disk so a value set via the SPA isn't lost when the
+	// TUI rewrites scenarios.json.
+	Temperature *float64 `json:"temperature,omitempty"`
 }
 
 // MultiTurnDefault is the default for new / legacy scenarios (multi-turn on).
@@ -32,6 +45,15 @@ const MaxTurnsDefault = 10
 const (
 	MaxTurnsMin = 1
 	MaxTurnsMax = 100
+)
+
+// AttemptsDefault is the default scenario attempt count (single conversation).
+const AttemptsDefault = 1
+
+// AttemptsMin / AttemptsMax bracket the allowed range (matches Python Pydantic bounds).
+const (
+	AttemptsMin = 1
+	AttemptsMax = 20
 )
 
 // MultiTurnEnabled returns the effective multi-turn flag, applying the default
@@ -50,6 +72,15 @@ func (s ScenarioData) MaxTurnsValue() int {
 		return MaxTurnsDefault
 	}
 	return *s.MaxTurns
+}
+
+// AttemptsValue returns the effective attempt count, applying the default
+// when the field was absent in the source JSON.
+func (s ScenarioData) AttemptsValue() int {
+	if s.Attempts == nil {
+		return AttemptsDefault
+	}
+	return *s.Attempts
 }
 
 // ScenariosFile represents the JSON file structure

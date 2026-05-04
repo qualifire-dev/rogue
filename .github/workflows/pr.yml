@@ -23,3 +23,6 @@ jobs:
 
       - name: Go tui codestyle
         uses: ./.github/actions/tui-codestyle
+
+      - name: Web codestyle
+        uses: ./.github/actions/web-codestyle

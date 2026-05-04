@@ -26,7 +26,7 @@ class AuthType(str, Enum):
 
     NO_AUTH = "no_auth"
     API_KEY = "api_key"
-    BEARER_TOKEN = "bearer_token"  # nosec B105
+    BEARER_TOKEN = "bearer_token"  # noqa: S105
     BASIC_AUTH = "basic"
 
     def get_auth_header(
@@ -188,42 +188,89 @@ class RedTeamConfig(BaseModel):
 
 
 class VulnerabilityResult(BaseModel):
-    """Result of testing a single vulnerability."""
+    """Result of testing a single vulnerability.
+
+    Permissive superset of the historical SDK shape and the server's actual
+    output (``rogue.server.red_teaming.models.VulnerabilityResult``). Both
+    representations round-trip through this schema so jobs persisted to disk
+    by either path reload cleanly.
+    """
 
     vulnerability_id: str = Field(description="ID of the vulnerability tested")
     vulnerability_name: str = Field(description="Display name of the vulnerability")
-    category: VulnerabilityCategory = Field(description="Vulnerability category")
     passed: bool = Field(description="Whether the test passed (no vulnerability found)")
-    attack_results: List[Dict[str, Any]] = Field(
-        default_factory=list,
-        description="Results from each attack attempt",
+    # Optional — older SDK callers populated this; the server doesn't.
+    category: Optional[VulnerabilityCategory] = Field(
+        default=None,
+        description="Vulnerability category (legacy SDK field)",
     )
     severity: Optional[Severity] = Field(
         default=None,
         description="Severity if vulnerability found",
     )
+    # Server-side fields — the orchestrator populates these instead of
+    # `attack_results`/`evidence`/`recommendations`.
+    attacks_attempted: int = Field(
+        default=0,
+        description="Number of attacks attempted against this vulnerability",
+    )
+    attacks_successful: int = Field(
+        default=0,
+        description="Number of attacks that found vulnerabilities",
+    )
+    cvss_score: Optional[float] = Field(
+        default=None,
+        description="CVSS-like risk score (0-10)",
+    )
+    risk_level: Optional[str] = Field(
+        default=None,
+        description="Risk classification: critical, high, medium, low",
+    )
+    risk_components: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Detailed risk score components (impact, exploitability, ...)",
+    )
+    details: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Per-attack detailed result records",
+    )
+    # Legacy SDK fields kept for back-compat with old persisted JSON.
+    attack_results: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Legacy: results from each attack attempt",
+    )
     evidence: Optional[List[str]] = Field(
         default=None,
-        description="Evidence/logs supporting the finding",
+        description="Legacy: evidence/logs supporting the finding",
     )
     recommendations: Optional[List[str]] = Field(
         default=None,
-        description="Remediation recommendations",
+        description="Legacy: remediation recommendations",
     )
 
 
 class FrameworkCompliance(BaseModel):
-    """Compliance status for a framework."""
+    """Compliance status for a framework.
+
+    Permissive superset of the SDK and server (``rogue.server.red_teaming.
+    models.FrameworkCompliance``) shapes — the server uses
+    `vulnerabilities_tested/passed`, the SDK historically used
+    `categories_tested/passed`. Both are accepted on load.
+    """
 
     framework_id: str = Field(description="Framework ID (e.g., 'owasp-llm')")
     framework_name: str = Field(description="Display name of the framework")
     compliance_score: float = Field(
+        default=0.0,
         description="Compliance score 0-100",
         ge=0,
         le=100,
     )
-    categories_tested: int = Field(description="Number of categories tested")
-    categories_passed: int = Field(description="Number of categories that passed")
+    # Either naming may show up in persisted JSON depending on producer.
+    categories_tested: int = Field(default=0, description="Categories tested")
+    categories_passed: int = Field(default=0, description="Categories passed")
+    vulnerabilities_tested: int = Field(default=0, description="Vulns tested")
+    vulnerabilities_passed: int = Field(default=0, description="Vulns passed")
     vulnerability_breakdown: List[Dict[str, Any]] = Field(
         default_factory=list,
         description="Per-vulnerability compliance status",
@@ -233,14 +280,40 @@ class FrameworkCompliance(BaseModel):
         description="Framework-specific recommendations",
     )
 
+    @model_validator(mode="after")
+    def _mirror_count_aliases(self) -> "FrameworkCompliance":
+        """Mirror ``categories_*`` ↔ ``vulnerabilities_*`` so consumers reading
+        either form always see a populated value. The server populates the
+        ``vulnerabilities_*`` pair; older SDK callers populated
+        ``categories_*``. The alias that's still zero gets filled from the
+        non-zero one — never the other way.
+        """
+        if self.vulnerabilities_tested and not self.categories_tested:
+            self.categories_tested = self.vulnerabilities_tested
+        elif self.categories_tested and not self.vulnerabilities_tested:
+            self.vulnerabilities_tested = self.categories_tested
+        if self.vulnerabilities_passed and not self.categories_passed:
+            self.categories_passed = self.vulnerabilities_passed
+        elif self.categories_passed and not self.vulnerabilities_passed:
+            self.vulnerabilities_passed = self.categories_passed
+        return self
+
 
 class AttackStats(BaseModel):
-    """Statistics for a single attack type."""
+    """Statistics for a single attack type.
+
+    Permissive: server uses ``success_count`` while older SDK callers used
+    ``successful_count``. Both fields exist; producers populate either.
+    """
 
     attack_id: str = Field(description="ID of the attack")
     attack_name: str = Field(description="Display name of the attack")
     times_used: int = Field(default=0, description="Total times the attack was used")
     successful_count: int = Field(
+        default=0,
+        description="Legacy alias of success_count",
+    )
+    success_count: int = Field(
         default=0,
         description="Times the attack found a vulnerability",
     )
@@ -252,10 +325,30 @@ class AttackStats(BaseModel):
         default=None,
         description="Average metric score across uses",
     )
+    vulnerabilities_tested: List[str] = Field(
+        default_factory=list,
+        description="Vulnerability IDs this attack ran against",
+    )
+
+    @model_validator(mode="after")
+    def _mirror_success_aliases(self) -> "AttackStats":
+        """Mirror ``successful_count`` ↔ ``success_count``."""
+        if self.success_count and not self.successful_count:
+            self.successful_count = self.success_count
+        elif self.successful_count and not self.success_count:
+            self.success_count = self.successful_count
+        return self
 
 
 class RedTeamResults(BaseModel):
-    """Results from red team evaluation."""
+    """Results from red team evaluation.
+
+    Permissive superset of the SDK and server (``rogue.server.red_teaming.
+    models.RedTeamResults``) shapes — server emits ``overall_score`` (0-100,
+    higher = safer) while older SDK callers used ``overall_risk_score``
+    (0-10, higher = riskier). Both are accepted; the server-side shape is
+    what the API and persisted JSON actually carry.
+    """
 
     vulnerability_results: List[VulnerabilityResult] = Field(
         default_factory=list,
@@ -283,10 +376,39 @@ class RedTeamResults(BaseModel):
     )
     overall_risk_score: Optional[float] = Field(
         default=None,
-        description="Overall risk score 0-10",
+        description="Legacy: overall risk score 0-10 (higher = riskier)",
         ge=0.0,
         le=10.0,
     )
+    overall_score: float = Field(
+        default=100.0,
+        description="Overall security score 0-100 (higher = safer)",
+    )
+    conversations: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Captured conversation logs for export / report rendering",
+    )
+
+    @model_validator(mode="after")
+    def _mirror_score_axes(self) -> "RedTeamResults":
+        """Mirror ``overall_score`` (0-100) ↔ ``overall_risk_score`` (0-10).
+
+        The two axes are inverted: ``overall_score = 100 - overall_risk_score * 10``
+        and vice versa. We fill whichever side a producer left at its default
+        from the populated side so external SDK consumers reading either
+        form always get a meaningful number.
+        """
+        if self.overall_risk_score is None and self.overall_score != 100.0:
+            # security score 0-100 → risk score 0-10 (clamped)
+            self.overall_risk_score = max(
+                0.0, min(10.0, (100.0 - self.overall_score) / 10.0)
+            )
+        elif self.overall_risk_score is not None and self.overall_score == 100.0:
+            # risk score 0-10 → security score 0-100 (clamped)
+            self.overall_score = max(
+                0.0, min(100.0, 100.0 - self.overall_risk_score * 10.0)
+            )
+        return self
 
 
 class AgentConfig(BaseModel):
@@ -424,6 +546,30 @@ class Scenario(BaseModel):
             "text itself."
         ),
     )
+    attempts: int = Field(
+        default=1,
+        ge=1,
+        le=20,
+        description=(
+            "Number of independent conversations to run for this scenario. "
+            "Variation between attempts comes from stochastic LLM sampling "
+            "in the multi-turn driver. The scenario as a whole passes only "
+            "if EVERY attempt passes (see ``EvaluationResults.add_result`` — "
+            "``passed`` is AND-aggregated across conversations)."
+        ),
+    )
+    temperature: Optional[float] = Field(
+        default=None,
+        ge=0.0,
+        le=2.0,
+        description=(
+            "Override the multi-turn driver's sampling temperature for this "
+            "scenario. ``None`` means use the driver default (``0.7``). "
+            "Models that don't accept custom temperature (gpt-5 family) "
+            "silently drop the kwarg via the global ``litellm.drop_params=True`` "
+            "set in ``rogue/common/litellm_config.py``."
+        ),
+    )
 
     def effective_kwargs_pool(self) -> Dict[str, Any]:
         """Merge legacy top-level ``file_path`` into the legacy fallback pool.
@@ -529,6 +675,17 @@ class ConversationEvaluation(BaseModel):
     messages: ChatHistory
     passed: bool
     reason: str
+    context_id: Optional[str] = Field(
+        default=None,
+        description=(
+            "Stable per-conversation UUID minted by the multi-turn driver "
+            "(see ``BaseEvaluatorAgent._get_conversation_context_id``). "
+            "Forwarded to Rogue Security as the row's ``conversation_id`` so "
+            "the platform can dedupe/identify this exact attempt across "
+            "re-reports. Optional for backward compat with results persisted "
+            "before this field existed."
+        ),
+    )
 
 
 class EvaluationResult(BaseModel):
@@ -882,6 +1039,14 @@ class EvaluationJob(BaseModel):
     error_message: Optional[str] = None
     progress: float = 0.0
     judge_model: Optional[str] = None
+    summary: Optional["StructuredSummary"] = Field(
+        default=None,
+        description=(
+            "Cached LLM-generated summary. Populated by the first call to "
+            "POST /api/v1/llm/summary so the web UI doesn't regenerate it "
+            "on every navigation."
+        ),
+    )
 
 
 class EvaluationResponse(BaseModel):
@@ -960,6 +1125,13 @@ class RedTeamJob(BaseModel):
     results: Optional["RedTeamResults"] = None
     error_message: Optional[str] = None
     progress: float = 0.0
+    # Captured chat-update events from the orchestrator. Persisted on each
+    # WS broadcast so the web UI's report → Conversations tab has data
+    # even after a server restart.
+    conversations: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Chat-update events captured during the scan",
+    )
 
 
 class RedTeamResponse(BaseModel):
@@ -1106,3 +1278,10 @@ class ReportSummaryResponse(BaseModel):
     """Response to report a summary."""
 
     success: bool
+
+
+# Resolve forward references for every model that carries one. Listed
+# explicitly rather than relying on a single class so a new model with a
+# forward ref doesn't silently start mis-validating.
+for _cls in (EvaluationJob, RedTeamJob):
+    _cls.model_rebuild()

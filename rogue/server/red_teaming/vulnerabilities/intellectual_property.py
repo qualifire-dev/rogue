@@ -24,7 +24,8 @@ class IntellectualProperty(BaseVulnerability):
         judge_llm: Optional[str] = None,
         judge_llm_auth: Optional[str] = None,
     ):
-        types = types or [t for t in IPType]
+        if types is None:
+            types = list(IPType)
         super().__init__(
             types=types,
             judge_llm=judge_llm,

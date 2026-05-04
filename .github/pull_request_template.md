@@ -37,10 +37,9 @@
 
 - [ ] I have read the [CONTRIBUTING.md](../CONTRIBUTING.md) guide
 - [ ] My code follows the code style of this project (PEP 8, type hints, docstrings)
-- [ ] I have run `uv run black .` to format my code
-- [ ] I have run `uv run flake8 .` and fixed all issues
-- [ ] I have run `uv run mypy --config-file .mypy.ini .` and addressed type checking issues
-- [ ] I have run `uv run bandit -c .bandit.yaml -r .` for security checks
+- [ ] I have run `uv run ruff format .` to format my code
+- [ ] I have run `uv run ruff check --fix .` and fixed all issues (replaces flake8 + isort + bandit)
+- [ ] I have run `uv run ty check rogue sdks/python hatch_build.py` and addressed type-check errors
 - [ ] I have added tests that prove my fix is effective or that my feature works
 - [ ] I have run `uv run pytest` and all tests pass
 - [ ] I have manually tested my changes

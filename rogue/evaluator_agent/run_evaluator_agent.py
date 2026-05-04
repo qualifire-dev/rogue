@@ -10,6 +10,7 @@ from asyncio import Queue
 from typing import TYPE_CHECKING, Any, AsyncGenerator, Optional
 
 from loguru import logger
+
 from rogue_sdk.types import (
     AuthType,
     EvaluationMode,

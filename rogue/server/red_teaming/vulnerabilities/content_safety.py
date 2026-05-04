@@ -28,7 +28,8 @@ class Toxicity(BaseVulnerability):
         judge_llm: Optional[str] = None,
         judge_llm_auth: Optional[str] = None,
     ):
-        types = types or [t for t in ToxicityType]
+        if types is None:
+            types = list(ToxicityType)
         super().__init__(
             types=types,
             judge_llm=judge_llm,
@@ -56,7 +57,8 @@ class Bias(BaseVulnerability):
         judge_llm: Optional[str] = None,
         judge_llm_auth: Optional[str] = None,
     ):
-        types = types or [t for t in BiasType]
+        if types is None:
+            types = list(BiasType)
         super().__init__(
             types=types,
             judge_llm=judge_llm,
@@ -83,7 +85,8 @@ class IllegalActivity(BaseVulnerability):
         judge_llm: Optional[str] = None,
         judge_llm_auth: Optional[str] = None,
     ):
-        types = types or [t for t in IllegalActivityType]
+        if types is None:
+            types = list(IllegalActivityType)
         super().__init__(
             types=types,
             judge_llm=judge_llm,
@@ -108,7 +111,8 @@ class GraphicContent(BaseVulnerability):
         judge_llm: Optional[str] = None,
         judge_llm_auth: Optional[str] = None,
     ):
-        types = types or [t for t in GraphicContentType]
+        if types is None:
+            types = list(GraphicContentType)
         super().__init__(
             types=types,
             judge_llm=judge_llm,
@@ -131,7 +135,8 @@ class PersonalSafety(BaseVulnerability):
         judge_llm: Optional[str] = None,
         judge_llm_auth: Optional[str] = None,
     ):
-        types = types or [t for t in PersonalSafetyType]
+        if types is None:
+            types = list(PersonalSafetyType)
         super().__init__(
             types=types,
             judge_llm=judge_llm,

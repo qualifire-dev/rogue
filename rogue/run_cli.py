@@ -10,6 +10,7 @@ from loguru import logger
 from pydantic import SecretStr, ValidationError
 from rich.console import Console
 from rich.markdown import Markdown
+
 from rogue_sdk import RogueClientConfig, RogueSDK
 from rogue_sdk.types import (
     PROTOCOL_TO_TRANSPORTS,
@@ -119,8 +120,7 @@ def set_cli_args(parser: ArgumentParser) -> None:
         "--attacks-per-category",
         type=int,
         default=5,
-        help="Number of attack scenarios to generate per OWASP category "
-        "(default: 5)",
+        help="Number of attack scenarios to generate per OWASP category (default: 5)",
     )
     parser.add_argument(
         "--min-tests-per-attack",
@@ -434,16 +434,19 @@ async def ping_mcp_server(
     agent_url: str,
     headers: dict[str, str] | None = None,
 ) -> None:
+    # Construct as the union-typed Client so the assignment checks against
+    # the declared variable type — `Client[T]` is invariant in T, so passing
+    # a concrete `Client[StreamableHttpTransport]` to a union slot fails.
     client: Client[StreamableHttpTransport | SSETransport]
     if transport == Transport.STREAMABLE_HTTP:
-        client = Client[StreamableHttpTransport](
+        client = Client[StreamableHttpTransport | SSETransport](
             transport=StreamableHttpTransport(
                 url=agent_url,
                 headers=headers,
             ),
         )
     elif transport == Transport.SSE:
-        client = Client[SSETransport](
+        client = Client[StreamableHttpTransport | SSETransport](
             transport=SSETransport(
                 url=agent_url,
                 headers=headers,

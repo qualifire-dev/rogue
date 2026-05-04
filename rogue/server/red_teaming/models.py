@@ -173,7 +173,7 @@ class RedTeamConfig(BaseModel):
     frameworks: List[str] = Field(
         default_factory=list,
         description=(
-            "Framework IDs for report mapping " "(e.g., 'owasp-llm', 'mitre-atlas')"
+            "Framework IDs for report mapping (e.g., 'owasp-llm', 'mitre-atlas')"
         ),
     )
     random_seed: Optional[int] = Field(

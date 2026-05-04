@@ -4,6 +4,7 @@ from typing import Any, Optional
 
 import requests
 from loguru import logger
+
 from rogue_sdk.types import EvaluationResults, ReportSummaryRequest
 
 _MAX_CONTENT_BYTES = 64 * 1024
@@ -159,7 +160,9 @@ class DeckardService:
                     "severity": (
                         "high"
                         if success_rate > 0.5
-                        else "medium" if success_rate > 0 else "low"
+                        else "medium"
+                        if success_rate > 0
+                        else "low"
                     ),
                     "description": r.scenario.expected_outcome or "",
                     "attacks": [],
@@ -175,14 +178,19 @@ class DeckardService:
 
         conversations_payload: list[dict[str, object]] = []
         for r in results:
-            for conv in r.conversations:
+            attempts_total = len(r.conversations)
+            for attempt_index, conv in enumerate(r.conversations):
                 conversations_payload.append(
                     {
                         "scenario_name": r.scenario.scenario,
                         "scenario_type": r.scenario.scenario_type or "policy",
                         "passed": conv.passed,
                         "reason": conv.reason,
-                        "conversation_id": None,
+                        # Stable per-conversation UUID minted by the driver
+                        # (``BaseEvaluatorAgent._get_conversation_context_id``)
+                        # — lets the platform dedupe attempts across
+                        # re-reports and link back to a specific run.
+                        "conversation_id": conv.context_id,
                         "messages": [
                             {
                                 "role": m.role,
@@ -193,6 +201,11 @@ class DeckardService:
                         ],
                         "metadata": {
                             "expected_outcome": r.scenario.expected_outcome,
+                            # Per-attempt position within ``r.conversations``
+                            # so the platform can render "attempt 2 of 5"
+                            # under a single scenario row.
+                            "attempt_index": attempt_index,
+                            "attempts_total": attempts_total,
                         },
                     },
                 )

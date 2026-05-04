@@ -124,7 +124,7 @@ class RedTeamOrchestrator:
 
         # Initialize random generator for reproducibility
         seed = config.random_seed if config.random_seed else int(time.time())
-        self.random_generator = random.Random(seed)  # nosec B311
+        self.random_generator = random.Random(seed)  # noqa: S311
         self._actual_seed = seed
 
         # Initialize Deckard client for premium attacks
@@ -935,11 +935,37 @@ class RedTeamOrchestrator:
                     )
                     evaluation = {"vulnerability_detected": False, "severity": "low"}
 
+                # Coerce the evaluator's return into a dict so the rest of
+                # the loop can use ``.get(...)`` safely. Some metric
+                # implementations return a Pydantic model or None on a soft
+                # failure rather than the documented dict shape.
+                if not isinstance(evaluation, dict):
+                    if evaluation is None:
+                        evaluation = {
+                            "vulnerability_detected": False,
+                            "severity": "low",
+                        }
+                    elif hasattr(evaluation, "model_dump"):
+                        evaluation = evaluation.model_dump()
+                    else:
+                        logger.warning(
+                            "Unexpected evaluator return type %s; treating as resisted",
+                            type(evaluation).__name__,
+                            extra={
+                                "vulnerability_id": vulnerability_id,
+                                "attack_id": attack_id,
+                            },
+                        )
+                        evaluation = {
+                            "vulnerability_detected": False,
+                            "severity": "low",
+                        }
+
                 # Track attack statistics
                 self._update_attack_stats(
                     attack_id,
                     vulnerability_id,
-                    evaluation.get("vulnerability_detected", False),
+                    bool(evaluation.get("vulnerability_detected", False)),
                 )
 
                 # Log conversation
@@ -960,7 +986,7 @@ class RedTeamOrchestrator:
                 # Check if vulnerability was exploited
                 if evaluation.get("vulnerability_detected", False):
                     attacks_successful += 1
-                    severity = evaluation.get("severity", "medium")
+                    severity = str(evaluation.get("severity", "medium"))
                     max_severity = self._compare_severity(max_severity, severity)
 
                     details.append(

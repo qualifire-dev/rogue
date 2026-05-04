@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+
 from rogue_sdk.types import ChatHistory
 
 

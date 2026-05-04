@@ -4,6 +4,7 @@ import re
 
 from loguru import logger
 from pydantic import ValidationError
+
 from rogue_sdk.types import ChatHistory
 
 from ..models.evaluation_result import PolicyEvaluationResult

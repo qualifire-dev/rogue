@@ -26,10 +26,15 @@ jobs:
         with:
           python-version-file: ".python-version"
 
+      - name: Build web SPA
+        uses: ./.github/actions/web-build
+
       - name: Run uv build - main package
         uses: ./.github/actions/uv-build
         with:
           dist_dir: "${{ runner.temp }}/dist/rogue-ai"
+        env:
+          ROGUE_SKIP_WEB_BUILD: "1"
 
       - name: Run uv build - sdk package
         uses: ./.github/actions/uv-build

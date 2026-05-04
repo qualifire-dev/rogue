@@ -6,6 +6,7 @@ import asyncio
 from typing import Any, AsyncGenerator, Callable, Optional
 
 from loguru import logger
+
 from rogue_sdk.types import (
     AgentConfig,
     EvaluationResults,

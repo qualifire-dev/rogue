@@ -1,11 +1,11 @@
 from a2a.types import (
-    TaskArtifactUpdateEvent,
-    Task,
-    TaskStatusUpdateEvent,
     AgentCard,
-    TaskStatus,
-    TaskState,
     Artifact,
+    Task,
+    TaskArtifactUpdateEvent,
+    TaskState,
+    TaskStatus,
+    TaskStatusUpdateEvent,
 )
 
 

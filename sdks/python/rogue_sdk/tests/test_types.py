@@ -1,5 +1,6 @@
 import pytest
 from pydantic import ValidationError
+
 from rogue_sdk.types import AgentConfig, AuthType, Scenario, Scenarios, ScenarioType
 
 

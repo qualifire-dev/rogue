@@ -8,6 +8,7 @@ from types import ModuleType
 from typing import Any, Callable, Optional
 
 from loguru import logger
+
 from rogue_sdk.types import AuthType, Protocol, Transport
 
 from ...server.red_teaming.models import RedTeamConfig

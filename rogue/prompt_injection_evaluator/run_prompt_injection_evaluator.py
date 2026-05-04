@@ -4,8 +4,17 @@ from uuid import uuid4
 
 import httpx
 from a2a.client import A2ACardResolver
-from a2a.types import Message, MessageSendParams, Part, Role, Task, TextPart
+from a2a.types import (
+    DataPart,
+    Message,
+    MessageSendParams,
+    Part,
+    Role,
+    Task,
+    TextPart,
+)
 from loguru import logger
+
 from rogue_sdk.types import AuthType, ChatHistory, ChatMessage
 
 from ..common.remote_agent_connection import (
@@ -55,11 +64,12 @@ def _get_text_from_response(
         return None
 
     def get_parts_text(parts: list[Part]) -> str:
+        # `kind` discriminator narrows at runtime; ty needs `isinstance`.
         text = ""
         for p in parts:
-            if p.root.kind == "text":
+            if isinstance(p.root, TextPart):
                 text += p.root.text
-            elif p.root.kind == "data":
+            elif isinstance(p.root, DataPart):
                 text += json.dumps(p.root.data)
 
         return text
@@ -123,19 +133,30 @@ async def arun_prompt_injection_evaluator(
     sample_size: int | None,
 ) -> AsyncGenerator[tuple[str, Any], None]:
     # datasets import takes a while, importing here to reduce startup time.
-    from datasets import load_dataset
+    from datasets import Dataset, DatasetDict, load_dataset
 
     headers = auth_type.get_auth_header(auth_credentials)
-    # dataset_name is user-provided; for evaluation, latest version is acceptable
-    dataset_dict = load_dataset(dataset_name)  # nosec B615
+    # dataset_name is user-provided; for evaluation, latest version is acceptable.
+    # `load_dataset` returns a union of DatasetDict / Dataset / Iterable* — narrow
+    # to DatasetDict before subscripting / iterating splits, which is what the
+    # rest of this function assumes.
+    dataset_dict = load_dataset(dataset_name)  # noqa: S615
+    if not isinstance(dataset_dict, DatasetDict):
+        raise TypeError(
+            f"Expected a DatasetDict from {dataset_name!r}, got {type(dataset_dict).__name__}",
+        )
 
     # Pick a split to use. Prioritize 'train', then take the first available.
     if "train" in dataset_dict:
         dataset = dataset_dict["train"]
     else:
-        first_split = list(dataset_dict.keys())[0]
+        first_split = next(iter(dataset_dict.keys()))
         dataset = dataset_dict[first_split]
 
+    if not isinstance(dataset, Dataset):
+        raise TypeError(
+            f"Expected a Dataset split, got {type(dataset).__name__}",
+        )
     filtered_dataset = dataset.filter(lambda x: x["label"] == "jailbreak")
 
     sampled_dataset = filtered_dataset
@@ -155,10 +176,13 @@ async def arun_prompt_injection_evaluator(
             chat_history.add_message(ChatMessage(role="user", content=payload.payload))
 
             yield "status", f"Running sample {i + 1}/{len(sampled_dataset)}"
-            yield "chat", {
-                "role": "Rogue",
-                "content": payload.payload,
-            }
+            yield (
+                "chat",
+                {
+                    "role": "Rogue",
+                    "content": payload.payload,
+                },
+            )
 
             response = await agent_client.send_message(
                 MessageSendParams(
@@ -183,10 +207,13 @@ async def arun_prompt_injection_evaluator(
                 ChatMessage(role="assistant", content=agent_response_text),
             )
 
-            yield "chat", {
-                "role": "Agent Under Test",
-                "content": agent_response_text,
-            }
+            yield (
+                "chat",
+                {
+                    "role": "Agent Under Test",
+                    "content": agent_response_text,
+                },
+            )
 
             evaluation = await _judge_injection_attempt(
                 chat_history,

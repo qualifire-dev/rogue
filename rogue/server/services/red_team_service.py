@@ -1,6 +1,7 @@
 """Red Team Service - Manages red team scan jobs."""
 
 import asyncio
+import os
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -14,23 +15,45 @@ from rogue_sdk.types import (
 from ...common.logging import get_logger, set_job_context
 from ..core.red_team_orchestrator import RedTeamOrchestrator
 from ..websocket.manager import get_websocket_manager
+from .job_store import JobStore
 
 logger = get_logger(__name__)
+
+
+def _ws_wait_seconds() -> float:
+    """Window we'll wait for a WebSocket client before starting a scan.
+
+    Defaults to 5 s for the web UI happy path. Set
+    ``ROGUE_RED_TEAM_WS_WAIT_SECONDS=0`` (or any non-positive value) to
+    skip the wait — useful for SDK / CLI consumers that never connect a
+    WebSocket and don't care about real-time chat updates.
+    """
+    raw = os.environ.get("ROGUE_RED_TEAM_WS_WAIT_SECONDS", "").strip()
+    if not raw:
+        return 5.0
+    try:
+        return max(0.0, float(raw))
+    except ValueError:
+        return 5.0
 
 
 class RedTeamService:
     """Service for managing red team scan jobs."""
 
     def __init__(self) -> None:
-        self.jobs: Dict[str, RedTeamJob] = {}
         self.logger = get_logger(__name__)
         self.websocket_manager = get_websocket_manager()
         self._lock = asyncio.Lock()
+        self._store: JobStore[RedTeamJob] = JobStore("red_team", RedTeamJob)
+        self.jobs: Dict[str, RedTeamJob] = self._store.load_all()
+        for job in self.jobs.values():
+            self._store.save(job)
 
     async def add_job(self, job: RedTeamJob):
         """Add a new red team job."""
         async with self._lock:
             self.jobs[job.job_id] = job
+        self._store.save(job)
 
     async def get_job(self, job_id: str) -> Optional[RedTeamJob]:
         """Get a red team job by ID."""
@@ -104,24 +127,27 @@ class RedTeamService:
             job.started_at = datetime.now(timezone.utc)
             self._notify_job_update(job)
 
-            # Wait for WebSocket client to connect before sending updates
-            # This ensures chat messages aren't lost
-            max_wait = 5.0  # seconds
-            wait_interval = 0.1
-            waited = 0.0
-            while waited < max_wait:
-                if self.websocket_manager.has_connections(job_id):
-                    logger.info(
-                        f"WebSocket client connected for job {job_id}, starting scan",
+            # Wait for a WebSocket client to attach before scanning so the
+            # initial chat updates aren't dropped. Tunable via
+            # ``ROGUE_RED_TEAM_WS_WAIT_SECONDS`` — set to 0 to skip entirely
+            # (useful for SDK / CLI consumers that never open a WS).
+            max_wait = _ws_wait_seconds()
+            if max_wait > 0:
+                wait_interval = 0.1
+                waited = 0.0
+                while waited < max_wait:
+                    if self.websocket_manager.has_connections(job_id):
+                        logger.info(
+                            f"WebSocket client connected for job {job_id}, starting scan",
+                        )
+                        break
+                    await asyncio.sleep(wait_interval)
+                    waited += wait_interval
+                else:
+                    logger.warning(
+                        f"No WebSocket client connected after {max_wait}s, "
+                        f"proceeding anyway for job {job_id}",
                     )
-                    break
-                await asyncio.sleep(wait_interval)
-                waited += wait_interval
-            else:
-                logger.warning(
-                    f"No WebSocket client connected after {max_wait}s, "
-                    f"proceeding anyway for job {job_id}",
-                )
 
             # Create and run orchestrator
             orchestrator = RedTeamOrchestrator(
@@ -168,6 +194,10 @@ class RedTeamService:
                         f"📨 Red team chat update received for job {job_id}",
                         extra={"data": data},
                     )
+                    # Capture on the job so the report's Conversations tab
+                    # has data without depending on the live WS stream.
+                    if isinstance(data, dict):
+                        job.conversations.append(data)
                     self._send_websocket(
                         job_id,
                         WebSocketEventType.CHAT_UPDATE,
@@ -214,6 +244,8 @@ class RedTeamService:
 
     def _notify_job_update(self, job: RedTeamJob):
         """Notify websocket clients about job status update."""
+        # Persist on every state change so scans survive restarts.
+        self._store.save(job)
         message = WebSocketMessage(
             type=WebSocketEventType.JOB_UPDATE,
             job_id=job.job_id,

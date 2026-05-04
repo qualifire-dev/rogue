@@ -93,3 +93,12 @@ bin/
 
 # Go TUI
 packages/tui/cmd/rogue/__debug*
+
+# Web UI (Vite SPA)
+packages/web/node_modules/
+packages/web/dist/
+packages/web/.vite/
+packages/web/src/api/schema.d.ts
+packages/web/src/routeTree.gen.ts
+rogue/web_dist/
+

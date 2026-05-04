@@ -12,6 +12,7 @@ from typing import Any, AsyncGenerator, Optional
 from uuid import uuid4
 
 from loguru import logger
+
 from rogue_sdk.types import (
     AuthType,
     ChatHistory,
@@ -22,7 +23,7 @@ from rogue_sdk.types import (
 )
 
 from ..evaluator_agent_factory import get_evaluator_agent
-from .driver import generate_next_rogue_message
+from .driver import DriverFailure, generate_next_rogue_message
 from .goal_checker import evaluate_goal_achieved
 
 _SENTINEL_DONE = object()
@@ -67,6 +68,29 @@ async def arun_multi_turn_evaluator(
     headers = auth_type.get_auth_header(auth_credentials)
     update_queue: Queue = Queue()
 
+    # Holder used by ``_enriched_chat_callback`` to tag each chat event with
+    # the (scenario_index, attempt_index, attempts_total) currently being
+    # driven. Driver loops are sequential so this single holder is safe;
+    # if we ever fan out to parallel scenarios the right move is a
+    # contextvars.ContextVar rather than a shared dict.
+    current_attempt_meta: dict[str, Any] = {
+        "scenario_index": 0,
+        "attempt_index": 0,
+        "attempts_total": 1,
+    }
+
+    def _enriched_chat_callback(message: dict) -> None:
+        """Tag each chat event with the currently-active scenario / attempt
+        index so the live viewer can render "Testing scenario 3, attempt 2 of
+        5" instead of guessing scenario boundaries from message ordering.
+        """
+        if isinstance(message, dict):
+            enriched = dict(message)
+        else:
+            enriched = {"raw": message}
+        enriched.update(current_attempt_meta)
+        update_queue.put_nowait(enriched)
+
     evaluator_agent = get_evaluator_agent(
         protocol=protocol,
         transport=transport,
@@ -82,7 +106,7 @@ async def arun_multi_turn_evaluator(
         judge_llm_api_base=judge_llm_api_base,
         judge_llm_api_version=judge_llm_api_version,
         debug=False,
-        chat_update_callback=update_queue.put_nowait,
+        chat_update_callback=_enriched_chat_callback,
         python_entrypoint_file=python_entrypoint_file,
     )
 
@@ -100,14 +124,36 @@ async def arun_multi_turn_evaluator(
 
         async def driver_task() -> None:
             try:
-                for scenario in scenarios.scenarios:
-                    await _drive_one_conversation(
-                        evaluator_agent=evaluator_agent,
-                        scenario=scenario,
-                        business_context=business_context,
-                        conversation_index=0,
-                        llm_kwargs=llm_kwargs,
-                    )
+                for scenario_index, scenario in enumerate(scenarios.scenarios):
+                    # Per-scenario knobs:
+                    # - ``attempts``: how many times to drive this scenario
+                    #   independently (variation comes from stochastic
+                    #   sampling in the driver). Pass requires ALL attempts
+                    #   to pass — already AND-aggregated in
+                    #   ``EvaluationResults.add_result``.
+                    # - ``temperature``: optional driver-LLM temperature
+                    #   override. None → keep the driver's signature default
+                    #   (0.7); a value flows via ``llm_kwargs`` and litellm
+                    #   drops it on models that reject the kwarg.
+                    attempts = max(1, scenario.attempts)
+                    # ``llm_kwargs`` is inferred as ``dict[str, str | None]``
+                    # by ty from its initial all-string literal, but we need
+                    # to mix in a float ``temperature``. The widened
+                    # annotation lets the override slot in.
+                    per_scenario_kwargs: dict[str, Any] = dict(llm_kwargs)
+                    if scenario.temperature is not None:
+                        per_scenario_kwargs["temperature"] = scenario.temperature
+                    for attempt_index in range(attempts):
+                        current_attempt_meta["scenario_index"] = scenario_index
+                        current_attempt_meta["attempt_index"] = attempt_index
+                        current_attempt_meta["attempts_total"] = attempts
+                        await _drive_one_conversation(
+                            evaluator_agent=evaluator_agent,
+                            scenario=scenario,
+                            business_context=business_context,
+                            conversation_index=attempt_index,
+                            llm_kwargs=per_scenario_kwargs,
+                        )
             except Exception:
                 logger.exception("💥 multi-turn driver task failed")
             finally:
@@ -171,20 +217,65 @@ async def _drive_one_conversation(
             },
         )
 
+    # When the target agent is unreachable / errors out / never replies, the
+    # conversation cannot be judged meaningfully — record a failure directly
+    # instead of asking the judge to score an empty history (which often
+    # yields a false-positive pass). See _log_evaluation_failure for details.
+    agent_failure_reason: Optional[str] = None
+
     for turn in range(1, max_turns + 1):
         history = evaluator_agent._context_id_to_chat_history.get(
             context_id,
             ChatHistory(),
         )
 
-        driver_result = await generate_next_rogue_message(
-            goal=goal,
-            business_context=business_context,
-            conversation=history,
-            turn=turn,
-            max_turns=max_turns,
-            **llm_kwargs,
-        )
+        try:
+            driver_result = await generate_next_rogue_message(
+                goal=goal,
+                business_context=business_context,
+                conversation=history,
+                turn=turn,
+                max_turns=max_turns,
+                **llm_kwargs,
+            )
+        except DriverFailure as driver_err:
+            # The rogue/driver LLM (which uses the configured judge model)
+            # couldn't produce a real next message. Continuing with hardcoded
+            # filler would just repeat the same prompt every turn — a useless
+            # transcript that the judge then often false-passes. Abort and
+            # surface the failure clearly.
+            logger.error(
+                "💥 rogue driver could not produce a message; aborting scenario",
+                extra={
+                    "context_id": context_id,
+                    "turn": turn,
+                    "error": str(driver_err),
+                },
+            )
+            agent_failure_reason = (
+                f"Rogue driver LLM ({llm_kwargs.get('model')}) failed on turn "
+                f"{turn}: {driver_err}"
+            )
+            break
+
+        # Defence-in-depth: if the driver returns the exact same message it
+        # just sent (model degenerating, prompt-window collapse), we'd loop
+        # forever. Treat back-to-back identical user turns as a stuck driver
+        # and abort instead of wasting target-LLM tokens on filler.
+        if _driver_repeating(history, driver_result.message):
+            logger.warning(
+                "🟡 rogue driver repeating itself; aborting scenario",
+                extra={
+                    "context_id": context_id,
+                    "turn": turn,
+                    "message_preview": driver_result.message[:120],
+                },
+            )
+            agent_failure_reason = (
+                f"Rogue driver looped on turn {turn} — repeated the same "
+                "message back-to-back. Check the configured judge model."
+            )
+            break
 
         resolved_kwargs = _resolve_per_turn_kwargs(
             driver_attach_kwargs=driver_result.attach_kwargs,
@@ -213,22 +304,27 @@ async def _drive_one_conversation(
                 message=driver_result.message,
                 kwargs=resolved_kwargs,
             )
-        except Exception:
+        except Exception as send_err:
             logger.exception(
                 "target agent send failed; ending conversation early",
                 extra={"context_id": context_id, "turn": turn},
             )
+            agent_failure_reason = (
+                f"Target agent unreachable on turn {turn}: {send_err}"
+            )
             break
 
         if isinstance(send_result, dict) and send_result.get("error"):
+            err = send_result.get("error")
             logger.warning(
                 "target agent returned error; ending conversation early",
                 extra={
                     "context_id": context_id,
                     "turn": turn,
-                    "error": send_result.get("error"),
+                    "error": err,
                 },
             )
+            agent_failure_reason = f"Target agent returned error on turn {turn}: {err}"
             break
 
         updated_history = evaluator_agent._context_id_to_chat_history.get(
@@ -258,12 +354,24 @@ async def _drive_one_conversation(
                     "response_preview": response_preview,
                 },
             )
+            # Only flag as a failure if no assistant reply has been seen at
+            # all during this conversation — if earlier turns produced
+            # replies and the target only stopped engaging mid-way, the
+            # judge should still get a shot at the partial transcript.
+            if turn == 1:
+                agent_failure_reason = "Target agent produced no reply on turn 1"
             break
 
+        # Per-scenario ``temperature`` is for the DRIVER only — we want the
+        # goal-checker judge to stay deterministic regardless of how
+        # stochastic the driver is configured to be, so a high-variance
+        # scenario doesn't also produce a flaky pass/fail signal. Strip
+        # the override here; the goal-checker keeps its own default.
+        goal_kwargs = {k: v for k, v in llm_kwargs.items() if k != "temperature"}
         goal_result = await evaluate_goal_achieved(
             goal=goal,
             conversation=updated_history,
-            **llm_kwargs,
+            **goal_kwargs,
         )
         if goal_result.achieved:
             logger.info(
@@ -272,19 +380,32 @@ async def _drive_one_conversation(
             )
             break
 
-    # Always log the evaluation so the judge LLM can assess pass/fail against
-    # ``expected_outcome``. The bool / reason args are overridden by the judge.
-    await asyncio.to_thread(
-        evaluator_agent._log_evaluation,
-        {
-            "scenario": scenario.scenario,
-            "scenario_type": scenario.scenario_type.value,
-            "expected_outcome": scenario.expected_outcome or "",
-        },
-        context_id,
-        False,
-        "multi-turn run complete; awaiting judge",
-    )
+    scenario_dict = {
+        "scenario": scenario.scenario,
+        "scenario_type": scenario.scenario_type.value,
+        "expected_outcome": scenario.expected_outcome or "",
+    }
+
+    if agent_failure_reason is not None:
+        # Target agent never participated — skip the judge entirely so a
+        # connection error / 5xx can't be silently scored as "passed".
+        await asyncio.to_thread(
+            evaluator_agent._log_evaluation_failure,
+            scenario_dict,
+            context_id,
+            agent_failure_reason,
+        )
+    else:
+        # Always log the evaluation so the judge LLM can assess pass/fail
+        # against ``expected_outcome``. The bool / reason args are
+        # overridden by the judge.
+        await asyncio.to_thread(
+            evaluator_agent._log_evaluation,
+            scenario_dict,
+            context_id,
+            False,
+            "multi-turn run complete; awaiting judge",
+        )
 
 
 def _resolve_per_turn_kwargs(
@@ -307,6 +428,33 @@ def _resolve_per_turn_kwargs(
     if driver_attach_kwargs:
         return dict(driver_attach_kwargs)
     return dict(scenario_fallback_kwargs)
+
+
+def _driver_repeating(history: ChatHistory, candidate: str) -> bool:
+    """True iff ``candidate`` is a back-to-back repeat of the previous turn.
+
+    A genuine driver-stuck loop produces the same prompt *immediately* after
+    sending it and seeing a reply. We check ONLY the last user message —
+    walking the whole history would false-trip on legitimate one-word
+    repeats (`"yes"`, `"ok"`, `"continue"`) that happen N turns apart in
+    multi-step approval scenarios.
+
+    A short-text guard also skips the check for messages under 8 chars,
+    since one-word answers ("yes", "ok") are common and never represent
+    the degenerate-LLM symptom this guard exists to catch.
+    """
+    if not candidate:
+        return False
+    needle = candidate.strip()
+    if len(needle) < 8:
+        return False
+    messages = history.messages if history else []
+    # Find the *most recent* user message — the one immediately before this
+    # turn's intended send. Older user messages are deliberately ignored.
+    last_user = next((m for m in reversed(messages) if m.role == "user"), None)
+    if last_user is None:
+        return False
+    return last_user.content.strip().casefold() == needle.casefold()
 
 
 def _assistant_reply_added(history: ChatHistory, previous_length: int) -> bool:

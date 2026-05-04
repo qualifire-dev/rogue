@@ -85,13 +85,13 @@ class DatasetLoader:
                 dataset = load_dataset(
                     ROGUE_SECURITY_DATASET_NAME,
                     split="test",
-                )  # nosec: B615
+                )  # noqa: S615
             except Exception:
                 # Fallback or retry with different split if 'test' fails
                 dataset = load_dataset(
                     ROGUE_SECURITY_DATASET_NAME,
                     split="train",
-                )  # nosec: B615
+                )  # noqa: S615
 
             # Filter for jailbreak label
             # Assuming label column exists and 'jailbreak' is the target value

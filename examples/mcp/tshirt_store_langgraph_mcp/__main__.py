@@ -10,7 +10,7 @@ load_dotenv()
 
 @click.command()
 @click.option("--host", "host", default="127.0.0.1", help="Host to run the server on")
-@click.option("--port", "port", default=10001, help="Port to run the server on")
+@click.option("--port", "port", default=10002, help="Port to run the server on")
 @click.option(
     "--transport",
     "transport",

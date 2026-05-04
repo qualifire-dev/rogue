@@ -1,0 +1,24 @@
+name: "web-build"
+description: "Builds the Vite SPA into packages/web/dist for inclusion in the rogue-ai wheel"
+runs:
+  using: "composite"
+  steps:
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 10
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: "20"
+        cache: "pnpm"
+        cache-dependency-path: packages/web/pnpm-lock.yaml
+    - name: Install dependencies
+      shell: bash
+      run: cd packages/web && pnpm install --frozen-lockfile
+    - name: Build SPA
+      shell: bash
+      run: cd packages/web && pnpm build
+    - name: Verify dist exists
+      shell: bash
+      run: test -f packages/web/dist/index.html
