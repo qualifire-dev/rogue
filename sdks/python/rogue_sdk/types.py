@@ -415,7 +415,7 @@ class AgentConfig(BaseModel):
     """Configuration for the agent being evaluated."""
 
     protocol: Protocol = Protocol.A2A
-    transport: Transport = None  # type: ignore # fixed in model_post_init
+    transport: Transport | None = None  # type: ignore # fixed in model_post_init
     evaluated_agent_url: Optional[HttpUrl] = None  # Optional for PYTHON protocol
     evaluated_agent_auth_type: AuthType = Field(
         default=AuthType.NO_AUTH,
@@ -456,6 +456,27 @@ class AgentConfig(BaseModel):
         if auth_type and auth_type != AuthType.NO_AUTH and not auth_credentials:
             raise ValueError(
                 "Authentication Credentials cannot be empty for the selected auth type.",  # noqa: E501
+            )
+        return self
+
+    @model_validator(mode="after")
+    def validate_transport(self) -> "AgentConfig":
+        if self.protocol == Protocol.PYTHON:
+            if self.transport is not None:
+                raise ValueError(
+                    "Transport cannot be provided when protocol is PYTHON",
+                )
+            else:
+                return self
+
+        if self.transport is None:
+            raise ValueError(
+                "Transport is required when protocol is not PYTHON",
+            )
+
+        if not self.transport.is_valid_for_protocol(self.protocol):  # type: ignore
+            raise ValueError(
+                "Transport is not valid for the selected protocol",
             )
         return self
 
