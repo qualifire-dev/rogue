@@ -24,52 +24,64 @@ class WebBuildHook(BuildHookInterface):
     PLUGIN_NAME = "custom"
 
     def initialize(self, version: str, build_data: dict[str, Any]) -> None:
-        if os.environ.get("ROGUE_SKIP_WEB_BUILD"):
-            self.app.display_info("ROGUE_SKIP_WEB_BUILD set; skipping web build.")
-            return
-
         repo_root = Path(self.root)
         web_dir = repo_root / "packages" / "web"
-        dist_index = web_dir / "dist" / "index.html"
+        dist_dir = web_dir / "dist"
+        dist_index = dist_dir / "index.html"
         src_dir = web_dir / "src"
 
-        if not web_dir.is_dir():
-            return  # Source-distribution install without the web tree.
+        skip_build = bool(os.environ.get("ROGUE_SKIP_WEB_BUILD"))
+        if skip_build:
+            self.app.display_info("ROGUE_SKIP_WEB_BUILD set; skipping web build.")
 
-        if dist_index.is_file() and not _is_stale(dist_index, src_dir):
-            return
+        if not skip_build and web_dir.is_dir():
+            needs_build = not dist_index.is_file() or _is_stale(dist_index, src_dir)
+            if needs_build:
+                pnpm = shutil.which("pnpm")
+                if pnpm is None:
+                    if dist_index.is_file():
+                        self.app.display_warning(
+                            "pnpm not found; reusing existing packages/web/dist "
+                            "(may be stale).",
+                        )
+                    else:
+                        self.app.display_warning(
+                            "pnpm not found and packages/web/dist is missing. "
+                            "The wheel will not include the web UI. "
+                            "Install Node + pnpm and rebuild, or run "
+                            "`cd packages/web && pnpm install && pnpm build` manually.",
+                        )
+                else:
+                    self.app.display_info("Building web SPA via pnpm...")
+                    try:
+                        subprocess.run(  # noqa: S603
+                            [pnpm, "install", "--frozen-lockfile"],
+                            cwd=str(web_dir),
+                            check=True,
+                        )
+                        subprocess.run(  # noqa: S603
+                            [pnpm, "run", "build"],
+                            cwd=str(web_dir),
+                            check=True,
+                        )
+                    except subprocess.CalledProcessError as e:
+                        self.app.display_error(f"pnpm build failed: {e}")
+                        sys.exit(1)
 
-        pnpm = shutil.which("pnpm")
-        if pnpm is None:
-            if dist_index.is_file():
-                self.app.display_warning(
-                    "pnpm not found; reusing existing packages/web/dist "
-                    "(may be stale).",
+        # Force-include the web dist only when it actually exists, so installs
+        # in environments without pnpm (and without a prebuilt dist) don't fail
+        # on a missing forced-include path. This replaces the static
+        # `[tool.hatch.build.targets.*.force-include]` tables in pyproject.toml.
+        if dist_dir.is_dir():
+            target = self.target_name
+            if target == "wheel":
+                build_data.setdefault("force_include", {})[str(dist_dir)] = (
+                    "rogue/web_dist"
                 )
-                return
-            self.app.display_warning(
-                "pnpm not found and packages/web/dist is missing. "
-                "The wheel will not include the web UI. "
-                "Install Node + pnpm and rebuild, or run "
-                "`cd packages/web && pnpm install && pnpm build` manually.",
-            )
-            return
-
-        self.app.display_info("Building web SPA via pnpm...")
-        try:
-            subprocess.run(  # noqa: S603
-                [pnpm, "install", "--frozen-lockfile"],
-                cwd=str(web_dir),
-                check=True,
-            )
-            subprocess.run(  # noqa: S603
-                [pnpm, "run", "build"],
-                cwd=str(web_dir),
-                check=True,
-            )
-        except subprocess.CalledProcessError as e:
-            self.app.display_error(f"pnpm build failed: {e}")
-            sys.exit(1)
+            elif target == "sdist":
+                build_data.setdefault("force_include", {})[str(dist_dir)] = (
+                    "packages/web/dist"
+                )
 
 
 def _is_stale(dist_index: Path, src_dir: Path) -> bool:
