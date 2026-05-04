@@ -139,7 +139,7 @@ def parse_args() -> Namespace:
 def build_local_server_url(host: str, port: int) -> str:
     """Build an HTTP URL for a server bound to host:port, normalizing wildcards."""
     http_host = host
-    if http_host in ("0.0.0.0", "::"):  # nosec B104
+    if http_host in ("0.0.0.0", "::"):  # noqa: S104
         http_host = "127.0.0.1"
     else:
         try:

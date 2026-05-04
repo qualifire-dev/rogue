@@ -125,7 +125,11 @@ class TestReportSummaryConversations:
         assert row["scenario_type"] == "policy"
         assert row["passed"] is False
         assert row["reason"] == "because"
-        assert row["metadata"] == {"expected_outcome": "Should refuse"}
+        assert row["metadata"] == {
+            "expected_outcome": "Should refuse",
+            "attempt_index": 0,
+            "attempts_total": 1,
+        }
         assert [m["role"] for m in row["messages"]] == ["user", "assistant"]
         assert [m["content"] for m in row["messages"]] == ["hi", "hello"]
 
