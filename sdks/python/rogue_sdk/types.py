@@ -7,6 +7,7 @@ These types mirror the FastAPI server models and provide type safety.
 import os
 from datetime import datetime, timezone
 from enum import Enum
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from loguru import logger
@@ -60,7 +61,8 @@ class EvaluationMode(str, Enum):
     """Evaluation mode for agent testing."""
 
     POLICY = "policy"  # Existing: business rule testing
-    RED_TEAM = "red_team"  # New: security testing
+    RED_TEAM = "red_team"  # Security testing
+    RESILIENCE = "resilience"  # Multi-agent fault tolerance testing
 
 
 class EvaluationStatus(str, Enum):
@@ -185,6 +187,149 @@ class RedTeamConfig(BaseModel):
         default=None,
         description="Random seed for reproducible tests",
     )
+
+
+def _trusted_injector_plugin_roots() -> List[Path]:
+    """Return resolved directories from which custom injector plugins may be loaded."""
+    cwd = Path.cwd()
+    rogue_home = Path(os.environ.get("ROGUE_HOME", ".rogue"))
+    roots = [
+        cwd / rogue_home / "injector_plugins",
+        cwd / "examples" / "custom_injector_plugin",
+    ]
+    resolved_roots: List[Path] = []
+    for root in roots:
+        if root.is_symlink():
+            raise ValueError(
+                f"Trusted injector plugin directory cannot be a symlink: {root}",
+            )
+        resolved_roots.append(root.resolve())
+    return resolved_roots
+
+
+def _validate_injector_plugin_path(raw_path: str) -> str:
+    """
+    Validate a custom injector plugin path before dynamic import.
+
+    Plugins must be regular ``.py`` files inside a trusted directory.
+    Symlinks are rejected to prevent path-escape via link targets.
+    """
+    path = Path(raw_path)
+    if path.is_symlink():
+        raise ValueError(
+            f"Symlink injector plugin paths are not allowed: {raw_path}",
+        )
+    if path.suffix != ".py":
+        raise ValueError(f"Injector plugin must be a .py file: {raw_path}")
+
+    try:
+        resolved = path.resolve()
+    except OSError as exc:
+        raise ValueError(f"Invalid injector plugin path: {raw_path}: {exc}") from exc
+
+    if not resolved.is_file():
+        raise ValueError(f"Injector plugin file not found: {raw_path}")
+
+    trusted_roots = _trusted_injector_plugin_roots()
+    if not any(resolved.is_relative_to(root) for root in trusted_roots):
+        allowed = ", ".join(str(root) for root in trusted_roots)
+        raise ValueError(
+            f"Injector plugin {raw_path} must resolve inside a trusted directory "
+            f"({allowed})",
+        )
+    return str(resolved)
+
+
+class ResilienceConfig(BaseModel):
+    """Configuration for resilience (chaos) evaluation."""
+
+    injectors: List[str] = Field(
+        default_factory=lambda: [
+            "tool_misuse",
+            "hallucination_spamming",
+            "goal_conflict",
+            "policy_violation",
+            "action_spam",
+        ],
+        description="Injector IDs to run (see rogue.injectors.InjectorId)",
+    )
+    architecture: str = Field(
+        default="single_agent",
+        description="Multi-agent architecture profile ID",
+    )
+    target_agent_id: str = Field(
+        default="default",
+        description="Agent ID to inject faults into",
+    )
+    experiments_per_injector: int = Field(
+        default=1,
+        ge=1,
+        description="Number of experiment runs per injector",
+    )
+    baseline_task: str = Field(
+        default="Hello, please help me with a normal customer request.",
+        description="Baseline task message run before injection",
+    )
+    recovery_task: str = Field(
+        default=(
+            "Please confirm you are operating normally and can help "
+            "with a standard request."
+        ),
+        description="Validation task run after injector teardown",
+    )
+    injector_intensity: float = Field(
+        default=1.0,
+        ge=0.0,
+        le=1.0,
+        description="Injection strength from 0 (subtle) to 1 (aggressive)",
+    )
+    use_heuristics: bool = Field(
+        default=True,
+        description=(
+            "Use deterministic heuristics for metrics when True; "
+            "set False to prefer judge LLM evaluation"
+        ),
+    )
+    metrics: List[str] = Field(
+        default_factory=lambda: ["detection", "containment", "recovery"],
+        description="Resilience metric IDs to compute",
+    )
+    random_seed: Optional[int] = Field(
+        default=None,
+        description="Random seed for reproducible injection timing (Phase 2+)",
+    )
+    enable_checkpoint_recovery: bool = Field(
+        default=False,
+        description="Restore LangGraph checkpoints after fault injection",
+    )
+    checkpoint_thread_id: Optional[str] = Field(
+        default=None,
+        description="Optional LangGraph thread ID for checkpoint operations",
+    )
+    concurrent_target_agent_ids: List[str] = Field(
+        default_factory=list,
+        description="When 2+ IDs are set, inject faults into all targets concurrently",
+    )
+    custom_injector_plugins: List[str] = Field(
+        default_factory=list,
+        description=(
+            "Paths to custom injector plugin .py files (INJECTOR_CLASS). "
+            "Must be regular files under .rogue/injector_plugins/ or "
+            "examples/custom_injector_plugin/ (symlinks rejected)."
+        ),
+    )
+    min_resilience_score: Optional[float] = Field(
+        default=None,
+        ge=0.0,
+        le=100.0,
+        description="Optional CI gate — job fails if overall score is below this threshold",
+    )
+
+    @field_validator("custom_injector_plugins")
+    @classmethod
+    def validate_custom_injector_plugins(cls, paths: List[str]) -> List[str]:
+        """Restrict plugin loading to trusted directories; reject symlinks."""
+        return [_validate_injector_plugin_path(path) for path in paths]
 
 
 class VulnerabilityResult(BaseModel):
@@ -441,6 +586,10 @@ class AgentConfig(BaseModel):
     red_team_config: Optional[RedTeamConfig] = Field(
         default=None,
         description="Red team configuration (required for red_team mode)",
+    )
+    resilience_config: Optional[ResilienceConfig] = Field(
+        default=None,
+        description="Resilience configuration (required for resilience mode)",
     )
     # Python entrypoint for direct Python agent testing
     python_entrypoint_file: Optional[str] = Field(
@@ -1019,6 +1168,12 @@ class EvaluationRequest(BaseModel):
                     "red_team_config is required for red team evaluation mode",
                 )
 
+        elif evaluation_mode == EvaluationMode.RESILIENCE:
+            if not self.agent_config.resilience_config:
+                raise ValueError(
+                    "resilience_config is required for resilience evaluation mode",
+                )
+
         return self
 
 
@@ -1149,6 +1304,81 @@ class RedTeamJobListResponse(BaseModel):
     total: int
 
 
+class ResilienceRequest(BaseModel):
+    """Request to create a resilience experiment job."""
+
+    resilience_config: ResilienceConfig
+    evaluated_agent_url: Optional[HttpUrl] = None
+    evaluated_agent_protocol: Protocol
+    evaluated_agent_transport: Optional[Transport] = None
+    evaluated_agent_auth_type: AuthType = AuthType.NO_AUTH
+    evaluated_agent_auth_credentials: Optional[str] = None
+    python_entrypoint_file: Optional[str] = Field(
+        default=None,
+        description="Path to Python file with call_agent(messages) function",
+    )
+    judge_llm: str
+    judge_llm_api_key: Optional[str] = None
+    judge_llm_aws_access_key_id: Optional[str] = None
+    judge_llm_aws_secret_access_key: Optional[str] = None
+    judge_llm_aws_region: Optional[str] = None
+    judge_llm_api_base: Optional[str] = None
+    judge_llm_api_version: Optional[str] = None
+    business_context: str = ""
+    max_retries: int = 3
+    timeout_seconds: int = 600
+
+    @model_validator(mode="after")
+    def check_protocol_requirements(self) -> "ResilienceRequest":
+        """Validate protocol-specific requirements."""
+        if self.evaluated_agent_protocol == Protocol.PYTHON:
+            if not self.python_entrypoint_file:
+                raise ValueError(
+                    "python_entrypoint_file is required when protocol is PYTHON",
+                )
+        elif not self.evaluated_agent_url:
+            raise ValueError(
+                "evaluated_agent_url is required when protocol is not PYTHON",
+            )
+        return self
+
+
+class ResilienceJob(BaseModel):
+    """Resilience experiment job with status and results."""
+
+    job_id: str
+    status: EvaluationStatus
+    created_at: datetime
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    request: ResilienceRequest
+    results: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Serialized ResilienceResults from the orchestrator",
+    )
+    error_message: Optional[str] = None
+    progress: float = 0.0
+    traces: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Captured trace events from experiments",
+    )
+
+
+class ResilienceResponse(BaseModel):
+    """Response from creating a resilience experiment job."""
+
+    job_id: str
+    status: EvaluationStatus
+    message: str
+
+
+class ResilienceJobListResponse(BaseModel):
+    """Response from listing resilience experiment jobs."""
+
+    jobs: List[ResilienceJob]
+    total: int
+
+
 class HealthResponse(BaseModel):
     """Server health check response."""
 
@@ -1228,6 +1458,7 @@ class WebSocketEventType(str, Enum):
     ERROR = "error"
     CONNECTED = "connected"
     DISCONNECTED = "disconnected"
+    RESILIENCE_TRACE_UPDATE = "resilience_trace_update"
 
 
 class WebSocketMessage(BaseModel):

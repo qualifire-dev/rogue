@@ -52,6 +52,7 @@ const (
 	HelpScreen
 	RedTeamConfigScreen
 	RedTeamReportScreen
+	ResilienceCatalogScreen
 )
 
 // App represents the main TUI application

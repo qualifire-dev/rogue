@@ -373,3 +373,173 @@ export const SCAN_TYPE_LABELS: Record<ScanType, string> = {
   full: "Full",
   custom: "Custom",
 };
+
+// ─── Resilience ─────────────────────────────────────────────────────────────
+
+export interface ResilienceConfig {
+  injectors: string[];
+  architecture: string;
+  target_agent_id: string;
+  concurrent_target_agent_ids?: string[];
+  custom_injector_plugins?: string[];
+  experiments_per_injector: number;
+  baseline_task: string;
+  recovery_task: string;
+  use_heuristics: boolean;
+  enable_checkpoint_recovery: boolean;
+  checkpoint_thread_id?: string | null;
+  min_resilience_score?: number | null;
+  injector_intensity?: number;
+}
+
+export interface ResilienceScenarioTemplate {
+  name: string;
+  description: string;
+  injectors: string[];
+  architecture: string;
+  target_agent_id: string;
+  baseline_task: string;
+  recovery_task: string;
+}
+
+export interface ResilienceRequest {
+  resilience_config: ResilienceConfig;
+  evaluated_agent_url?: string | null;
+  evaluated_agent_protocol: Protocol;
+  evaluated_agent_transport?: Transport | null;
+  evaluated_agent_auth_type?: AuthType;
+  evaluated_agent_auth_credentials?: string | null;
+  python_entrypoint_file?: string | null;
+  judge_llm: string;
+  judge_llm_api_key?: string | null;
+  judge_llm_api_base?: string | null;
+  business_context?: string;
+}
+
+export interface ResilienceJob {
+  job_id: string;
+  status: EvaluationStatus;
+  created_at: string;
+  started_at?: string | null;
+  completed_at?: string | null;
+  error_message?: string | null;
+  progress: number;
+  request?: ResilienceRequest;
+  results?: Record<string, unknown> | null;
+  traces?: ResilienceTraceEvent[];
+}
+
+export interface ResilienceTraceEvent {
+  timestamp?: string;
+  agent_id?: string;
+  event_type?: string;
+  payload?: Record<string, unknown>;
+}
+
+export interface ResilienceJobListResponse {
+  jobs: ResilienceJob[];
+  total: number;
+}
+
+export interface ResilienceReportHighlights {
+  overall_score: number;
+  total_experiments: number;
+  experiments_passed: number;
+  detection_rate: number;
+  containment_rate: number;
+  recovery_rate: number;
+  cascading_failure_rate: number;
+  system_degradation_rate: number;
+  is_multi_agent: boolean;
+}
+
+export interface ResilienceReportExperimentRow {
+  experiment_id: string;
+  injector_id: string;
+  injector_name: string;
+  architecture: string;
+  target_agent_id: string;
+  composite_score: number;
+  passed: boolean;
+  detection_score: number;
+  containment_score: number;
+  recovery_score: number;
+  cascading_score?: number | null;
+  degradation_score?: number | null;
+}
+
+export interface ResilienceReportMetricRadar {
+  id: string;
+  label: string;
+  value: number;
+  color: string;
+}
+
+export interface ResilienceReportTimelineEvent {
+  timestamp: string;
+  experiment_id: string;
+  injector_id: string;
+  agent_id: string;
+  event_type: string;
+  label: string;
+  payload?: Record<string, unknown>;
+}
+
+export interface ResilienceReportAgentNode {
+  agent_id: string;
+  role: string;
+  is_target: boolean;
+  is_rogue: boolean;
+}
+
+export interface ResilienceReportAgentEdge {
+  source: string;
+  target: string;
+  label: string;
+}
+
+export interface ResilienceReportAgentGraph {
+  nodes: ResilienceReportAgentNode[];
+  edges: ResilienceReportAgentEdge[];
+}
+
+export interface ResilienceReportCheckpointStep {
+  timestamp: string;
+  experiment_id: string;
+  operation: string;
+  success: boolean;
+  thread_id?: string | null;
+  checkpoint_id?: string | null;
+  error?: string | null;
+}
+
+export interface ResilienceReportKeyFinding {
+  injector_id: string;
+  injector_name: string;
+  composite_score: number;
+  summary: string;
+  failed_metrics: string[];
+}
+
+export interface ResilienceReport {
+  metadata: {
+    experiment_date: string;
+    architecture: string;
+    architecture_name: string;
+    target_agent_id: string;
+    injectors: string[];
+    experiments_per_injector: number;
+    use_heuristics: boolean;
+    enable_checkpoint_recovery: boolean;
+    judge_llm?: string | null;
+  };
+  highlights: ResilienceReportHighlights;
+  experiment_table: ResilienceReportExperimentRow[];
+  metrics_radar: ResilienceReportMetricRadar[];
+  timeline: ResilienceReportTimelineEvent[];
+  agent_graph: ResilienceReportAgentGraph;
+  checkpoint_steps: ResilienceReportCheckpointStep[];
+  key_findings: ResilienceReportKeyFinding[];
+  markdown_report: string;
+  export_paths?: { summary_csv?: string | null };
+}

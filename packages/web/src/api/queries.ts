@@ -9,6 +9,11 @@ import type {
   RedTeamJobListResponse,
   RedTeamReport,
   RedTeamRequest,
+  ResilienceJob,
+  ResilienceJobListResponse,
+  ResilienceReport,
+  ResilienceRequest,
+  ResilienceScenarioTemplate,
   ScenarioGenerationRequest,
   ScenarioGenerationResponse,
   SendMessageResponse,
@@ -23,6 +28,9 @@ export const qk = {
   redTeams: (filters?: Record<string, unknown>) => ["red-team", filters] as const,
   redTeam: (jobId: string) => ["red-team", jobId] as const,
   redTeamReport: (jobId: string) => ["red-team", jobId, "report"] as const,
+  resilience: (filters?: Record<string, unknown>) => ["resilience", filters] as const,
+  resilienceJob: (jobId: string) => ["resilience", jobId] as const,
+  resilienceReport: (jobId: string) => ["resilience", jobId, "report"] as const,
   interviewConversation: (sessionId: string) => ["interview", sessionId, "conversation"] as const,
   serverEnv: () => ["server-env"] as const,
 };
@@ -203,5 +211,59 @@ export function useInterviewConversation(sessionId: string | undefined) {
     queryKey: qk.interviewConversation(sessionId ?? ""),
     queryFn: () => api<GetConversationResponse>(`/api/v1/interview/conversation/${sessionId}`),
     enabled: !!sessionId,
+  });
+}
+
+export function useResilienceJobs() {
+  return useQuery({
+    queryKey: qk.resilience(),
+    queryFn: () => api<ResilienceJobListResponse>("/api/v1/resilience?limit=50"),
+    refetchInterval: 5_000,
+  });
+}
+
+export function useResilienceJob(jobId: string | undefined) {
+  return useQuery({
+    queryKey: qk.resilienceJob(jobId ?? ""),
+    queryFn: () => api<ResilienceJob>(`/api/v1/resilience/${jobId}`),
+    enabled: !!jobId,
+    staleTime: 0,
+    refetchOnMount: "always",
+  });
+}
+
+export function useResilienceReport(jobId: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: qk.resilienceReport(jobId ?? ""),
+    queryFn: () => api<ResilienceReport>(`/api/v1/resilience/${jobId}/report`),
+    enabled: !!jobId && enabled,
+    staleTime: 30_000,
+  });
+}
+
+export function useStartResilience() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (req: ResilienceRequest) =>
+      api<{ job_id: string; status: string; message?: string }>("/api/v1/resilience", {
+        body: req,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["resilience"] }),
+  });
+}
+
+export function useGenerateResilienceScenarios() {
+  return useMutation({
+    mutationFn: (req: {
+      business_context: string;
+      model: string;
+      api_key?: string;
+      api_base?: string;
+      count?: number;
+    }) =>
+      api<{ scenarios: ResilienceScenarioTemplate[]; message?: string }>(
+        "/api/v1/resilience/scenarios/generate",
+        { body: req },
+      ),
   });
 }

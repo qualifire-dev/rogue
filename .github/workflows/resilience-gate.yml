@@ -1,0 +1,100 @@
+name: Resilience Gate
+
+on:
+  pull_request:
+    paths:
+      - "rogue/injectors/**"
+      - "rogue/resilience/**"
+      - "rogue/server/resilience/**"
+      - "rogue/server/services/resilience*.py"
+      - "rogue/tests/test_*resilience*"
+      - "rogue/tests/test_injector*"
+      - "rogue/tests/test_concurrent*"
+  workflow_dispatch:
+    inputs:
+      min_score:
+        description: "Minimum overall resilience score (0-100)"
+        required: false
+        default: "60"
+
+jobs:
+  resilience-gate:
+    runs-on: ubuntu-latest
+    env:
+      RESILIENCE_MIN_SCORE: ${{ github.event.inputs.min_score || '60' }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+
+      - name: Setup Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install dependencies
+        run: |
+          uv venv
+          source .venv/bin/activate
+          uv sync --dev --group examples
+          uv pip install -e .
+          uv pip uninstall rogue-ai-sdk
+          uv pip install -e sdks/python --force-reinstall
+
+      - name: Run resilience test suite
+        run: |
+          source .venv/bin/activate
+          pytest \
+            rogue/tests/test_injectors.py \
+            rogue/tests/test_injector_plugins.py \
+            rogue/tests/test_resilience_metrics.py \
+            rogue/tests/test_resilience_orchestrator.py \
+            rogue/tests/test_multi_agent_orchestrator.py \
+            rogue/tests/test_concurrent_injection.py \
+            rogue/tests/test_langgraph_checkpoint_adapter.py \
+            rogue/tests/test_resilience_reporting.py \
+            rogue/tests/test_resilience_scenarios.py \
+            -v --junitxml=resilience-gate-results.xml
+
+      - name: Run in-process gate against fixture agent
+        run: |
+          source .venv/bin/activate
+          python - <<'PY'
+          import asyncio
+          import os
+          import sys
+          from pathlib import Path
+
+          from rogue.injectors.base_injector import InjectorId
+          from rogue.resilience.orchestrator import ResilienceOrchestrator
+
+          min_score = float(os.environ.get("RESILIENCE_MIN_SCORE", "60"))
+          agent = Path("rogue/tests/fixtures/resilience_test_agent.py")
+
+          async def main() -> None:
+              orchestrator = ResilienceOrchestrator(
+                  injectors=[InjectorId.POLICY_VIOLATION],
+                  python_entrypoint_file=str(agent),
+                  use_heuristics=True,
+              )
+              results = await orchestrator.run_experiments()
+              score = results.overall_score
+              print(f"Resilience gate score: {score:.1f} (threshold {min_score:.1f})")
+              if score < min_score:
+                  print(f"GATE FAILED: score {score:.1f} < {min_score:.1f}", file=sys.stderr)
+                  sys.exit(1)
+              print("GATE PASSED")
+
+          asyncio.run(main())
+          PY
+
+      - name: Upload gate results
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: resilience-gate-junit
+          path: resilience-gate-results.xml

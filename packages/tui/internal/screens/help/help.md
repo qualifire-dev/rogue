@@ -21,6 +21,7 @@ testing it with a range of scenarios to ensure it behaves exactly as intended.
 - **Ctrl+I** - Interview Mode  
 - **Ctrl+S** - Settings  
 - **Ctrl+H** - Help  
+- **/** + `/resilience` - Resilience catalog reference  
 - **Esc**    - Back/Cancel 
 
 
@@ -29,6 +30,7 @@ testing it with a range of scenarios to ensure it behaves exactly as intended.
 - `/editor`   - Open scenario editor  
 - `/eval`     - Start new evaluation  
 - `/help`     - Show this help screen  
+- `/resilience` - Resilience injector & architecture reference  
 - `/settings` - Edit settings  
 
 

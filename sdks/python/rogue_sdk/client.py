@@ -17,6 +17,10 @@ from .types import (
     GetConversationResponse,
     HealthResponse,
     JobListResponse,
+    ResilienceJob,
+    ResilienceJobListResponse,
+    ResilienceRequest,
+    ResilienceResponse,
     RogueClientConfig,
     ScenarioGenerationRequest,
     ScenarioGenerationResponse,
@@ -269,4 +273,65 @@ class RogueHttpClient:
                     f"Evaluation {job_id} did not complete within {max_wait_time}s",
                 )
 
+            await asyncio.sleep(poll_interval)
+
+    async def create_resilience_job(
+        self,
+        request: ResilienceRequest,
+    ) -> ResilienceResponse:
+        """Create and start a new resilience experiment job."""
+        data = await self._request(
+            "POST",
+            "/api/v1/resilience",
+            json=request.model_dump(mode="json"),
+        )
+        return ResilienceResponse(**data)
+
+    async def get_resilience_job(self, job_id: str) -> ResilienceJob:
+        """Get a resilience experiment job by ID."""
+        data = await self._request("GET", f"/api/v1/resilience/{job_id}")
+        return ResilienceJob(**data)
+
+    async def list_resilience_jobs(
+        self,
+        status: Optional[EvaluationStatus] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> ResilienceJobListResponse:
+        """List resilience experiment jobs."""
+        params = {"limit": str(limit), "offset": str(offset)}
+        if status:
+            params["status"] = status.value
+        data = await self._request("GET", "/api/v1/resilience", params=params)
+        return ResilienceJobListResponse(**data)
+
+    async def cancel_resilience_job(self, job_id: str) -> dict:
+        """Cancel a pending or running resilience experiment job."""
+        return await self._request("POST", f"/api/v1/resilience/{job_id}/cancel")
+
+    async def get_resilience_report(self, job_id: str) -> dict:
+        """Get the structured resilience report for a completed job."""
+        return await self._request("GET", f"/api/v1/resilience/{job_id}/report")
+
+    async def wait_for_resilience_job(
+        self,
+        job_id: str,
+        poll_interval: float = 2.0,
+        max_wait_time: float = 600.0,
+    ) -> ResilienceJob:
+        """Poll until a resilience job reaches a terminal status."""
+        start_time = asyncio.get_running_loop().time()
+        while True:
+            job = await self.get_resilience_job(job_id)
+            if job.status in (
+                EvaluationStatus.COMPLETED,
+                EvaluationStatus.FAILED,
+                EvaluationStatus.CANCELLED,
+            ):
+                return job
+            elapsed = asyncio.get_running_loop().time() - start_time
+            if elapsed >= max_wait_time:
+                raise TimeoutError(
+                    f"Resilience job {job_id} did not complete within {max_wait_time}s",
+                )
             await asyncio.sleep(poll_interval)
