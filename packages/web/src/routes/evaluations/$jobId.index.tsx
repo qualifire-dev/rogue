@@ -203,7 +203,7 @@ function buildDisplayEvents(events: TimelineEvent[]): DisplayEvent[] {
         content: e.chat.content,
       });
       lastChatRole = role;
-    } else {
+    } else if (e.kind === "status") {
       const s = e.update.status;
       // Skip "running" — it just means the job started, no signal value.
       if (s === "running" || s === "pending") return;

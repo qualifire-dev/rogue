@@ -89,7 +89,7 @@ function buildDisplayEvents(
         content: e.chat.content,
       });
       lastChatRole = role;
-    } else {
+    } else if (e.kind === "status") {
       const s = e.update.status;
       // Skip pre-terminal status churn — only render terminal-state markers.
       if (s === "running" || s === "pending") return;
