@@ -112,18 +112,11 @@ export function MetricsRadar({
     fullMark: 100,
   }));
 
-  const allZero = data.every((d) => d.value === 0);
-  if (allZero && metrics.length > 0) {
-    return (
-      <ResilienceEmptyPanel
-        title="Metrics pending"
-        description="Scores will appear once experiment results are processed."
-      />
-    );
-  }
-
   return (
-    <RadarChartErrorBoundary className={className}>
+    <RadarChartErrorBoundary
+      key={data.map((d) => `${d.metric}:${d.value}`).join("|")}
+      className={className}
+    >
       <RadarChartBody data={data} className={className} />
     </RadarChartErrorBoundary>
   );

@@ -340,6 +340,14 @@ function MetricRow({ label, value }: { label: string; value: number }) {
   );
 }
 
+function escapeCsvField(value: string | number | boolean): string {
+  let text = String(value);
+  if (/^[=+\-@]/.test(text)) {
+    text = `'${text}`;
+  }
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
 function BreakdownTab({
   rows,
   loading,
@@ -358,15 +366,18 @@ function BreakdownTab({
     ];
     const lines = rows.map((r) =>
       [
-        r.injector_name,
-        r.composite_score.toFixed(1),
-        r.passed,
-        r.detection_score.toFixed(2),
-        r.containment_score.toFixed(2),
-        r.recovery_score.toFixed(2),
+        escapeCsvField(r.injector_name),
+        escapeCsvField(r.composite_score.toFixed(1)),
+        escapeCsvField(r.passed),
+        escapeCsvField(r.detection_score.toFixed(2)),
+        escapeCsvField(r.containment_score.toFixed(2)),
+        escapeCsvField(r.recovery_score.toFixed(2)),
       ].join(","),
     );
-    const blob = new Blob([[header.join(","), ...lines].join("\n")], { type: "text/csv" });
+    const blob = new Blob(
+      [[header.map(escapeCsvField).join(","), ...lines].join("\n")],
+      { type: "text/csv" },
+    );
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;

@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from rogue_sdk.types import AgentConfig, AuthType, Scenario, Scenarios, ScenarioType
+from rogue_sdk.types import AgentConfig, AuthType, ResilienceConfig, Scenario, Scenarios, ScenarioType
 
 
 class TestScenario:
@@ -267,3 +267,36 @@ class TestAgentConfig:
             config = AgentConfig(**config_data)  # type: ignore
             assert config.evaluated_agent_auth_type == auth_type
             assert config.evaluated_agent_credentials == auth_credentials
+
+
+class TestResilienceConfig:
+    def test_accepts_plugin_in_trusted_dir(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.chdir(tmp_path)
+        trusted = tmp_path / ".rogue" / "injector_plugins"
+        trusted.mkdir(parents=True)
+        plugin = trusted / "my_plugin.py"
+        plugin.write_text("# plugin\n", encoding="utf-8")
+
+        config = ResilienceConfig(custom_injector_plugins=[str(plugin)])
+
+        assert config.custom_injector_plugins == [str(plugin.resolve())]
+
+    def test_rejects_path_outside_trusted_dirs(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.chdir(tmp_path)
+        outside = tmp_path / "evil.py"
+        outside.write_text("# evil\n", encoding="utf-8")
+
+        with pytest.raises(ValidationError, match="trusted directory"):
+            ResilienceConfig(custom_injector_plugins=[str(outside)])
+
+    def test_rejects_symlink_plugin_path(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.chdir(tmp_path)
+        trusted = tmp_path / ".rogue" / "injector_plugins"
+        trusted.mkdir(parents=True)
+        target = trusted / "real.py"
+        target.write_text("# real\n", encoding="utf-8")
+        link = trusted / "linked.py"
+        link.symlink_to(target)
+
+        with pytest.raises(ValidationError, match="Symlink injector plugin paths"):
+            ResilienceConfig(custom_injector_plugins=[str(link)])

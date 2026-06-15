@@ -73,16 +73,26 @@ export const useResilienceConfig = create<ResilienceState>()(
       setConcurrentTargetAgentIds: (concurrentTargetAgentIds) =>
         set({ concurrentTargetAgentIds }),
       setExperimentsPerInjector: (experimentsPerInjector) =>
-        set({
-          experimentsPerInjector: Math.max(1, Math.min(10, experimentsPerInjector)),
-        }),
+        set((s) => ({
+          experimentsPerInjector: Number.isFinite(experimentsPerInjector)
+            ? Math.max(1, Math.min(10, experimentsPerInjector))
+            : s.experimentsPerInjector,
+        })),
       setUseHeuristics: (useHeuristics) => set({ useHeuristics }),
       setEnableCheckpointRecovery: (enableCheckpointRecovery) =>
         set({ enableCheckpointRecovery }),
       setCheckpointThreadId: (checkpointThreadId) => set({ checkpointThreadId }),
       setBaselineTask: (baselineTask) => set({ baselineTask }),
       setRecoveryTask: (recoveryTask) => set({ recoveryTask }),
-      setMinResilienceScore: (minResilienceScore) => set({ minResilienceScore }),
+      setMinResilienceScore: (minResilienceScore) =>
+        set((s) => ({
+          minResilienceScore:
+            minResilienceScore === null
+              ? null
+              : Number.isFinite(minResilienceScore)
+                ? Math.max(0, Math.min(100, minResilienceScore))
+                : s.minResilienceScore,
+        })),
       toggleInjectorCategory: (title) =>
         set((s) => ({
           expandedInjectorCategories: s.expandedInjectorCategories.includes(title)

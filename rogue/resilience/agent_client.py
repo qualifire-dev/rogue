@@ -84,6 +84,9 @@ class PythonAgentClient:
         try:
             spec.loader.exec_module(module)
         except Exception as exc:
+            if self._added_sys_path and self._added_sys_path in sys.path:
+                sys.path.remove(self._added_sys_path)
+            self._added_sys_path = None
             logger.exception(
                 "Failed to execute Python entrypoint module",
                 extra={"path": str(self._python_file_path)},

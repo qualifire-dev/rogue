@@ -7,6 +7,7 @@ These types mirror the FastAPI server models and provide type safety.
 import os
 from datetime import datetime, timezone
 from enum import Enum
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from loguru import logger
@@ -188,6 +189,49 @@ class RedTeamConfig(BaseModel):
     )
 
 
+def _trusted_injector_plugin_roots() -> List[Path]:
+    """Return resolved directories from which custom injector plugins may be loaded."""
+    cwd = Path.cwd()
+    rogue_home = Path(os.environ.get("ROGUE_HOME", ".rogue"))
+    return [
+        (cwd / rogue_home / "injector_plugins").resolve(),
+        (cwd / "examples" / "custom_injector_plugin").resolve(),
+    ]
+
+
+def _validate_injector_plugin_path(raw_path: str) -> str:
+    """
+    Validate a custom injector plugin path before dynamic import.
+
+    Plugins must be regular ``.py`` files inside a trusted directory.
+    Symlinks are rejected to prevent path-escape via link targets.
+    """
+    path = Path(raw_path)
+    if path.is_symlink():
+        raise ValueError(
+            f"Symlink injector plugin paths are not allowed: {raw_path}",
+        )
+    if path.suffix != ".py":
+        raise ValueError(f"Injector plugin must be a .py file: {raw_path}")
+
+    try:
+        resolved = path.resolve()
+    except OSError as exc:
+        raise ValueError(f"Invalid injector plugin path: {raw_path}: {exc}") from exc
+
+    if not resolved.is_file():
+        raise ValueError(f"Injector plugin file not found: {raw_path}")
+
+    trusted_roots = _trusted_injector_plugin_roots()
+    if not any(resolved.is_relative_to(root) for root in trusted_roots):
+        allowed = ", ".join(str(root) for root in trusted_roots)
+        raise ValueError(
+            f"Injector plugin {raw_path} must resolve inside a trusted directory "
+            f"({allowed})",
+        )
+    return str(resolved)
+
+
 class ResilienceConfig(BaseModel):
     """Configuration for resilience (chaos) evaluation."""
 
@@ -260,7 +304,11 @@ class ResilienceConfig(BaseModel):
     )
     custom_injector_plugins: List[str] = Field(
         default_factory=list,
-        description="Paths to custom injector plugin .py files (INJECTOR_CLASS)",
+        description=(
+            "Paths to custom injector plugin .py files (INJECTOR_CLASS). "
+            "Must be regular files under .rogue/injector_plugins/ or "
+            "examples/custom_injector_plugin/ (symlinks rejected)."
+        ),
     )
     min_resilience_score: Optional[float] = Field(
         default=None,
@@ -268,6 +316,12 @@ class ResilienceConfig(BaseModel):
         le=100.0,
         description="Optional CI gate — job fails if overall score is below this threshold",
     )
+
+    @field_validator("custom_injector_plugins")
+    @classmethod
+    def validate_custom_injector_plugins(cls, paths: List[str]) -> List[str]:
+        """Restrict plugin loading to trusted directories; reject symlinks."""
+        return [_validate_injector_plugin_path(path) for path in paths]
 
 
 class VulnerabilityResult(BaseModel):

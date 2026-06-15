@@ -12,7 +12,7 @@ export const Route = createFileRoute("/resilience/")({
 });
 
 function ResilienceListPage() {
-  const { data, isLoading } = useResilienceJobs();
+  const { data, isLoading, isError, error } = useResilienceJobs();
   const jobs = data?.jobs ?? [];
 
   return (
@@ -36,6 +36,16 @@ function ResilienceListPage() {
         <CardContent className="p-0">
           {isLoading ? (
             <div className="px-6 py-12 text-center text-sm text-muted-foreground">Loading…</div>
+          ) : isError ? (
+            <div className="p-6">
+              <EmptyState
+                illustration="alerts"
+                title="Failed to load resilience experiments"
+                description={
+                  error instanceof Error ? error.message : "Could not reach the Rogue server."
+                }
+              />
+            </div>
           ) : jobs.length === 0 ? (
             <div className="p-6">
               <EmptyState

@@ -53,12 +53,12 @@ from rogue.injectors.plugins import load_injector_plugin
 load_injector_plugin("path/to/my_injector.py")
 ```
 
-Or pass paths in job config:
+Or pass paths in job config (must be under `.rogue/injector_plugins/` or `examples/custom_injector_plugin/`):
 
 ```python
 ResilienceConfig(
     injectors=["my_injector", "policy_violation"],
-    custom_injector_plugins=["path/to/my_injector.py"],
+    custom_injector_plugins=[".rogue/injector_plugins/my_injector.py"],
 )
 ```
 

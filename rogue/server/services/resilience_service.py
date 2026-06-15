@@ -78,7 +78,8 @@ class ResilienceService:
             job.status = EvaluationStatus.CANCELLED
             job.completed_at = datetime.now(timezone.utc)
             self._notify_job_update(job)
-        return True
+            return True
+        return False
 
     async def run_job(self, job_id: str) -> None:
         """
@@ -94,6 +95,13 @@ class ResilienceService:
         if not job:
             return
 
+        if job.status == EvaluationStatus.CANCELLED:
+            logger.info(
+                "Resilience job already cancelled; skipping run",
+                extra={"job_id": job_id},
+            )
+            return
+
         try:
             set_job_context(
                 job_id=job_id,
@@ -106,6 +114,13 @@ class ResilienceService:
                     "injectors": job.request.resilience_config.injectors,
                 },
             )
+
+            if job.status == EvaluationStatus.CANCELLED:
+                logger.info(
+                    "Resilience job cancelled before start; skipping run",
+                    extra={"job_id": job_id},
+                )
+                return
 
             job.status = EvaluationStatus.RUNNING
             job.started_at = datetime.now(timezone.utc)
@@ -150,6 +165,14 @@ class ResilienceService:
                     job.progress = 1.0
                     self._notify_job_update(job)
 
+            job = await self.get_job(job_id)
+            if not job or job.status == EvaluationStatus.CANCELLED:
+                logger.info(
+                    "Resilience job cancelled during run; preserving cancelled state",
+                    extra={"job_id": job_id},
+                )
+                return
+
             job.status = EvaluationStatus.COMPLETED
             job.completed_at = datetime.now(timezone.utc)
             min_score = job.request.resilience_config.min_resilience_score
@@ -165,6 +188,9 @@ class ResilienceService:
 
         except Exception as exc:
             logger.exception("Resilience job failed", extra={"job_id": job_id})
+            job = await self.get_job(job_id)
+            if not job or job.status == EvaluationStatus.CANCELLED:
+                return
             job.status = EvaluationStatus.FAILED
             job.error_message = str(exc)
             job.completed_at = datetime.now(timezone.utc)

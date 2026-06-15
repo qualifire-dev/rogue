@@ -63,8 +63,11 @@ def load_injector_plugin(path: str | Path) -> str:
     if spec is None or spec.loader is None:
         raise ValueError(f"Cannot load injector plugin: {plugin_path}")
 
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    try:
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+    except (SyntaxError, ImportError, Exception) as exc:
+        raise ValueError(f"Cannot load injector plugin {plugin_path}: {exc}") from exc
 
     injector_cls = getattr(module, "INJECTOR_CLASS", None)
     if injector_cls is None:

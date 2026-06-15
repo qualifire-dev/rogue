@@ -1,4 +1,5 @@
 import type { ResilienceReportTimelineEvent } from "@/api/types";
+import type { ConnectionState } from "@/api/ws";
 import {
   ResilienceEmptyPanel,
   ResilienceErrorPanel,
@@ -106,6 +107,7 @@ interface LiveTraceViewerProps {
   events: Array<{ kind: string; at: string; trace?: Record<string, unknown> }>;
   loading?: boolean;
   error?: string | null;
+  connection?: ConnectionState;
   waiting?: boolean;
 }
 
@@ -114,6 +116,7 @@ export function LiveTraceViewer({
   events,
   loading = false,
   error = null,
+  connection = "connecting",
   waiting = false,
 }: LiveTraceViewerProps) {
   const traceEvents = events
@@ -149,7 +152,13 @@ export function LiveTraceViewer({
             description="The orchestrator streams baseline, injection, and recovery markers here."
           />
         ) : error ? (
-          <ResilienceErrorPanel title="Live trace disconnected" description={error} />
+          <ResilienceErrorPanel title="Experiment failed" description={error} />
+        ) : (connection === "closed" || connection === "connecting") &&
+          traceEvents.length === 0 ? (
+          <ResilienceLoadingPanel
+            title="Reconnecting to live trace…"
+            description="WebSocket disconnected. Retrying or falling back to polling…"
+          />
         ) : waiting && traceEvents.length === 0 ? (
           <ResilienceEmptyPanel
             title="Experiment starting"

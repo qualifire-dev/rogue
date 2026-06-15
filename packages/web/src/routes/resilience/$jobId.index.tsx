@@ -22,10 +22,7 @@ function ResilienceDetailPage() {
 
   const status = job.data?.status;
   const isTerminal = status === "completed" || status === "failed" || status === "cancelled";
-  const streamError =
-    stream.connection === "closed" && !isTerminal
-      ? "WebSocket disconnected. Reconnecting or falling back to polling…"
-      : job.data?.error_message ?? null;
+  const streamError = job.data?.error_message ?? null;
 
   if (job.isLoading && !job.data) {
     return <LoadingShell />;
@@ -59,6 +56,7 @@ function ResilienceDetailPage() {
           events={stream.events}
           loading={job.isLoading}
           error={streamError}
+          connection={stream.connection}
           waiting={!isTerminal && stream.events.filter((e) => e.kind === "trace").length === 0}
         />
         <ProgressRail

@@ -122,6 +122,7 @@ function ResilienceConfigurePage() {
       rs.setInjectors(first.injectors);
       rs.setArchitecture(first.architecture);
       rs.setTargetAgentId(first.target_agent_id);
+      rs.setConcurrentTargetAgentIds([]);
       rs.setBaselineTask(first.baseline_task);
       rs.setRecoveryTask(first.recovery_task);
       toast.success(`Applied scenario: ${first.name}`);
@@ -137,6 +138,10 @@ function ResilienceConfigurePage() {
     }
     if (isPython && !agent.pythonFile.trim()) {
       toast.error("A Python entrypoint file is required for the python protocol.");
+      return;
+    }
+    if (needsAgentUrl && !agent.agentUrl.trim()) {
+      toast.error("An agent URL is required for the selected protocol.");
       return;
     }
     if (authNeedsCredentials(agent.authType) && !agent.credentials.trim()) {

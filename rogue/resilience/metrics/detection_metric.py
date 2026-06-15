@@ -105,7 +105,11 @@ class DetectionMetric(BaseResilienceMetric):
         )
         parsed = self._parse_json_response(self._call_llm(prompt))
         detected = bool(parsed.get("detected", False))
-        score = float(parsed.get("score", 1.0 if detected else 0.0))
+        default_score = 1.0 if detected else 0.0
+        try:
+            score = float(parsed.get("score", default_score))
+        except (TypeError, ValueError):
+            score = default_score
         return MetricResult(
             metric_id=self.metric_id,
             passed=detected,
@@ -125,7 +129,9 @@ def _injection_timestamp(trace) -> Optional[object]:
 
 def _first_detection_timestamp(trace) -> Optional[object]:
     for event in trace.events:
-        if event.event_type in (TraceEventType.DETECTION, TraceEventType.MESSAGE):
+        if event.event_type == TraceEventType.DETECTION:
+            return event.timestamp
+        if event.event_type == TraceEventType.MESSAGE:
             response = str(event.payload.get("response", "")).lower()
             if any(keyword in response for keyword in _DETECTION_KEYWORDS):
                 return event.timestamp

@@ -218,11 +218,22 @@ class ResilienceOrchestrator:
                             "target_agent_id": self.target_agent_id,
                         },
                     )
-                    experiment = await self._run_experiment(
-                        client=client,
-                        injector_id=injector_id,
-                        attempt=attempt,
-                    )
+                    try:
+                        experiment = await self._run_experiment(
+                            client=client,
+                            injector_id=injector_id,
+                            attempt=attempt,
+                        )
+                    except Exception:
+                        logger.exception(
+                            "Resilience experiment failed",
+                            extra={
+                                "injector": self._injector_key(injector_id),
+                                "attempt": attempt + 1,
+                                "target_agent_id": self.target_agent_id,
+                            },
+                        )
+                        continue
                     results.add_experiment(experiment)
                     logger.info(
                         "Completed resilience experiment",
@@ -285,11 +296,36 @@ class ResilienceOrchestrator:
                             "attempt": attempt,
                         },
                     )
-                    experiment = await self._run_experiment(
-                        client=client,
-                        injector_id=injector_id,
-                        attempt=attempt,
-                    )
+                    try:
+                        experiment = await self._run_experiment(
+                            client=client,
+                            injector_id=injector_id,
+                            attempt=attempt,
+                        )
+                    except Exception as exc:
+                        logger.exception(
+                            "Resilience experiment failed",
+                            extra={
+                                "injector": self._injector_key(injector_id),
+                                "attempt": attempt + 1,
+                                "target_agent_id": self.target_agent_id,
+                            },
+                        )
+                        completed += 1
+                        yield (
+                            "status",
+                            {
+                                "message": f"Experiment failed: {exc}",
+                                "injector": self._injector_key(injector_id),
+                                "attempt": attempt,
+                                "error": str(exc),
+                            },
+                        )
+                        yield (
+                            "status",
+                            {"progress": completed / total, "completed": completed},
+                        )
+                        continue
                     completed += 1
                     yield ("experiment", experiment.model_dump())
                     for event in experiment.trace.events:
@@ -410,60 +446,61 @@ class ResilienceOrchestrator:
             business_context=self.business_context,
             session_id=session_id,
         )
-        injection = await injector.inject(self.target_agent_id, injection_context)
-        self._record(
-            trace,
-            TraceEventType.INJECTION,
-            {
-                "injector": self._injector_key(injector_id),
-                "probe_count": len(injection.probe_messages),
-            },
-        )
+        try:
+            injection = await injector.inject(self.target_agent_id, injection_context)
+            self._record(
+                trace,
+                TraceEventType.INJECTION,
+                {
+                    "injector": self._injector_key(injector_id),
+                    "probe_count": len(injection.probe_messages),
+                },
+            )
 
-        messages: list[dict[str, str]] = []
-        fault_responses: list[str] = []
-        for probe in injection.probe_messages:
-            start = time.perf_counter()
-            try:
-                if messages:
-                    messages.append({"role": "user", "content": probe})
-                else:
-                    messages = [{"role": "user", "content": probe}]
-                response = await client.call_agent(
-                    messages,
-                    context_id=session_id,
-                    **injection.attach_kwargs,
-                )
-                messages.append({"role": "assistant", "content": response})
-                fault_responses.append(response)
-                duration_ms = (time.perf_counter() - start) * 1000.0
-                self._record(
-                    trace,
-                    TraceEventType.MESSAGE,
-                    {
-                        "probe": probe,
-                        "response": response,
-                        "duration_ms": duration_ms,
-                        "injected": True,
-                    },
-                )
-            except Exception as exc:
-                self._record(
-                    trace,
-                    TraceEventType.ERROR,
-                    {"probe": probe, "error": str(exc)},
-                )
-                logger.exception(
-                    "Fault probe failed",
-                    extra={"injector": self._injector_key(injector_id), "probe": probe[:80]},
-                )
+            messages: list[dict[str, str]] = []
+            fault_responses: list[str] = []
+            for probe in injection.probe_messages:
+                start = time.perf_counter()
+                try:
+                    if messages:
+                        messages.append({"role": "user", "content": probe})
+                    else:
+                        messages = [{"role": "user", "content": probe}]
+                    response = await client.call_agent(
+                        messages,
+                        context_id=session_id,
+                        **injection.attach_kwargs,
+                    )
+                    messages.append({"role": "assistant", "content": response})
+                    fault_responses.append(response)
+                    duration_ms = (time.perf_counter() - start) * 1000.0
+                    self._record(
+                        trace,
+                        TraceEventType.MESSAGE,
+                        {
+                            "probe": probe,
+                            "response": response,
+                            "duration_ms": duration_ms,
+                            "injected": True,
+                        },
+                    )
+                except Exception as exc:
+                    self._record(
+                        trace,
+                        TraceEventType.ERROR,
+                        {"probe": probe, "error": str(exc)},
+                    )
+                    logger.exception(
+                        "Fault probe failed",
+                        extra={"injector": self._injector_key(injector_id), "probe": probe[:80]},
+                    )
 
-        trace.fault_result = TaskResult(
-            success=bool(fault_responses),
-            response=fault_responses[-1] if fault_responses else "",
-        )
-
-        injector.teardown()
+            trace.fault_result = TaskResult(
+                success=bool(fault_responses),
+                response=fault_responses[-1] if fault_responses else "",
+            )
+        finally:
+            injector.teardown()
         recovery = await self._run_task(
             client,
             session_id=f"{session_id}-recovery",
@@ -614,55 +651,57 @@ class ResilienceOrchestrator:
                 business_context=self.business_context,
                 session_id=f"{session_id}-{target_id}",
             )
-            target_injection = await target_injector.inject(target_id, target_context)
-            if len(fault_targets) < 2:
-                self._record(
-                    trace,
-                    TraceEventType.INJECTION,
-                    {
-                        "injector": self._injector_key(injector_id),
-                        "probe_count": len(target_injection.probe_messages),
-                    },
-                    agent_id=target_id,
-                )
-            for probe in target_injection.probe_messages:
-                start = time.perf_counter()
-                try:
-                    response = await client.call_agent(
-                        [{"role": "user", "content": probe}],
-                        context_id=f"{session_id}-{target_id}",
-                        agent_id=target_id,
-                        **target_injection.attach_kwargs,
-                    )
-                    target_responses.append(response)
-                    duration_ms = (time.perf_counter() - start) * 1000.0
+            try:
+                target_injection = await target_injector.inject(target_id, target_context)
+                if len(fault_targets) < 2:
                     self._record(
                         trace,
-                        TraceEventType.MESSAGE,
+                        TraceEventType.INJECTION,
                         {
-                            "probe": probe,
-                            "response": response,
-                            "duration_ms": duration_ms,
-                            "injected": True,
-                            "concurrent": len(fault_targets) >= 2,
-                        },
-                        agent_id=target_id,
-                    )
-                except Exception as exc:
-                    self._record(
-                        trace,
-                        TraceEventType.ERROR,
-                        {"probe": probe, "error": str(exc), "concurrent": len(fault_targets) >= 2},
-                        agent_id=target_id,
-                    )
-                    logger.exception(
-                        "Multi-agent fault probe failed",
-                        extra={
                             "injector": self._injector_key(injector_id),
-                            "agent": target_id,
+                            "probe_count": len(target_injection.probe_messages),
                         },
+                        agent_id=target_id,
                     )
-            target_injector.teardown()
+                for probe in target_injection.probe_messages:
+                    start = time.perf_counter()
+                    try:
+                        response = await client.call_agent(
+                            [{"role": "user", "content": probe}],
+                            context_id=f"{session_id}-{target_id}",
+                            agent_id=target_id,
+                            **target_injection.attach_kwargs,
+                        )
+                        target_responses.append(response)
+                        duration_ms = (time.perf_counter() - start) * 1000.0
+                        self._record(
+                            trace,
+                            TraceEventType.MESSAGE,
+                            {
+                                "probe": probe,
+                                "response": response,
+                                "duration_ms": duration_ms,
+                                "injected": True,
+                                "concurrent": len(fault_targets) >= 2,
+                            },
+                            agent_id=target_id,
+                        )
+                    except Exception as exc:
+                        self._record(
+                            trace,
+                            TraceEventType.ERROR,
+                            {"probe": probe, "error": str(exc), "concurrent": len(fault_targets) >= 2},
+                            agent_id=target_id,
+                        )
+                        logger.exception(
+                            "Multi-agent fault probe failed",
+                            extra={
+                                "injector": self._injector_key(injector_id),
+                                "agent": target_id,
+                            },
+                        )
+            finally:
+                target_injector.teardown()
             return target_responses
 
         if len(fault_targets) >= 2:
@@ -685,53 +724,55 @@ class ResilienceOrchestrator:
                 metadata={"concurrent_targets": fault_targets},
             )
         else:
-            injection = await injector.inject(self.target_agent_id, injection_context)
-            self._record(
-                trace,
-                TraceEventType.INJECTION,
-                {
-                    "injector": self._injector_key(injector_id),
-                    "probe_count": len(injection.probe_messages),
-                },
-                agent_id=self.target_agent_id,
-            )
-            for probe in injection.probe_messages:
-                start = time.perf_counter()
-                try:
-                    response = await client.call_agent(
-                        [{"role": "user", "content": probe}],
-                        context_id=session_id,
-                        agent_id=self.target_agent_id,
-                        **injection.attach_kwargs,
-                    )
-                    fault_responses.append(response)
-                    duration_ms = (time.perf_counter() - start) * 1000.0
-                    self._record(
-                        trace,
-                        TraceEventType.MESSAGE,
-                        {
-                            "probe": probe,
-                            "response": response,
-                            "duration_ms": duration_ms,
-                            "injected": True,
-                        },
-                        agent_id=self.target_agent_id,
-                    )
-                except Exception as exc:
-                    self._record(
-                        trace,
-                        TraceEventType.ERROR,
-                        {"probe": probe, "error": str(exc)},
-                        agent_id=self.target_agent_id,
-                    )
-                    logger.exception(
-                        "Multi-agent fault probe failed",
-                        extra={
-                            "injector": self._injector_key(injector_id),
-                            "agent": self.target_agent_id,
-                        },
-                    )
-            injector.teardown()
+            try:
+                injection = await injector.inject(self.target_agent_id, injection_context)
+                self._record(
+                    trace,
+                    TraceEventType.INJECTION,
+                    {
+                        "injector": self._injector_key(injector_id),
+                        "probe_count": len(injection.probe_messages),
+                    },
+                    agent_id=self.target_agent_id,
+                )
+                for probe in injection.probe_messages:
+                    start = time.perf_counter()
+                    try:
+                        response = await client.call_agent(
+                            [{"role": "user", "content": probe}],
+                            context_id=session_id,
+                            agent_id=self.target_agent_id,
+                            **injection.attach_kwargs,
+                        )
+                        fault_responses.append(response)
+                        duration_ms = (time.perf_counter() - start) * 1000.0
+                        self._record(
+                            trace,
+                            TraceEventType.MESSAGE,
+                            {
+                                "probe": probe,
+                                "response": response,
+                                "duration_ms": duration_ms,
+                                "injected": True,
+                            },
+                            agent_id=self.target_agent_id,
+                        )
+                    except Exception as exc:
+                        self._record(
+                            trace,
+                            TraceEventType.ERROR,
+                            {"probe": probe, "error": str(exc)},
+                            agent_id=self.target_agent_id,
+                        )
+                        logger.exception(
+                            "Multi-agent fault probe failed",
+                            extra={
+                                "injector": self._injector_key(injector_id),
+                                "agent": self.target_agent_id,
+                            },
+                        )
+            finally:
+                injector.teardown()
 
         rogue_broadcast = fault_responses[-1] if fault_responses else ""
         for peer_id in self.architecture_profile.notify_on_fault.get(

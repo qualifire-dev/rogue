@@ -1,5 +1,6 @@
 """Resilience API endpoints — chaos experiment job management."""
 
+import asyncio
 import uuid
 from datetime import datetime, timezone
 from functools import lru_cache
@@ -133,7 +134,11 @@ async def generate_resilience_scenarios(
         api_key=request.api_key,
         api_base=request.api_base,
     )
-    scenarios = service.generate(request.business_context, count=request.count)
+    scenarios = await asyncio.to_thread(
+        service.generate,
+        request.business_context,
+        request.count,
+    )
     return ResilienceScenarioGenerateResponse(scenarios=scenarios)
 
 

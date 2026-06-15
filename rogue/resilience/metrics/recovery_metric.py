@@ -89,7 +89,11 @@ class RecoveryMetric(BaseResilienceMetric):
         )
         parsed = self._parse_json_response(self._call_llm(prompt))
         recovered = bool(parsed.get("recovered", False))
-        score = float(parsed.get("score", 1.0 if recovered else 0.0))
+        default_score = 1.0 if recovered else 0.0
+        try:
+            score = float(parsed.get("score", default_score))
+        except (TypeError, ValueError):
+            score = default_score
         return MetricResult(
             metric_id=self.metric_id,
             passed=recovered,

@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from rogue.injectors import registry
 from rogue.injectors.plugins import load_injector_plugin, register_injector
 from rogue.injectors.registry import get_injector, list_injectors
 from rogue.injectors.base_injector import BaseInjector, InjectionContext, InjectionResult
@@ -14,6 +15,18 @@ PLUGIN = (
     / "custom_injector_plugin"
     / "example_injector.py"
 )
+
+
+@pytest.fixture(autouse=True)
+def _isolate_injector_registry() -> None:
+    """Restore injector catalog state so plugin tests do not leak registrations."""
+    catalog_snapshot = dict(registry.INJECTOR_CATALOG)
+    custom_snapshot = dict(registry._CUSTOM_CATALOG)
+    yield
+    registry.INJECTOR_CATALOG.clear()
+    registry.INJECTOR_CATALOG.update(catalog_snapshot)
+    registry._CUSTOM_CATALOG.clear()
+    registry._CUSTOM_CATALOG.update(custom_snapshot)
 
 
 def test_load_injector_plugin_from_file() -> None:
@@ -49,3 +62,11 @@ async def test_custom_plugin_produces_probes() -> None:
     injector = get_injector("echo_loop")
     result = await injector.inject("default", InjectionContext())
     assert len(result.probe_messages) >= 1
+
+
+def test_load_injector_plugin_raises_value_error_on_syntax_error(tmp_path: Path) -> None:
+    bad_plugin = tmp_path / "bad_plugin.py"
+    bad_plugin.write_text("def broken(\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Cannot load injector plugin"):
+        load_injector_plugin(bad_plugin)
