@@ -1,11 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { IconActivity, IconShieldHalf } from "@tabler/icons-react";
+import { IconActivity, IconBolt, IconShieldHalf } from "@tabler/icons-react";
 
 import { EmptyState } from "@/components/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useEvaluations, useHealth, useRedTeamJobs } from "@/api/queries";
+import { useEvaluations, useHealth, useRedTeamJobs, useResilienceJobs } from "@/api/queries";
 import { formatRelative } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
@@ -16,21 +16,23 @@ function DashboardPage() {
   const health = useHealth();
   const evals = useEvaluations();
   const redTeam = useRedTeamJobs();
+  const resilience = useResilienceJobs();
 
   const recentEvals = evals.data?.jobs.slice(0, 5) ?? [];
   const recentRedTeam = redTeam.data?.jobs.slice(0, 5) ?? [];
+  const recentResilience = resilience.data?.jobs.slice(0, 5) ?? [];
 
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Operational Console</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Run policy evaluations, drive red-team scans, and review structured reports — all against
-          your local Rogue server.
+          Run policy evaluations, drive red-team scans, benchmark resilience, and review structured
+          reports — all against your local Rogue server.
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <MetricCard
           label="Server"
           value={health.isError ? "Disconnected" : "Live"}
@@ -49,9 +51,14 @@ function DashboardPage() {
           value={redTeam.data?.total ?? 0}
           description="Total scans created"
         />
+        <MetricCard
+          label="Resilience runs"
+          value={resilience.data?.total ?? 0}
+          description="Chaos experiments"
+        />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
@@ -134,6 +141,55 @@ function DashboardPage() {
                   >
                     <Link
                       to="/red-team/$jobId"
+                      params={{ jobId: j.job_id }}
+                      className="font-mono text-xs text-foreground hover:text-primary"
+                    >
+                      {j.job_id.slice(0, 12)}…
+                    </Link>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <StatusBadge status={j.status} />
+                      <span>{formatRelative(j.created_at)}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <IconBolt className="h-4 w-4 text-primary" /> Recent resilience runs
+              </CardTitle>
+              <CardDescription>Latest 5 experiments</CardDescription>
+            </div>
+            <Button asChild size="sm" variant="ghost">
+              <Link to="/resilience">View all</Link>
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {recentResilience.length === 0 ? (
+              <EmptyState
+                illustration="logs"
+                title="No resilience experiments yet"
+                description="Inject faults and measure detection, containment, and recovery."
+                action={
+                  <Button asChild size="sm">
+                    <Link to="/resilience/configure">Configure experiment</Link>
+                  </Button>
+                }
+              />
+            ) : (
+              <ul className="space-y-2">
+                {recentResilience.map((j) => (
+                  <li
+                    key={j.job_id}
+                    className="flex items-center justify-between rounded-md border border-border/60 bg-card/40 px-3 py-2"
+                  >
+                    <Link
+                      to="/resilience/$jobId"
                       params={{ jobId: j.job_id }}
                       className="font-mono text-xs text-foreground hover:text-primary"
                     >

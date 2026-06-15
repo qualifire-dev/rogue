@@ -1,9 +1,10 @@
 import {
   IconActivity,
-  IconHelp,
   IconHome,
+  IconHelp,
   IconSettings,
   IconShieldHalf,
+  IconBolt,
 } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
 import type { ComponentProps } from "react";
@@ -39,6 +40,14 @@ const NAV_MAIN: NavMainItem[] = [
     items: [
       { title: "Past runs", url: "/red-team" },
       { title: "New scan", url: "/red-team/configure" },
+    ],
+  },
+  {
+    title: "Resilience",
+    icon: IconBolt,
+    items: [
+      { title: "Past runs", url: "/resilience" },
+      { title: "New experiment", url: "/resilience/configure" },
     ],
   },
 ];

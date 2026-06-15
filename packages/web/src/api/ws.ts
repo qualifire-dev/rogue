@@ -2,7 +2,7 @@ import { useEffect, useReducer, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { wsUrlFor } from "./client";
 import { qk } from "./queries";
-import type { ChatUpdate, EvaluationJob, JobUpdate, RedTeamJob, WebSocketMessage } from "./types";
+import type { ChatUpdate, EvaluationJob, JobUpdate, RedTeamJob, ResilienceJob, WebSocketMessage } from "./types";
 
 export type ConnectionState = "connecting" | "open" | "closed" | "polling";
 
@@ -13,11 +13,12 @@ export type ConnectionState = "connecting" | "open" | "closed" | "polling";
  * to the wrong one leaves the other page reading stale cached state and
  * misses the auto-redirect to /report on terminal status.
  */
-export type JobStreamKind = "evaluation" | "red-team";
+export type JobStreamKind = "evaluation" | "red-team" | "resilience";
 
 export type TimelineEvent =
   | { kind: "status"; at: string; update: JobUpdate }
-  | { kind: "chat"; at: string; chat: ChatUpdate };
+  | { kind: "chat"; at: string; chat: ChatUpdate }
+  | { kind: "trace"; at: string; trace: Record<string, unknown> };
 
 interface State {
   connection: ConnectionState;
@@ -31,6 +32,7 @@ type Action =
   | { type: "open" }
   | { type: "status"; update: JobUpdate }
   | { type: "chat"; chat: ChatUpdate }
+  | { type: "trace"; trace: Record<string, unknown> }
   | { type: "close" }
   | { type: "polling" };
 
@@ -65,6 +67,17 @@ function reducer(state: State, action: Action): State {
         kind: "chat",
         at: new Date().toISOString(),
         chat: action.chat,
+      };
+      return {
+        ...state,
+        events: state.events.length > 5000 ? state.events : [...state.events, event],
+      };
+    }
+    case "trace": {
+      const event: TimelineEvent = {
+        kind: "trace",
+        at: new Date().toISOString(),
+        trace: action.trace,
       };
       return {
         ...state,
@@ -108,16 +121,20 @@ export function useJobStream(jobId: string | undefined, kind: JobStreamKind = "e
     // store their job under separate keys; writing to the wrong one leaves the
     // calling page reading stale data and breaks the auto-redirect on
     // terminal status.
-    const queryKey = kind === "red-team" ? qk.redTeam(jobId) : qk.evaluation(jobId);
+    const queryKey =
+      kind === "red-team"
+        ? qk.redTeam(jobId)
+        : kind === "resilience"
+          ? qk.resilienceJob(jobId)
+          : qk.evaluation(jobId);
 
     const patchCache = (update: JobUpdate) => {
-      // If the GET hasn't seeded the cache yet, drop the WS update — the
-      // imminent fetch will produce a complete job object. Constructing a
-      // fake stub here would set required fields (`request`, `progress`)
-      // to undefined and crash any downstream code that dereferences them
-      // (e.g. `job.request.red_team_config?.scan_type`).
       if (kind === "red-team") {
         qc.setQueryData<RedTeamJob | undefined>(queryKey, (prev) =>
+          prev ? { ...prev, ...update } : prev,
+        );
+      } else if (kind === "resilience") {
+        qc.setQueryData<ResilienceJob | undefined>(queryKey, (prev) =>
           prev ? { ...prev, ...update } : prev,
         );
       } else {
@@ -194,6 +211,8 @@ export function useJobStream(jobId: string | undefined, kind: JobStreamKind = "e
               if (typeof chat.content === "string" && chat.content.length > 0) {
                 dispatch({ type: "chat", chat });
               }
+            } else if (msg.type === "resilience_trace_update" && msg.data) {
+              dispatch({ type: "trace", trace: msg.data as Record<string, unknown> });
             }
           } catch {
             /* ignore non-JSON keepalives */
@@ -226,7 +245,7 @@ export function useJobStream(jobId: string | undefined, kind: JobStreamKind = "e
       if (pollTimeoutRef.current) window.clearTimeout(pollTimeoutRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jobId]);
+  }, [jobId, kind]);
 
   return state;
 }

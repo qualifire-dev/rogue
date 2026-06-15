@@ -45,3 +45,46 @@ jobs:
         uses: ./.github/actions/run-tests
         with:
           python-version: ${{ matrix.python-version }}
+
+  resilience:
+    name: Resilience tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: ".python-version"
+
+      - name: Create venv and install with examples group
+        run: |
+          uv venv
+          source .venv/bin/activate
+          uv sync --dev --group examples
+          uv pip install -e .
+          uv pip uninstall rogue-ai-sdk
+          uv pip install -e sdks/python --force-reinstall
+
+      - name: Run resilience test suite
+        run: |
+          source .venv/bin/activate
+          pytest \
+            rogue/tests/test_injectors.py \
+            rogue/tests/test_resilience_metrics.py \
+            rogue/tests/test_resilience_orchestrator.py \
+            rogue/tests/test_multi_agent_orchestrator.py \
+            rogue/tests/test_langgraph_checkpoint_adapter.py \
+            rogue/tests/test_resilience_reporting.py \
+            -v --junitxml=resilience-test-results.xml
+
+      - name: Upload resilience test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: resilience-junit-results
+          path: resilience-test-results.xml

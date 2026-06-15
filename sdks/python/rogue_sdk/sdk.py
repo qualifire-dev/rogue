@@ -109,6 +109,10 @@ class RogueSDK:
         """Cancel a resilience experiment job."""
         return await self.http_client.cancel_resilience_job(job_id)
 
+    async def get_resilience_report(self, job_id: str) -> dict:
+        """Get structured resilience report for a completed job."""
+        return await self.http_client.get_resilience_report(job_id)
+
     async def wait_for_resilience_job(
         self,
         job_id: str,

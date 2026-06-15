@@ -1,4 +1,4 @@
-# Rogue — AI Agent Evaluator & Red Team Platform
+# Rogue — AI Agent Evaluator, Red Team & Resilience Platform
 
 ![](https://pixel.qualifire.ai/api/record/rogue)
 
@@ -8,21 +8,25 @@
 
 ![Tests](https://github.com/qualifire-dev/rogue/actions/workflows/test.yml/badge.svg?branch=main)
 
+[![Resilience](https://img.shields.io/badge/Rogue%20Resilience-chaos%20testing-8B5CF6?style=flat-square)](./docs/resilience/README.md)
+[![Multi-agent](https://img.shields.io/badge/multi--agent-hierarchical%20%7C%20P2P-3B82F6?style=flat-square)](./docs/resilience/README.md#architecture-profiles)
+[![Dashboard](https://img.shields.io/badge/web%20UI-%2Fresilience-10B981?style=flat-square)](./docs/resilience/README.md#dashboard--reporting-phase-3)
+
 <img src="./freddy-rogue.png" width="200"/>
 
-**Stress-test your AI agents before attackers do.**
+**Stress-test your AI agents before attackers do — and before internal faults cascade.**
 
-[Discord Community](https://discord.gg/EUfAt7ZDeK) · [Quick Start](#-quick-start) · [Documentation](./docs/)
+[Discord Community](https://discord.gg/EUfAt7ZDeK) · [Quick Start](#-quick-start) · [Rogue Resilience](#-rogue-resilience) · [Documentation](./docs/)
 
 </div>
 
 ---
 
-## Two Ways to Harden Your Agent
+## Three Ways to Harden Your Agent
 
 <table>
 <tr>
-<td width="50%" valign="top">
+<td width="33%" valign="top">
 
 ### 🎯 Automatic Evaluation
 
@@ -36,7 +40,7 @@ Test your agent against **business policies** and expected behaviors.
 **Best for:** Regression testing, behavior validation, policy compliance
 
 </td>
-<td width="50%" valign="top">
+<td width="33%" valign="top">
 
 ### 🔴 Red Teaming
 
@@ -50,8 +54,52 @@ Simulate **adversarial attacks** to find security vulnerabilities.
 **Best for:** Security audits, penetration testing, compliance reporting
 
 </td>
+<td width="33%" valign="top">
+
+### ⚡ Rogue Resilience
+
+Benchmark **internal fault tolerance** when an agent goes rogue.
+
+- 5 fault injectors (tool misuse, policy violation, goal conflict, …)
+- Multi-agent architectures (hierarchical, peer-to-peer)
+- Detection · containment · recovery · cascade · degradation metrics
+- Live trace dashboard + markdown/CSV reports
+
+**Best for:** Multi-agent chaos testing, supervisor/worker resilience, LangGraph recovery
+
+[→ Full Resilience docs](./docs/resilience/README.md)
+
+</td>
 </tr>
 </table>
+
+---
+
+## ⚡ Rogue Resilience
+
+> **Red Team** tests external attackers. **Resilience** tests internal faults — when a worker agent suddenly misbehaves, can your system detect, contain, and recover?
+
+| Quick link | Description |
+|------------|-------------|
+| [Resilience README](./docs/resilience/README.md) | Install, examples, metrics, dashboard |
+| [Architecture & roadmap](./docs/resilience/PLAN.md) | Full design and phased delivery |
+| Web UI | `http://localhost:8000/resilience/configure` (after `uv run rogue-ai web`) |
+| CLI | `uv run rogue-ai cli --evaluation-mode resilience --protocol python …` |
+
+```bash
+# Start server + dashboard
+uv sync --all-groups && uv run rogue-ai web
+
+# Run a chaos experiment from CLI (writes resilience_report.md)
+uv run rogue-ai cli \
+  --evaluation-mode resilience \
+  --protocol python \
+  --python-entrypoint-file rogue/tests/fixtures/resilience_test_agent.py \
+  --injectors policy_violation \
+  --judge-llm openai/gpt-4o-mini
+```
+
+**What's included:** fault injectors · multi-agent profiles · LangGraph checkpoint adapters · REST API · WebSocket live traces · scorecard report with radar chart, timeline, agent graph, and CSV export.
 
 ---
 
@@ -259,7 +307,8 @@ GOOGLE_API_KEY="..."
 | 🔄 Dynamic Scenarios     | Auto-generate tests from business context    |
 | 👀 Live Monitoring       | Watch agent conversations in real-time       |
 | 📊 Comprehensive Reports | Markdown, CSV, JSON exports                  |
-| 🔍 Multi-Faceted Testing | Policy compliance + security vulnerabilities |
+| 🔍 Multi-Faceted Testing | Policy compliance + security + resilience        |
+| ⚡ Rogue Resilience      | Fault injection, cascade & recovery metrics    |
 | 🤖 Model Support         | OpenAI, Anthropic, Google (via LiteLLM)      |
 | 🛡️ CVSS Scoring          | Industry-standard risk assessment            |
 | 🔁 Reproducible          | Deterministic scans with random seeds        |
@@ -270,6 +319,7 @@ GOOGLE_API_KEY="..."
 
 - **[Quick Reference](./docs/QUICK_REFERENCE.md)** — One-page cheat sheet
 - **[Red Team Workflow](./docs/RED_TEAM_WORKFLOW.md)** — Technical deep-dive
+- **[Rogue Resilience](./docs/resilience/README.md)** — Chaos testing, dashboard, CLI
 - **[Implementation Status](./docs/IMPLEMENTATION_STATUS.md)** — Feature breakdown
 - **[Attack Mapping](./docs/ATTACK_VULNERABILITY_MAPPING.md)** — Vulnerability coverage
 

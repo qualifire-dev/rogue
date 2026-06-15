@@ -136,7 +136,7 @@ class ResilienceService:
                         job.traces.append(data)
                     self._send_websocket(
                         job_id,
-                        WebSocketEventType.CHAT_UPDATE,
+                        WebSocketEventType.RESILIENCE_TRACE_UPDATE,
                         data,
                     )
                 elif update_type == "experiment":

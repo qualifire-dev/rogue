@@ -65,6 +65,7 @@ export interface ConfigState {
    */
   lastEvaluationAgent: TargetAgentValue;
   lastRedTeamAgent: TargetAgentValue;
+  lastResilienceAgent: TargetAgentValue;
 
   setServerUrl: (url: string) => void;
   setApiKey: (provider: Provider, key: string) => void;
@@ -93,6 +94,7 @@ export interface ConfigState {
 
   setLastEvaluationAgent: (v: TargetAgentValue) => void;
   setLastRedTeamAgent: (v: TargetAgentValue) => void;
+  setLastResilienceAgent: (v: TargetAgentValue) => void;
 
   reset: () => void;
 }
@@ -129,6 +131,7 @@ const DEFAULTS = {
 
   lastEvaluationAgent: { ...DEFAULT_TARGET_AGENT_VALUE },
   lastRedTeamAgent: { ...DEFAULT_TARGET_AGENT_VALUE },
+  lastResilienceAgent: { ...DEFAULT_TARGET_AGENT_VALUE },
 };
 
 export const useConfig = create<ConfigState>()(
@@ -164,6 +167,7 @@ export const useConfig = create<ConfigState>()(
 
       setLastEvaluationAgent: (lastEvaluationAgent) => set({ lastEvaluationAgent }),
       setLastRedTeamAgent: (lastRedTeamAgent) => set({ lastRedTeamAgent }),
+      setLastResilienceAgent: (lastResilienceAgent) => set({ lastResilienceAgent }),
 
       reset: () => set(DEFAULTS),
     }),

@@ -19,6 +19,8 @@ from rogue_sdk.types import (
     EvaluationMode,
     EvaluationResults,
     Protocol,
+    ResilienceConfig,
+    ResilienceRequest,
     Scenarios,
     Transport,
 )
@@ -106,7 +108,30 @@ def set_cli_args(parser: ArgumentParser) -> None:
         type=EvaluationMode,
         default=EvaluationMode.POLICY,
         help="Evaluation mode: 'policy' for policy testing, "
-        "'red_team' for OWASP red teaming",
+        "'red_team' for OWASP red teaming, "
+        "'resilience' for fault-injection chaos experiments",
+    )
+    parser.add_argument(
+        "--injectors",
+        nargs="+",
+        default=["policy_violation"],
+        help="Injector IDs for resilience mode (e.g. policy_violation tool_misuse)",
+    )
+    parser.add_argument(
+        "--architecture",
+        default="single_agent",
+        help="Architecture profile for resilience mode (single_agent, hierarchical, ...)",
+    )
+    parser.add_argument(
+        "--target-agent-id",
+        default="default",
+        help="Agent ID to inject faults into for resilience mode",
+    )
+    parser.add_argument(
+        "--experiments-per-injector",
+        type=int,
+        default=1,
+        help="Number of experiment runs per injector in resilience mode",
     )
     parser.add_argument(
         "--owasp-categories",
@@ -567,9 +592,86 @@ async def ping_agent(
     )
 
 
+async def run_resilience_cli(args: Namespace, cli_input) -> int:
+    """Run a resilience experiment via the server API and print the report."""
+    if cli_input.protocol != Protocol.PYTHON:
+        raise ValueError("Resilience CLI mode currently requires --protocol python")
+    if not cli_input.python_entrypoint_file:
+        raise ValueError("python_entrypoint_file is required for resilience mode")
+
+    judge_key = (
+        cli_input.judge_llm_api_key.get_secret_value()
+        if cli_input.judge_llm_api_key
+        else None
+    )
+
+    async with RogueSDK(RogueClientConfig(base_url=args.rogue_server_url)) as sdk:
+        response = await sdk.create_resilience_job(
+            ResilienceRequest(
+                resilience_config=ResilienceConfig(
+                    injectors=args.injectors,
+                    architecture=args.architecture,
+                    target_agent_id=args.target_agent_id,
+                    experiments_per_injector=args.experiments_per_injector,
+                    use_heuristics=True,
+                ),
+                evaluated_agent_protocol=Protocol.PYTHON,
+                python_entrypoint_file=str(cli_input.python_entrypoint_file),
+                judge_llm=cli_input.judge_llm,
+                judge_llm_api_key=judge_key,
+                business_context=cli_input.business_context,
+            ),
+        )
+        job = await sdk.wait_for_resilience_job(response.job_id)
+        if job.status.value == "failed":
+            raise ValueError(job.error_message or "Resilience job failed")
+
+        report = await sdk.get_resilience_report(response.job_id)
+        markdown = report.get("markdown_report", "")
+        output_path = cli_input.output_report_file or (
+            args.workdir / "resilience_report.md"
+        )
+        output_path.write_text(markdown, encoding="utf-8")
+
+        csv_rows = report.get("experiment_table") or []
+        if csv_rows:
+            csv_path = args.workdir / "resilience_summary.csv"
+            import csv
+
+            with csv_path.open("w", newline="", encoding="utf-8") as fh:
+                writer = csv.DictWriter(
+                    fh,
+                    fieldnames=list(csv_rows[0].keys()),
+                )
+                writer.writeheader()
+                writer.writerows(csv_rows)
+
+        console = Console()
+        console.print(Markdown(markdown))
+        logger.info("Resilience report saved", extra={"report_file": str(output_path)})
+        highlights = report.get("highlights") or {}
+        score = highlights.get("overall_score", 0)
+        return 0 if score >= 60 else 1
+
+
 async def run_cli(args: Namespace) -> int:
     cli_input = get_cli_input(args)
     logger.debug("Running CLI", extra=cli_input.model_dump())
+
+    if cli_input.evaluation_mode == EvaluationMode.RESILIENCE:
+        await ping_agent(
+            protocol=cli_input.protocol,
+            transport=cli_input.transport,
+            agent_url=(
+                cli_input.evaluated_agent_url.encoded_string()
+                if cli_input.evaluated_agent_url
+                else None
+            ),
+            agent_auth_type=cli_input.evaluated_agent_auth_type,
+            agent_auth_credentials=cli_input.evaluated_agent_credentials,
+            python_entrypoint_file=cli_input.python_entrypoint_file,
+        )
+        return await run_resilience_cli(args, cli_input)
 
     # Get agent URL for non-Python protocols
     agent_url = (

@@ -1382,6 +1382,7 @@ class WebSocketEventType(str, Enum):
     ERROR = "error"
     CONNECTED = "connected"
     DISCONNECTED = "disconnected"
+    RESILIENCE_TRACE_UPDATE = "resilience_trace_update"
 
 
 class WebSocketMessage(BaseModel):

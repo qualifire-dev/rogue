@@ -309,6 +309,10 @@ class RogueHttpClient:
         """Cancel a pending or running resilience experiment job."""
         return await self._request("POST", f"/api/v1/resilience/{job_id}/cancel")
 
+    async def get_resilience_report(self, job_id: str) -> dict:
+        """Get the structured resilience report for a completed job."""
+        return await self._request("GET", f"/api/v1/resilience/{job_id}/report")
+
     async def wait_for_resilience_job(
         self,
         job_id: str,

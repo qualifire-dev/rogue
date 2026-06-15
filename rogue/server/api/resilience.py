@@ -107,3 +107,58 @@ async def cancel_resilience_job(
     if not cancelled:
         raise HTTPException(status_code=404, detail="Resilience job not found")
     return {"message": "Resilience job cancelled", "job_id": job_id}
+
+
+@router.get("/{job_id}/report")
+async def get_resilience_report(
+    job_id: str,
+    resilience_service: ResilienceService = Depends(get_resilience_service),
+) -> dict:
+    """
+    Get the comprehensive resilience report for a completed experiment job.
+
+    Returns scorecard, per-injector breakdown, timeline, agent graph, and
+    checkpoint replay data formatted for the web dashboard.
+    """
+    job = await resilience_service.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Resilience job not found")
+
+    if not job.results:
+        raise HTTPException(
+            status_code=400,
+            detail="No results available for this job. Wait for the experiment to complete.",
+        )
+
+    logger.info(
+        "Generating resilience report",
+        extra={
+            "job_id": job_id,
+            "experiments": job.results.get("total_experiments"),
+        },
+    )
+
+    try:
+        from ..resilience.report import ResilienceReportGenerator, format_for_web
+
+        config = job.request.resilience_config
+        generator = ResilienceReportGenerator.from_results_dict(
+            job.results,
+            architecture=config.architecture,
+            target_agent_id=config.target_agent_id,
+            injectors=config.injectors,
+            experiments_per_injector=config.experiments_per_injector,
+            use_heuristics=config.use_heuristics,
+            enable_checkpoint_recovery=config.enable_checkpoint_recovery,
+            judge_llm=job.request.judge_llm,
+        )
+        full_report = generator.generate_full_report()
+        return format_for_web(full_report)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Failed to generate resilience report", extra={"job_id": job_id})
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate resilience report: {exc}",
+        ) from exc

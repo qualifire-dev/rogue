@@ -151,6 +151,7 @@ def _mount_web_ui(app: FastAPI) -> None:
     _SPA_PREFIXES = (
         "evaluations",
         "red-team",
+        "resilience",
         "scenarios",
         "settings",
         "help",

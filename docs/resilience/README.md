@@ -286,6 +286,127 @@ Metrics use deterministic heuristics by default (`use_heuristics=True`). Set `us
 
 ---
 
+## Dashboard & reporting (Phase 3)
+
+The web UI mirrors the Red Team section at `/resilience/*`:
+
+| Route | Purpose |
+|-------|---------|
+| `/resilience/` | Experiment list |
+| `/resilience/configure` | Configure chaos experiment |
+| `/resilience/$jobId` | Live trace viewer (WebSocket) |
+| `/resilience/$jobId/report` | Scorecard, radar chart, breakdown, topology |
+
+### End-to-end user journey
+
+Follow this path from zero to a published resilience report — the same flow a new user would take in the browser.
+
+**Step 1 — Install and start the server**
+
+```bash
+uv sync --all-groups
+cd packages/web && pnpm install && pnpm routes && pnpm build && cd ../..
+uv run rogue-ai web
+```
+
+Open http://127.0.0.1:8000. The home dashboard shows a **Resilience runs** metric card and recent experiments (empty on first visit).
+
+**Step 2 — Configure an experiment**
+
+Navigate to **Resilience → New experiment** (or `/resilience/configure`).
+
+1. Set **Target agent** to Python protocol and point at `rogue/tests/fixtures/resilience_test_agent.py`.
+2. Choose preset **Basic** (policy violation + tool misuse) or pick injectors manually.
+3. Select architecture **Single agent** (or **Hierarchical** for multi-agent cascade metrics).
+4. Leave **Use heuristics** on for fast, deterministic scoring (no LLM judge calls).
+5. Click **Run experiment**.
+
+**Step 3 — Watch the live trace**
+
+You land on `/resilience/{jobId}`. While the job runs:
+
+- Progress bar advances as each injector completes.
+- **Live trace** panel streams color-coded events: baseline → injection → probe messages → recovery → checkpoint (if enabled).
+- Status rail shows connection state (`open`, `polling`, or `connecting`), trace event count, and injector list.
+
+When status becomes `completed`, the page auto-redirects to the report.
+
+**Step 4 — Review the report**
+
+At `/resilience/{jobId}/report`:
+
+| Tab | What you see |
+|-----|----------------|
+| **Report** | Hero score (/100), experiments passed, metrics radar, rate bars, key findings |
+| **Breakdown** | Per-injector table with detection/containment/recovery scores; **Export CSV** |
+| **Trace** | Full experiment timeline + checkpoint scrubber (prev/next through snapshot/restore) |
+| **Topology** | Agent graph with fault target highlighted in red |
+
+**Step 5 — Export or automate**
+
+- **Browser:** Download CSV from the Breakdown tab.
+- **API:** `GET /api/v1/resilience/{job_id}/report` returns the same JSON the UI renders.
+- **CLI:** Run headless and write markdown (see below).
+
+**Step 6 — Iterate**
+
+Return to `/resilience/configure`, add injectors, switch to `hierarchical` architecture, or enable checkpoint recovery for LangGraph agents. Past runs remain listed at `/resilience/`.
+
+---
+
+### UI screenshots (descriptions)
+
+Screenshots are not bundled in the repo yet; capture these from a local run for docs or release notes. Each mirrors the Red Team visual language (dark sidebar, card layout, status badges).
+
+| # | Page | What to capture |
+|---|------|-----------------|
+| 1 | **Dashboard** (`/`) | Operational Console with four metric cards; **Recent resilience runs** panel showing 1–2 completed jobs with status badges. |
+| 2 | **Experiment list** (`/resilience/`) | Table columns: Job ID, Status, Progress, Architecture, Created; **Configure experiment** button top-right. |
+| 3 | **Configure** (`/resilience/configure`) | Left: injector catalog pane with checkboxes; right: architecture cards, target agent field, heuristics/checkpoint toggles; **Run experiment** CTA. |
+| 4 | **Live trace** (`/resilience/{id}`) | Split layout: left trace feed with colored event pills (blue baseline, red injection, green recovery); right status rail with progress and WebSocket connection pill. |
+| 5 | **Report hero** (`/resilience/{id}/report`) | Large **Overall score** stat (e.g. 78/100), architecture badge, experiments passed fraction. |
+| 6 | **Report radar** (Report tab) | Recharts radar with Detection, Containment, Recovery axes filled to percentage values. |
+| 7 | **Trace tab** | Vertical timeline of labeled events; optional checkpoint scrubber below with snapshot/restore step detail. |
+| 8 | **Topology tab** | SVG agent graph: supervisor + workers, red node on injection target, arrow edges for delegation/notify. |
+
+Suggested capture: 1440×900 browser window, dark theme, one single-agent and one hierarchical run for comparison.
+
+---
+
+### Start the full flow (CLI + API)
+
+```bash
+# Terminal 1 — server + bundled SPA
+uv sync --all-groups
+cd packages/web && pnpm install && pnpm build   # first time only
+uv run rogue-ai web
+
+# Terminal 2 — CLI with report export
+uv run rogue-ai cli \
+  --evaluation-mode resilience \
+  --protocol python \
+  --python-entrypoint-file rogue/tests/fixtures/resilience_test_agent.py \
+  --injectors policy_violation \
+  --judge-llm openai/gpt-4o-mini \
+  --output-report-file ./resilience_report.md
+```
+
+Open http://127.0.0.1:8000/resilience/configure for the browser flow. The report page includes:
+
+- **Metrics radar** — detection, containment, recovery (+ cascade/degradation for multi-agent)
+- **Timeline** — injection, detection, recovery, and checkpoint markers
+- **Agent graph** — topology with fault target highlighted
+- **Checkpoint scrubber** — step through snapshot/restore when enabled
+- **CSV export** — per-injector breakdown table
+
+Report API: `GET /api/v1/resilience/{job_id}/report`
+
+WebSocket events: `job_update` + `resilience_trace_update` for live traces.
+
+Components show loading spinners and error panels while data is fetching or if the WebSocket disconnects.
+
+---
+
 ## Module layout
 
 ```
@@ -296,7 +417,10 @@ rogue/resilience/
 ├── multi_agent_client.py     # agent_id routing
 ├── orchestrator.py           # Experiment engine
 └── metrics/                  # Detection, containment, recovery, cascade, degradation
+rogue/server/resilience/report/   # Report generator (markdown/CSV/web)
 rogue/evaluator_agent/resilience/  # Protocol adapters
+packages/web/src/routes/resilience/  # Dashboard routes
+packages/web/src/components/resilience/  # Timeline, graph, radar
 examples/
 ├── multi_agent_hierarchical/
 └── resilience_langgraph_recovery/
@@ -312,7 +436,8 @@ uv run pytest rogue/tests/test_injectors.py \
              rogue/tests/test_resilience_metrics.py \
              rogue/tests/test_resilience_orchestrator.py \
              rogue/tests/test_multi_agent_orchestrator.py \
-             rogue/tests/test_langgraph_checkpoint_adapter.py -v
+             rogue/tests/test_langgraph_checkpoint_adapter.py \
+             rogue/tests/test_resilience_reporting.py -v
 ```
 
 `test_multi_agent_orchestrator.py::test_single_agent_phase1_still_passes` verifies Phase 1 backward compatibility.
