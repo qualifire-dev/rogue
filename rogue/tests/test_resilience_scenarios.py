@@ -1,6 +1,7 @@
 """Tests for resilience scenario generation."""
 
 import pytest
+from pytest_mock import MockerFixture
 
 from rogue.server.api.resilience import (
     ResilienceScenarioGenerateRequest,
@@ -24,7 +25,7 @@ def test_fallback_scenarios_on_empty_context() -> None:
 
 
 @pytest.mark.asyncio
-async def test_generate_route_offloads_blocking_generate(mocker) -> None:
+async def test_generate_route_offloads_blocking_generate(mocker: MockerFixture) -> None:
     templates = ResilienceScenarioService().generate("", count=1)
     mock_to_thread = mocker.patch(
         "rogue.server.api.resilience.asyncio.to_thread",

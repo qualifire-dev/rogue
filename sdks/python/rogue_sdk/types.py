@@ -193,10 +193,18 @@ def _trusted_injector_plugin_roots() -> List[Path]:
     """Return resolved directories from which custom injector plugins may be loaded."""
     cwd = Path.cwd()
     rogue_home = Path(os.environ.get("ROGUE_HOME", ".rogue"))
-    return [
-        (cwd / rogue_home / "injector_plugins").resolve(),
-        (cwd / "examples" / "custom_injector_plugin").resolve(),
+    roots = [
+        cwd / rogue_home / "injector_plugins",
+        cwd / "examples" / "custom_injector_plugin",
     ]
+    resolved_roots: List[Path] = []
+    for root in roots:
+        if root.is_symlink():
+            raise ValueError(
+                f"Trusted injector plugin directory cannot be a symlink: {root}",
+            )
+        resolved_roots.append(root.resolve())
+    return resolved_roots
 
 
 def _validate_injector_plugin_path(raw_path: str) -> str:

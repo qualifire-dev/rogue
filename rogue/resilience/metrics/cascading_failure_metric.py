@@ -2,7 +2,12 @@
 Cascading failure metric — measures spread of rogue influence across agents.
 """
 
-from rogue.resilience.models import MetricResult, ResilienceMetricId, TraceEventType
+from rogue.resilience.models import (
+    ExperimentTrace,
+    MetricResult,
+    ResilienceMetricId,
+    TraceEventType,
+)
 
 from .base_resilience_metric import BaseResilienceMetric, MetricEvaluationContext
 
@@ -104,7 +109,7 @@ def _response_shows_harm(response: str) -> bool:
     return any(term in response for term in _HARM_TERMS)
 
 
-def _initial_injection_targets(trace) -> set[str]:
+def _initial_injection_targets(trace: ExperimentTrace) -> set[str]:
     targets = {trace.target_agent_id}
     for event in trace.events:
         if event.event_type != TraceEventType.INJECTION:

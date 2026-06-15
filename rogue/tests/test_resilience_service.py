@@ -5,6 +5,8 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
+from pytest import MonkeyPatch
+from pytest_mock import MockerFixture
 
 from rogue.server.services.resilience_service import ResilienceService
 from rogue_sdk.types import (
@@ -36,7 +38,7 @@ def _make_job(status: EvaluationStatus = EvaluationStatus.PENDING) -> Resilience
 
 
 @pytest.fixture
-def service(tmp_path, monkeypatch) -> ResilienceService:
+def service(tmp_path: Path, monkeypatch: MonkeyPatch) -> ResilienceService:
     monkeypatch.chdir(tmp_path)
     return ResilienceService()
 
@@ -66,7 +68,7 @@ async def test_cancel_job_returns_false_for_terminal_job(service: ResilienceServ
 @pytest.mark.asyncio
 async def test_run_job_skips_already_cancelled_job(
     service: ResilienceService,
-    mocker,
+    mocker: MockerFixture,
 ) -> None:
     cancelled = _make_job(EvaluationStatus.CANCELLED)
     await service.add_job(cancelled)
@@ -85,7 +87,7 @@ async def test_run_job_skips_already_cancelled_job(
 @pytest.mark.asyncio
 async def test_run_job_preserves_cancelled_state_after_orchestrator(
     service: ResilienceService,
-    mocker,
+    mocker: MockerFixture,
 ) -> None:
     job = _make_job(EvaluationStatus.PENDING)
     await service.add_job(job)

@@ -5,9 +5,9 @@ from pathlib import Path
 import pytest
 
 from rogue.injectors import registry
+from rogue.injectors.base_injector import BaseInjector, InjectionContext, InjectionResult
 from rogue.injectors.plugins import load_injector_plugin, register_injector
 from rogue.injectors.registry import get_injector, list_injectors
-from rogue.injectors.base_injector import BaseInjector, InjectionContext, InjectionResult
 
 PLUGIN = (
     Path(__file__).parent.parent.parent

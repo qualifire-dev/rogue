@@ -83,10 +83,16 @@ class PythonAgentClient:
 
         try:
             spec.loader.exec_module(module)
+            if not hasattr(module, "call_agent"):
+                raise AttributeError(
+                    f"{self._python_file_path} must define a call_agent() function",
+                )
         except Exception as exc:
             if self._added_sys_path and self._added_sys_path in sys.path:
                 sys.path.remove(self._added_sys_path)
             self._added_sys_path = None
+            if isinstance(exc, AttributeError):
+                raise
             logger.exception(
                 "Failed to execute Python entrypoint module",
                 extra={"path": str(self._python_file_path)},
@@ -94,11 +100,6 @@ class PythonAgentClient:
             raise ImportError(
                 f"Error loading entrypoint {self._python_file_path}: {exc}",
             ) from exc
-
-        if not hasattr(module, "call_agent"):
-            raise AttributeError(
-                f"{self._python_file_path} must define a call_agent() function",
-            )
 
         self._module = module
         self._call_agent_fn = getattr(module, "call_agent")
