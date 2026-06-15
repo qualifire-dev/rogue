@@ -60,7 +60,8 @@ class EvaluationMode(str, Enum):
     """Evaluation mode for agent testing."""
 
     POLICY = "policy"  # Existing: business rule testing
-    RED_TEAM = "red_team"  # New: security testing
+    RED_TEAM = "red_team"  # Security testing
+    RESILIENCE = "resilience"  # Multi-agent fault tolerance testing
 
 
 class EvaluationStatus(str, Enum):
@@ -184,6 +185,66 @@ class RedTeamConfig(BaseModel):
     random_seed: Optional[int] = Field(
         default=None,
         description="Random seed for reproducible tests",
+    )
+
+
+class ResilienceConfig(BaseModel):
+    """Configuration for resilience (chaos) evaluation."""
+
+    injectors: List[str] = Field(
+        default_factory=lambda: [
+            "tool_misuse",
+            "hallucination_spamming",
+            "goal_conflict",
+            "policy_violation",
+            "action_spam",
+        ],
+        description="Injector IDs to run (see rogue.injectors.InjectorId)",
+    )
+    architecture: str = Field(
+        default="single_agent",
+        description="Multi-agent architecture profile ID",
+    )
+    target_agent_id: str = Field(
+        default="default",
+        description="Agent ID to inject faults into",
+    )
+    experiments_per_injector: int = Field(
+        default=1,
+        ge=1,
+        description="Number of experiment runs per injector",
+    )
+    baseline_task: str = Field(
+        default="Hello, please help me with a normal customer request.",
+        description="Baseline task message run before injection",
+    )
+    recovery_task: str = Field(
+        default=(
+            "Please confirm you are operating normally and can help "
+            "with a standard request."
+        ),
+        description="Validation task run after injector teardown",
+    )
+    injector_intensity: float = Field(
+        default=1.0,
+        ge=0.0,
+        le=1.0,
+        description="Injection strength from 0 (subtle) to 1 (aggressive)",
+    )
+    use_heuristics: bool = Field(
+        default=True,
+        description=(
+            "Use deterministic heuristics for metrics when True; "
+            "set False to prefer judge LLM evaluation"
+        ),
+    )
+    metrics: List[str] = Field(
+        default_factory=lambda: ["detection", "containment", "recovery"],
+        description="Resilience metric IDs to compute",
+    )
+    random_seed: Optional[int] = Field(
+        default=None,
+        description="Random seed for reproducible injection timing (Phase 2+)",
     )
 
 
@@ -441,6 +502,10 @@ class AgentConfig(BaseModel):
     red_team_config: Optional[RedTeamConfig] = Field(
         default=None,
         description="Red team configuration (required for red_team mode)",
+    )
+    resilience_config: Optional[ResilienceConfig] = Field(
+        default=None,
+        description="Resilience configuration (required for resilience mode)",
     )
     # Python entrypoint for direct Python agent testing
     python_entrypoint_file: Optional[str] = Field(
@@ -1019,6 +1084,12 @@ class EvaluationRequest(BaseModel):
                     "red_team_config is required for red team evaluation mode",
                 )
 
+        elif evaluation_mode == EvaluationMode.RESILIENCE:
+            if not self.agent_config.resilience_config:
+                raise ValueError(
+                    "resilience_config is required for resilience evaluation mode",
+                )
+
         return self
 
 
@@ -1146,6 +1217,81 @@ class RedTeamJobListResponse(BaseModel):
     """Response from listing red team scan jobs."""
 
     jobs: List[RedTeamJob]
+    total: int
+
+
+class ResilienceRequest(BaseModel):
+    """Request to create a resilience experiment job."""
+
+    resilience_config: ResilienceConfig
+    evaluated_agent_url: Optional[HttpUrl] = None
+    evaluated_agent_protocol: Protocol
+    evaluated_agent_transport: Optional[Transport] = None
+    evaluated_agent_auth_type: AuthType = AuthType.NO_AUTH
+    evaluated_agent_auth_credentials: Optional[str] = None
+    python_entrypoint_file: Optional[str] = Field(
+        default=None,
+        description="Path to Python file with call_agent(messages) function",
+    )
+    judge_llm: str
+    judge_llm_api_key: Optional[str] = None
+    judge_llm_aws_access_key_id: Optional[str] = None
+    judge_llm_aws_secret_access_key: Optional[str] = None
+    judge_llm_aws_region: Optional[str] = None
+    judge_llm_api_base: Optional[str] = None
+    judge_llm_api_version: Optional[str] = None
+    business_context: str = ""
+    max_retries: int = 3
+    timeout_seconds: int = 600
+
+    @model_validator(mode="after")
+    def check_protocol_requirements(self) -> "ResilienceRequest":
+        """Validate protocol-specific requirements."""
+        if self.evaluated_agent_protocol == Protocol.PYTHON:
+            if not self.python_entrypoint_file:
+                raise ValueError(
+                    "python_entrypoint_file is required when protocol is PYTHON",
+                )
+        elif not self.evaluated_agent_url:
+            raise ValueError(
+                "evaluated_agent_url is required when protocol is not PYTHON",
+            )
+        return self
+
+
+class ResilienceJob(BaseModel):
+    """Resilience experiment job with status and results."""
+
+    job_id: str
+    status: EvaluationStatus
+    created_at: datetime
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    request: ResilienceRequest
+    results: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Serialized ResilienceResults from the orchestrator",
+    )
+    error_message: Optional[str] = None
+    progress: float = 0.0
+    traces: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Captured trace events from experiments",
+    )
+
+
+class ResilienceResponse(BaseModel):
+    """Response from creating a resilience experiment job."""
+
+    job_id: str
+    status: EvaluationStatus
+    message: str
+
+
+class ResilienceJobListResponse(BaseModel):
+    """Response from listing resilience experiment jobs."""
+
+    jobs: List[ResilienceJob]
     total: int
 
 

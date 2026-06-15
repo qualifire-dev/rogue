@@ -24,6 +24,10 @@ from .types import (
     InterviewSession,
     JobListResponse,
     Protocol,
+    ResilienceJob,
+    ResilienceJobListResponse,
+    ResilienceRequest,
+    ResilienceResponse,
     RogueClientConfig,
     Scenarios,
     SendMessageResponse,
@@ -80,6 +84,43 @@ class RogueSDK:
     async def cancel_evaluation(self, job_id: str) -> dict:
         """Cancel evaluation job."""
         return await self.http_client.cancel_evaluation(job_id)
+
+    async def create_resilience_job(
+        self,
+        request: ResilienceRequest,
+    ) -> ResilienceResponse:
+        """Create and start a resilience experiment job."""
+        return await self.http_client.create_resilience_job(request)
+
+    async def get_resilience_job(self, job_id: str) -> ResilienceJob:
+        """Get resilience experiment job details."""
+        return await self.http_client.get_resilience_job(job_id)
+
+    async def list_resilience_jobs(
+        self,
+        status: Optional[EvaluationStatus] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> ResilienceJobListResponse:
+        """List resilience experiment jobs."""
+        return await self.http_client.list_resilience_jobs(status, limit, offset)
+
+    async def cancel_resilience_job(self, job_id: str) -> dict:
+        """Cancel a resilience experiment job."""
+        return await self.http_client.cancel_resilience_job(job_id)
+
+    async def wait_for_resilience_job(
+        self,
+        job_id: str,
+        poll_interval: float = 2.0,
+        max_wait_time: float = 600.0,
+    ) -> ResilienceJob:
+        """Wait for a resilience job to complete."""
+        return await self.http_client.wait_for_resilience_job(
+            job_id,
+            poll_interval=poll_interval,
+            max_wait_time=max_wait_time,
+        )
 
     async def wait_for_evaluation(
         self,
