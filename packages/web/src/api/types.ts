@@ -380,13 +380,26 @@ export interface ResilienceConfig {
   injectors: string[];
   architecture: string;
   target_agent_id: string;
+  concurrent_target_agent_ids?: string[];
+  custom_injector_plugins?: string[];
   experiments_per_injector: number;
   baseline_task: string;
   recovery_task: string;
   use_heuristics: boolean;
   enable_checkpoint_recovery: boolean;
   checkpoint_thread_id?: string | null;
+  min_resilience_score?: number | null;
   injector_intensity?: number;
+}
+
+export interface ResilienceScenarioTemplate {
+  name: string;
+  description: string;
+  injectors: string[];
+  architecture: string;
+  target_agent_id: string;
+  baseline_task: string;
+  recovery_task: string;
 }
 
 export interface ResilienceRequest {

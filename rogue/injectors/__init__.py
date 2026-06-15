@@ -8,6 +8,7 @@ from .base_injector import (
     InjectorId,
 )
 from .registry import INJECTOR_CATALOG, get_injector, list_injectors
+from .plugins import load_injector_plugin, register_injector
 
 __all__ = [
     "BaseInjector",
@@ -18,4 +19,6 @@ __all__ = [
     "INJECTOR_CATALOG",
     "get_injector",
     "list_injectors",
+    "load_injector_plugin",
+    "register_injector",
 ]

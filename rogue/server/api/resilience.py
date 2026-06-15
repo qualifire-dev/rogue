@@ -6,6 +6,7 @@ from functools import lru_cache
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from pydantic import BaseModel, Field
 
 from rogue_sdk.types import (
     EvaluationStatus,
@@ -16,7 +17,13 @@ from rogue_sdk.types import (
 )
 
 from ...common.logging import get_logger, set_request_context
+from ..services.resilience_scenario_service import (
+    ResilienceScenarioService,
+    ResilienceScenarioTemplate,
+)
 from ..services.resilience_service import ResilienceService
+from rogue.injectors.registry import list_injectors
+from rogue.injectors.premium_catalog import list_premium_injectors
 
 router = APIRouter(prefix="/resilience", tags=["resilience"])
 logger = get_logger(__name__)
@@ -70,6 +77,64 @@ async def create_resilience_job(
         status=EvaluationStatus.PENDING,
         message="Resilience experiment job created successfully",
     )
+
+
+class ResilienceScenarioGenerateRequest(BaseModel):
+    """Request to generate resilience experiment templates."""
+
+    business_context: str
+    model: str = "openai/gpt-4o-mini"
+    api_key: Optional[str] = None
+    api_base: Optional[str] = None
+    count: int = Field(default=5, ge=1, le=15)
+
+
+class ResilienceScenarioGenerateResponse(BaseModel):
+    """Generated resilience experiment templates."""
+
+    scenarios: list[ResilienceScenarioTemplate]
+    message: str = "Scenarios generated successfully"
+
+
+@router.get("/injectors/catalog")
+async def list_injector_catalog() -> dict:
+    """List built-in, premium, and registered custom injectors."""
+    entries = list_injectors(include_premium=True)
+    return {
+        "injectors": [
+            {
+                "id": str(item.id.value if hasattr(item.id, "value") else item.id),
+                "name": item.name,
+                "description": item.description,
+                "premium": item.premium,
+                "custom": item.custom,
+            }
+            for item in entries
+        ],
+        "premium_metadata": [
+            {
+                "id": p.id,
+                "name": p.name,
+                "description": p.description,
+                "deckard_required": p.deckard_required,
+            }
+            for p in list_premium_injectors()
+        ],
+    }
+
+
+@router.post("/scenarios/generate", response_model=ResilienceScenarioGenerateResponse)
+async def generate_resilience_scenarios(
+    request: ResilienceScenarioGenerateRequest,
+) -> ResilienceScenarioGenerateResponse:
+    """Generate resilience experiment templates from business context."""
+    service = ResilienceScenarioService(
+        model=request.model,
+        api_key=request.api_key,
+        api_base=request.api_base,
+    )
+    scenarios = service.generate(request.business_context, count=request.count)
+    return ResilienceScenarioGenerateResponse(scenarios=scenarios)
 
 
 @router.get("/{job_id}", response_model=ResilienceJob)

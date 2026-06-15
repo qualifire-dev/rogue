@@ -29,11 +29,20 @@ async def test_injector_produces_probe_messages(injector_id: InjectorId) -> None
 
 
 def test_registry_lists_all_injectors() -> None:
-    injectors = list_injectors()
-    assert len(injectors) == len(InjectorId)
-    assert set(INJECTOR_CATALOG.keys()) == set(InjectorId)
+    built_in = [
+        entry
+        for entry in list_injectors(include_premium=False)
+        if not entry.custom and not entry.premium
+    ]
+    assert len(built_in) == len(InjectorId)
+    for injector_id in InjectorId:
+        assert injector_id in INJECTOR_CATALOG
+
+    premium = list_injectors(include_premium=True)
+    assert len(premium) > len(InjectorId)
+    assert "gradual_goal_drift" in INJECTOR_CATALOG
 
 
 def test_unknown_injector_raises() -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(KeyError, match="not_a_real_injector"):
         get_injector("not_a_real_injector")

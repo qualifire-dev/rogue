@@ -5,7 +5,11 @@ import { INJECTOR_CATALOG } from "@/lib/resilience-catalog";
 const INJECTOR_CATEGORY: Category[] = [
   {
     title: "Fault injectors",
-    items: INJECTOR_CATALOG.map((i) => ({ id: i.id, name: i.name, premium: false })),
+    items: INJECTOR_CATALOG.map((i) => ({
+      id: i.id,
+      name: i.name,
+      premium: Boolean(i.premium),
+    })),
   },
 ];
 

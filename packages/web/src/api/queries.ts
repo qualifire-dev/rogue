@@ -13,6 +13,7 @@ import type {
   ResilienceJobListResponse,
   ResilienceReport,
   ResilienceRequest,
+  ResilienceScenarioTemplate,
   ScenarioGenerationRequest,
   ScenarioGenerationResponse,
   SendMessageResponse,
@@ -248,5 +249,21 @@ export function useStartResilience() {
         body: req,
       }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["resilience"] }),
+  });
+}
+
+export function useGenerateResilienceScenarios() {
+  return useMutation({
+    mutationFn: (req: {
+      business_context: string;
+      model: string;
+      api_key?: string;
+      api_base?: string;
+      count?: number;
+    }) =>
+      api<{ scenarios: ResilienceScenarioTemplate[]; message?: string }>(
+        "/api/v1/resilience/scenarios/generate",
+        { body: req },
+      ),
   });
 }

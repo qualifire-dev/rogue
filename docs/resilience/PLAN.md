@@ -486,39 +486,41 @@ resilience = [
 
 ### Phase 1 — Foundation (MVP)
 
-- [ ] `rogue/injectors/` — all 5 strategies + registry
-- [ ] `rogue/resilience/models.py` + `catalog/`
-- [ ] `ResilienceOrchestrator` with single-agent injection (Python protocol)
-- [ ] Core metrics: detection rate/latency, containment, recovery success
-- [ ] `ResilienceJob` SDK types + REST API + job persistence
-- [ ] Unit tests for injectors + metrics
-- [ ] `docs/resilience/README.md` + `ARCHITECTURE.md`
+- [x] `rogue/injectors/` — all 5 strategies + registry
+- [x] `rogue/resilience/models.py` + `catalog/`
+- [x] `ResilienceOrchestrator` with single-agent injection (Python protocol)
+- [x] Core metrics: detection rate/latency, containment, recovery success
+- [x] `ResilienceJob` SDK types + REST API + job persistence
+- [x] Unit tests for injectors + metrics
+- [x] `docs/resilience/README.md` + `ARCHITECTURE.md`
 
 ### Phase 2 — Multi-Agent & Checkpoints
 
-- [ ] Architecture profiles (hierarchical, P2P)
-- [ ] `evaluator_agent/resilience/` protocol adapters
-- [ ] LangGraph checkpoint adapter
-- [ ] Cascading failure + system degradation metrics
-- [ ] Examples: hierarchical + recovery demo
-- [ ] Integration tests with mocked multi-agent systems
+- [x] Architecture profiles (hierarchical, P2P)
+- [x] `evaluator_agent/resilience/` protocol adapters
+- [x] LangGraph checkpoint adapter
+- [x] Cascading failure + system degradation metrics
+- [x] Examples: hierarchical + recovery demo
+- [x] Integration tests with mocked multi-agent systems
 
 ### Phase 3 — Dashboard & Reporting
 
-- [ ] Web routes `/resilience/*`
-- [ ] Live trace viewer + agent graph visualization
-- [ ] Resilience report generator (markdown/CSV)
-- [ ] WebSocket `RESILIENCE_TRACE_UPDATE` events
-- [ ] CLI flags: `rogue-ai cli --mode resilience`
+- [x] Web routes `/resilience/*`
+- [x] Live trace viewer + agent graph visualization
+- [x] Resilience report generator (markdown/CSV)
+- [x] WebSocket `RESILIENCE_TRACE_UPDATE` events
+- [x] CLI flags: `rogue-ai cli --mode resilience`
+- [x] Dashboard sidebar + operational console cards
+- [x] CI resilience test job in `test.yml`
 
 ### Phase 4 — Advanced
 
-- [ ] Custom injector plugin API
-- [ ] Concurrent multi-injection (multiple rogue agents)
-- [ ] Deckard/cloud-hosted premium injectors (follow `PREMIUM_ATTACKS` pattern)
-- [ ] TUI resilience view
-- [ ] CI GitHub Action for resilience regression gates
-- [ ] Auto-generated resilience scenarios from business context interview
+- [x] Custom injector plugin API
+- [x] Concurrent multi-injection (multiple rogue agents)
+- [x] Deckard/cloud-hosted premium injectors (follow `PREMIUM_ATTACKS` pattern)
+- [x] TUI resilience view
+- [x] CI GitHub Action for resilience regression gates
+- [x] Auto-generated resilience scenarios from business context interview
 
 ---
 

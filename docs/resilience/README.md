@@ -407,10 +407,70 @@ Components show loading spinners and error panels while data is fetching or if t
 
 ---
 
+## Phase 4 — Advanced features
+
+### Custom injector plugins
+
+```python
+from rogue.injectors.plugins import load_injector_plugin
+
+load_injector_plugin("examples/custom_injector_plugin/example_injector.py")
+
+# Then use injector id "echo_loop" in ResilienceConfig
+```
+
+See [INJECTORS.md](./INJECTORS.md) for the full plugin API.
+
+### Concurrent multi-injection
+
+Fault two or more agents in parallel within one experiment:
+
+```python
+ResilienceConfig(
+    architecture="hierarchical",
+    injectors=["policy_violation"],
+    target_agent_id="worker-1",
+    concurrent_target_agent_ids=["worker-1", "worker-2"],
+)
+```
+
+### Scenario generation from business context
+
+```bash
+curl -X POST http://localhost:8000/api/v1/resilience/scenarios/generate \
+  -H 'Content-Type: application/json' \
+  -d '{"business_context": "E-commerce support bot with refund policy", "model": "openai/gpt-4o-mini"}'
+```
+
+The web configure page includes a **Generate scenario from context** button.
+
+### CI resilience gate
+
+```bash
+# Runs full resilience test suite + in-process score threshold (default 60)
+gh workflow run resilience-gate.yml
+```
+
+Or locally:
+
+```bash
+uv run pytest rogue/tests/test_injector_plugins.py \
+             rogue/tests/test_concurrent_injection.py \
+             rogue/tests/test_resilience_scenarios.py -v
+```
+
+### TUI reference screen
+
+In the Rogue TUI, type `/resilience` to view injectors and architecture profiles.
+
+---
+
 ## Module layout
 
 ```
-rogue/injectors/              # Fault injection strategies
+rogue/injectors/              # Fault injection strategies + plugin API
+rogue/injectors/plugins.py    # load_injector_plugin / register_injector
+examples/custom_injector_plugin/  # Example EchoLoopInjector plugin
 rogue/resilience/
 ├── catalog/architectures.py  # Multi-agent topology profiles
 ├── checkpoint/               # LangGraph checkpoint adapters
@@ -425,6 +485,10 @@ examples/
 ├── multi_agent_hierarchical/
 └── resilience_langgraph_recovery/
 docs/resilience/PLAN.md       # Full architecture and roadmap
+docs/resilience/ROADMAP.md    # Phase delivery status
+docs/resilience/INJECTORS.md  # Injector catalog + plugin guide
+packages/tui/internal/screens/resilience/  # TUI catalog reference
+.github/workflows/resilience-gate.yml      # CI regression gate
 ```
 
 ---
@@ -433,6 +497,9 @@ docs/resilience/PLAN.md       # Full architecture and roadmap
 
 ```bash
 uv run pytest rogue/tests/test_injectors.py \
+             rogue/tests/test_injector_plugins.py \
+             rogue/tests/test_concurrent_injection.py \
+             rogue/tests/test_resilience_scenarios.py \
              rogue/tests/test_resilience_metrics.py \
              rogue/tests/test_resilience_orchestrator.py \
              rogue/tests/test_multi_agent_orchestrator.py \
@@ -447,4 +514,6 @@ uv run pytest rogue/tests/test_injectors.py \
 ## Related documentation
 
 - [Architecture & roadmap](./PLAN.md)
+- [Delivery status (ROADMAP)](./ROADMAP.md)
+- [Injectors & plugins](./INJECTORS.md)
 - [Rogue AGENTS.md](../../AGENTS.md) — build, lint, and test commands

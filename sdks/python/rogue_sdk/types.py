@@ -254,6 +254,20 @@ class ResilienceConfig(BaseModel):
         default=None,
         description="Optional LangGraph thread ID for checkpoint operations",
     )
+    concurrent_target_agent_ids: List[str] = Field(
+        default_factory=list,
+        description="When 2+ IDs are set, inject faults into all targets concurrently",
+    )
+    custom_injector_plugins: List[str] = Field(
+        default_factory=list,
+        description="Paths to custom injector plugin .py files (INJECTOR_CLASS)",
+    )
+    min_resilience_score: Optional[float] = Field(
+        default=None,
+        ge=0.0,
+        le=100.0,
+        description="Optional CI gate — job fails if overall score is below this threshold",
+    )
 
 
 class VulnerabilityResult(BaseModel):

@@ -14,6 +14,7 @@ import (
 	"github.com/rogue/tui/internal/screens/redteam"
 	"github.com/rogue/tui/internal/screens/redteam_report"
 	"github.com/rogue/tui/internal/screens/report"
+	"github.com/rogue/tui/internal/screens/resilience"
 	"github.com/rogue/tui/internal/screens/scenarios"
 	"github.com/rogue/tui/internal/shared"
 	"github.com/rogue/tui/internal/theme"
@@ -239,6 +240,8 @@ func (m Model) View() string {
 		screen = m.scenarioEditor.View()
 	case HelpScreen:
 		screen = help.Render(m.width, m.height, &m.helpViewport)
+	case ResilienceCatalogScreen:
+		screen = resilience.RenderCatalog(m.width, m.height)
 	case RedTeamConfigScreen:
 		if m.redTeamConfigState != nil {
 			screen = redteam.RenderConfigScreen(m.redTeamConfigState, m.width, m.height)

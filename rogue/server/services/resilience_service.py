@@ -152,6 +152,14 @@ class ResilienceService:
 
             job.status = EvaluationStatus.COMPLETED
             job.completed_at = datetime.now(timezone.utc)
+            min_score = job.request.resilience_config.min_resilience_score
+            if min_score is not None and job.results:
+                overall = float(job.results.get("overall_score", 0))
+                if overall < min_score:
+                    job.status = EvaluationStatus.FAILED
+                    job.error_message = (
+                        f"Resilience score {overall:.1f} below gate threshold {min_score:.1f}"
+                    )
             self._notify_job_update(job)
             logger.info("Resilience job completed", extra={"job_id": job_id})
 

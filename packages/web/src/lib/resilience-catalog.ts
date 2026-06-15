@@ -8,6 +8,7 @@ export interface CatalogItem {
   id: string;
   name: string;
   description: string;
+  premium?: boolean;
 }
 
 export interface ArchitectureCatalogItem extends CatalogItem {
@@ -41,7 +42,15 @@ export const INJECTOR_CATALOG: CatalogItem[] = [
     name: "Action spam",
     description: "Rapid-fire messages and actions",
   },
+  {
+    id: "gradual_goal_drift",
+    name: "Gradual goal drift",
+    description: "Multi-turn sub-goal escalation before overt rogue behavior",
+    premium: true,
+  },
 ];
+
+export const PREMIUM_INJECTORS = INJECTOR_CATALOG.filter((i) => i.premium).map((i) => i.id);
 
 export const ARCHITECTURE_CATALOG: ArchitectureCatalogItem[] = [
   {

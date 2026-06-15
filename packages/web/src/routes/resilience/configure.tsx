@@ -1,7 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { IconWand } from "@tabler/icons-react";
 import { useMemo } from "react";
 import { toast } from "sonner";
 
+import { useGenerateResilienceScenarios, useStartResilience } from "@/api/queries";
 import { BusinessContextCard } from "@/components/business-context-card";
 import { ModelPickerButton } from "@/components/model-picker/dialog";
 import { InjectorCatalogPane } from "@/components/resilience/injector-catalog-pane";
@@ -11,7 +13,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { useStartResilience } from "@/api/queries";
 import {
   ARCHITECTURE_CATALOG,
   BASIC_INJECTORS,
@@ -20,9 +21,9 @@ import {
   getArchitecture,
 } from "@/lib/resilience-catalog";
 import { authNeedsCredentials, protocolNeedsAgentUrl } from "@/lib/protocols";
+import { cn } from "@/lib/utils";
 import { useConfig } from "@/stores/config";
 import { useResilienceConfig } from "@/stores/resilience";
-import { cn } from "@/lib/utils";
 import { AUTH_TYPE_LABELS } from "@/api/types";
 
 export const Route = createFileRoute("/resilience/configure")({
@@ -38,7 +39,7 @@ const PRESETS: { id: ExperimentPreset; label: string; description: string }[] = 
   {
     id: "full",
     label: "Full",
-    description: "All five built-in injectors",
+    description: "All built-in injectors including premium gradual goal drift",
   },
   {
     id: "custom",
@@ -51,6 +52,7 @@ function ResilienceConfigurePage() {
   const cfg = useConfig();
   const navigate = useNavigate();
   const start = useStartResilience();
+  const generateScenarios = useGenerateResilienceScenarios();
   const rs = useResilienceConfig();
 
   const agent = cfg.lastResilienceAgent;
@@ -74,7 +76,12 @@ function ResilienceConfigurePage() {
     rs.setArchitecture(id);
     const profile = getArchitecture(id);
     if (profile) {
-      rs.setTargetAgentId(profile.agentIds.includes(rs.targetAgentId) ? rs.targetAgentId : profile.agentIds[0] ?? "default");
+      rs.setTargetAgentId(
+        profile.agentIds.includes(rs.targetAgentId) ? rs.targetAgentId : (profile.agentIds[0] ?? "default"),
+      );
+      rs.setConcurrentTargetAgentIds(
+        rs.concurrentTargetAgentIds.filter((a) => profile.agentIds.includes(a)),
+      );
     }
   };
 
@@ -83,6 +90,45 @@ function ResilienceConfigurePage() {
     () => new Set(rs.expandedInjectorCategories),
     [rs.expandedInjectorCategories],
   );
+  const concurrentSet = useMemo(
+    () => new Set(rs.concurrentTargetAgentIds),
+    [rs.concurrentTargetAgentIds],
+  );
+
+  const applyGeneratedScenario = async () => {
+    const context = cfg.businessContext.trim();
+    if (!context) {
+      toast.error("Add business context before generating scenarios");
+      return;
+    }
+    if (!cfg.judgeModel.trim()) {
+      toast.error("Select a judge model first");
+      return;
+    }
+    try {
+      const res = await generateScenarios.mutateAsync({
+        business_context: context,
+        model: cfg.judgeModel,
+        api_key: cfg.apiKeys[cfg.judgeProvider],
+        api_base: cfg.judgeApiBase,
+        count: 5,
+      });
+      const first = res.scenarios[0];
+      if (!first) {
+        toast.error("No scenarios returned");
+        return;
+      }
+      rs.setPreset("custom");
+      rs.setInjectors(first.injectors);
+      rs.setArchitecture(first.architecture);
+      rs.setTargetAgentId(first.target_agent_id);
+      rs.setBaselineTask(first.baseline_task);
+      rs.setRecoveryTask(first.recovery_task);
+      toast.success(`Applied scenario: ${first.name}`);
+    } catch (e) {
+      toast.error(`Generate failed: ${(e as Error).message}`);
+    }
+  };
 
   const submit = async () => {
     if (rs.injectors.length === 0) {
@@ -103,17 +149,21 @@ function ResilienceConfigurePage() {
     }
     try {
       cfg.setLastResilienceAgent(agent);
+      const concurrent =
+        rs.concurrentTargetAgentIds.length >= 2 ? rs.concurrentTargetAgentIds : undefined;
       const res = await start.mutateAsync({
         resilience_config: {
           injectors: rs.injectors,
           architecture: rs.architecture,
           target_agent_id: rs.targetAgentId,
+          concurrent_target_agent_ids: concurrent,
           experiments_per_injector: rs.experimentsPerInjector,
           baseline_task: rs.baselineTask,
           recovery_task: rs.recoveryTask,
           use_heuristics: rs.useHeuristics,
           enable_checkpoint_recovery: rs.enableCheckpointRecovery,
           checkpoint_thread_id: rs.checkpointThreadId.trim() || undefined,
+          min_resilience_score: rs.minResilienceScore ?? undefined,
         },
         evaluated_agent_url: needsAgentUrl ? agent.agentUrl : undefined,
         evaluated_agent_protocol: agent.protocol,
@@ -166,6 +216,17 @@ function ResilienceConfigurePage() {
         </div>
       </div>
 
+      <Card className="border-primary/30 bg-primary/5">
+        <CardHeader className="py-3">
+          <CardTitle className="text-sm">Resilience vs Red Team (Robustness)</CardTitle>
+          <CardDescription>
+            Red Team tests external adversarial attacks on your agent. Resilience tests internal
+            faults — when an agent in your multi-agent system goes rogue. Use both for defense in
+            depth.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+
       <TargetAgentForm
         value={agent}
         onChange={setAgent}
@@ -173,6 +234,22 @@ function ResilienceConfigurePage() {
       />
 
       <BusinessContextCard />
+
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={applyGeneratedScenario}
+          disabled={generateScenarios.isPending}
+        >
+          <IconWand className="mr-2 size-4" />
+          {generateScenarios.isPending ? "Generating…" : "Generate scenario from context"}
+        </Button>
+        <span className="text-xs text-muted-foreground">
+          Uses business context + judge model to suggest injectors and tasks.
+        </span>
+      </div>
 
       <Card>
         <CardHeader>
@@ -233,7 +310,7 @@ function ResilienceConfigurePage() {
                 </button>
               ))}
               <div className="space-y-2 pt-2">
-                <Label htmlFor="target-agent">Injection target</Label>
+                <Label htmlFor="target-agent">Primary injection target</Label>
                 <Input
                   id="target-agent"
                   value={rs.targetAgentId}
@@ -242,6 +319,28 @@ function ResilienceConfigurePage() {
                   className="font-mono text-xs"
                 />
               </div>
+              {arch?.isMultiAgent && (
+                <div className="space-y-2">
+                  <Label>Concurrent targets (select 2+ for parallel injection)</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {arch.agentIds.map((id) => (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => rs.toggleConcurrentTarget(id)}
+                        className={cn(
+                          "rounded-md border px-2 py-1 font-mono text-xs transition-colors",
+                          concurrentSet.has(id)
+                            ? "border-primary bg-primary/15"
+                            : "border-border/60 hover:border-primary/40",
+                        )}
+                      >
+                        {id}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="exp-per-inj">Experiments per injector</Label>
                 <Input
@@ -289,6 +388,21 @@ function ResilienceConfigurePage() {
                   />
                 </div>
               )}
+              <div className="space-y-2">
+                <Label htmlFor="min-score">Minimum resilience score (optional CI gate)</Label>
+                <Input
+                  id="min-score"
+                  type="number"
+                  min={0}
+                  max={100}
+                  placeholder="e.g. 60"
+                  value={rs.minResilienceScore ?? ""}
+                  onChange={(e) => {
+                    const raw = e.target.value.trim();
+                    rs.setMinResilienceScore(raw === "" ? null : Number(raw));
+                  }}
+                />
+              </div>
             </CardContent>
           </Card>
         </div>

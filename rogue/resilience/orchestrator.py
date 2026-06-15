@@ -5,13 +5,14 @@ Supports single-agent injection (Phase 1) and multi-agent architectures with
 optional LangGraph checkpoint recovery (Phase 2).
 """
 
+import asyncio
 import time
 from datetime import datetime, timezone
 from typing import Any, AsyncGenerator, Callable, Optional, Union
 from uuid import uuid4
 
 from rogue.common.logging import get_logger
-from rogue.injectors.base_injector import InjectionContext, InjectorConfig, InjectorId
+from rogue.injectors.base_injector import InjectionContext, InjectorConfig, InjectorId, InjectionResult
 from rogue.injectors.registry import INJECTOR_CATALOG, get_injector
 from rogue.resilience.agent_client import PythonAgentClient
 from rogue.resilience.catalog.architectures import (
@@ -120,6 +121,7 @@ class ResilienceOrchestrator:
         enable_checkpoint_recovery: bool = False,
         checkpoint_adapter: Optional[CheckpointAdapter] = None,
         checkpoint_thread_id: Optional[str] = None,
+        concurrent_target_agent_ids: Optional[list[str]] = None,
     ) -> None:
         if not injectors:
             raise ValueError("At least one injector must be configured")
@@ -146,6 +148,7 @@ class ResilienceOrchestrator:
         self.enable_checkpoint_recovery = enable_checkpoint_recovery
         self.checkpoint_adapter = checkpoint_adapter
         self.checkpoint_thread_id = checkpoint_thread_id
+        self.concurrent_target_agent_ids = list(concurrent_target_agent_ids or [])
 
         self._detection_metric = DetectionMetric(
             judge_llm=judge_llm,
@@ -210,7 +213,7 @@ class ResilienceOrchestrator:
                     logger.info(
                         "Starting resilience experiment",
                         extra={
-                            "injector": injector_id.value,
+                            "injector": self._injector_key(injector_id),
                             "attempt": attempt + 1,
                             "target_agent_id": self.target_agent_id,
                         },
@@ -224,7 +227,7 @@ class ResilienceOrchestrator:
                     logger.info(
                         "Completed resilience experiment",
                         extra={
-                            "injector": injector_id.value,
+                            "injector": self._injector_key(injector_id),
                             "experiment_id": experiment.experiment_id,
                             "composite_score": experiment.composite_score,
                             "passed": experiment.passed,
@@ -275,10 +278,10 @@ class ResilienceOrchestrator:
                         "status",
                         {
                             "message": (
-                                f"Running {injector_id.value} "
+                                f"Running {self._injector_key(injector_id)} "
                                 f"attempt {attempt + 1}"
                             ),
-                            "injector": injector_id.value,
+                            "injector": self._injector_key(injector_id),
                             "attempt": attempt,
                         },
                     )
@@ -322,7 +325,7 @@ class ResilienceOrchestrator:
     async def _run_experiment(
         self,
         client: AgentClient,
-        injector_id: InjectorId,
+        injector_id: InjectorId | str,
         attempt: int,
     ) -> ExperimentResult:
         """
@@ -355,7 +358,7 @@ class ResilienceOrchestrator:
     async def _run_single_experiment(
         self,
         client: AgentClient,
-        injector_id: InjectorId,
+        injector_id: InjectorId | str,
         attempt: int,
     ) -> ExperimentResult:
         """
@@ -373,7 +376,7 @@ class ResilienceOrchestrator:
             KeyError: If ``injector_id`` is not registered (should not occur
                 after ``__init__`` validation).
         """
-        session_id = f"resilience-{injector_id.value}-{attempt}-{uuid4().hex[:8]}"
+        session_id = f"resilience-{self._injector_key(injector_id)}-{attempt}-{uuid4().hex[:8]}"
         trace = ExperimentTrace(
             architecture=self.architecture,
             injector=injector_id,
@@ -412,7 +415,7 @@ class ResilienceOrchestrator:
             trace,
             TraceEventType.INJECTION,
             {
-                "injector": injector_id.value,
+                "injector": self._injector_key(injector_id),
                 "probe_count": len(injection.probe_messages),
             },
         )
@@ -452,7 +455,7 @@ class ResilienceOrchestrator:
                 )
                 logger.exception(
                     "Fault probe failed",
-                    extra={"injector": injector_id.value, "probe": probe[:80]},
+                    extra={"injector": self._injector_key(injector_id), "probe": probe[:80]},
                 )
 
         trace.fault_result = TaskResult(
@@ -509,7 +512,7 @@ class ResilienceOrchestrator:
     async def _run_multi_agent_experiment(
         self,
         client: AgentClient,
-        injector_id: InjectorId,
+        injector_id: InjectorId | str,
         attempt: int,
     ) -> ExperimentResult:
         """
@@ -539,7 +542,7 @@ class ResilienceOrchestrator:
         if not isinstance(client, MultiAgentPythonClient):
             raise TypeError("Multi-agent experiments require MultiAgentPythonClient")
 
-        session_id = f"resilience-{injector_id.value}-{attempt}-{uuid4().hex[:8]}"
+        session_id = f"resilience-{self._injector_key(injector_id)}-{attempt}-{uuid4().hex[:8]}"
         thread_id = self.checkpoint_thread_id or session_id
         trace = ExperimentTrace(
             architecture=self.architecture,
@@ -577,51 +580,158 @@ class ResilienceOrchestrator:
             business_context=self.business_context,
             session_id=session_id,
         )
-        injection = await injector.inject(self.target_agent_id, injection_context)
-        self._record(
-            trace,
-            TraceEventType.INJECTION,
-            {
-                "injector": injector_id.value,
-                "probe_count": len(injection.probe_messages),
-            },
-            agent_id=self.target_agent_id,
+        fault_targets = (
+            self.concurrent_target_agent_ids
+            if len(self.concurrent_target_agent_ids) >= 2
+            else [self.target_agent_id]
         )
+        if len(fault_targets) >= 2:
+            self._record(
+                trace,
+                TraceEventType.INJECTION,
+                {
+                    "injector": self._injector_key(injector_id),
+                    "concurrent_targets": fault_targets,
+                    "mode": "concurrent",
+                },
+            )
 
         fault_responses: list[str] = []
-        for probe in injection.probe_messages:
-            start = time.perf_counter()
-            try:
-                response = await client.call_agent(
-                    [{"role": "user", "content": probe}],
-                    context_id=session_id,
-                    agent_id=self.target_agent_id,
-                    **injection.attach_kwargs,
-                )
-                fault_responses.append(response)
-                duration_ms = (time.perf_counter() - start) * 1000.0
+
+        async def _fault_target(target_id: str) -> list[str]:
+            target_responses: list[str] = []
+            target_injector = get_injector(injector_id)
+            target_injector.configure(
+                InjectorConfig(
+                    intensity=self.injector_intensity,
+                    injection_turn=1,
+                ),
+            )
+            target_context = InjectionContext(
+                target_agent_id=target_id,
+                conversation_turn=1,
+                baseline_task=self.baseline_task,
+                business_context=self.business_context,
+                session_id=f"{session_id}-{target_id}",
+            )
+            target_injection = await target_injector.inject(target_id, target_context)
+            if len(fault_targets) < 2:
                 self._record(
                     trace,
-                    TraceEventType.MESSAGE,
+                    TraceEventType.INJECTION,
                     {
-                        "probe": probe,
-                        "response": response,
-                        "duration_ms": duration_ms,
-                        "injected": True,
+                        "injector": self._injector_key(injector_id),
+                        "probe_count": len(target_injection.probe_messages),
                     },
-                    agent_id=self.target_agent_id,
+                    agent_id=target_id,
                 )
-            except Exception as exc:
-                self._record(
-                    trace,
-                    TraceEventType.ERROR,
-                    {"probe": probe, "error": str(exc)},
-                    agent_id=self.target_agent_id,
-                )
-                logger.exception(
-                    "Multi-agent fault probe failed",
-                    extra={"injector": injector_id.value, "agent": self.target_agent_id},
-                )
+            for probe in target_injection.probe_messages:
+                start = time.perf_counter()
+                try:
+                    response = await client.call_agent(
+                        [{"role": "user", "content": probe}],
+                        context_id=f"{session_id}-{target_id}",
+                        agent_id=target_id,
+                        **target_injection.attach_kwargs,
+                    )
+                    target_responses.append(response)
+                    duration_ms = (time.perf_counter() - start) * 1000.0
+                    self._record(
+                        trace,
+                        TraceEventType.MESSAGE,
+                        {
+                            "probe": probe,
+                            "response": response,
+                            "duration_ms": duration_ms,
+                            "injected": True,
+                            "concurrent": len(fault_targets) >= 2,
+                        },
+                        agent_id=target_id,
+                    )
+                except Exception as exc:
+                    self._record(
+                        trace,
+                        TraceEventType.ERROR,
+                        {"probe": probe, "error": str(exc), "concurrent": len(fault_targets) >= 2},
+                        agent_id=target_id,
+                    )
+                    logger.exception(
+                        "Multi-agent fault probe failed",
+                        extra={
+                            "injector": self._injector_key(injector_id),
+                            "agent": target_id,
+                        },
+                    )
+            target_injector.teardown()
+            return target_responses
+
+        if len(fault_targets) >= 2:
+            gathered = await asyncio.gather(
+                *[_fault_target(t) for t in fault_targets],
+                return_exceptions=True,
+            )
+            for target_id, result in zip(fault_targets, gathered):
+                if isinstance(result, BaseException):
+                    logger.warning(
+                        "Concurrent injection failed for target",
+                        extra={"target_id": target_id, "error": str(result)},
+                    )
+                    continue
+                fault_responses.extend(result)
+            injection = InjectionResult(
+                injector_id=injector_id,
+                target_agent_id=",".join(fault_targets),
+                probe_messages=[],
+                metadata={"concurrent_targets": fault_targets},
+            )
+        else:
+            injection = await injector.inject(self.target_agent_id, injection_context)
+            self._record(
+                trace,
+                TraceEventType.INJECTION,
+                {
+                    "injector": self._injector_key(injector_id),
+                    "probe_count": len(injection.probe_messages),
+                },
+                agent_id=self.target_agent_id,
+            )
+            for probe in injection.probe_messages:
+                start = time.perf_counter()
+                try:
+                    response = await client.call_agent(
+                        [{"role": "user", "content": probe}],
+                        context_id=session_id,
+                        agent_id=self.target_agent_id,
+                        **injection.attach_kwargs,
+                    )
+                    fault_responses.append(response)
+                    duration_ms = (time.perf_counter() - start) * 1000.0
+                    self._record(
+                        trace,
+                        TraceEventType.MESSAGE,
+                        {
+                            "probe": probe,
+                            "response": response,
+                            "duration_ms": duration_ms,
+                            "injected": True,
+                        },
+                        agent_id=self.target_agent_id,
+                    )
+                except Exception as exc:
+                    self._record(
+                        trace,
+                        TraceEventType.ERROR,
+                        {"probe": probe, "error": str(exc)},
+                        agent_id=self.target_agent_id,
+                    )
+                    logger.exception(
+                        "Multi-agent fault probe failed",
+                        extra={
+                            "injector": self._injector_key(injector_id),
+                            "agent": self.target_agent_id,
+                        },
+                    )
+            injector.teardown()
 
         rogue_broadcast = fault_responses[-1] if fault_responses else ""
         for peer_id in self.architecture_profile.notify_on_fault.get(
@@ -686,7 +796,6 @@ class ResilienceOrchestrator:
             success=bool(fault_responses),
             response=rogue_broadcast,
         )
-        injector.teardown()
         self._maybe_restore_checkpoint(thread_id, baseline_snapshot, trace=trace)
 
         recovery = await self._run_task(
@@ -999,26 +1108,27 @@ class ResilienceOrchestrator:
                 )
 
     @staticmethod
-    def _resolve_injector_ids(injectors: list[InjectorId | str]) -> list[InjectorId]:
+    def _injector_key(injector_id: InjectorId | str) -> str:
+        return injector_id.value if isinstance(injector_id, InjectorId) else str(injector_id)
+
+    @staticmethod
+    def _resolve_injector_ids(injectors: list[InjectorId | str]) -> list[str]:
         """
         Validate and normalize injector identifiers.
 
-        Args:
-            injectors: Raw injector IDs from configuration.
-
-        Returns:
-            List of validated ``InjectorId`` enum values.
-
-        Raises:
-            ValueError: If any ID is unknown.
+        Supports built-in ``InjectorId`` values, premium strings, and custom plugins.
         """
-        resolved: list[InjectorId] = []
+        resolved: list[str] = []
         for item in injectors:
+            key = (
+                item.value
+                if isinstance(item, InjectorId)
+                else str(item)
+            )
             try:
-                injector_id = InjectorId(item) if isinstance(item, str) else item
-                get_injector(injector_id)
-                resolved.append(injector_id)
-            except (ValueError, KeyError) as exc:
+                get_injector(key)
+                resolved.append(key)
+            except KeyError as exc:
                 raise ValueError(f"Unknown injector: {item}") from exc
         return resolved
 

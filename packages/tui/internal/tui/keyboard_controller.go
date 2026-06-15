@@ -468,6 +468,14 @@ func (m Model) routeKeyToScreen(msg tea.KeyMsg) (Model, tea.Cmd) {
 		m.helpViewport = *updatedViewport
 		return m, cmd
 
+	case ResilienceCatalogScreen:
+		if msg.String() == "q" || msg.String() == "esc" {
+			m.currentScreen = DashboardScreen
+			m.commandInput.SetFocus(true)
+			m.commandInput.SetValue("")
+		}
+		return m, nil
+
 	case DashboardScreen:
 		// Let the command input handle non-shortcut keys if it's focused
 		if m.commandInput.IsFocused() {

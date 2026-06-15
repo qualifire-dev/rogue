@@ -103,6 +103,17 @@ class ServerResilienceOrchestrator:
         if not self.resilience_config.injectors:
             raise ValueError("resilience_config.injectors must not be empty")
 
+        for plugin_path in self.resilience_config.custom_injector_plugins:
+            try:
+                from rogue.injectors.plugins import load_injector_plugin
+
+                load_injector_plugin(plugin_path)
+            except Exception as exc:
+                self.logger.warning(
+                    "Failed to load custom injector plugin",
+                    extra={"path": plugin_path, "error": str(exc)},
+                )
+
         return ResilienceOrchestrator(
             injectors=self.resilience_config.injectors,
             python_entrypoint_file=self.python_entrypoint_file,
@@ -120,6 +131,7 @@ class ServerResilienceOrchestrator:
             injector_intensity=self.resilience_config.injector_intensity,
             enable_checkpoint_recovery=self.resilience_config.enable_checkpoint_recovery,
             checkpoint_thread_id=self.resilience_config.checkpoint_thread_id,
+            concurrent_target_agent_ids=self.resilience_config.concurrent_target_agent_ids,
         )
 
     async def run_experiments(self) -> AsyncGenerator[Tuple[str, Any], None]:

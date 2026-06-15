@@ -8,8 +8,8 @@ from rogue.injectors.base_injector import InjectorId
 from rogue.resilience.models import ArchitectureId, ResilienceMetricId
 from rogue.resilience.orchestrator import ResilienceOrchestrator
 
-SINGLE_AGENT = Path(__file__).parent / "resilience_test_agent.py"
-MULTI_AGENT = Path(__file__).parent / "resilience_multi_agent_entrypoint.py"
+SINGLE_AGENT = Path(__file__).parent / "fixtures" / "resilience_test_agent.py"
+MULTI_AGENT = Path(__file__).parent / "fixtures" / "resilience_multi_agent_entrypoint.py"
 
 
 @pytest.mark.asyncio

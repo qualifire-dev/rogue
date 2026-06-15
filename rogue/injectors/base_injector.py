@@ -97,7 +97,7 @@ class InjectionResult(BaseModel):
         metadata: Strategy-specific diagnostic data.
     """
 
-    injector_id: InjectorId
+    injector_id: InjectorId | str
     target_agent_id: str
     injected_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
@@ -137,7 +137,7 @@ class BaseInjector(ABC):
         description: Short explanation of what the strategy tests.
     """
 
-    id: InjectorId
+    id: InjectorId | str
     name: str
     description: str
 

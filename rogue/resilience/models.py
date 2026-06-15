@@ -103,7 +103,7 @@ class ExperimentTrace(BaseModel):
 
     experiment_id: str = Field(default_factory=lambda: str(uuid4()))
     architecture: ArchitectureId = ArchitectureId.SINGLE_AGENT
-    injector: InjectorId
+    injector: InjectorId | str
     target_agent_id: str = "default"
     events: list[TraceEvent] = Field(default_factory=list)
     baseline_result: Optional[TaskResult] = None
@@ -115,7 +115,7 @@ class ExperimentResult(BaseModel):
     """Aggregated outcome for a single injector experiment."""
 
     experiment_id: str
-    injector_id: InjectorId
+    injector_id: InjectorId | str
     injector_name: str
     architecture: ArchitectureId
     target_agent_id: str
