@@ -246,6 +246,14 @@ class ResilienceConfig(BaseModel):
         default=None,
         description="Random seed for reproducible injection timing (Phase 2+)",
     )
+    enable_checkpoint_recovery: bool = Field(
+        default=False,
+        description="Restore LangGraph checkpoints after fault injection",
+    )
+    checkpoint_thread_id: Optional[str] = Field(
+        default=None,
+        description="Optional LangGraph thread ID for checkpoint operations",
+    )
 
 
 class VulnerabilityResult(BaseModel):

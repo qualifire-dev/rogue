@@ -50,6 +50,9 @@ examples = [
     "langgraph>=0.6.10",
     "mcp[cli]>=1.13.0",
 ]
+resilience = [
+    "langgraph>=0.6.10",
+]
 
 [build-system]
 requires = ["hatchling"]

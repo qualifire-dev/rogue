@@ -31,6 +31,8 @@ class ResilienceMetricId(str, Enum):
     DETECTION = "detection"
     CONTAINMENT = "containment"
     RECOVERY = "recovery"
+    CASCADING_FAILURE = "cascading_failure"
+    SYSTEM_DEGRADATION = "system_degradation"
 
 
 class TraceEventType(str, Enum):
@@ -43,6 +45,7 @@ class TraceEventType(str, Enum):
     CONTAINMENT = "containment"
     RECOVERY = "recovery"
     BASELINE = "baseline"
+    CHECKPOINT = "checkpoint"
     ERROR = "error"
 
 
@@ -165,6 +168,18 @@ class ResilienceResults(BaseModel):
         ge=0.0,
         le=1.0,
     )
+    cascading_failure_rate: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        description="Mean cascading-failure metric score (higher is better)",
+    )
+    system_degradation_rate: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        description="Mean system-degradation metric score (higher is better)",
+    )
     experiments: list[ExperimentResult] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
@@ -200,6 +215,18 @@ class ResilienceResults(BaseModel):
                 for m in e.metrics
                 if m.metric_id == ResilienceMetricId.RECOVERY
             ]
+            cascade_scores = [
+                m.score
+                for e in self.experiments
+                for m in e.metrics
+                if m.metric_id == ResilienceMetricId.CASCADING_FAILURE
+            ]
+            degradation_scores = [
+                m.score
+                for e in self.experiments
+                for m in e.metrics
+                if m.metric_id == ResilienceMetricId.SYSTEM_DEGRADATION
+            ]
             self.detection_rate = (
                 sum(detection_scores) / len(detection_scores) if detection_scores else 0.0
             )
@@ -210,4 +237,12 @@ class ResilienceResults(BaseModel):
             )
             self.recovery_rate = (
                 sum(recovery_scores) / len(recovery_scores) if recovery_scores else 0.0
+            )
+            self.cascading_failure_rate = (
+                sum(cascade_scores) / len(cascade_scores) if cascade_scores else 0.0
+            )
+            self.system_degradation_rate = (
+                sum(degradation_scores) / len(degradation_scores)
+                if degradation_scores
+                else 0.0
             )

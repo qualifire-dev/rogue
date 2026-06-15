@@ -23,6 +23,10 @@ class MetricEvaluationContext(BaseModel):
     business_context: str = ""
     baseline_task: str = ""
     injection: Optional[InjectionResult] = None
+    architecture_profile: Optional[Any] = Field(
+        default=None,
+        description="ArchitectureProfile when running multi-agent experiments",
+    )
     judge_llm: Optional[str] = None
     judge_llm_auth: Optional[str] = None
     judge_llm_api_base: Optional[str] = None

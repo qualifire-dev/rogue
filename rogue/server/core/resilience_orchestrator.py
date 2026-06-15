@@ -118,6 +118,8 @@ class ServerResilienceOrchestrator:
             judge_llm_api_version=self.judge_llm_api_version,
             use_heuristics=self.resilience_config.use_heuristics,
             injector_intensity=self.resilience_config.injector_intensity,
+            enable_checkpoint_recovery=self.resilience_config.enable_checkpoint_recovery,
+            checkpoint_thread_id=self.resilience_config.checkpoint_thread_id,
         )
 
     async def run_experiments(self) -> AsyncGenerator[Tuple[str, Any], None]:
