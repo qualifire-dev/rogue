@@ -134,7 +134,9 @@ function RedTeamConfigurePage() {
         attacker_llm_api_base: cfg.attackerApiBase,
         business_context: cfg.businessContext.trim() || undefined,
         rogue_security_api_key: cfg.rogueSecurityEnabled ? cfg.rogueSecurityApiKey : undefined,
-        rogue_security_base_url: cfg.rogueSecurityEnabled ? cfg.rogueSecurityBaseUrl : undefined,
+        // ponytail: attack generation uses the Deckard API host (server default
+        // deckard.rogue.security). The reporting URL (app.rogue.security) is a
+        // different host and 307s on the attack-gen endpoint — don't send it here.
         max_retries: 3,
         timeout_seconds: 600,
       });
