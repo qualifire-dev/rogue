@@ -11,6 +11,7 @@ from loguru import logger
 
 from rogue_sdk.types import Protocol, Scenarios, Transport
 
+from ...common.litellm_config import agent_request_timeout
 from ..base_evaluator_agent import BaseEvaluatorAgent
 
 
@@ -148,7 +149,7 @@ class OpenAIAPIEvaluatorAgent(BaseEvaluatorAgent):
                 messages=messages,
                 api_base=self._evaluated_agent_address,
                 extra_headers=self._headers,
-                timeout=30.0,
+                timeout=agent_request_timeout(),
             )
 
             # Extract the assistant's response

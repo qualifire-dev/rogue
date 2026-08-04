@@ -7,6 +7,7 @@ from loguru import logger
 
 from rogue_sdk.types import AuthType
 
+from ...common.litellm_config import agent_request_timeout
 from .base_red_team_attacker_agent import BaseRedTeamAttackerAgent
 
 
@@ -15,6 +16,12 @@ class OpenAIAPIRedTeamAttackerAgent(BaseRedTeamAttackerAgent):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
+        # litellm appends "/chat/completions" to api_base itself, so a user
+        # pasting the full endpoint URL would otherwise get a doubled path.
+        # Mirrors the normalization in OpenAIAPIEvaluatorAgent.
+        self._evaluated_agent_address = self._evaluated_agent_address.removesuffix(
+            "/chat/completions",
+        )
         # Context ID to messages mapping for multi-turn conversations
         self._context_id_to_messages: dict[str, list[dict[str, str]]] = {}
 
@@ -73,7 +80,7 @@ class OpenAIAPIRedTeamAttackerAgent(BaseRedTeamAttackerAgent):
                 messages=self._context_id_to_messages[context_id],
                 api_base=self._evaluated_agent_address,
                 extra_headers=headers,
-                timeout=30.0,
+                timeout=agent_request_timeout(),
                 **api_key_kwargs,
             )
 
