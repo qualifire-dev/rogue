@@ -124,10 +124,10 @@ _AGENT_CARD_JSON = {
         Transport.SSE,
     ],
 )
-def test_get_a2a_agent_card_accepts_http_transports(
+async def test_get_a2a_agent_card_accepts_http_transports(
     transport: Transport,
     mocker: MockerFixture,
-):
+) -> None:
     """Regression test for issue #150.
 
     The A2A agent card is served over HTTP at the well-known path regardless of
@@ -146,7 +146,7 @@ def test_get_a2a_agent_card_accepts_http_transports(
     mock_get.assert_called_once()
 
 
-def test_get_a2a_agent_card_rejects_unsupported_transport(mocker: MockerFixture):
+def test_get_a2a_agent_card_rejects_unsupported_transport(mocker: MockerFixture) -> None:
     """Non-HTTP transports for A2A (e.g. CHAT_COMPLETIONS) must still raise."""
     mock_get = mocker.patch("rogue.run_cli.requests.get")
     with pytest.raises(ValueError):
