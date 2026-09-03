@@ -1,3 +1,4 @@
+import asyncio
 import json
 from argparse import Namespace
 from pathlib import Path
@@ -7,7 +8,7 @@ from pydantic import HttpUrl, SecretStr
 from pytest_mock import MockerFixture
 
 from rogue.models.cli_input import CLIInput
-from rogue.run_cli import get_cli_input
+from rogue.run_cli import get_a2a_agent_card, get_cli_input
 from rogue_sdk.types import AuthType, Protocol, Transport
 
 
@@ -101,3 +102,58 @@ def test_get_cli_input(
     cli_args.config_file = config_file
 
     assert get_cli_input(cli_args) == expected
+
+
+_AGENT_CARD_JSON = {
+    "name": "test-agent",
+    "description": "A test agent",
+    "url": "https://localhost:10001",
+    "version": "0.2.0",
+    "capabilities": {"streaming": False, "pushNotifications": False},
+    "defaultInputModes": ["text/plain"],
+    "defaultOutputModes": ["text/plain"],
+    "skills": [],
+}
+
+
+@pytest.mark.parametrize(
+    "transport",
+    [
+        Transport.HTTP,
+        Transport.STREAMABLE_HTTP,
+        Transport.SSE,
+    ],
+)
+async def test_get_a2a_agent_card_accepts_http_transports(
+    transport: Transport,
+    mocker: MockerFixture,
+) -> None:
+    """Regression test for issue #150.
+
+    The A2A agent card is served over HTTP at the well-known path regardless of
+    the RPC transport, so STREAMABLE_HTTP/SSE must not raise
+    'Unsupported transport'. Before the fix only Transport.HTTP was accepted.
+    """
+    mock_get = mocker.patch("rogue.run_cli.requests.get")
+    mock_get.return_value.json.return_value = _AGENT_CARD_JSON
+    mock_get.return_value.status_code = 200
+
+    card = asyncio.run(
+        get_a2a_agent_card(agent_url="https://localhost:10001", transport=transport)
+    )
+    assert card is not None
+    assert card.name == "test-agent"
+    mock_get.assert_called_once()
+
+
+def test_get_a2a_agent_card_rejects_unsupported_transport(mocker: MockerFixture) -> None:
+    """Non-HTTP transports for A2A (e.g. CHAT_COMPLETIONS) must still raise."""
+    mock_get = mocker.patch("rogue.run_cli.requests.get")
+    with pytest.raises(ValueError):
+        asyncio.run(
+            get_a2a_agent_card(
+                agent_url="https://localhost:10001",
+                transport=Transport.CHAT_COMPLETIONS,
+            )
+        )
+    mock_get.assert_not_called()
