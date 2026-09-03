@@ -410,10 +410,13 @@ async def get_a2a_agent_card(
     agent_url: str,
     headers: dict[str, str] | None = None,
 ) -> AgentCard:
-    # The A2A AgentCard is always served over HTTP at the well-known path,
-    # regardless of the RPC transport used for agent calls (HTTP, Streamable
-    # HTTP and SSE all expose the card the same way). Accept those and only
-    # reject transports that cannot serve an A2A card.
+    """Fetch and validate an A2A agent's AgentCard from its well-known path.
+
+    The A2A AgentCard is always served over HTTP at `/.well-known/agent.json`
+    regardless of the RPC transport used for agent calls, so HTTP, STREAMABLE_HTTP
+    and SSE all expose the card the same way. Accept those and only reject
+    transports that cannot serve an A2A card (e.g. CHAT_COMPLETIONS).
+    """
     if transport in (
         Transport.HTTP,
         Transport.STREAMABLE_HTTP,
