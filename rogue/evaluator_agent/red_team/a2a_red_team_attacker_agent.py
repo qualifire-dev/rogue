@@ -1,5 +1,6 @@
 """A2A Red Team Attacker Agent - Attacks using A2A protocol."""
 
+import os
 from typing import Optional
 from uuid import uuid4
 
@@ -23,7 +24,31 @@ class A2ARedTeamAttackerAgent(BaseRedTeamAttackerAgent):
     async def __aenter__(self):
         """Initialize HTTP client and agent connection."""
         await super().__aenter__()
-        self._http_client = AsyncClient(timeout=30)
+        # Thread the agent's auth headers into the A2A client so both the
+        # agent-card fetch and every attack message are authenticated. Without
+        # this, agents that require auth to read /.well-known/agent.json (or to
+        # receive messages) can't be red-teamed even when credentials are set —
+        # see issue #179.
+        headers = self._auth_type.get_auth_header(self._auth_credentials)
+
+        # CWE-319: never transmit API-key / bearer credentials over cleartext
+        # HTTP. Reject non-HTTPS evaluated-agent URLs when auth is configured.
+        # Unauthenticated HTTP is still allowed; HTTPS enforcement can be relaxed
+        # for local dev via ROGUE_ALLOW_INSECURE_AGENT_HTTP.
+        if headers and not self._evaluated_agent_address.startswith("https://"):
+            if not os.getenv("ROGUE_ALLOW_INSECURE_AGENT_HTTP"):
+                raise ValueError(
+                    "Refusing to send agent credentials over a non-HTTPS "
+                    f"evaluated_agent_url ({self._evaluated_agent_address!r}). "
+                    "Use an https:// URL, or set ROGUE_ALLOW_INSECURE_AGENT_HTTP=1 "
+                    "to override for local development only.",
+                )
+            logger.warning(
+                "Sending agent credentials over non-HTTPS URL "
+                f"({self._evaluated_agent_address!r}); ROGUE_ALLOW_INSECURE_AGENT_HTTP is set.",
+            )
+
+        self._http_client = AsyncClient(headers=headers, timeout=30)
         await self._http_client.__aenter__()
 
         # Initialize agent client
