@@ -15,6 +15,7 @@ import os
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from pytest_mock import MockerFixture
 
 from rogue.evaluator_agent.red_team.a2a_red_team_attacker_agent import (
     A2ARedTeamAttackerAgent,
@@ -51,7 +52,7 @@ def _make_agent(
     )
 
 
-def _patch_network(mocker) -> None:
+def _patch_network(mocker: MockerFixture) -> None:
     mocker.patch(
         "rogue.evaluator_agent.red_team.a2a_red_team_attacker_agent.A2ACardResolver",
         return_value=MagicMock(get_agent_card=AsyncMock(return_value=MagicMock())),
@@ -64,7 +65,7 @@ def _patch_network(mocker) -> None:
 
 
 @pytest.mark.asyncio
-async def test_a2a_client_sends_api_key_header(mocker):
+async def test_a2a_client_sends_api_key_header(mocker: MockerFixture) -> None:
     """API key auth must be propagated to the A2A http client."""
     _patch_network(mocker)
     agent = _make_agent(AuthType.API_KEY, "secret-key-123", "https://localhost:9999")
@@ -75,7 +76,7 @@ async def test_a2a_client_sends_api_key_header(mocker):
 
 
 @pytest.mark.asyncio
-async def test_a2a_client_sends_bearer_header(mocker):
+async def test_a2a_client_sends_bearer_header(mocker: MockerFixture) -> None:
     """Bearer auth must be propagated to the A2A http client."""
     _patch_network(mocker)
     agent = _make_agent(AuthType.BEARER_TOKEN, "tok-abc", "https://localhost:9999")
@@ -86,7 +87,7 @@ async def test_a2a_client_sends_bearer_header(mocker):
 
 
 @pytest.mark.asyncio
-async def test_a2a_client_empty_headers_for_no_auth(mocker):
+async def test_a2a_client_empty_headers_for_no_auth(mocker: MockerFixture) -> None:
     """NO_AUTH must not inject any auth header (HTTP allowed)."""
     _patch_network(mocker)
     agent = _make_agent(AuthType.NO_AUTH, None, "http://localhost:9999")
@@ -98,7 +99,7 @@ async def test_a2a_client_empty_headers_for_no_auth(mocker):
 
 
 @pytest.mark.asyncio
-async def test_a2a_rejects_cleartext_http_with_auth(mocker):
+async def test_a2a_rejects_cleartext_http_with_auth(mocker: MockerFixture) -> None:
     """API key over http:// must be rejected (CWE-319)."""
     _patch_network(mocker)
     os.environ.pop("ROGUE_ALLOW_INSECURE_AGENT_HTTP", None)
@@ -109,7 +110,9 @@ async def test_a2a_rejects_cleartext_http_with_auth(mocker):
 
 
 @pytest.mark.asyncio
-async def test_a2a_allows_cleartext_http_with_auth_override(mocker):
+async def test_a2a_allows_cleartext_http_with_auth_override(
+    mocker: MockerFixture,
+) -> None:
     """Dev override permits credentials over http:// when explicitly set."""
     _patch_network(mocker)
     os.environ["ROGUE_ALLOW_INSECURE_AGENT_HTTP"] = "1"
